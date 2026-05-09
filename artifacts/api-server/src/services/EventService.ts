@@ -50,6 +50,11 @@ export const EVENT_TYPES = {
   // Health
   SYSTEM_HEALTH_DEGRADED:         "system_health_degraded",
   SYSTEM_HEALTH_RESTORED:         "system_health_restored",
+  // Intelligence / adaptation (Prompt 10)
+  BURNOUT_RISK_DETECTED:           "burnout_risk_detected",
+  COGNITIVE_LOAD_HIGH:             "cognitive_load_high",
+  FRICTION_ADAPTATION_REQUESTED:   "friction_adaptation_requested",
+  EXTERNAL_SIGNAL_RECEIVED:        "external_signal_received",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
@@ -76,9 +81,9 @@ export async function writeEvent(
   const row: InferInsertModel<typeof events> = {
     event_type: input.eventType,
     entity_type: input.entityType,
-    entity_id: input.entityId ? input.entityId as unknown as undefined : undefined,
-    user_id: input.userId ? input.userId as unknown as undefined : undefined,
-    blueprint_id: input.blueprintId ? input.blueprintId as unknown as undefined : undefined,
+    entity_id: input.entityId,
+    user_id: input.userId,
+    blueprint_id: input.blueprintId,
     payload: (input.payload ?? {}) as Record<string, unknown>,
     idempotency_key: input.idempotencyKey,
     process_after: input.processAfter ?? new Date(),
@@ -109,9 +114,9 @@ export async function writeEventInTx(
     .values({
       event_type: input.eventType,
       entity_type: input.entityType,
-      entity_id: input.entityId as unknown as undefined,
-      user_id: input.userId as unknown as undefined,
-      blueprint_id: input.blueprintId as unknown as undefined,
+      entity_id: input.entityId,
+      user_id: input.userId,
+      blueprint_id: input.blueprintId,
       payload: (input.payload ?? {}) as Record<string, unknown>,
       idempotency_key: input.idempotencyKey,
       process_after: input.processAfter ?? new Date(),

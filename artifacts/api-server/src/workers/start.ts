@@ -15,6 +15,9 @@ import "./BhudhiWorker.js";
 import "./HealthWorker.js";
 import { startScheduledHealthChecks } from "./HealthWorker.js";
 import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
+import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { db, blueprints } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
@@ -33,6 +36,29 @@ export async function startWorkers(): Promise<void> {
     }
   }, 15 * 60 * 1000);
   logger.info("[Inactivity] Scheduled scan started (every 15 minutes)");
+
+  setInterval(async () => {
+    try {
+      const activeBlueprints = await db
+        .select({ id: blueprints.id, user_id: blueprints.user_id })
+        .from(blueprints)
+        .where(and(eq(blueprints.active, true), eq(blueprints.status, "active")));
+
+      for (const bp of activeBlueprints) {
+        await scanPatterns({
+          userId:      bp.user_id,
+          blueprintId: bp.id,
+          windowDays:  7,
+        }).catch(() => null);
+      }
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[PatternScheduler] Scan failed",
+      );
+    }
+  }, 60 * 60 * 1000);
+  logger.info("[Pattern] Scheduled pattern scans started (every hour)");
 
   // Event dispatcher polling loop
   logger.info("[EventDispatcher] Starting dispatcher loop...");

@@ -30,6 +30,12 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
 const TERMINAL_EVENT_TYPES = new Set<string>([
   "task_generation_completed",
   "system_health_restored",
+  // Intelligence / adaptation — audit-only, no queue consumer
+  "burnout_risk_detected",
+  "cognitive_load_high",
+  "friction_adaptation_requested",
+  "external_signal_received",
+  "ORCHESTRATION_LOCK",
 ]);
 
 const DISPATCH_BATCH_SIZE = 50;
