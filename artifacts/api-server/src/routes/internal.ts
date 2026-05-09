@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { z } from "zod/v4";
 import { db } from "@workspace/db";
-import { events, eventLogs, deadLetterEvents } from "@workspace/db";
+import { events, eventLogs, deadLetterEvents, systemHealthLogs } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
+import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
 import { success, failure, handleError } from "../lib/utils.js";
-import { pool } from "@workspace/db";
 
 const router = Router();
 
@@ -156,6 +156,42 @@ router.get("/internal/events/health", async (req, res) => {
     await requireAuth(req, "INTERNAL_SERVICE");
     const health = await getEventSystemHealth();
     success(res, health);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/internal/health/check — run scoped health sweep on demand.
+// Spec: Prompt 6 §STEP 7, DOC_17 §20.
+router.post("/internal/health/check", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const findings = await runIntegrityChecks();
+    await processFindings(findings);
+    success(res, {
+      findingsCount: findings.length,
+      findings: findings.map((f) => ({
+        issueCode: f.issueCode,
+        severity: f.severity,
+        area: f.area,
+      })),
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/internal/health/logs
+router.get("/internal/health/logs", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const logs = await db
+      .select()
+      .from(systemHealthLogs)
+      .where(eq(systemHealthLogs.status, "degraded"))
+      .orderBy(desc(systemHealthLogs.created_at))
+      .limit(100);
+    success(res, { logs, count: logs.length });
   } catch (err) {
     handleError(req, res, err);
   }

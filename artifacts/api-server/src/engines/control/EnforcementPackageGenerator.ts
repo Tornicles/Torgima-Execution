@@ -14,7 +14,7 @@ export class EnforcementPackageGenerator {
     return {
       blueprintId: partial.blueprintId ?? "",
       userId: partial.userId ?? "",
-      condition: partial.condition ?? "building",
+      condition: partial.condition ?? "stability",
       allowedTaskTypes: partial.allowedTaskTypes ?? [],
       blockedTaskTypes: partial.blockedTaskTypes ?? [],
       maxDailyTasks: partial.maxDailyTasks ?? 3,

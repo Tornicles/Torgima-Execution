@@ -12,7 +12,7 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
   "condition_evaluated":            "enforcement_package_requested",
   "enforcement_package_created":    "task_generation_requested",
   "task_generation_requested":      "task_generation_requested",
-  "task_generation_completed":      "task_generation_requested",
+  // task_generation_completed is a terminal/audit signal — no consumer queue.
   "inactivity_scan_requested":      "inactivity_scan_requested",
   "inactivity_detected":            "task_generation_requested",
   "reminder_requested":             "notification_send_requested",
@@ -24,6 +24,13 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
   "blueprint_launched":             "task_generation_requested",
   "pivot_review_requested":         "task_generation_requested",
 };
+
+// Events that record state transitions but never need to be re-dispatched.
+// They are persisted for audit/projection but have no consumer queue.
+const TERMINAL_EVENT_TYPES = new Set<string>([
+  "task_generation_completed",
+  "system_health_restored",
+]);
 
 const DISPATCH_BATCH_SIZE = 50;
 
@@ -54,11 +61,16 @@ export async function dispatchPendingEvents(): Promise<number> {
     const queueName = EVENT_QUEUE_MAP[event.event_type];
 
     if (!queueName) {
-      logger.warn(
-        { eventType: event.event_type, eventId: event.id },
-        "[EventDispatcher] No queue mapping for event type",
-      );
-      await markEventProcessed(event.id, "noop_duplicate");
+      if (TERMINAL_EVENT_TYPES.has(event.event_type)) {
+        // Audit-only event — mark processed quietly.
+        await markEventProcessed(event.id, "success");
+      } else {
+        logger.warn(
+          { eventType: event.event_type, eventId: event.id },
+          "[EventDispatcher] No queue mapping for event type",
+        );
+        await markEventProcessed(event.id, "noop_duplicate");
+      }
       continue;
     }
 

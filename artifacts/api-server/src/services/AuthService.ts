@@ -4,6 +4,7 @@ import { users, sessions } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { sendEmail } from "../lib/resend.js";
 import type { AuthContext, SafeUser } from "../types/auth.js";
 
 const SESSION_MAX_HOURS = 24 * 30;
@@ -51,15 +52,31 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
   const appUrl = process.env["APP_URL"] ?? `https://${process.env["REPLIT_DOMAINS"]?.split(",")[0]}`;
   const verifyUrl = `${appUrl}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
-  // In dev, log the link so it can be tested without an email provider
+  // Always log a dev-friendly trail so the link is recoverable when no
+  // email provider is configured. In production we additionally try Resend.
   if (process.env["NODE_ENV"] !== "production") {
-    logger.info({ verifyUrl, userId }, "[AuthService] Magic link generated (dev mode — not emailed)");
+    logger.info({ verifyUrl, userId }, "[AuthService] Magic link generated (dev mode)");
   } else {
-    // TODO (Prompt 13+): wire Resend or other provider here
-    logger.info({ userId }, "[AuthService] Magic link generated (email provider not yet wired)");
+    logger.info({ userId }, "[AuthService] Magic link generated");
   }
 
-  return { sent: true };
+  const result = await sendEmail({
+    to: normalizedEmail,
+    subject: "Your Torgima sign-in link",
+    text: `Sign in to Torgima:\n\n${verifyUrl}\n\nThis link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes. If you did not request this, ignore this email.`,
+    html:
+      `<p>Sign in to Torgima:</p>` +
+      `<p><a href="${verifyUrl}">Sign in</a></p>` +
+      `<p style="color:#666;font-size:12px">` +
+      `Or paste this link into your browser:<br/>${verifyUrl}<br/><br/>` +
+      `This link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes. If you did not request this, ignore this email.` +
+      `</p>`,
+  });
+
+  // Email is best-effort: in dev or when RESEND_API_KEY is unset the link is
+  // still issued and recoverable from the dev log. We never fail the request
+  // for a transient email-provider issue.
+  return { sent: result.sent };
 }
 
 // ── VERIFY MAGIC LINK ─────────────────────────────────────────────────────────

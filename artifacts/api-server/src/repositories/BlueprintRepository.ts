@@ -4,6 +4,8 @@ import {
   plans,
   phases,
   targets,
+  projects,
+  actions,
   conditions,
   enforcementPackages,
   orders,
@@ -14,8 +16,23 @@ import { TorgimaError } from "../lib/errors.js";
 export type BlueprintRow = typeof blueprints.$inferSelect;
 export type PlanRow = typeof plans.$inferSelect;
 export type PhaseRow = typeof phases.$inferSelect;
+export type TargetRow = typeof targets.$inferSelect;
+export type ProjectRow = typeof projects.$inferSelect;
+export type ActionRow = typeof actions.$inferSelect;
 export type ConditionRow = typeof conditions.$inferSelect;
 export type EnforcementRow = typeof enforcementPackages.$inferSelect;
+export type OrderRow = typeof orders.$inferSelect;
+
+export interface BlueprintWithChain {
+  blueprint:   BlueprintRow;
+  plans:       PlanRow[];
+  phases:      PhaseRow[];
+  targets:     TargetRow[];
+  projects:    ProjectRow[];
+  actions:     ActionRow[];
+  condition:   ConditionRow | null;
+  enforcement: EnforcementRow | null;
+}
 
 export const BlueprintRepository = {
   async findById(id: string, userId: string): Promise<BlueprintRow> {
@@ -42,6 +59,44 @@ export const BlueprintRepository = {
       .orderBy(desc(blueprints.created_at))
       .limit(1);
     return rows[0] ?? null;
+  },
+
+  // Spec name: `findActiveBlueprint`. Alias kept so spec callers compile.
+  findActiveBlueprint(userId: string): Promise<BlueprintRow | null> {
+    return BlueprintRepository.findActive(userId);
+  },
+
+  // Spec: `findBlueprintWithChain` — loads the blueprint plus every layer of
+  // the execution chain (plans → phases → targets → projects → actions) plus
+  // the current condition and enforcement package. Used by services that
+  // need to render or operate on the full chain in a single round trip.
+  async findBlueprintWithChain(
+    blueprintId: string,
+    userId: string,
+  ): Promise<BlueprintWithChain> {
+    const blueprint = await BlueprintRepository.findById(blueprintId, userId);
+
+    const [planRows, phaseRows, targetRows, projectRows, actionRows, conditionRow, enforcementRow] =
+      await Promise.all([
+        db.select().from(plans).where(eq(plans.blueprint_id, blueprintId)).orderBy(plans.order_index),
+        db.select().from(phases).where(eq(phases.blueprint_id, blueprintId)).orderBy(phases.order_index),
+        db.select().from(targets).where(eq(targets.blueprint_id, blueprintId)).orderBy(targets.order_index),
+        db.select().from(projects).where(eq(projects.blueprint_id, blueprintId)).orderBy(projects.order_index),
+        db.select().from(actions).where(eq(actions.blueprint_id, blueprintId)).orderBy(actions.order_index),
+        BlueprintRepository.getCurrentCondition(blueprintId),
+        BlueprintRepository.getCurrentEnforcement(blueprintId),
+      ]);
+
+    return {
+      blueprint,
+      plans:       planRows,
+      phases:      phaseRows,
+      targets:     targetRows,
+      projects:    projectRows,
+      actions:     actionRows,
+      condition:   conditionRow,
+      enforcement: enforcementRow,
+    };
   },
 
   async listForUser(userId: string): Promise<BlueprintRow[]> {
@@ -86,7 +141,7 @@ export const BlueprintRepository = {
     return rows[0] ?? null;
   },
 
-  async getActiveOrders(blueprintId: string, userId: string): Promise<(typeof orders.$inferSelect)[]> {
+  async getActiveOrders(blueprintId: string, userId: string): Promise<OrderRow[]> {
     return db
       .select()
       .from(orders)
@@ -98,6 +153,11 @@ export const BlueprintRepository = {
         ),
       )
       .orderBy(desc(orders.created_at));
+  },
+
+  // Spec name: `getCurrentActiveOrders`. Alias kept so spec callers compile.
+  getCurrentActiveOrders(blueprintId: string, userId: string): Promise<OrderRow[]> {
+    return BlueprintRepository.getActiveOrders(blueprintId, userId);
   },
 
   async getPhases(blueprintId: string): Promise<PhaseRow[]> {

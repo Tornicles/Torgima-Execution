@@ -51,6 +51,7 @@ export interface BlueprintDraftInput {
 export interface PlanInput {
   name: string;
   description?: string;
+  orderIndex?: number;
 }
 
 export interface TargetInput {
@@ -62,8 +63,29 @@ export interface TargetInput {
   unit?: string;
 }
 
+// Spec shape (Prompt 1 §types/blueprint): the full input contract used by
+// `BlueprintEngine.buildBlueprintChain` when a validation path skeleton is
+// being applied. Carries the chosen path identifier plus the full plan/target
+// skeleton required to materialise the chain.
 export interface BlueprintChainInput {
-  plan: PlanInput;
+  goal:             string;
+  purpose?:         string;
+  timeframeDays?:   number;
+  roleContext?:     string;
+  domainHint?:      string;
+  commitmentLevel?: "low" | "medium" | "high" | "full";
+  selectedPath?:    "current" | "adjusted" | "alternative";
+  validationId?:    string;
+  pathSummary?: {
+    plans:      PlanInput[];
+    targets:    TargetInput[];
+    keyActions: string[];
+  };
+}
+
+// Legacy single-plan/multi-target shape kept for the older buildChain entrypoint.
+export interface BlueprintChainSimpleInput {
+  plan:    PlanInput;
   targets: TargetInput[];
 }
 

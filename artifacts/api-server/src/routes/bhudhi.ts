@@ -70,7 +70,7 @@ router.post("/bhudhi/explain-state", async (req, res) => {
     const output = result.output as Record<string, unknown>;
     success(res, {
       summary:        output["summary"]        ?? "Your execution system is running. Keep going.",
-      condition:      output["condition"]       ?? "building",
+      condition:      output["condition"]       ?? "stability",
       recommendation: output["recommendation"] ?? "Complete your next active task.",
       details:        output["details"]         ?? [],
     });

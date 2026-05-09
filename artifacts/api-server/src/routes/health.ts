@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
+import { requireAuth } from "../lib/auth.js";
+import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 
 const router: IRouter = Router();
 
@@ -65,6 +67,18 @@ router.get("/health", async (req, res) => {
     );
   } catch (err) {
     handleError(req, res, err);
+  }
+});
+
+// GET /api/health/current — user-safe, never reveals internal failure detail.
+// Spec: Prompt 6 §STEP 7, DOC_17 §19–20.
+router.get("/health/current", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const health = await getUserFacingHealthState(auth.userId);
+    success(res, health);
+  } catch {
+    success(res, { systemOperational: true, executionAvailable: true });
   }
 });
 

@@ -1,9 +1,8 @@
-export type ConditionCode =
-  | "optimal"
-  | "building"
-  | "recovering"
-  | "critical"
-  | "blocked";
+import type { Condition } from "../constants/conditions.js";
+
+// ConditionCode is the canonical Torgima condition vocabulary; mirrors
+// the `condition` Postgres enum and `constants/conditions.CONDITIONS`.
+export type ConditionCode = Condition;
 
 export interface SignalState {
   userId: string;

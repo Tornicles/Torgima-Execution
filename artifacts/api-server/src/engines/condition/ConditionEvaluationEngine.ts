@@ -1,20 +1,17 @@
 import { logger } from "../../lib/logger.js";
 import type { SignalState } from "../../types/signal.js";
-import type { Condition } from "../../constants/conditions.js";
-import { CONDITIONS, CONDITION_RULES } from "../../constants/conditions.js";
+import { CONDITION_RULES, type Condition } from "../../constants/conditions.js";
 
-/**
- * ConditionEvaluationEngine — Maps signal state to a Condition Code.
- * The condition code gates what the user is allowed to do.
- *
- * TODO (Prompt 7): Implement full condition logic with hysteresis and override rules
- */
+// ConditionEvaluationEngine — placeholder for the real Prompt 7 implementation.
+// Active execution loop relies on the ConditionWorker (Prompt 6) which writes
+// the conditions row directly. The full hysteresis/override logic lands in
+// Prompt 7 as part of the signal -> condition -> control chain.
+//
+// Spec: Prompt 7 (full implementation), DOC_07 §Condition Evaluation Engine.
 export class ConditionEvaluationEngine {
   evaluate(signals: SignalState): Condition {
-    logger.info({ userId: signals.userId }, "ConditionEvaluationEngine.evaluate");
-    // TODO: Add hysteresis (don't flip condition on single data point)
-    // TODO: Add override rules from ControlEngine
-    return signals.condition as Condition;
+    logger.info({ userId: signals.userId }, "[ConditionEvaluationEngine] stub.evaluate");
+    return signals.condition;
   }
 
   getAllowedTaskTypes(condition: Condition): string[] {
@@ -22,6 +19,6 @@ export class ConditionEvaluationEngine {
   }
 
   getMaxDailyTasks(condition: Condition): number {
-    return CONDITION_RULES[condition]?.maxDailyTasks ?? 2;
+    return CONDITION_RULES[condition]?.maxDailyTasks ?? 1;
   }
 }

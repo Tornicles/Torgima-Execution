@@ -1,40 +1,89 @@
+// Torgima execution conditions — the 7 canonical condition codes that gate
+// what the user is allowed to do. The DB `condition` enum mirrors these values.
+//
+// Spec: Prompt 1 §constants/conditions, DOC_07 Condition Codes.
+
 export const CONDITIONS = {
-  OPTIMAL: "optimal",
-  BUILDING: "building",
-  RECOVERING: "recovering",
-  CRITICAL: "critical",
-  BLOCKED: "blocked",
+  NOTHINGNESS:  "nothingness",
+  DANGER:       "danger",
+  URGENCY:      "urgency",
+  STABILITY:    "stability",
+  POWER:        "power",
+  AFFLUENCE:    "affluence",
+  POWER_CHANGE: "power_change",
 } as const;
 
 export type Condition = (typeof CONDITIONS)[keyof typeof CONDITIONS];
 
-export const CONDITION_RULES: Record<
-  Condition,
-  { maxDailyTasks: number; allowedTypes: string[]; label: string }
-> = {
-  optimal: {
-    maxDailyTasks: 5,
-    allowedTypes: ["action", "research", "review", "habit", "milestone"],
-    label: "You are in optimal condition. Full execution capacity.",
-  },
-  building: {
-    maxDailyTasks: 4,
-    allowedTypes: ["action", "research", "habit"],
-    label: "Momentum is building. Keep steady.",
-  },
-  recovering: {
-    maxDailyTasks: 3,
-    allowedTypes: ["habit", "review", "action"],
-    label: "In recovery. Lighter load enforced.",
-  },
-  critical: {
-    maxDailyTasks: 2,
-    allowedTypes: ["habit", "review"],
-    label: "Critical signals. Minimum viable execution.",
-  },
-  blocked: {
+export const ALL_CONDITIONS: readonly Condition[] = [
+  CONDITIONS.NOTHINGNESS,
+  CONDITIONS.DANGER,
+  CONDITIONS.URGENCY,
+  CONDITIONS.STABILITY,
+  CONDITIONS.POWER,
+  CONDITIONS.AFFLUENCE,
+  CONDITIONS.POWER_CHANGE,
+];
+
+export interface ConditionRule {
+  label: string;
+  maxDailyTasks: number;
+  difficultyCap: "very_easy" | "easy" | "moderate" | "hard";
+  allowedTypes: string[];
+  riskLevel: "low" | "medium" | "high" | "critical";
+}
+
+// Per-condition execution rules used by the Control chain when a real
+// EnforcementPackageGenerator is not yet active. The full generator lands in
+// Prompt 7; these defaults keep the system deterministic in the meantime.
+export const CONDITION_RULES: Record<Condition, ConditionRule> = {
+  nothingness: {
+    label: "Nothingness — system bootstrapping; minimum viable execution.",
     maxDailyTasks: 1,
-    allowedTypes: ["review"],
-    label: "System blocked. Review and reset required.",
+    difficultyCap: "very_easy",
+    allowedTypes: ["execution", "academy"],
+    riskLevel: "low",
+  },
+  danger: {
+    label: "Danger — recovery only. No new scope. No phase advance.",
+    maxDailyTasks: 1,
+    difficultyCap: "very_easy",
+    allowedTypes: ["recovery", "review"],
+    riskLevel: "critical",
+  },
+  urgency: {
+    label: "Urgency — restricted load while signal recovers.",
+    maxDailyTasks: 2,
+    difficultyCap: "easy",
+    allowedTypes: ["execution", "recovery"],
+    riskLevel: "high",
+  },
+  stability: {
+    label: "Stability — normal execution capacity.",
+    maxDailyTasks: 3,
+    difficultyCap: "moderate",
+    allowedTypes: ["execution", "phase_checkpoint", "habit", "review"],
+    riskLevel: "medium",
+  },
+  power: {
+    label: "Power — accelerated execution authorised.",
+    maxDailyTasks: 4,
+    difficultyCap: "hard",
+    allowedTypes: ["execution", "phase_checkpoint"],
+    riskLevel: "low",
+  },
+  affluence: {
+    label: "Affluence — peak signal; capacity to take strategic actions.",
+    maxDailyTasks: 4,
+    difficultyCap: "hard",
+    allowedTypes: ["execution", "phase_checkpoint"],
+    riskLevel: "low",
+  },
+  power_change: {
+    label: "Power Change — controlled capacity shift; moderated load.",
+    maxDailyTasks: 2,
+    difficultyCap: "moderate",
+    allowedTypes: ["execution", "recovery"],
+    riskLevel: "medium",
   },
 };

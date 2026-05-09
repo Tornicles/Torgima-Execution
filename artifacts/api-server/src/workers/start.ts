@@ -13,10 +13,13 @@ import "./NotificationWorker.js";
 import "./ProjectionWorker.js";
 import "./BhudhiWorker.js";
 import "./HealthWorker.js";
+import { startScheduledHealthChecks } from "./HealthWorker.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
   await workerRegistry.startAll();
+
+  startScheduledHealthChecks();
 
   // Event dispatcher polling loop
   logger.info("[EventDispatcher] Starting dispatcher loop...");

@@ -321,8 +321,10 @@ function scoreUsefulness(goal: string, purpose?: string, successSignal?: string)
 }
 
 // ── PATH GENERATION — DETERMINISTIC ──────────────────────────────────────────
+// Spec (Prompt 5): exported so callers can bypass Bhudhi entirely when AI is
+// disabled or when a deterministic snapshot is required.
 
-function generatePathsDeterministic(params: {
+export function generatePathsDeterministic(params: {
   goal:             string;
   purpose?:         string;
   timeframe?:       string;
