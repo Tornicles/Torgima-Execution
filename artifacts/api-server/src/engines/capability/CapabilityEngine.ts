@@ -1,5 +1,5 @@
 import { db, capabilityProfiles, feedback, orders } from "@workspace/db";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, sql, type InferSelectModel } from "drizzle-orm";
 
 const DIFFICULTY_ORDER = ["very_easy", "easy", "moderate", "hard", "very_hard"] as const;
 

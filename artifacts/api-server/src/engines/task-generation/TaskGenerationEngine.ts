@@ -223,6 +223,12 @@ function normalizeGenerationTrigger(raw: string): (typeof taskGenerationLog.$inf
     guarantee_fallback: "recovery_triggered",
     enforcement_package_created: "feedback_submitted",
     inactivity_detected: "user_inactive",
+    blueprint_resumed: "daily_cycle",
+    resume: "daily_cycle",
+    pivot_continue: "manual_regeneration",
+    pivot_adjust: "recovery_triggered",
+    pivot_full: "recovery_triggered",
+    pivot_dismissed: "manual_regeneration",
   };
   const resolved = map[raw] ?? (raw as (typeof allowed)[number]);
   if ((allowed as readonly string[]).includes(resolved)) return resolved;

@@ -14,7 +14,6 @@ import {
   blueprintVersions,
   blueprintMutations,
   signalSnapshots,
-  inactivityRecords,
   validations,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
@@ -25,20 +24,12 @@ import { BlueprintRepository } from "../../repositories/BlueprintRepository.js";
 import { DomainResolutionEngine } from "../domain/DomainResolutionEngine.js";
 import type { BlueprintDraftInput, BlueprintPosition, BlueprintStateView } from "../../types/blueprint.js";
 import { CONDITIONS } from "../../constants/conditions.js";
+import { pauseBlueprint } from "../lifecycle/PauseEngine.js";
+import { resumeBlueprint } from "../lifecycle/ResumeEngine.js";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const domainEngine = new DomainResolutionEngine();
-
-// Resume modes derived from the pause-gap window. Spec: Prompt 4 §resumeBlueprint.
-type ResumeMode = "normal" | "check_in" | "recovery" | "restart";
-
-function deriveResumeMode(pauseGapHours: number): ResumeMode {
-  if (pauseGapHours < 24)         return "normal";
-  if (pauseGapHours < 24 * 7)     return "check_in";
-  if (pauseGapHours < 24 * 30)    return "recovery";
-  return "restart";
-}
 
 /**
  * BlueprintEngine — Full Prompt 4 implementation.
@@ -473,51 +464,8 @@ export class BlueprintEngine {
   async pause(blueprintId: string, userId: string, reason: string): Promise<typeof blueprints.$inferSelect> {
     logger.info({ blueprintId, userId }, "BlueprintEngine.pause");
 
-    const bp = await BlueprintRepository.findById(blueprintId, userId);
-    if (bp.status !== "active") {
-      throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", "Blueprint must be active to pause");
-    }
-
-    // Spec: pause keeps `active=true` so the unique-active-blueprint invariant
-    // does not let the user start a second blueprint while paused. Status
-    // alone differentiates pause from active execution.
-    const pausedAt = new Date();
-    const [updated] = await db
-      .update(blueprints)
-      .set({
-        status:       "paused",
-        active:       true,
-        pause_reason: reason,
-        paused_at:    pausedAt,
-      })
-      .where(eq(blueprints.id, blueprintId))
-      .returning();
-
-    if (!updated) throw new TorgimaError("INTERNAL_ERROR", "Failed to pause blueprint");
-
-    // Resolve open inactivity records — pause is a deliberate user action,
-    // not silent inactivity, so any pending warning rows must close out.
-    await db
-      .update(inactivityRecords)
-      .set({ resolved: true, resolved_at: pausedAt })
-      .where(
-        and(
-          eq(inactivityRecords.blueprint_id, blueprintId),
-          eq(inactivityRecords.resolved, false),
-        ),
-      )
-      .catch(() => null);
-
-    await writeEvent({
-      eventType:  EVENT_TYPES.BLUEPRINT_PAUSED,
-      entityType: "blueprint",
-      entityId:   blueprintId,
-      userId,
-      blueprintId,
-      payload:    { reason, paused_at: pausedAt.toISOString() },
-    }).catch(() => null);
-
-    return updated;
+    await pauseBlueprint({ blueprintId, userId, reason });
+    return BlueprintRepository.findById(blueprintId, userId);
   }
 
   // ── RESUME ────────────────────────────────────────────────────────────────
@@ -525,77 +473,8 @@ export class BlueprintEngine {
   async resume(blueprintId: string, userId: string): Promise<typeof blueprints.$inferSelect> {
     logger.info({ blueprintId, userId }, "BlueprintEngine.resume");
 
-    const bp = await BlueprintRepository.findById(blueprintId, userId);
-    if (bp.status !== "paused") {
-      throw new TorgimaError("BLUEPRINT_NOT_PAUSED", "Blueprint must be paused to resume");
-    }
-
-    const pauseGapHours = bp.paused_at
-      ? Math.max(0, (Date.now() - bp.paused_at.getTime()) / 3600_000)
-      : 0;
-    const resumeMode: ResumeMode = deriveResumeMode(pauseGapHours);
-
-    const [updated] = await db
-      .update(blueprints)
-      .set({
-        status:       "active",
-        active:       true,
-        pause_reason: null,
-        paused_at:    null,
-      })
-      .where(eq(blueprints.id, blueprintId))
-      .returning();
-
-    if (!updated) throw new TorgimaError("INTERNAL_ERROR", "Failed to resume blueprint");
-
-    // Audit row so resume mode is preserved even if the event outbox prunes.
-    await db
-      .insert(blueprintMutations)
-      .values({
-        blueprint_id:   blueprintId,
-        mutation_type:  "RESUME",
-        layer:          "blueprint",
-        change_summary: `Blueprint resumed after ${pauseGapHours.toFixed(1)}h gap (mode: ${resumeMode})`,
-        cascade_json:   [],
-        approved:       true,
-        approved_at:    new Date(),
-      })
-      .catch(() => null);
-
-    await writeEvent({
-      eventType:  EVENT_TYPES.BLUEPRINT_RESUMED,
-      entityType: "blueprint",
-      entityId:   blueprintId,
-      userId,
-      blueprintId,
-      payload:    {
-        pause_gap_hours: pauseGapHours,
-        resume_mode:     resumeMode,
-      },
-    }).catch(() => null);
-
-    // Resume = state change → re-enter the loop. Recovery/restart modes use
-    // the recovery generation mode; everything else uses resume defaults.
-    const generationMode =
-      resumeMode === "recovery" || resumeMode === "restart"
-        ? "recovery"
-        : "post_feedback";
-
-    await writeEvent({
-      eventType:  EVENT_TYPES.TASK_GENERATION_REQUESTED,
-      entityType: "blueprint",
-      entityId:   blueprintId,
-      userId,
-      blueprintId,
-      payload:    {
-        generation_trigger: "resume",
-        generation_mode:    generationMode,
-        resume_mode:        resumeMode,
-      },
-      idempotencyKey: `task_gen_resume_${blueprintId}_${Date.now()}`,
-    }).catch(() => null);
-
-    return updated;
+    await resumeBlueprint({ blueprintId, userId });
+    return BlueprintRepository.findById(blueprintId, userId);
   }
 
   // ── ADVANCE POSITION ──────────────────────────────────────────────────────

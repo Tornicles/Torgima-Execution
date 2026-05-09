@@ -132,3 +132,11 @@ export async function expireMemory(userId: string, blueprintId?: string): Promis
       ),
     );
 }
+
+/** Deactivate all blueprint-scoped Bhudhi rows after completion / pivot (spec Prompt 12). */
+export async function deactivateBlueprintBhudhiMemory(userId: string, blueprintId: string): Promise<void> {
+  await db
+    .update(bhudhiMemory)
+    .set({ active: false, updated_at: new Date() })
+    .where(and(eq(bhudhiMemory.user_id, userId), eq(bhudhiMemory.blueprint_id, blueprintId)));
+}

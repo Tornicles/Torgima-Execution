@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import healthRouter from "./health.js";
 import authRouter from "./auth.js";
 import meRouter from "./me.js";
@@ -14,6 +14,8 @@ import notificationsRouter from "./notifications.js";
 import intelligenceRouter from "./intelligence.js";
 import engagementRouter from "./engagement.js";
 import internalRouter from "./internal.js";
+
+const router = Router();
 
 router.use(healthRouter);
 router.use(authRouter);

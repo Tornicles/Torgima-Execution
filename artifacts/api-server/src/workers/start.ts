@@ -20,6 +20,12 @@ import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngi
 import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
 import { db, blueprints } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import {
+  checkAutomaticPivotTrigger,
+  evaluatePivotEligibility,
+  generatePivotPathOptions,
+} from "../engines/strategy/StrategyEngine.js";
+import { createPivotReview } from "../engines/lifecycle/PivotEngine.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
@@ -61,6 +67,43 @@ export async function startWorkers(): Promise<void> {
     }
   }, 60 * 60 * 1000);
   logger.info("[Pattern] Scheduled pattern scans started (every hour)");
+
+  setInterval(async () => {
+    try {
+      const activeBlueprints = await db
+        .select({ id: blueprints.id, user_id: blueprints.user_id })
+        .from(blueprints)
+        .where(and(eq(blueprints.active, true), eq(blueprints.status, "active")));
+
+      for (const bp of activeBlueprints) {
+        const shouldTrigger = await checkAutomaticPivotTrigger({ blueprintId: bp.id, userId: bp.user_id });
+        if (!shouldTrigger) continue;
+        const eligibility = await evaluatePivotEligibility({
+          blueprintId: bp.id,
+          userId: bp.user_id,
+          triggerType: "automatic",
+        });
+        if (!eligibility.eligible) continue;
+        const reviewId = await createPivotReview({
+          blueprintId: bp.id,
+          userId: bp.user_id,
+          triggerType: "automatic",
+          triggerReason: "Sustained condition failure detected",
+        });
+        await generatePivotPathOptions({
+          blueprintId: bp.id,
+          userId: bp.user_id,
+          pivotReviewId: reviewId,
+        }).catch(() => null);
+      }
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[PivotScheduler] Check failed",
+      );
+    }
+  }, 6 * 60 * 60 * 1000);
+  logger.info("[Pivot] Scheduled pivot eligibility check started (every 6 hours)");
 
   // Event dispatcher polling loop
   logger.info("[EventDispatcher] Starting dispatcher loop...");

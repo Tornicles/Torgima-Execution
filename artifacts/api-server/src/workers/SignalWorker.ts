@@ -5,6 +5,8 @@ import { runFrameworkCycle } from "../engines/framework/FrameworkActivationEngin
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
+import { db, blueprints } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export const SIGNAL_QUEUE = "signal_recalculation_requested";
 
@@ -18,6 +20,17 @@ workerRegistry.register({
         const { blueprintId, userId } = data;
         if (!blueprintId || !userId) {
           return { success: false, retryable: false, reason: "Missing blueprintId or userId" };
+        }
+
+        const [bpStatus] = await db
+          .select({ status: blueprints.status })
+          .from(blueprints)
+          .where(eq(blueprints.id, blueprintId))
+          .limit(1);
+
+        if (bpStatus?.status === "paused" || bpStatus?.status === "complete") {
+          logger.info({ blueprintId, status: bpStatus.status }, "[SignalWorker] Skipping — blueprint paused or complete");
+          return { success: true };
         }
 
         const result = await calculate({
