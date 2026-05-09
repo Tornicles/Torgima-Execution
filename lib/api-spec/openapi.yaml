@@ -123,7 +123,7 @@ paths:
     post:
       operationId: submitOnboardingGoal
       tags: [onboarding]
-      summary: Submit initial goal during onboarding
+      summary: Submit goal — structures, validates, and returns execution paths
       requestBody:
         required: true
         content:
@@ -132,11 +132,11 @@ paths:
               $ref: "#/components/schemas/OnboardingGoalInput"
       responses:
         "200":
-          description: Goal submitted
+          description: Goal structured and validated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OnboardingStatus"
+                $ref: "#/components/schemas/OnboardingGoalResult"
 
   /blueprints:
     get:
@@ -210,13 +210,19 @@ paths:
     post:
       operationId: activateBlueprint
       tags: [blueprints]
-      summary: Activate a blueprint and fire the cold start
+      summary: Activate a blueprint — optionally with a selected validation path
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivateBlueprintInput"
       responses:
         "200":
           description: Blueprint activated
@@ -292,7 +298,7 @@ paths:
     post:
       operationId: runValidation
       tags: [validation]
-      summary: Run goal validation through Bhudhi
+      summary: Run goal validation — scores, verdict, and three execution paths
       requestBody:
         required: true
         content:
@@ -305,7 +311,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ValidationResult"
+                $ref: "#/components/schemas/ValidationResultP5"
+    get:
+      operationId: getValidationResult
+      tags: [validation]
+      summary: Get stored validation result for a blueprint
+      parameters:
+        - name: blueprintId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stored validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResultP5"
 
   /orders/active:
     get:
@@ -663,12 +686,209 @@ components:
 
     OnboardingGoalInput:
       type: object
-      required: [rawGoal]
+      required: [rawGoal, idempotencyKey]
       properties:
         rawGoal:
           type: string
-        domain:
+        purpose:
           type: ["string", "null"]
+        timeframe:
+          type: ["string", "null"]
+        commitmentLevel:
+          type: ["string", "null"]
+          enum: [low, medium, high, full, null]
+        currentContext:
+          type: ["string", "null"]
+        successSignal:
+          type: ["string", "null"]
+        knownBlockers:
+          type: ["string", "null"]
+        domainHints:
+          type: array
+          items:
+            type: string
+        idempotencyKey:
+          type: string
+
+    OnboardingGoalResult:
+      type: object
+      required: [status, blueprintId]
+      properties:
+        status:
+          type: string
+          enum: [invalid, needs_clarification, validated]
+        blueprintId:
+          type: string
+        validationId:
+          type: ["string", "null"]
+        verdict:
+          type: ["string", "null"]
+          enum: [proceed, adjust, pivot, null]
+        scores:
+          $ref: "#/components/schemas/ValidationScores"
+        paths:
+          $ref: "#/components/schemas/ValidationPaths"
+        structured:
+          $ref: "#/components/schemas/StructuredGoalDraft"
+        missingFields:
+          type: array
+          items:
+            type: string
+        ambiguityFlags:
+          type: array
+          items:
+            type: string
+        canProceed:
+          type: boolean
+
+    ValidationDimension:
+      type: object
+      required: [score, verdict, finding]
+      properties:
+        score:
+          type: number
+        verdict:
+          type: string
+          enum: [strong, acceptable, weak, critical]
+        finding:
+          type: string
+        suggestion:
+          type: ["string", "null"]
+
+    ValidationScores:
+      type: object
+      required: [clarity, feasibility, realism, usefulness, overall]
+      properties:
+        clarity:
+          $ref: "#/components/schemas/ValidationDimension"
+        feasibility:
+          $ref: "#/components/schemas/ValidationDimension"
+        realism:
+          $ref: "#/components/schemas/ValidationDimension"
+        usefulness:
+          $ref: "#/components/schemas/ValidationDimension"
+        overall:
+          type: number
+
+    ValidationPlanSkeleton:
+      type: object
+      required: [plans, targets]
+      properties:
+        plans:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+        targets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+
+    ValidationPath:
+      type: object
+      required: [type, title, summary, rationale, expectedOutcome, riskLevel, planSkeleton]
+      properties:
+        type:
+          type: string
+          enum: [current, adjusted, alternative]
+        title:
+          type: string
+        summary:
+          type: string
+        rationale:
+          type: string
+        expectedOutcome:
+          type: string
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        timeframeNote:
+          type: ["string", "null"]
+        keyChanges:
+          type: ["string", "null"]
+        planSkeleton:
+          $ref: "#/components/schemas/ValidationPlanSkeleton"
+
+    ValidationPaths:
+      type: object
+      required: [current, adjusted, alternative]
+      properties:
+        current:
+          $ref: "#/components/schemas/ValidationPath"
+        adjusted:
+          $ref: "#/components/schemas/ValidationPath"
+        alternative:
+          $ref: "#/components/schemas/ValidationPath"
+
+    ValidationResultP5:
+      type: object
+      required: [validationId, blueprintId, verdict, scores, paths, usedFallback, createdAt]
+      properties:
+        validationId:
+          type: string
+        blueprintId:
+          type: string
+        verdict:
+          type: string
+          enum: [proceed, adjust, pivot]
+        scores:
+          $ref: "#/components/schemas/ValidationScores"
+        paths:
+          $ref: "#/components/schemas/ValidationPaths"
+        usedFallback:
+          type: boolean
+        aiSummary:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    StructuredGoalDraft:
+      type: object
+      required: [cleanedGoal, validationVerdict]
+      properties:
+        cleanedGoal:
+          type: string
+        purpose:
+          type: string
+        timeframe:
+          type: string
+        commitmentLevel:
+          type: string
+          enum: [low, medium, high, full]
+        currentContext:
+          type: string
+        successSignals:
+          type: array
+          items:
+            type: string
+        blockers:
+          type: array
+          items:
+            type: string
+        domainHints:
+          type: array
+          items:
+            type: string
+        missingRequiredFields:
+          type: array
+          items:
+            type: string
+        ambiguityFlags:
+          type: array
+          items:
+            type: string
+        validationVerdict:
+          type: string
+          enum: [VALID, NEEDS_CLARIFICATION, INVALID]
 
     Blueprint:
       type: object
@@ -762,11 +982,23 @@ components:
 
     ValidationInput:
       type: object
-      required: [rawGoal]
+      required: [blueprintId, goal]
       properties:
-        rawGoal:
+        blueprintId:
           type: string
-        domain:
+        goal:
+          type: string
+        purpose:
+          type: ["string", "null"]
+        timeframe:
+          type: ["string", "null"]
+        commitmentLevel:
+          type: ["string", "null"]
+        currentContext:
+          type: ["string", "null"]
+        successSignal:
+          type: ["string", "null"]
+        knownBlockers:
           type: ["string", "null"]
 
     ValidationResult:
@@ -787,6 +1019,13 @@ components:
           type: array
           items:
             type: string
+
+    ActivateBlueprintInput:
+      type: object
+      properties:
+        selectedPath:
+          type: ["string", "null"]
+          enum: [current, adjusted, alternative, null]
 
     Order:
       type: object
@@ -980,29 +1219,33 @@ components:
       properties:
         rawGoal:
           type: string
-        context:
+        purpose:
+          type: ["string", "null"]
+        timeframe:
+          type: ["string", "null"]
+        commitmentLevel:
+          type: ["string", "null"]
+        currentContext:
+          type: ["string", "null"]
+        successSignal:
+          type: ["string", "null"]
+        knownBlockers:
+          type: ["string", "null"]
+        domainHints:
+          type: array
+          items:
+            type: string
+        idempotencyKey:
           type: ["string", "null"]
 
     StructuredGoal:
       type: object
-      required: [title, domain, phases, milestones]
+      required: [structured, canProceed]
       properties:
-        title:
-          type: string
-        domain:
-          type: string
-        phases:
-          type: array
-          items:
-            type: string
-        milestones:
-          type: array
-          items:
-            type: string
-        estimatedWeeks:
-          type: integer
-        reasoning:
-          type: string
+        structured:
+          $ref: "#/components/schemas/StructuredGoalDraft"
+        canProceed:
+          type: boolean
 
     ExplainStateInput:
       type: object

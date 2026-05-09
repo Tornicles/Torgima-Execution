@@ -5,9 +5,22 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { OnboardingGoalInputCommitmentLevel } from "./onboardingGoalInputCommitmentLevel";
 
 export interface OnboardingGoalInput {
   rawGoal: string;
   /** @nullable */
-  domain?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: OnboardingGoalInputCommitmentLevel;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
+  domainHints?: string[];
+  idempotencyKey: string;
 }

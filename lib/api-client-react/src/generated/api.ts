@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ActivateBlueprintInput,
   BlockInput,
   Blueprint,
   BlueprintActivateResult,
@@ -26,11 +27,13 @@ import type {
   DashboardState,
   ExplainStateInput,
   Feedback,
+  GetValidationResultParams,
   GoalInput,
   HealthStatus,
   Interrogation,
   Notification,
   OnboardingGoalInput,
+  OnboardingGoalResult,
   OnboardingStatus,
   Order,
   PauseInput,
@@ -44,7 +47,7 @@ import type {
   UserSettingsUpdate,
   UserUpdate,
   ValidationInput,
-  ValidationResult,
+  ValidationResultP5,
   WeeklyReviewInput,
 } from "./api.schemas";
 
@@ -518,7 +521,7 @@ export function useGetOnboardingStatus<
 }
 
 /**
- * @summary Submit initial goal during onboarding
+ * @summary Submit goal — structures, validates, and returns execution paths
  */
 export const getSubmitOnboardingGoalUrl = () => {
   return `/api/onboarding/goal`;
@@ -527,8 +530,8 @@ export const getSubmitOnboardingGoalUrl = () => {
 export const submitOnboardingGoal = async (
   onboardingGoalInput: OnboardingGoalInput,
   options?: RequestInit,
-): Promise<OnboardingStatus> => {
-  return customFetch<OnboardingStatus>(getSubmitOnboardingGoalUrl(), {
+): Promise<OnboardingGoalResult> => {
+  return customFetch<OnboardingGoalResult>(getSubmitOnboardingGoalUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -581,7 +584,7 @@ export type SubmitOnboardingGoalMutationBody = BodyType<OnboardingGoalInput>;
 export type SubmitOnboardingGoalMutationError = ErrorType<unknown>;
 
 /**
- * @summary Submit initial goal during onboarding
+ * @summary Submit goal — structures, validates, and returns execution paths
  */
 export const useSubmitOnboardingGoal = <
   TError = ErrorType<unknown>,
@@ -927,7 +930,7 @@ export function useGetBlueprint<
 }
 
 /**
- * @summary Activate a blueprint and fire the cold start
+ * @summary Activate a blueprint — optionally with a selected validation path
  */
 export const getActivateBlueprintUrl = (id: string) => {
   return `/api/blueprints/${id}/activate`;
@@ -935,11 +938,14 @@ export const getActivateBlueprintUrl = (id: string) => {
 
 export const activateBlueprint = async (
   id: string,
+  activateBlueprintInput?: ActivateBlueprintInput,
   options?: RequestInit,
 ): Promise<BlueprintActivateResult> => {
   return customFetch<BlueprintActivateResult>(getActivateBlueprintUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(activateBlueprintInput),
   });
 };
 
@@ -950,14 +956,14 @@ export const getActivateBlueprintMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof activateBlueprint>>,
     TError,
-    { id: string },
+    { id: string; data: BodyType<ActivateBlueprintInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof activateBlueprint>>,
   TError,
-  { id: string },
+  { id: string; data: BodyType<ActivateBlueprintInput> },
   TContext
 > => {
   const mutationKey = ["activateBlueprint"];
@@ -971,11 +977,11 @@ export const getActivateBlueprintMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof activateBlueprint>>,
-    { id: string }
+    { id: string; data: BodyType<ActivateBlueprintInput> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return activateBlueprint(id, requestOptions);
+    return activateBlueprint(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -984,11 +990,11 @@ export const getActivateBlueprintMutationOptions = <
 export type ActivateBlueprintMutationResult = NonNullable<
   Awaited<ReturnType<typeof activateBlueprint>>
 >;
-
+export type ActivateBlueprintMutationBody = BodyType<ActivateBlueprintInput>;
 export type ActivateBlueprintMutationError = ErrorType<unknown>;
 
 /**
- * @summary Activate a blueprint and fire the cold start
+ * @summary Activate a blueprint — optionally with a selected validation path
  */
 export const useActivateBlueprint = <
   TError = ErrorType<unknown>,
@@ -997,14 +1003,14 @@ export const useActivateBlueprint = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof activateBlueprint>>,
     TError,
-    { id: string },
+    { id: string; data: BodyType<ActivateBlueprintInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof activateBlueprint>>,
   TError,
-  { id: string },
+  { id: string; data: BodyType<ActivateBlueprintInput> },
   TContext
 > => {
   return useMutation(getActivateBlueprintMutationOptions(options));
@@ -1269,7 +1275,7 @@ export const useResumeBlueprint = <
 };
 
 /**
- * @summary Run goal validation through Bhudhi
+ * @summary Run goal validation — scores, verdict, and three execution paths
  */
 export const getRunValidationUrl = () => {
   return `/api/validation/run`;
@@ -1278,8 +1284,8 @@ export const getRunValidationUrl = () => {
 export const runValidation = async (
   validationInput: ValidationInput,
   options?: RequestInit,
-): Promise<ValidationResult> => {
-  return customFetch<ValidationResult>(getRunValidationUrl(), {
+): Promise<ValidationResultP5> => {
+  return customFetch<ValidationResultP5>(getRunValidationUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1332,7 +1338,7 @@ export type RunValidationMutationBody = BodyType<ValidationInput>;
 export type RunValidationMutationError = ErrorType<unknown>;
 
 /**
- * @summary Run goal validation through Bhudhi
+ * @summary Run goal validation — scores, verdict, and three execution paths
  */
 export const useRunValidation = <
   TError = ErrorType<unknown>,
@@ -1353,6 +1359,106 @@ export const useRunValidation = <
 > => {
   return useMutation(getRunValidationMutationOptions(options));
 };
+
+/**
+ * @summary Get stored validation result for a blueprint
+ */
+export const getGetValidationResultUrl = (
+  params: GetValidationResultParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/validation/run?${stringifiedParams}`
+    : `/api/validation/run`;
+};
+
+export const getValidationResult = async (
+  params: GetValidationResultParams,
+  options?: RequestInit,
+): Promise<ValidationResultP5> => {
+  return customFetch<ValidationResultP5>(getGetValidationResultUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetValidationResultQueryKey = (
+  params?: GetValidationResultParams,
+) => {
+  return [`/api/validation/run`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetValidationResultQueryOptions = <
+  TData = Awaited<ReturnType<typeof getValidationResult>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetValidationResultParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getValidationResult>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetValidationResultQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getValidationResult>>
+  > = ({ signal }) =>
+    getValidationResult(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getValidationResult>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetValidationResultQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getValidationResult>>
+>;
+export type GetValidationResultQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get stored validation result for a blueprint
+ */
+
+export function useGetValidationResult<
+  TData = Awaited<ReturnType<typeof getValidationResult>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetValidationResultParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getValidationResult>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetValidationResultQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get the current active orders for the user

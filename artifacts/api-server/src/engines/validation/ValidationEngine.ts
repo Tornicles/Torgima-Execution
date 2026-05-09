@@ -1,61 +1,608 @@
+import { db } from "@workspace/db";
+import {
+  validations,
+  blueprints,
+  featureFlags,
+} from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
-import { anthropic, BHUDHI_MODEL, BHUDHI_MAX_TOKENS } from "../../lib/anthropic.js";
-import { BHUDHI_SYSTEM_PROMPT } from "../../constants/bhudhi.js";
+import { TorgimaError } from "../../lib/errors.js";
+import { anthropic, BHUDHI_MODEL } from "../../lib/anthropic.js";
+import type {
+  ValidationVerdict,
+  ValidationScores,
+  ValidationPath,
+  ValidationResult,
+  GoalDimension,
+  StructuredGoalDraft,
+} from "../../types/validation.js";
 
-export interface ValidationResult {
-  valid: boolean;
-  score: number;
-  feedback: string;
-  suggestedDomain: string | null;
-  refinedGoal: string | null;
-  issues: string[];
+// ── AI FLAG HELPER ────────────────────────────────────────────────────────────
+
+export async function isAiEnabled(): Promise<boolean> {
+  const rows = await db
+    .select({ enabled: featureFlags.enabled })
+    .from(featureFlags)
+    .where(eq(featureFlags.feature_name, "ai_enabled"))
+    .limit(1);
+  return rows[0]?.enabled ?? false;
 }
 
-/**
- * ValidationEngine — Validates raw goals before blueprint creation.
- * Uses Bhudhi to assess specificity, achievability, and domain fit.
- *
- * TODO (Prompt 4): Implement structured validation with full Bhudhi output contract
- */
-export class ValidationEngine {
-  async validate(rawGoal: string, domain: string | null): Promise<ValidationResult> {
-    logger.info({ rawGoal }, "ValidationEngine.validate");
+// ── SCORE A GOAL ──────────────────────────────────────────────────────────────
 
+export function scoreGoal(input: {
+  goal: string;
+  purpose?: string;
+  timeframe?: string;
+  commitmentLevel?: string;
+  currentContext?: string;
+  successSignal?: string;
+  knownBlockers?: string;
+}): ValidationScores {
+  const clarity     = scoreClarity(input.goal, input.purpose);
+  const feasibility = scoreFeasibility(input.goal, input.timeframe, input.commitmentLevel);
+  const realism     = scoreRealism(input.goal, input.currentContext, input.knownBlockers);
+  const usefulness  = scoreUsefulness(input.goal, input.purpose, input.successSignal);
+
+  const overall = Math.round(
+    clarity.score     * 0.30 +
+    feasibility.score * 0.25 +
+    realism.score     * 0.25 +
+    usefulness.score  * 0.20,
+  );
+
+  return { clarity, feasibility, realism, usefulness, overall };
+}
+
+// ── DETERMINE VERDICT ────────────────────────────────────────────────────────
+
+export function determineVerdict(scores: ValidationScores): ValidationVerdict {
+  if (scores.clarity.verdict === "critical")    return "pivot";
+  if (scores.usefulness.verdict === "critical") return "pivot";
+  if (scores.overall < 35)                      return "pivot";
+
+  if (
+    scores.overall >= 70 &&
+    scores.clarity.verdict !== "weak" &&
+    scores.feasibility.verdict !== "critical" &&
+    scores.realism.verdict !== "critical"
+  ) {
+    return "proceed";
+  }
+
+  return "adjust";
+}
+
+// ── GENERATE PATHS ───────────────────────────────────────────────────────────
+
+export async function generatePaths(params: {
+  goal:             string;
+  purpose?:         string;
+  timeframe?:       string;
+  commitmentLevel?: string;
+  scores:           ValidationScores;
+  verdict:          ValidationVerdict;
+  blueprintId:      string;
+  useBhudhi:        boolean;
+}): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
+  if (params.useBhudhi) {
     try {
-      const prompt = `Validate this goal for the Torgima execution system.
-Goal: "${rawGoal}"
-${domain ? `Domain hint: ${domain}` : ""}
-
-Return a JSON object with:
-- valid: boolean (true if the goal is specific and achievable)
-- score: integer 0-100 (specificity + achievability score)
-- feedback: string (one sentence of direct feedback)
-- suggestedDomain: string or null (genesis/market/delivery/continuity/identity/capability)
-- refinedGoal: string or null (improved version of the goal if it needs refinement)
-- issues: string[] (list of specific issues, empty if valid)
-
-Return only valid JSON.`;
-
-      const response = await anthropic.messages.create({
-        model: BHUDHI_MODEL,
-        max_tokens: 500,
-        system: BHUDHI_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-      const parsed = JSON.parse(text) as ValidationResult;
-      return parsed;
-    } catch (err) {
-      logger.error({ err }, "ValidationEngine.validate — Bhudhi call failed, using fallback");
-      return {
-        valid: rawGoal.trim().length > 10,
-        score: rawGoal.trim().length > 30 ? 60 : 30,
-        feedback: "Goal received. Bhudhi validation temporarily unavailable.",
-        suggestedDomain: domain,
-        refinedGoal: null,
-        issues: rawGoal.trim().length <= 10 ? ["Goal is too vague — add specific details"] : [],
-      };
+      return await generatePathsWithBhudhi(params);
+    } catch (error) {
+      logger.warn(
+        { blueprintId: params.blueprintId, error: error instanceof Error ? error.message : String(error) },
+        "[ValidationEngine] Bhudhi path generation failed — using deterministic fallback",
+      );
     }
   }
+  return generatePathsDeterministic(params);
+}
+
+// ── FULL VALIDATION RUN ───────────────────────────────────────────────────────
+
+export async function runValidation(params: {
+  blueprintId: string;
+  userId:      string;
+  input: {
+    goal:             string;
+    purpose?:         string;
+    timeframe?:       string;
+    commitmentLevel?: string;
+    currentContext?:  string;
+    successSignal?:   string;
+    knownBlockers?:   string;
+  };
+  aiEnabled: boolean;
+}): Promise<ValidationResult> {
+  const scores  = scoreGoal(params.input);
+  const verdict = determineVerdict(scores);
+
+  const paths = await generatePaths({
+    goal:            params.input.goal,
+    purpose:         params.input.purpose,
+    timeframe:       params.input.timeframe,
+    commitmentLevel: params.input.commitmentLevel,
+    scores,
+    verdict,
+    blueprintId:     params.blueprintId,
+    useBhudhi:       params.aiEnabled,
+  });
+
+  const aiSummary   = buildAiSummary(scores, verdict);
+  const usedFallback = !params.aiEnabled;
+
+  // Upsert validation record — idempotent by blueprint_id
+  const existing = await db
+    .select({ id: validations.id })
+    .from(validations)
+    .where(eq(validations.blueprint_id, params.blueprintId))
+    .limit(1);
+
+  let validationId: string;
+
+  if (existing[0]) {
+    validationId = existing[0].id;
+    await db
+      .update(validations)
+      .set({
+        verdict:           verdict as "proceed" | "adjust" | "pivot",
+        feasibility_score: scores.feasibility.score,
+        clarity_score:     scores.clarity.score,
+        realism_score:     scores.realism.score,
+        ai_summary:        aiSummary,
+        path_current:      paths.current as unknown as Record<string, unknown>,
+        path_adjusted:     paths.adjusted as unknown as Record<string, unknown>,
+        path_alternative:  paths.alternative as unknown as Record<string, unknown>,
+        status:            "complete",
+      })
+      .where(eq(validations.id, validationId));
+  } else {
+    const [inserted] = await db
+      .insert(validations)
+      .values({
+        blueprint_id:      params.blueprintId,
+        user_id:           params.userId,
+        verdict:           verdict as "proceed" | "adjust" | "pivot",
+        feasibility_score: scores.feasibility.score,
+        clarity_score:     scores.clarity.score,
+        realism_score:     scores.realism.score,
+        ai_summary:        aiSummary,
+        path_current:      paths.current as unknown as Record<string, unknown>,
+        path_adjusted:     paths.adjusted as unknown as Record<string, unknown>,
+        path_alternative:  paths.alternative as unknown as Record<string, unknown>,
+        status:            "complete",
+      })
+      .returning({ id: validations.id, created_at: validations.created_at });
+
+    if (!inserted) throw new TorgimaError("INTERNAL_ERROR", "Failed to create validation record");
+    validationId = inserted.id;
+  }
+
+  // Link validation to blueprint and advance status
+  await db
+    .update(blueprints)
+    .set({
+      validation_id: validationId,
+      status:        "path_selection",
+    })
+    .where(eq(blueprints.id, params.blueprintId));
+
+  logger.info(
+    { blueprintId: params.blueprintId, verdict, overall: scores.overall, usedFallback },
+    "[ValidationEngine] Validation complete",
+  );
+
+  const rowsAfter = await db
+    .select({ created_at: validations.created_at })
+    .from(validations)
+    .where(eq(validations.id, validationId))
+    .limit(1);
+
+  return {
+    validationId,
+    blueprintId: params.blueprintId,
+    verdict,
+    scores,
+    paths,
+    usedFallback,
+    aiSummary,
+    createdAt: rowsAfter[0]?.created_at ?? new Date(),
+  };
+}
+
+// ── SCORING HELPERS ───────────────────────────────────────────────────────────
+
+function scoreClarity(goal: string, purpose?: string): GoalDimension {
+  let score = 50;
+  const finding: string[] = [];
+
+  const words = goal.trim().split(/\s+/);
+  if (words.length < 5)  { score -= 30; finding.push("Goal is too short to be specific."); }
+  if (words.length > 100){ score -= 10; finding.push("Goal may be too broad."); }
+
+  const vagueTerms = ["something", "things", "better", "more", "good", "improve", "maybe", "possibly"];
+  const vagueCount = vagueTerms.filter(t => goal.toLowerCase().includes(t)).length;
+  score -= vagueCount * 10;
+  if (vagueCount > 0) finding.push("Goal contains vague language that weakens execution.");
+
+  const measurableSignals = [/\d+/, /percent|%/, /revenue|users|customers|sales/, /by\s+\w+\s+\d{4}/, /within\s+\d+/i];
+  const measurable = measurableSignals.some(r => r.test(goal));
+  if (measurable) score += 20;
+  else finding.push("Goal lacks a measurable outcome or timeframe anchor.");
+
+  if (purpose && purpose.trim().length > 10) score += 10;
+  else finding.push("Purpose is missing or too brief.");
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    score,
+    verdict: score >= 70 ? "strong" : score >= 50 ? "acceptable" : score >= 30 ? "weak" : "critical",
+    finding: finding[0] ?? "Goal is clear and specific.",
+    suggestion: score < 70 ? "Add a specific measurable outcome and timeframe." : undefined,
+  };
+}
+
+function scoreFeasibility(goal: string, timeframe?: string, commitment?: string): GoalDimension {
+  let score = 65;
+  const finding: string[] = [];
+
+  const overReachTerms = ["billion", "millions of", "world's largest", "fastest ever", "overnight", "instant"];
+  if (overReachTerms.some(t => goal.toLowerCase().includes(t))) {
+    score -= 25;
+    finding.push("Goal scope may be unrealistic for a single execution cycle.");
+  }
+
+  if (!timeframe || timeframe.trim().length < 2) {
+    score -= 15;
+    finding.push("No timeframe defined. Execution without a timeframe lacks urgency.");
+  }
+
+  if (commitment === "low" || commitment === "medium") score -= 5;
+  if (commitment === "high" || commitment === "full")  score += 10;
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    score,
+    verdict: score >= 70 ? "strong" : score >= 50 ? "acceptable" : score >= 30 ? "weak" : "critical",
+    finding: finding[0] ?? "Goal appears feasible within normal execution parameters.",
+    suggestion: score < 70 ? "Define a realistic timeframe and scope." : undefined,
+  };
+}
+
+function scoreRealism(goal: string, context?: string, blockers?: string): GoalDimension {
+  let score = 60;
+  const finding: string[] = [];
+
+  if (!context || context.trim().length < 10) {
+    score -= 10;
+    finding.push("Current context is missing. Execution without situational awareness risks misalignment.");
+  } else {
+    score += 15;
+  }
+
+  if (blockers && blockers.trim().length > 5) {
+    score += 10;
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    score,
+    verdict: score >= 70 ? "strong" : score >= 50 ? "acceptable" : score >= 30 ? "weak" : "critical",
+    finding: finding[0] ?? "Goal is grounded in current reality.",
+    suggestion: score < 70 ? "Add your current context and known blockers." : undefined,
+  };
+}
+
+function scoreUsefulness(goal: string, purpose?: string, successSignal?: string): GoalDimension {
+  let score = 55;
+  const finding: string[] = [];
+
+  if (purpose && purpose.trim().length > 15) {
+    score += 20;
+  } else {
+    finding.push("Purpose not clearly defined. Without purpose, execution loses direction over time.");
+  }
+
+  if (successSignal && successSignal.trim().length > 5) {
+    score += 15;
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    score,
+    verdict: score >= 70 ? "strong" : score >= 50 ? "acceptable" : score >= 30 ? "weak" : "critical",
+    finding: finding[0] ?? "Goal produces clear value.",
+    suggestion: score < 70 ? "Define why this goal matters and what success looks like." : undefined,
+  };
+}
+
+// ── PATH GENERATION — DETERMINISTIC ──────────────────────────────────────────
+
+function generatePathsDeterministic(params: {
+  goal:             string;
+  purpose?:         string;
+  timeframe?:       string;
+  commitmentLevel?: string;
+  scores:           ValidationScores;
+  verdict:          ValidationVerdict;
+}): { current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath } {
+  const baseTarget = { name: `Primary outcome: ${params.goal.slice(0, 60)}`, type: "major" };
+
+  const current: ValidationPath = {
+    type:            "current",
+    title:           "Continue with your stated goal",
+    summary:         `Execute on your goal as defined: ${params.goal.slice(0, 120)}.`,
+    rationale:       "This path takes your goal at face value and builds the execution structure directly from it.",
+    expectedOutcome: "Validated progress on the stated goal within the defined timeframe.",
+    riskLevel:       params.scores.overall < 50 ? "high" : params.scores.overall < 70 ? "medium" : "low",
+    planSkeleton: {
+      plans:   [
+        { name: "Foundation", description: "Build base execution structure" },
+        { name: "Validation", description: "Validate approach with real results" },
+      ],
+      targets: [baseTarget, { name: "Validation proof", type: "primary" }],
+    },
+  };
+
+  const adjusted: ValidationPath = {
+    type:            "adjusted",
+    title:           "Refined version of your goal",
+    summary:         "Same direction as your goal, with clearer scope and a more realistic execution path.",
+    rationale:       "This path keeps your core intent but applies tighter scoping, measurability, and realistic timeframe.",
+    expectedOutcome: "Clearer execution start with reduced risk of scope creep.",
+    riskLevel:       "medium",
+    keyChanges:      "Scope tightened. Measurable outcome added. Timeframe grounded in commitment level.",
+    planSkeleton: {
+      plans: [
+        { name: "Foundation", description: "Clarify and ground execution" },
+        { name: "Validation", description: "Prove approach works" },
+        { name: "Growth", description: "Build on validated results" },
+      ],
+      targets: [
+        { name: `Scoped: ${params.goal.slice(0, 50)}`, type: "major" },
+        { name: "First proof of concept", type: "vital" },
+      ],
+    },
+  };
+
+  const alternative: ValidationPath = {
+    type:            "alternative",
+    title:           "Alternative direction worth considering",
+    summary:         "A different execution angle that may reach the same outcome with lower initial risk.",
+    rationale:       "This path reframes the approach to start smaller, validate faster, and build from a proven foundation.",
+    expectedOutcome: "Lower risk entry with faster initial validation cycle.",
+    riskLevel:       "low",
+    keyChanges:      "Smaller first step. Earlier validation gate. Same long-term direction.",
+    planSkeleton: {
+      plans: [
+        { name: "Minimum Viable Start", description: "Test the smallest version" },
+        { name: "Foundation", description: "Build on what was validated" },
+      ],
+      targets: [
+        { name: "Smallest viable proof", type: "vital" },
+        { name: "Validated foundation", type: "primary" },
+      ],
+    },
+  };
+
+  return { current, adjusted, alternative };
+}
+
+// ── PATH GENERATION — BHUDHI ──────────────────────────────────────────────────
+
+async function generatePathsWithBhudhi(params: {
+  goal:             string;
+  purpose?:         string;
+  timeframe?:       string;
+  commitmentLevel?: string;
+  scores:           ValidationScores;
+  verdict:          ValidationVerdict;
+  blueprintId:      string;
+}): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
+  const systemPrompt = `You are the Torgima Validation Engine. Your ONLY job is to output a JSON object with three execution path options based on the user's goal.
+
+RULES:
+- Return ONLY valid JSON. No markdown, no explanation, no preamble.
+- Each path must be realistic and actionable.
+- Do not invent facts about the user.
+- Keep rationale to 1–2 sentences maximum.
+- planSkeleton.plans must have 2–3 items. planSkeleton.targets must have 2–3 items.
+- riskLevel must be "low", "medium", or "high".
+- Never suggest the user abandon their goal entirely.`;
+
+  const userPrompt = `Goal: "${params.goal}"
+Purpose: "${params.purpose ?? "not provided"}"
+Timeframe: "${params.timeframe ?? "not provided"}"
+Commitment: "${params.commitmentLevel ?? "not provided"}"
+Clarity score: ${params.scores.clarity.score}/100 — ${params.scores.clarity.finding}
+Feasibility score: ${params.scores.feasibility.score}/100 — ${params.scores.feasibility.finding}
+Verdict: ${params.verdict}
+
+Generate three execution paths. Return this EXACT JSON structure and nothing else:
+{
+  "current": {
+    "type": "current",
+    "title": "...",
+    "summary": "...",
+    "rationale": "...",
+    "expectedOutcome": "...",
+    "riskLevel": "low|medium|high",
+    "planSkeleton": {
+      "plans": [{"name": "...", "description": "..."}],
+      "targets": [{"name": "...", "type": "major|primary|vital"}]
+    }
+  },
+  "adjusted": {
+    "type": "adjusted",
+    "title": "...",
+    "summary": "...",
+    "rationale": "...",
+    "expectedOutcome": "...",
+    "riskLevel": "low|medium|high",
+    "keyChanges": "...",
+    "planSkeleton": {
+      "plans": [{"name": "...", "description": "..."}],
+      "targets": [{"name": "...", "type": "major|primary|vital"}]
+    }
+  },
+  "alternative": {
+    "type": "alternative",
+    "title": "...",
+    "summary": "...",
+    "rationale": "...",
+    "expectedOutcome": "...",
+    "riskLevel": "low|medium|high",
+    "keyChanges": "...",
+    "planSkeleton": {
+      "plans": [{"name": "...", "description": "..."}],
+      "targets": [{"name": "...", "type": "major|primary|vital"}]
+    }
+  }
+}`;
+
+  const response = await anthropic.messages.create({
+    model:      BHUDHI_MODEL,
+    max_tokens: 1200,
+    system:     systemPrompt,
+    messages:   [{ role: "user", content: userPrompt }],
+  });
+
+  const rawText = response.content
+    .filter(b => b.type === "text")
+    .map(b => (b as { type: "text"; text: string }).text)
+    .join("");
+
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+  const parsed  = JSON.parse(cleaned) as { current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath };
+
+  if (!parsed.current || !parsed.adjusted || !parsed.alternative) {
+    throw new Error("Bhudhi returned incomplete path structure");
+  }
+
+  parsed.current.type     = "current";
+  parsed.adjusted.type    = "adjusted";
+  parsed.alternative.type = "alternative";
+
+  return parsed;
+}
+
+// ── GOAL STRUCTURING — BHUDHI ─────────────────────────────────────────────────
+
+export async function structureGoalWithBhudhi(raw: {
+  rawGoal:          string;
+  purpose?:         string;
+  timeframe?:       string;
+  commitmentLevel?: string;
+  currentContext?:  string;
+  successSignal?:   string;
+  knownBlockers?:   string;
+}): Promise<StructuredGoalDraft> {
+  try {
+    const systemPrompt = `You are the Torgima Goal Structuring Engine. Return ONLY JSON. No markdown.
+
+Analyze the user's raw goal input and return a structured JSON object.
+Identify what is missing and flag it. Do not invent information.`;
+
+    const userPrompt = `Raw goal: "${raw.rawGoal}"
+Purpose: "${raw.purpose ?? ""}"
+Timeframe: "${raw.timeframe ?? ""}"
+Commitment: "${raw.commitmentLevel ?? ""}"
+Context: "${raw.currentContext ?? ""}"
+Success signal: "${raw.successSignal ?? ""}"
+Known blockers: "${raw.knownBlockers ?? ""}"
+
+Return this exact JSON:
+{
+  "cleanedGoal": "Rewritten goal, clear and specific",
+  "purpose": "Extracted or inferred purpose",
+  "timeframe": "Extracted timeframe",
+  "commitmentLevel": "low|medium|high|full",
+  "currentContext": "Summary of current situation",
+  "successSignals": ["..."],
+  "blockers": ["..."],
+  "domainHints": ["genesis|market|delivery|continuity"],
+  "missingRequiredFields": ["goal|purpose|timeframe|commitment"],
+  "ambiguityFlags": ["describe ambiguity"],
+  "validationVerdict": "VALID|NEEDS_CLARIFICATION|INVALID"
+}`;
+
+    const response = await anthropic.messages.create({
+      model:      BHUDHI_MODEL,
+      max_tokens: 600,
+      system:     systemPrompt,
+      messages:   [{ role: "user", content: userPrompt }],
+    });
+
+    const rawText = response.content
+      .filter(b => b.type === "text")
+      .map(b => (b as { type: "text"; text: string }).text)
+      .join("");
+
+    const cleaned = rawText.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned) as StructuredGoalDraft;
+  } catch (error) {
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[ValidationEngine] Bhudhi goal structuring failed — using deterministic fallback",
+    );
+    return structureGoalDeterministic(raw);
+  }
+}
+
+// ── GOAL STRUCTURING — DETERMINISTIC ─────────────────────────────────────────
+
+export function structureGoalDeterministic(raw: {
+  rawGoal:          string;
+  purpose?:         string;
+  timeframe?:       string;
+  commitmentLevel?: string;
+  currentContext?:  string;
+  successSignal?:   string;
+  knownBlockers?:   string;
+}): StructuredGoalDraft {
+  const missing: string[] = [];
+  if (!raw.rawGoal || raw.rawGoal.trim().length < 5) missing.push("goal");
+  if (!raw.purpose || raw.purpose.trim().length < 5) missing.push("purpose");
+  if (!raw.timeframe)                                 missing.push("timeframe");
+  if (!raw.commitmentLevel)                           missing.push("commitment");
+
+  const verdict: "VALID" | "NEEDS_CLARIFICATION" | "INVALID" =
+    missing.includes("goal") ? "INVALID" :
+    missing.length > 0       ? "NEEDS_CLARIFICATION" : "VALID";
+
+  return {
+    cleanedGoal:           raw.rawGoal.trim(),
+    purpose:               raw.purpose ?? "",
+    timeframe:             raw.timeframe ?? "",
+    commitmentLevel:       (raw.commitmentLevel as "low" | "medium" | "high" | "full") ?? "medium",
+    currentContext:        raw.currentContext ?? "",
+    successSignals:        raw.successSignal ? [raw.successSignal] : [],
+    blockers:              raw.knownBlockers ? [raw.knownBlockers] : [],
+    domainHints:           [],
+    missingRequiredFields: missing,
+    ambiguityFlags:        [],
+    validationVerdict:     verdict,
+  };
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function buildAiSummary(scores: ValidationScores, verdict: ValidationVerdict): string {
+  const verdictText = {
+    proceed: "Your goal is clear enough to execute. Launch the blueprint and begin.",
+    adjust:  "Your goal has a good foundation but needs refinement before maximum execution speed.",
+    pivot:   "The goal needs significant restructuring before a controlled execution blueprint can be built.",
+  }[verdict];
+  return `Overall score: ${scores.overall}/100. ${verdictText}`;
+}
+
+export function scoreToVerdict(score: number): "strong" | "acceptable" | "weak" | "critical" {
+  if (score >= 70) return "strong";
+  if (score >= 50) return "acceptable";
+  if (score >= 30) return "weak";
+  return "critical";
 }

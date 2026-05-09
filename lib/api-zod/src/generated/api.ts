@@ -79,17 +79,163 @@ export const GetOnboardingStatusResponse = zod.object({
 });
 
 /**
- * @summary Submit initial goal during onboarding
+ * @summary Submit goal — structures, validates, and returns execution paths
  */
 export const SubmitOnboardingGoalBody = zod.object({
   rawGoal: zod.string(),
-  domain: zod.string().nullish(),
+  purpose: zod.string().nullish(),
+  timeframe: zod.string().nullish(),
+  commitmentLevel: zod
+    .union([
+      zod.literal("low"),
+      zod.literal("medium"),
+      zod.literal("high"),
+      zod.literal("full"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  currentContext: zod.string().nullish(),
+  successSignal: zod.string().nullish(),
+  knownBlockers: zod.string().nullish(),
+  domainHints: zod.array(zod.string()).optional(),
+  idempotencyKey: zod.string(),
 });
 
 export const SubmitOnboardingGoalResponse = zod.object({
-  completed: zod.boolean(),
-  step: zod.string(),
-  blueprintId: zod.string().nullish(),
+  status: zod.enum(["invalid", "needs_clarification", "validated"]),
+  blueprintId: zod.string(),
+  validationId: zod.string().nullish(),
+  verdict: zod
+    .union([
+      zod.literal("proceed"),
+      zod.literal("adjust"),
+      zod.literal("pivot"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  scores: zod
+    .object({
+      clarity: zod.object({
+        score: zod.number(),
+        verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+        finding: zod.string(),
+        suggestion: zod.string().nullish(),
+      }),
+      feasibility: zod.object({
+        score: zod.number(),
+        verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+        finding: zod.string(),
+        suggestion: zod.string().nullish(),
+      }),
+      realism: zod.object({
+        score: zod.number(),
+        verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+        finding: zod.string(),
+        suggestion: zod.string().nullish(),
+      }),
+      usefulness: zod.object({
+        score: zod.number(),
+        verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+        finding: zod.string(),
+        suggestion: zod.string().nullish(),
+      }),
+      overall: zod.number(),
+    })
+    .optional(),
+  paths: zod
+    .object({
+      current: zod.object({
+        type: zod.enum(["current", "adjusted", "alternative"]),
+        title: zod.string(),
+        summary: zod.string(),
+        rationale: zod.string(),
+        expectedOutcome: zod.string(),
+        riskLevel: zod.enum(["low", "medium", "high"]),
+        timeframeNote: zod.string().nullish(),
+        keyChanges: zod.string().nullish(),
+        planSkeleton: zod.object({
+          plans: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              description: zod.string().optional(),
+            }),
+          ),
+          targets: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              type: zod.string().optional(),
+            }),
+          ),
+        }),
+      }),
+      adjusted: zod.object({
+        type: zod.enum(["current", "adjusted", "alternative"]),
+        title: zod.string(),
+        summary: zod.string(),
+        rationale: zod.string(),
+        expectedOutcome: zod.string(),
+        riskLevel: zod.enum(["low", "medium", "high"]),
+        timeframeNote: zod.string().nullish(),
+        keyChanges: zod.string().nullish(),
+        planSkeleton: zod.object({
+          plans: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              description: zod.string().optional(),
+            }),
+          ),
+          targets: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              type: zod.string().optional(),
+            }),
+          ),
+        }),
+      }),
+      alternative: zod.object({
+        type: zod.enum(["current", "adjusted", "alternative"]),
+        title: zod.string(),
+        summary: zod.string(),
+        rationale: zod.string(),
+        expectedOutcome: zod.string(),
+        riskLevel: zod.enum(["low", "medium", "high"]),
+        timeframeNote: zod.string().nullish(),
+        keyChanges: zod.string().nullish(),
+        planSkeleton: zod.object({
+          plans: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              description: zod.string().optional(),
+            }),
+          ),
+          targets: zod.array(
+            zod.object({
+              name: zod.string().optional(),
+              type: zod.string().optional(),
+            }),
+          ),
+        }),
+      }),
+    })
+    .optional(),
+  structured: zod
+    .object({
+      cleanedGoal: zod.string(),
+      purpose: zod.string().optional(),
+      timeframe: zod.string().optional(),
+      commitmentLevel: zod.enum(["low", "medium", "high", "full"]).optional(),
+      currentContext: zod.string().optional(),
+      successSignals: zod.array(zod.string()).optional(),
+      blockers: zod.array(zod.string()).optional(),
+      domainHints: zod.array(zod.string()).optional(),
+      missingRequiredFields: zod.array(zod.string()).optional(),
+      ambiguityFlags: zod.array(zod.string()).optional(),
+      validationVerdict: zod.enum(["VALID", "NEEDS_CLARIFICATION", "INVALID"]),
+    })
+    .optional(),
+  missingFields: zod.array(zod.string()).optional(),
+  ambiguityFlags: zod.array(zod.string()).optional(),
+  canProceed: zod.boolean().optional(),
 });
 
 /**
@@ -192,10 +338,21 @@ export const GetBlueprintResponse = zod.object({
 });
 
 /**
- * @summary Activate a blueprint and fire the cold start
+ * @summary Activate a blueprint — optionally with a selected validation path
  */
 export const ActivateBlueprintParams = zod.object({
   id: zod.coerce.string(),
+});
+
+export const ActivateBlueprintBody = zod.object({
+  selectedPath: zod
+    .union([
+      zod.literal("current"),
+      zod.literal("adjusted"),
+      zod.literal("alternative"),
+      zod.literal(null),
+    ])
+    .nullish(),
 });
 
 export const ActivateBlueprintResponse = zod.object({
@@ -344,20 +501,244 @@ export const ResumeBlueprintResponse = zod.object({
 });
 
 /**
- * @summary Run goal validation through Bhudhi
+ * @summary Run goal validation — scores, verdict, and three execution paths
  */
 export const RunValidationBody = zod.object({
-  rawGoal: zod.string(),
-  domain: zod.string().nullish(),
+  blueprintId: zod.string(),
+  goal: zod.string(),
+  purpose: zod.string().nullish(),
+  timeframe: zod.string().nullish(),
+  commitmentLevel: zod.string().nullish(),
+  currentContext: zod.string().nullish(),
+  successSignal: zod.string().nullish(),
+  knownBlockers: zod.string().nullish(),
 });
 
 export const RunValidationResponse = zod.object({
-  valid: zod.boolean(),
-  score: zod.number(),
-  feedback: zod.string(),
-  suggestedDomain: zod.string().nullish(),
-  refinedGoal: zod.string().nullish(),
-  issues: zod.array(zod.string()).optional(),
+  validationId: zod.string(),
+  blueprintId: zod.string(),
+  verdict: zod.enum(["proceed", "adjust", "pivot"]),
+  scores: zod.object({
+    clarity: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    feasibility: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    realism: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    usefulness: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    overall: zod.number(),
+  }),
+  paths: zod.object({
+    current: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+    adjusted: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+    alternative: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+  }),
+  usedFallback: zod.boolean(),
+  aiSummary: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Get stored validation result for a blueprint
+ */
+export const GetValidationResultQueryParams = zod.object({
+  blueprintId: zod.coerce.string(),
+});
+
+export const GetValidationResultResponse = zod.object({
+  validationId: zod.string(),
+  blueprintId: zod.string(),
+  verdict: zod.enum(["proceed", "adjust", "pivot"]),
+  scores: zod.object({
+    clarity: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    feasibility: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    realism: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    usefulness: zod.object({
+      score: zod.number(),
+      verdict: zod.enum(["strong", "acceptable", "weak", "critical"]),
+      finding: zod.string(),
+      suggestion: zod.string().nullish(),
+    }),
+    overall: zod.number(),
+  }),
+  paths: zod.object({
+    current: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+    adjusted: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+    alternative: zod.object({
+      type: zod.enum(["current", "adjusted", "alternative"]),
+      title: zod.string(),
+      summary: zod.string(),
+      rationale: zod.string(),
+      expectedOutcome: zod.string(),
+      riskLevel: zod.enum(["low", "medium", "high"]),
+      timeframeNote: zod.string().nullish(),
+      keyChanges: zod.string().nullish(),
+      planSkeleton: zod.object({
+        plans: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            description: zod.string().optional(),
+          }),
+        ),
+        targets: zod.array(
+          zod.object({
+            name: zod.string().optional(),
+            type: zod.string().optional(),
+          }),
+        ),
+      }),
+    }),
+  }),
+  usedFallback: zod.boolean(),
+  aiSummary: zod.string().nullish(),
+  createdAt: zod.string(),
 });
 
 /**
@@ -745,16 +1126,31 @@ export const GetDashboardStateResponse = zod.object({
  */
 export const StructureGoalBody = zod.object({
   rawGoal: zod.string(),
-  context: zod.string().nullish(),
+  purpose: zod.string().nullish(),
+  timeframe: zod.string().nullish(),
+  commitmentLevel: zod.string().nullish(),
+  currentContext: zod.string().nullish(),
+  successSignal: zod.string().nullish(),
+  knownBlockers: zod.string().nullish(),
+  domainHints: zod.array(zod.string()).optional(),
+  idempotencyKey: zod.string().nullish(),
 });
 
 export const StructureGoalResponse = zod.object({
-  title: zod.string(),
-  domain: zod.string(),
-  phases: zod.array(zod.string()),
-  milestones: zod.array(zod.string()),
-  estimatedWeeks: zod.number().optional(),
-  reasoning: zod.string().optional(),
+  structured: zod.object({
+    cleanedGoal: zod.string(),
+    purpose: zod.string().optional(),
+    timeframe: zod.string().optional(),
+    commitmentLevel: zod.enum(["low", "medium", "high", "full"]).optional(),
+    currentContext: zod.string().optional(),
+    successSignals: zod.array(zod.string()).optional(),
+    blockers: zod.array(zod.string()).optional(),
+    domainHints: zod.array(zod.string()).optional(),
+    missingRequiredFields: zod.array(zod.string()).optional(),
+    ambiguityFlags: zod.array(zod.string()).optional(),
+    validationVerdict: zod.enum(["VALID", "NEEDS_CLARIFICATION", "INVALID"]),
+  }),
+  canProceed: zod.boolean(),
 });
 
 /**

@@ -5,12 +5,9 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { StructuredGoalDraft } from "./structuredGoalDraft";
 
 export interface StructuredGoal {
-  title: string;
-  domain: string;
-  phases: string[];
-  milestones: string[];
-  estimatedWeeks?: number;
-  reasoning?: string;
+  structured: StructuredGoalDraft;
+  canProceed: boolean;
 }

@@ -9,5 +9,18 @@
 export interface GoalInput {
   rawGoal: string;
   /** @nullable */
-  context?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
+  domainHints?: string[];
+  /** @nullable */
+  idempotencyKey?: string | null;
 }

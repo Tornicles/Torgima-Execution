@@ -2,9 +2,10 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
-import { db, users } from "@workspace/db";
+import { ValidationService } from "../services/ValidationService.js";
+import { db, users, blueprints, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { success, handleError } from "../lib/utils.js";
+import { success, failure, handleError } from "../lib/utils.js";
 
 const router = Router();
 
@@ -13,15 +14,18 @@ router.get("/onboarding/status", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const userRows = await db.select().from(users).where(eq(users.id, auth.userId)).limit(1);
-    const user = userRows[0] ?? null;
-    const onboardingComplete = user?.onboarding_complete ?? false;
+    const userRows = await db
+      .select({ onboarding_complete: users.onboarding_complete })
+      .from(users)
+      .where(eq(users.id, auth.userId))
+      .limit(1);
+    const onboardingComplete = userRows[0]?.onboarding_complete ?? false;
 
     const activeBlueprint = await BlueprintService.findActive(auth.userId);
 
     success(res, {
-      completed: onboardingComplete,
-      step: onboardingComplete ? "done" : "goal",
+      completed:   onboardingComplete,
+      step:        onboardingComplete ? "done" : "goal",
       blueprintId: activeBlueprint?.id ?? null,
     });
   } catch (err) {
@@ -29,44 +33,128 @@ router.get("/onboarding/status", async (req, res) => {
   }
 });
 
-// POST /api/onboarding/goal
+// POST /api/onboarding/goal — Prompt 5 full validation flow
 router.post("/onboarding/goal", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
-      rawGoal: z.string().min(1).max(2000).optional(),
-      goal: z.string().min(1).max(2000).optional(),
-      domain: z.string().optional().nullable(),
+      rawGoal:         z.string().min(5).max(2000),
+      purpose:         z.string().max(1000).optional(),
+      timeframe:       z.string().max(200).optional(),
+      commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional(),
+      currentContext:  z.string().max(1000).optional(),
+      successSignal:   z.string().max(500).optional(),
+      knownBlockers:   z.string().max(500).optional(),
+      domainHints:     z.array(z.string()).optional(),
+      idempotencyKey:  z.string().min(1),
     });
 
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
-      success(res, { completed: false, step: "goal", blueprintId: null });
+      failure(res, "VALIDATION_ERROR", "Invalid input", 422);
       return;
     }
 
-    const goal = parsed.data.goal ?? parsed.data.rawGoal;
-    if (!goal) {
-      success(res, { completed: false, step: "goal", blueprintId: null });
-      return;
+    const input = parsed.data;
+
+    // AI feature flag
+    const aiRows = await db
+      .select({ enabled: featureFlags.enabled })
+      .from(featureFlags)
+      .where(eq(featureFlags.feature_name, "ai_enabled"))
+      .limit(1);
+    const aiEnabled = aiRows[0]?.enabled ?? false;
+
+    // Idempotency — reuse existing draft/validating/path_selection blueprint
+    const existingRows = await db
+      .select({ id: blueprints.id, status: blueprints.status })
+      .from(blueprints)
+      .where(eq(blueprints.user_id, auth.userId))
+      .limit(20);
+
+    const existing = existingRows.find(
+      b => b.status === "draft" || b.status === "validating" || b.status === "path_selection",
+    );
+
+    let blueprintId: string;
+
+    if (existing) {
+      blueprintId = existing.id;
+    } else {
+      const { blueprintId: id } = await BlueprintService.create(auth.userId, {
+        goal:            input.rawGoal,
+        purpose:         input.purpose ?? null,
+        domainHint:      input.domainHints?.[0] ?? null,
+        commitmentLevel: input.commitmentLevel ?? null,
+      });
+      blueprintId = id;
     }
 
-    const { blueprintId } = await BlueprintService.create(auth.userId, {
-      goal,
-      domainHint: parsed.data.domain ?? null,
+    // Structure goal
+    const structured = await ValidationService.structureGoal({
+      userId:    auth.userId,
+      input:     { ...input, idempotencyKey: input.idempotencyKey },
+      aiEnabled,
     });
-    await BlueprintService.activate(blueprintId, auth.userId);
 
-    await db
-      .update(users)
-      .set({ onboarding_complete: true })
-      .where(eq(users.id, auth.userId));
+    // Invalid — return early, no validation run
+    if (structured.validationVerdict === "INVALID") {
+      success(res, {
+        status:        "invalid",
+        structured,
+        blueprintId,
+        missingFields: structured.missingRequiredFields,
+        ambiguityFlags: structured.ambiguityFlags,
+        canProceed:    false,
+      });
+      return;
+    }
+
+    // Needs clarification — return early
+    if (structured.validationVerdict === "NEEDS_CLARIFICATION") {
+      success(res, {
+        status:        "needs_clarification",
+        structured,
+        blueprintId,
+        missingFields: structured.missingRequiredFields,
+        canProceed:    false,
+      });
+      return;
+    }
+
+    // Run full validation
+    const validationResult = await ValidationService.validateGoal({
+      blueprintId,
+      userId: auth.userId,
+      input: {
+        goal:            structured.cleanedGoal,
+        purpose:         structured.purpose,
+        timeframe:       structured.timeframe,
+        commitmentLevel: structured.commitmentLevel,
+        currentContext:  structured.currentContext,
+        successSignal:   structured.successSignals[0],
+        knownBlockers:   structured.blockers[0],
+      },
+    });
+
+    // Update user commitment level
+    if (structured.commitmentLevel) {
+      await db
+        .update(users)
+        .set({ commitment_level: structured.commitmentLevel as "low" | "medium" | "high" | "full" })
+        .where(eq(users.id, auth.userId));
+    }
 
     success(res, {
-      completed: true,
-      step: "done",
+      status:       "validated",
       blueprintId,
+      validationId: validationResult.validationId,
+      verdict:      validationResult.verdict,
+      scores:       validationResult.scores,
+      paths:        validationResult.paths,
+      structured,
+      canProceed:   validationResult.verdict !== "pivot",
     });
   } catch (err) {
     handleError(req, res, err);

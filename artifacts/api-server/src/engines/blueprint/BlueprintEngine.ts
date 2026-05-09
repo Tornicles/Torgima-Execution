@@ -13,6 +13,7 @@ import {
   domainHistory,
   blueprintVersions,
   blueprintMutations,
+  validations,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -85,12 +86,19 @@ export class BlueprintEngine {
   /**
    * Creates the full 6-layer execution chain inside an active transaction:
    * Plan → Season → Target → Phases (3) → Project → Actions
+   *
+   * If a pathSkeleton is provided (from a validation path selection), its
+   * plan names/descriptions and target names are used in place of the generic defaults.
    */
   private async buildChain(
     blueprintId: string,
     userId: string,
     goal: string,
     tx: DbTx,
+    pathSkeleton?: {
+      plans:   Array<{ name: string; description: string }>;
+      targets: Array<{ name: string; type: string }>;
+    },
   ): Promise<{
     planId: string;
     phaseId: string;
@@ -99,13 +107,16 @@ export class BlueprintEngine {
     targetCount: number;
     actionCount: number;
   }> {
+    const planDef = pathSkeleton?.plans?.[0];
+    const targetDef = pathSkeleton?.targets?.[0];
+
     // Plan
     const [plan] = await tx
       .insert(plans)
       .values({
         blueprint_id: blueprintId,
-        name: `Execution Plan — ${goal.slice(0, 60)}`,
-        description: `Primary execution plan for: ${goal}`,
+        name:         planDef?.name        ?? `Execution Plan — ${goal.slice(0, 60)}`,
+        description:  planDef?.description ?? `Primary execution plan for: ${goal}`,
         order_index: 1,
         status: "active",
       })
@@ -129,9 +140,11 @@ export class BlueprintEngine {
         blueprint_id: blueprintId,
         plan_id: plan.id,
         owner_id: userId,
-        name: `Primary target: ${goal.slice(0, 80)}`,
+        name:        targetDef?.name ?? `Primary target: ${goal.slice(0, 80)}`,
         description: goal,
-        type: "primary",
+        type:        (["major", "primary", "vital", "operating", "conditional", "production"].includes(targetDef?.type ?? "")
+          ? targetDef!.type
+          : "primary") as "major" | "primary" | "vital" | "operating" | "conditional" | "production",
         order_index: 1,
         status: "active",
       })
@@ -263,10 +276,44 @@ export class BlueprintEngine {
         })
         .where(eq(blueprints.id, blueprintId));
 
-      // 2. Build execution chain
-      const chain = await this.buildChain(blueprintId, userId, existing.goal, tx);
+      // 2. Read validation path selection (if any) to customise chain
+      const validationRows = await tx
+        .select({
+          selected_path:   validations.selected_path,
+          path_current:    validations.path_current,
+          path_adjusted:   validations.path_adjusted,
+          path_alternative: validations.path_alternative,
+        })
+        .from(validations)
+        .where(eq(validations.blueprint_id, blueprintId))
+        .orderBy(desc(validations.created_at))
+        .limit(1);
 
-      // 3. Update blueprint with current plan and phase
+      let pathSkeleton:
+        | { plans: Array<{ name: string; description: string }>; targets: Array<{ name: string; type: string }> }
+        | undefined;
+
+      const valRow = validationRows[0];
+      if (valRow?.selected_path) {
+        const pathData = {
+          current:     valRow.path_current,
+          adjusted:    valRow.path_adjusted,
+          alternative: valRow.path_alternative,
+        }[valRow.selected_path] as { planSkeleton?: typeof pathSkeleton } | null;
+
+        if (pathData?.planSkeleton) {
+          pathSkeleton = pathData.planSkeleton;
+          logger.info(
+            { blueprintId, selectedPath: valRow.selected_path },
+            "BlueprintEngine.activateBlueprint — using validation path skeleton",
+          );
+        }
+      }
+
+      // 3. Build execution chain (customised by path skeleton if available)
+      const chain = await this.buildChain(blueprintId, userId, existing.goal, tx, pathSkeleton);
+
+      // 4. Update blueprint with current plan and phase
       await tx
         .update(blueprints)
         .set({

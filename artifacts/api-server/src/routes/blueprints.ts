@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
+import { ValidationService } from "../services/ValidationService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 
 const router = Router();
@@ -23,12 +24,12 @@ router.post("/blueprints", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
-      goal: z.string().min(1).max(2000).optional(),
-      rawGoal: z.string().min(1).max(2000).optional(),
-      purpose: z.string().max(500).optional().nullable(),
-      timeframeDays: z.number().int().min(7).max(730).optional().nullable(),
-      domainHint: z.string().optional().nullable(),
-      domain: z.string().optional().nullable(),
+      goal:            z.string().min(1).max(2000).optional(),
+      rawGoal:         z.string().min(1).max(2000).optional(),
+      purpose:         z.string().max(500).optional().nullable(),
+      timeframeDays:   z.number().int().min(7).max(730).optional().nullable(),
+      domainHint:      z.string().optional().nullable(),
+      domain:          z.string().optional().nullable(),
       commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional().nullable(),
     });
 
@@ -47,9 +48,9 @@ router.post("/blueprints", async (req, res) => {
 
     const result = await BlueprintService.create(auth.userId, {
       goal,
-      purpose: body.purpose ?? null,
-      timeframeDays: body.timeframeDays ?? null,
-      domainHint: body.domainHint ?? body.domain ?? null,
+      purpose:         body.purpose ?? null,
+      timeframeDays:   body.timeframeDays ?? null,
+      domainHint:      body.domainHint ?? body.domain ?? null,
       commitmentLevel: body.commitmentLevel ?? null,
     });
 
@@ -81,10 +82,26 @@ router.get("/blueprints/:id", async (req, res) => {
   }
 });
 
-// POST /api/blueprints/:id/activate
+// POST /api/blueprints/:id/activate — Prompt 5: accepts optional selectedPath
 router.post("/blueprints/:id/activate", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
+
+    const schema = z.object({
+      selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
+    });
+
+    const body = schema.safeParse(req.body).data ?? {};
+
+    // If a path was selected, store it on the validation record first
+    if (body.selectedPath) {
+      await ValidationService.selectValidationPath({
+        blueprintId:  req.params.id!,
+        userId:       auth.userId,
+        selectedPath: body.selectedPath,
+      }).catch(() => null); // Non-fatal — blueprint may not have a validation record
+    }
+
     const result = await BlueprintService.activate(req.params.id!, auth.userId);
     success(res, result);
   } catch (err) {

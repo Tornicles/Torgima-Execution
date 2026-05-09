@@ -7,7 +7,18 @@
  */
 
 export interface ValidationInput {
-  rawGoal: string;
+  blueprintId: string;
+  goal: string;
   /** @nullable */
-  domain?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
 }

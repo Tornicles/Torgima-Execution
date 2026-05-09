@@ -45,10 +45,206 @@ export interface OnboardingStatus {
   blueprintId?: string | null;
 }
 
+/**
+ * @nullable
+ */
+export type OnboardingGoalInputCommitmentLevel =
+  | (typeof OnboardingGoalInputCommitmentLevel)[keyof typeof OnboardingGoalInputCommitmentLevel]
+  | null;
+
+export const OnboardingGoalInputCommitmentLevel = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  full: "full",
+} as const;
+
 export interface OnboardingGoalInput {
   rawGoal: string;
   /** @nullable */
-  domain?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: OnboardingGoalInputCommitmentLevel;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
+  domainHints?: string[];
+  idempotencyKey: string;
+}
+
+export type OnboardingGoalResultStatus =
+  (typeof OnboardingGoalResultStatus)[keyof typeof OnboardingGoalResultStatus];
+
+export const OnboardingGoalResultStatus = {
+  invalid: "invalid",
+  needs_clarification: "needs_clarification",
+  validated: "validated",
+} as const;
+
+/**
+ * @nullable
+ */
+export type OnboardingGoalResultVerdict =
+  | (typeof OnboardingGoalResultVerdict)[keyof typeof OnboardingGoalResultVerdict]
+  | null;
+
+export const OnboardingGoalResultVerdict = {
+  proceed: "proceed",
+  adjust: "adjust",
+  pivot: "pivot",
+} as const;
+
+export type ValidationDimensionVerdict =
+  (typeof ValidationDimensionVerdict)[keyof typeof ValidationDimensionVerdict];
+
+export const ValidationDimensionVerdict = {
+  strong: "strong",
+  acceptable: "acceptable",
+  weak: "weak",
+  critical: "critical",
+} as const;
+
+export interface ValidationDimension {
+  score: number;
+  verdict: ValidationDimensionVerdict;
+  finding: string;
+  /** @nullable */
+  suggestion?: string | null;
+}
+
+export interface ValidationScores {
+  clarity: ValidationDimension;
+  feasibility: ValidationDimension;
+  realism: ValidationDimension;
+  usefulness: ValidationDimension;
+  overall: number;
+}
+
+export type ValidationPathType =
+  (typeof ValidationPathType)[keyof typeof ValidationPathType];
+
+export const ValidationPathType = {
+  current: "current",
+  adjusted: "adjusted",
+  alternative: "alternative",
+} as const;
+
+export type ValidationPathRiskLevel =
+  (typeof ValidationPathRiskLevel)[keyof typeof ValidationPathRiskLevel];
+
+export const ValidationPathRiskLevel = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type ValidationPlanSkeletonPlansItem = {
+  name?: string;
+  description?: string;
+};
+
+export type ValidationPlanSkeletonTargetsItem = {
+  name?: string;
+  type?: string;
+};
+
+export interface ValidationPlanSkeleton {
+  plans: ValidationPlanSkeletonPlansItem[];
+  targets: ValidationPlanSkeletonTargetsItem[];
+}
+
+export interface ValidationPath {
+  type: ValidationPathType;
+  title: string;
+  summary: string;
+  rationale: string;
+  expectedOutcome: string;
+  riskLevel: ValidationPathRiskLevel;
+  /** @nullable */
+  timeframeNote?: string | null;
+  /** @nullable */
+  keyChanges?: string | null;
+  planSkeleton: ValidationPlanSkeleton;
+}
+
+export interface ValidationPaths {
+  current: ValidationPath;
+  adjusted: ValidationPath;
+  alternative: ValidationPath;
+}
+
+export type StructuredGoalDraftCommitmentLevel =
+  (typeof StructuredGoalDraftCommitmentLevel)[keyof typeof StructuredGoalDraftCommitmentLevel];
+
+export const StructuredGoalDraftCommitmentLevel = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  full: "full",
+} as const;
+
+export type StructuredGoalDraftValidationVerdict =
+  (typeof StructuredGoalDraftValidationVerdict)[keyof typeof StructuredGoalDraftValidationVerdict];
+
+export const StructuredGoalDraftValidationVerdict = {
+  VALID: "VALID",
+  NEEDS_CLARIFICATION: "NEEDS_CLARIFICATION",
+  INVALID: "INVALID",
+} as const;
+
+export interface StructuredGoalDraft {
+  cleanedGoal: string;
+  purpose?: string;
+  timeframe?: string;
+  commitmentLevel?: StructuredGoalDraftCommitmentLevel;
+  currentContext?: string;
+  successSignals?: string[];
+  blockers?: string[];
+  domainHints?: string[];
+  missingRequiredFields?: string[];
+  ambiguityFlags?: string[];
+  validationVerdict: StructuredGoalDraftValidationVerdict;
+}
+
+export interface OnboardingGoalResult {
+  status: OnboardingGoalResultStatus;
+  blueprintId: string;
+  /** @nullable */
+  validationId?: string | null;
+  /** @nullable */
+  verdict?: OnboardingGoalResultVerdict;
+  scores?: ValidationScores;
+  paths?: ValidationPaths;
+  structured?: StructuredGoalDraft;
+  missingFields?: string[];
+  ambiguityFlags?: string[];
+  canProceed?: boolean;
+}
+
+export type ValidationResultP5Verdict =
+  (typeof ValidationResultP5Verdict)[keyof typeof ValidationResultP5Verdict];
+
+export const ValidationResultP5Verdict = {
+  proceed: "proceed",
+  adjust: "adjust",
+  pivot: "pivot",
+} as const;
+
+export interface ValidationResultP5 {
+  validationId: string;
+  blueprintId: string;
+  verdict: ValidationResultP5Verdict;
+  scores: ValidationScores;
+  paths: ValidationPaths;
+  usedFallback: boolean;
+  /** @nullable */
+  aiSummary?: string | null;
+  createdAt: string;
 }
 
 export type BlueprintStatus =
@@ -177,9 +373,20 @@ export interface PauseInput {
 }
 
 export interface ValidationInput {
-  rawGoal: string;
+  blueprintId: string;
+  goal: string;
   /** @nullable */
-  domain?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
 }
 
 export interface ValidationResult {
@@ -191,6 +398,24 @@ export interface ValidationResult {
   /** @nullable */
   refinedGoal?: string | null;
   issues?: string[];
+}
+
+/**
+ * @nullable
+ */
+export type ActivateBlueprintInputSelectedPath =
+  | (typeof ActivateBlueprintInputSelectedPath)[keyof typeof ActivateBlueprintInputSelectedPath]
+  | null;
+
+export const ActivateBlueprintInputSelectedPath = {
+  current: "current",
+  adjusted: "adjusted",
+  alternative: "alternative",
+} as const;
+
+export interface ActivateBlueprintInput {
+  /** @nullable */
+  selectedPath?: ActivateBlueprintInputSelectedPath;
 }
 
 export interface BlockInput {
@@ -280,16 +505,25 @@ export interface DashboardState {
 export interface GoalInput {
   rawGoal: string;
   /** @nullable */
-  context?: string | null;
+  purpose?: string | null;
+  /** @nullable */
+  timeframe?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
+  /** @nullable */
+  currentContext?: string | null;
+  /** @nullable */
+  successSignal?: string | null;
+  /** @nullable */
+  knownBlockers?: string | null;
+  domainHints?: string[];
+  /** @nullable */
+  idempotencyKey?: string | null;
 }
 
 export interface StructuredGoal {
-  title: string;
-  domain: string;
-  phases: string[];
-  milestones: string[];
-  estimatedWeeks?: number;
-  reasoning?: string;
+  structured: StructuredGoalDraft;
+  canProceed: boolean;
 }
 
 export interface ExplainStateInput {
@@ -316,3 +550,7 @@ export interface Notification {
   readAt: string | null;
   createdAt: string;
 }
+
+export type GetValidationResultParams = {
+  blueprintId: string;
+};
