@@ -989,6 +989,7 @@ export const habits = pgTable(
     frequency: text("frequency"),
     time_of_day: text("time_of_day"),
     active: boolean("active").notNull().default(true),
+    streak_count: integer("streak_count").notNull().default(0),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("idx_habits_blueprint_id").on(t.blueprint_id)],

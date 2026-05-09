@@ -184,10 +184,27 @@ async function createFalseProgressFlag(params: {
   );
 }
 
-export async function resolveFlag(flagId: string): Promise<void> {
+export async function resolveFlag(flagId: string, resolutionNote?: string): Promise<void> {
+  const [row] = await db
+    .select({ evidence_json: falseProgressFlags.evidence_json })
+    .from(falseProgressFlags)
+    .where(eq(falseProgressFlags.id, flagId))
+    .limit(1);
+
+  const prev =
+    row?.evidence_json && typeof row.evidence_json === "object" && !Array.isArray(row.evidence_json)
+      ? (row.evidence_json as Record<string, unknown>)
+      : {};
+
   await db
     .update(falseProgressFlags)
-    .set({ resolved: true })
+    .set({
+      resolved: true,
+      evidence_json: {
+        ...prev,
+        ...(resolutionNote ? { resolution_note: resolutionNote, resolved_at: new Date().toISOString() } : {}),
+      },
+    })
     .where(eq(falseProgressFlags.id, flagId));
 }
 

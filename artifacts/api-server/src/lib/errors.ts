@@ -47,6 +47,8 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
       return 422;
     case "STALE_STATE":
       return 409;
+    case "FEATURE_DISABLED":
+      return 403;
     case "RATE_LIMITED":
       return 429;
     default:

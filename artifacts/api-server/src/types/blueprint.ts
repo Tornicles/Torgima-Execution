@@ -38,6 +38,11 @@ export interface BlueprintState {
   signals: import("./signal.js").SignalState;
   condition: string;
   phaseProgress: number;
+  /** Prompt 14 — extended projection fields */
+  pivotReviewOpen: boolean;
+  pivotReviewId: string | null;
+  completionEligible: boolean;
+  pausedAt: string | null;
 }
 
 export interface BlueprintDraftInput {

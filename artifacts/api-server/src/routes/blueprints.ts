@@ -18,8 +18,16 @@ import {
   resolvePivotReview,
   dismissPivotReview,
 } from "../engines/lifecycle/PivotEngine.js";
-import { db, blueprints, pivotReviews } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import {
+  db,
+  blueprints,
+  pivotReviews,
+  domainHistory,
+  frameworkActivations,
+  frameworkDecisions,
+  behaviorPatterns,
+} from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -131,6 +139,112 @@ router.get("/blueprints/:id/state", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const state = await BlueprintService.getBlueprintState(req.params.id!, auth.userId);
     success(res, state);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/domain-history — Prompt 14
+router.get("/blueprints/:id/domain-history", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+
+    const [bp] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const history = await db
+      .select()
+      .from(domainHistory)
+      .where(eq(domainHistory.blueprint_id, id))
+      .orderBy(desc(domainHistory.entered_at))
+      .limit(20);
+
+    success(res, {
+      history: history.map((h) => ({
+        domain: h.domain,
+        previousDomain: h.previous_domain,
+        transitionTrigger: h.transition_trigger,
+        isCurrent: h.is_current,
+        enteredAt: h.entered_at,
+        exitedAt: h.exited_at,
+      })),
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/framework-activations — Prompt 14
+router.get("/blueprints/:id/framework-activations", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+
+    const [bp] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const activations = await db
+      .select()
+      .from(frameworkActivations)
+      .where(eq(frameworkActivations.blueprint_id, id))
+      .orderBy(desc(frameworkActivations.created_at))
+      .limit(20);
+
+    const decisions = await db
+      .select()
+      .from(frameworkDecisions)
+      .where(eq(frameworkDecisions.blueprint_id, id))
+      .orderBy(desc(frameworkDecisions.created_at))
+      .limit(10);
+
+    success(res, { activations, decisions });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/behavior-patterns — Prompt 14 analytics
+router.get("/blueprints/:id/behavior-patterns", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+
+    const [bp] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const patterns = await db
+      .select()
+      .from(behaviorPatterns)
+      .where(and(eq(behaviorPatterns.user_id, auth.userId), eq(behaviorPatterns.blueprint_id, id)))
+      .orderBy(desc(behaviorPatterns.last_detected_at))
+      .limit(30);
+
+    success(res, { patterns });
   } catch (err) {
     handleError(req, res, err);
   }

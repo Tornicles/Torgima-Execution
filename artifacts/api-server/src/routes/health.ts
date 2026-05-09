@@ -12,61 +12,45 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
+type TableCheck = readonly [string, string];
+
+// Prompt 14 — aggregate readiness probe (database + core tables).
 router.get("/health", async (req, res) => {
   try {
-    const checks: Record<string, boolean> = {
-      database: false,
-      event_table: false,
-      blueprint_table: false,
-      signal_table: false,
-      condition_table: false,
-    };
+    const checks: Record<string, boolean> = {};
 
-    const client = await pool.connect();
-    try {
-      await client.query("SELECT 1");
-      checks["database"] = true;
-    } finally {
-      client.release();
+    const tableChecks: TableCheck[] = [
+      ["database", "SELECT 1"],
+      ["blueprints", "SELECT COUNT(*) FROM blueprints LIMIT 1"],
+      ["signals", "SELECT COUNT(*) FROM signal_snapshots LIMIT 1"],
+      ["conditions", "SELECT COUNT(*) FROM conditions LIMIT 1"],
+      ["enforcement", "SELECT COUNT(*) FROM enforcement_packages LIMIT 1"],
+      ["events", "SELECT COUNT(*) FROM events LIMIT 1"],
+      ["notifications", "SELECT COUNT(*) FROM notification_logs LIMIT 1"],
+      ["identity", "SELECT COUNT(*) FROM user_identity_states LIMIT 1"],
+      ["framework_signals", "SELECT COUNT(*) FROM framework_signal_snapshots LIMIT 1"],
+    ];
+
+    for (const [name, sqlText] of tableChecks) {
+      try {
+        await pool.query(sqlText);
+        checks[name] = true;
+      } catch {
+        checks[name] = false;
+      }
     }
 
-    try {
-      await pool.query("SELECT COUNT(*) FROM events LIMIT 1");
-      checks["event_table"] = true;
-    } catch {
-      checks["event_table"] = false;
-    }
+    const [pendingR, dlR, healthR] = await Promise.all([
+      pool.query("SELECT COUNT(*)::int AS c FROM events WHERE status = 'pending'").catch(() => null),
+      pool
+        .query("SELECT COUNT(*)::int AS c FROM dead_letter_events WHERE resolved = false")
+        .catch(() => null),
+      pool.query("SELECT COUNT(*)::int AS c FROM system_health_logs WHERE status = 'degraded'").catch(() => null),
+    ]);
 
-    try {
-      await pool.query("SELECT COUNT(*) FROM blueprints LIMIT 1");
-      checks["blueprint_table"] = true;
-    } catch {
-      checks["blueprint_table"] = false;
-    }
-
-    try {
-      await pool.query("SELECT COUNT(*) FROM signal_snapshots LIMIT 1");
-      checks["signal_table"] = true;
-    } catch {
-      checks["signal_table"] = false;
-    }
-
-    try {
-      await pool.query("SELECT COUNT(*) FROM conditions LIMIT 1");
-      checks["condition_table"] = true;
-    } catch {
-      checks["condition_table"] = false;
-    }
-
-    const pendingResult = await pool
-      .query("SELECT COUNT(*) as count FROM events WHERE status = 'pending'")
-      .catch(() => null);
-    const dlResult = await pool
-      .query("SELECT COUNT(*) as count FROM dead_letter_events WHERE resolved = false")
-      .catch(() => null);
-
-    const pending = pendingResult ? parseInt(pendingResult.rows[0].count, 10) : -1;
-    const deadLetters = dlResult ? parseInt(dlResult.rows[0].count, 10) : -1;
+    const pending_events = pendingR ? Number(pendingR.rows[0]?.c ?? 0) : -1;
+    const dead_letters = dlR ? Number(dlR.rows[0]?.c ?? 0) : -1;
+    const health_issues = healthR ? Number(healthR.rows[0]?.c ?? 0) : -1;
 
     const allPassing = Object.values(checks).every(Boolean);
 
@@ -74,10 +58,11 @@ router.get("/health", async (req, res) => {
       res,
       {
         ...checks,
-        pending_events: pending,
-        unresolved_dead_letters: deadLetters,
+        pending_events,
+        dead_letters,
+        health_issues,
         timestamp: new Date().toISOString(),
-        version: "phase1-prompt4",
+        version: "phase1-prompt14",
       },
       allPassing ? 200 : 503,
     );
@@ -87,7 +72,6 @@ router.get("/health", async (req, res) => {
 });
 
 // GET /api/health/current — user-safe, never reveals internal failure detail.
-// Spec: Prompt 6 §STEP 7, DOC_17 §19–20.
 router.get("/health/current", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");

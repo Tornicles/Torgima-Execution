@@ -1,11 +1,18 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs } from "@workspace/db";
+import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs, blueprints } from "@workspace/db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
 import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
 import { success, failure, handleError } from "../lib/utils.js";
+import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { completeBlueprint } from "../engines/lifecycle/CompletionEngine.js";
+import { pauseBlueprint } from "../engines/lifecycle/PauseEngine.js";
+import { validateOutcome, resolveFlag } from "../engines/outcome/OutcomeValidationEngine.js";
+import { evaluateReward } from "../engines/reward/RewardEngine.js";
+import { evaluateIdentity } from "../engines/identity/IdentityEngine.js";
+import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 import { trigger } from "../bhudhi/BhudhiCore.js";
 import { getContract } from "../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
@@ -385,6 +392,180 @@ router.post("/internal/notifications/send", async (req, res) => {
       throw err;
     });
 
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// ── Prompt 14 — internal engine triggers ───────────────────────────────────
+
+const signalRecalcSchema = z.object({
+  blueprintId: z.string().uuid(),
+  triggerEventId: z.string().uuid().optional(),
+});
+
+router.post("/internal/signals/recalculate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = signalRecalcSchema.parse(req.body);
+
+    const eventId = await writeEvent({
+      eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
+      entityType: "blueprint",
+      entityId: input.blueprintId,
+      blueprintId: input.blueprintId,
+      payload: {
+        trigger: "internal_manual",
+        ...(input.triggerEventId ? { trigger_event_id: input.triggerEventId } : {}),
+      },
+      idempotencyKey: `signal_recalc_manual:${input.blueprintId}:${Date.now()}`,
+    });
+
+    success(res, { queued: true, eventId });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+router.post("/internal/blueprints/:id/complete", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const { id } = req.params;
+
+    const [blueprint] = await db
+      .select({ user_id: blueprints.user_id })
+      .from(blueprints)
+      .where(eq(blueprints.id, id))
+      .limit(1);
+
+    if (!blueprint) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const result = await completeBlueprint({ blueprintId: id, userId: blueprint.user_id });
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const forcePauseSchema = z.object({ reason: z.string().optional() });
+
+router.post("/internal/blueprints/:id/force-pause", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const { id } = req.params;
+    const input = forcePauseSchema.parse(req.body ?? {});
+
+    const [blueprint] = await db
+      .select({ user_id: blueprints.user_id })
+      .from(blueprints)
+      .where(eq(blueprints.id, id))
+      .limit(1);
+
+    if (!blueprint) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    await pauseBlueprint({
+      blueprintId: id,
+      userId: blueprint.user_id,
+      reason: input.reason ?? "System forced pause",
+      skipGuards: true,
+    });
+    success(res, { paused: true });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const validateOutcomeSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  targetId: z.string().uuid().optional(),
+  claimText: z.string().optional(),
+  evidenceText: z.string().optional(),
+  sourceType: z.string(),
+  sourceId: z.string(),
+});
+
+router.post("/internal/outcomes/validate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = validateOutcomeSchema.parse(req.body);
+    const result = await validateOutcome(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const resolveFalseProgressSchema = z.object({ resolutionNote: z.string().min(5) });
+
+router.post("/internal/false-progress/:id/resolve", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = resolveFalseProgressSchema.parse(req.body);
+    await resolveFlag(req.params.id!, input.resolutionNote);
+    success(res, { resolved: true });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const evaluateRewardSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid().optional(),
+  sourceType: z.enum([
+    "FEEDBACK",
+    "SIGNAL",
+    "IDENTITY",
+    "MILESTONE",
+    "OUTCOME",
+    "INACTIVITY",
+    "CAPABILITY",
+  ]),
+  sourceId: z.string(),
+  stateVersion: z.number(),
+  idempotencyKey: z.string().min(1),
+});
+
+router.post("/internal/rewards/evaluate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = evaluateRewardSchema.parse(req.body);
+    const result = await evaluateReward(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const evaluateIdentitySchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  reason: z.string().optional(),
+  windowDays: z.number().optional(),
+});
+
+router.post("/internal/identity/evaluate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = evaluateIdentitySchema.parse(req.body);
+    const result = await evaluateIdentity(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+router.post("/internal/inactivity/scan", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const result = await scanForInactivity();
     success(res, result);
   } catch (err) {
     handleError(req, res, err);

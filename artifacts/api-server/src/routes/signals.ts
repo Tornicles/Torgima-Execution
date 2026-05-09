@@ -120,28 +120,34 @@ router.get("/signals/history", async (req, res) => {
           .limit(1);
 
     if (!bp) {
-      success(res, []);
+      success(res, { snapshots: [], blueprintId: null });
       return;
     }
 
-    const rows = await db
+    const limit = Math.min(parseInt(String(req.query.limit ?? "30"), 10) || 30, 90);
+
+    const snapshots = await db
       .select({
         id: signalSnapshots.id,
-        blueprint_id: signalSnapshots.blueprint_id,
         window_start: signalSnapshots.window_start,
         window_end: signalSnapshots.window_end,
         completion_rate: signalSnapshots.completion_rate,
         weighted_score: signalSnapshots.weighted_score,
+        momentum: signalSnapshots.momentum,
+        trend: signalSnapshots.trend,
+        confidence: signalSnapshots.confidence,
+        blocker_ratio: signalSnapshots.blocker_ratio,
+        skip_ratio: signalSnapshots.skip_ratio,
         assigned_condition: signalSnapshots.assigned_condition,
         is_current: signalSnapshots.is_current,
         created_at: signalSnapshots.created_at,
       })
       .from(signalSnapshots)
       .where(eq(signalSnapshots.blueprint_id, bp.id))
-      .orderBy(desc(signalSnapshots.created_at))
-      .limit(30);
+      .orderBy(desc(signalSnapshots.window_end))
+      .limit(limit);
 
-    success(res, rows);
+    success(res, { snapshots, blueprintId: bp.id });
   } catch (e) {
     if (isTorgimaError(e)) {
       failure(res, e.code, e.message, torgimaErrorToStatus(e.code));

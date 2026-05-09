@@ -33,6 +33,17 @@ router.get("/onboarding/status", async (req, res) => {
   }
 });
 
+// POST /api/onboarding/complete — Prompt 14
+router.post("/onboarding/complete", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    await db.update(users).set({ onboarding_complete: true }).where(eq(users.id, auth.userId));
+    success(res, { onboardingComplete: true });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // POST /api/onboarding/goal — Prompt 5 full validation flow
 router.post("/onboarding/goal", async (req, res) => {
   try {

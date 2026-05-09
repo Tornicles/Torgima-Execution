@@ -14,6 +14,8 @@ export async function pauseBlueprint(params: {
   blueprintId: string;
   userId: string;
   reason?: string;
+  /** Internal force-pause — skips open pivot-review gate. */
+  skipGuards?: boolean;
 }): Promise<void> {
   const [blueprint] = await db
     .select()
@@ -48,14 +50,16 @@ export async function pauseBlueprint(params: {
     );
   }
 
-  const [openPivot] = await db
-    .select({ id: pivotReviews.id })
-    .from(pivotReviews)
-    .where(and(eq(pivotReviews.blueprint_id, params.blueprintId), eq(pivotReviews.status, "open")))
-    .limit(1);
+  if (!params.skipGuards) {
+    const [openPivot] = await db
+      .select({ id: pivotReviews.id })
+      .from(pivotReviews)
+      .where(and(eq(pivotReviews.blueprint_id, params.blueprintId), eq(pivotReviews.status, "open")))
+      .limit(1);
 
-  if (openPivot) {
-    throw new TorgimaError("PIVOT_REVIEW_OPEN", "Resolve the open pivot review before pausing", false);
+    if (openPivot) {
+      throw new TorgimaError("PIVOT_REVIEW_OPEN", "Resolve the open pivot review before pausing", false);
+    }
   }
 
   const now = new Date();

@@ -14,6 +14,10 @@ import notificationsRouter from "./notifications.js";
 import intelligenceRouter from "./intelligence.js";
 import engagementRouter from "./engagement.js";
 import internalRouter from "./internal.js";
+import academyRouter from "./academy.js";
+import rewardsRouter from "./rewards.js";
+import capabilityRouter from "./capability.js";
+import identityRouter from "./identity.js";
 
 const router = Router();
 
@@ -31,6 +35,10 @@ router.use(bhudhiRouter);
 router.use(notificationsRouter);
 router.use(intelligenceRouter);
 router.use(engagementRouter);
+router.use(academyRouter);
+router.use(rewardsRouter);
+router.use(capabilityRouter);
+router.use(identityRouter);
 router.use(internalRouter);
 
 export default router;
