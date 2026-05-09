@@ -54,6 +54,7 @@ artifacts/torgima/src/
 - **pg-boss for background work**: All async work (signal recalculation, task generation) is enqueued via pg-boss, not handled inline during HTTP requests.
 - **Routes return API responses via `success()` / `handleError()`**: Never raw `res.json()` in route handlers.
 - **Demo user in Prompt 1**: Auth not yet implemented. All routes use `UserService.getDemoUser()` for the demo user `demo-user-001`. Auth comes in Prompt 2.
+- **Prompt 2 complete**: Full 58-table Drizzle ORM schema pushed to PostgreSQL. 6 partial unique indexes, 11 updated_at triggers, seed data (14 feature flags, 3 dev users, 10 global knowledge objects) applied and verified.
 
 ## Product
 
@@ -71,6 +72,7 @@ Torgima executes on the principle that most people fail not because they lack go
 - All server logging via `req.log` (routes) and `logger` (elsewhere) — never `console.log`
 - All engine files use `TODO (Prompt N+)` comments to indicate stub status
 - In-memory stores for Prompt 1, database in Prompt 3
+- `knowledge_objects.id` is `text` type (not UUID) to support descriptive string IDs for global knowledge objects
 
 ## Gotchas
 
@@ -78,6 +80,9 @@ Torgima executes on the principle that most people fail not because they lack go
 - Never rename the OpenAPI `info.title: Api` — it controls generated filenames
 - pg-boss `ConstructorOptions` does NOT include `deleteAfterSeconds` (that's a `QueueOptions` property)
 - `WorkHandler` in pg-boss v12 receives `Job<T>[]` (array), not a single job
+- After any `drizzle-kit push` that recreates tables, re-run `psql $DATABASE_URL -f scripts/apply-partial-indexes.sql` to restore the 6 partial unique indexes
+- `pnpm --filter @workspace/db run seed` is idempotent (safe to re-run; uses onConflictDoNothing / onConflictDoUpdate)
+- `pnpm --filter @workspace/db run verify` runs all 8 Prompt 2 database verification checks
 
 ## Pointers
 
