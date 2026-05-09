@@ -7,6 +7,7 @@ import {
   systemHealthLogs,
   deadLetterEvents,
   taskGenerationLog,
+  enforcementPackages,
 } from "@workspace/db";
 import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -149,7 +150,26 @@ export async function guaranteeTask(params: {
     })
     .catch(() => null);
 
-  return { state: "DEAD_LETTERED" };
+  try {
+    const pkgId = await currentEnforcementPackageId(blueprintId);
+    const emergencyId = await insertEmergencyRecoveryOrder({
+      blueprintId,
+      userId,
+      goal: blueprint.goal,
+      enforcementPackageId: pkgId,
+    });
+    logger.warn({ blueprintId, orderId: emergencyId }, "[Guarantee] Emergency recovery order after dead letter");
+    return { state: "RECOVER_EMPTY", orderId: emergencyId };
+  } catch (error) {
+    logger.error(
+      {
+        blueprintId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "[Guarantee] DEAD_LETTERED — emergency insert failed",
+    );
+    return { state: "DEAD_LETTERED" };
+  }
 }
 
 async function findActionableOrder(blueprintId: string, userId: string): Promise<string | null> {
@@ -169,36 +189,58 @@ async function findActionableOrder(blueprintId: string, userId: string): Promise
   return order?.id ?? null;
 }
 
+async function currentEnforcementPackageId(blueprintId: string): Promise<string | undefined> {
+  const [pkg] = await db
+    .select({ id: enforcementPackages.id })
+    .from(enforcementPackages)
+    .where(and(eq(enforcementPackages.blueprint_id, blueprintId), eq(enforcementPackages.is_current, true)))
+    .limit(1);
+  return pkg?.id;
+}
+
+/** Direct DB insert — throws on failure (for emergency path). */
+async function insertEmergencyRecoveryOrder(params: {
+  blueprintId: string;
+  userId: string;
+  goal: string;
+  enforcementPackageId?: string;
+}): Promise<string> {
+  const [order] = await db
+    .insert(orders)
+    .values({
+      blueprint_id: params.blueprintId,
+      user_id: params.userId,
+      enforcement_package_id: params.enforcementPackageId,
+      task_type: "recovery",
+      title: "Return to Execution",
+      instruction: `Your execution system is ready and waiting.\n\nYour goal: "${params.goal.slice(0, 200)}"\n\nChoose one small, concrete action you can complete today toward this goal. Write it down, execute it, then submit feedback.`,
+      expected_output: "One completed action with feedback submitted.",
+      definition_of_done:
+        "You completed one action and submitted feedback describing what you did.",
+      why_it_matters:
+        "Returning to execution is the most important step. One task restarts momentum.",
+      time_estimate_minutes: 20,
+      proof_required: false,
+      difficulty: "very_easy",
+      priority: 3,
+      status: "pending",
+      generation_reason: "guarantee_hold_task",
+      domain: "delivery",
+    })
+    .returning({ id: orders.id });
+
+  if (!order?.id) throw new Error("emergency recovery order insert returned no id");
+  return order.id;
+}
+
 async function createHoldTask(
   blueprintId: string,
   userId: string,
   goal: string,
 ): Promise<string | null> {
   try {
-    const [order] = await db
-      .insert(orders)
-      .values({
-        blueprint_id: blueprintId,
-        user_id: userId,
-        task_type: "recovery",
-        title: "Return to Execution",
-        instruction: `Your execution system is ready and waiting.\n\nYour goal: "${goal.slice(0, 200)}"\n\nChoose one small, concrete action you can complete today toward this goal. Write it down, execute it, then submit feedback.`,
-        expected_output: "One completed action with feedback submitted.",
-        definition_of_done:
-          "You completed one action and submitted feedback describing what you did.",
-        why_it_matters:
-          "Returning to execution is the most important step. One task restarts momentum.",
-        time_estimate_minutes: 20,
-        proof_required: false,
-        difficulty: "very_easy",
-        priority: 3,
-        status: "pending",
-        generation_reason: "guarantee_hold_task",
-        domain: "delivery",
-      })
-      .returning({ id: orders.id });
-
-    return order?.id ?? null;
+    const pkgId = await currentEnforcementPackageId(blueprintId);
+    return await insertEmergencyRecoveryOrder({ blueprintId, userId, goal, enforcementPackageId: pkgId });
   } catch {
     return null;
   }

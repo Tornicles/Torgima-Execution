@@ -71,8 +71,10 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Postgres URL. Provider must support `LISTEN`/`NOTIFY` and `pg_advisory_lock` (Supabase / Neon / Railway Postgres / RDS all qualify). |
+| `FRONTEND_URL` | Required for production browsers | Exact SPA origin (`https://app.vercel.app`) for credentialed CORS. Comma-separated for multiple preview deployments. Omit in local dev to allow permissive `origin`. |
 | `AI_INTEGRATIONS_ANTHROPIC_API_KEY` | Yes for Bhudhi | Without it, `BhudhiService` will fail; deterministic fallbacks still work. |
 | `RESEND_API_KEY` | Yes in production | Without it, `sendMagicLink` returns `{ sent: false }` and auth doesn't work for new users. Dev mode logs the magic link to the console regardless. |
+| `RESEND_WEBHOOK_SECRET` | Recommended in production | Signing secret from the Resend dashboard for **webhooks**. Used by `POST /api/webhooks/notifications/bounce` (Svix verification). If unset, the public webhook still accepts JSON in development but will not verify signatures. Register the public URL in Resend after deploy. |
 | `EMAIL_FROM` | Recommended | Defaults to `noreply@torgima.com`. |
 | `EMAIL_REPLY_TO` | Optional | Defaults to `support@torgima.com`. |
 | `NODE_ENV` | Yes in production | Set to `production` to enable production logging and disable dev-only fallbacks. |
@@ -80,19 +82,33 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 
 ### CORS
 
-The frontend will send credentialled requests to the API origin (cookies for session). Make sure the API's CORS layer allows the Vercel origin (e.g. `https://<project>.vercel.app` and any custom domain). This is configured in the API's Express app — not in this deployment doc.
+Set **`FRONTEND_URL`** on the API to the exact SPA origin (e.g. `https://your-app.vercel.app`). The API uses **`credentials: true`** and the browser client uses **`credentials: "include"`**. If `FRONTEND_URL` is unset, local development keeps a permissive reflected origin; production should always set it (comma-separated origins are supported for preview deployments).
 
-### Database migrations + seed
+### Database schema + seed
 
-Before first boot of the API:
+**Note:** This repo uses **`pnpm -F @workspace/db push`** (Drizzle Kit *push*). That syncs the Drizzle schema straight to `DATABASE_URL`; it is **not** a ledger of versioned migrations, so there is no automated down-migration path. Review the emitted DDL in staging before applying to production.
+
+Additional SQL in `scripts/` (partial indexes, `updated_at` triggers) is **not** run by `push` and must still be applied explicitly.
+
+Before first boot:
 
 ```bash
-pnpm -F @workspace/db migrate         # drizzle-kit migrate
-pnpm -F @workspace/db tsx src/seed.ts # feature flags + dev users (idempotent)
-node lib/db/dist/verify-db.js         # sanity check: 57 tables, 6 partial indexes, 14 feature flags
+pnpm -F @workspace/db push
+pnpm -F @workspace/db db:partial-indexes
+pnpm -F @workspace/db db:triggers
+pnpm -F @workspace/db tsx src/seed.ts
+pnpm -F @workspace/db verify           # table count + indexes + flags — see lib/db/src/verify-db.ts for expected baselines
 ```
 
-Run migrations from any environment that has `DATABASE_URL`. Seed is idempotent and safe to re-run.
+Run from any machine with `DATABASE_URL`. Seed is idempotent.
+
+### OpenAPI client regeneration
+
+When `lib/api-spec/openapi.yaml` changes, rebuild the React + Zod clients:
+
+```bash
+pnpm -F @workspace/api-spec codegen
+```
 
 ---
 
@@ -109,7 +125,7 @@ GitHub: Tornicles/Torgima-Execution (main)
             Builds artifacts/api-server + lib/db
             Runs:   node dist/server.js  (web)
                     node dist/workers/start.js  (worker)
-            Reads:  DATABASE_URL, AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+            Reads:  DATABASE_URL, FRONTEND_URL, AI_INTEGRATIONS_ANTHROPIC_API_KEY,
                     RESEND_API_KEY, EMAIL_FROM, EMAIL_REPLY_TO,
                     NODE_ENV, LOG_LEVEL, BHUDHI_*
 ```

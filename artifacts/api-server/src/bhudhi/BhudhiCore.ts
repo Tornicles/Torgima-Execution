@@ -1,6 +1,6 @@
-import { db, bhudhiLogs, featureFlags } from "@workspace/db";
+import { db, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { anthropic, BHUDHI_MODEL } from "../lib/anthropic.js";
+import { createBhudhiMessage, BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
 import {
   FORBIDDEN_MODES,
@@ -13,8 +13,6 @@ import { getFallback } from "./FallbackLibrary.js";
 import { validateOutput } from "./OutputValidator.js";
 import { retrieveMemory } from "./MemoryService.js";
 import { checkUsageAllowed, getTimeout, logUsage, updateBhudhiLog } from "./UsageController.js";
-import { VALIDATION_PATHS_LOG_TRIGGER } from "./bhudhiLogMapping.js";
-import type { ValidationPath, ValidationScores, ValidationVerdict } from "../types/validation.js";
 
 function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
   return response.content
@@ -144,13 +142,15 @@ export async function trigger<T = unknown>(
 
   try {
     const userPrompt  = contract.buildUserPrompt(facts);
-    const apiKey      = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+    const apiKey =
+      process.env["ANTHROPIC_API_KEY"]?.trim() ||
+      process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
     if (!apiKey) {
       throw new Error("BHUDHI_NO_API_KEY");
     }
 
     const response = await Promise.race([
-      anthropic.messages.create({
+      createBhudhiMessage({
         model:       BHUDHI_MODEL,
         max_tokens:  contract.maxTokens,
         temperature: contract.temperature,
@@ -260,171 +260,6 @@ export async function explainState(params: {
       currentTaskTitle:  params.currentTaskTitle,
     },
   });
-}
-
-/**
- * Validation execution paths (three-path JSON) — Anthropic lives here only, not in ValidationEngine.
- */
-export async function generateValidationPathsWithBhudhi(params: {
-  userId:          string;
-  blueprintId:     string;
-  goal:             string;
-  purpose?:         string;
-  timeframe?:       string;
-  commitmentLevel?: string;
-  scores:           ValidationScores;
-  verdict:          ValidationVerdict;
-}): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
-  const start = Date.now();
-
-  const usageCheck = await checkUsageAllowed({ userId: params.userId, triggerType: "validation_paths" });
-  if (!usageCheck.allowed) {
-    throw new Error(usageCheck.reason ?? "usage_cap");
-  }
-
-  const [aiFlag] = await db
-    .select({ enabled: featureFlags.enabled })
-    .from(featureFlags)
-    .where(eq(featureFlags.feature_name, "ai_enabled"))
-    .limit(1);
-
-  if (!aiFlag?.enabled || !process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
-    throw new Error("ai_disabled");
-  }
-
-  const [logRow] = await db
-    .insert(bhudhiLogs)
-    .values({
-      user_id:      params.userId,
-      blueprint_id: params.blueprintId,
-      request_type: "other",
-      trigger_type: VALIDATION_PATHS_LOG_TRIGGER,
-      input_json:   { blueprintId: params.blueprintId, kind: "validation_paths_v1" },
-      prompt_version: "validation.paths.v1",
-      model_used: BHUDHI_MODEL,
-      token_count_in: 0,
-      token_count_out: 0,
-      latency_ms: 0,
-      validation_status: "pending",
-    })
-    .returning({ id: bhudhiLogs.id });
-
-  if (!logRow) {
-    throw new Error("BhudhiLog intent failed");
-  }
-
-  const logId = logRow.id;
-
-  const systemPrompt = `You are the Torgima Validation Engine. Your ONLY job is to output a JSON object with three execution path options based on the user's goal.
-
-RULES:
-- Return ONLY valid JSON. No markdown, no explanation, no preamble.
-- Each path must be realistic and actionable.
-- Do not invent facts about the user.
-- Keep rationale to 1–2 sentences maximum.
-- planSkeleton.plans must have 2–3 items. planSkeleton.targets must have 2–3 items.
-- riskLevel must be "low", "medium", or "high".
-- Never suggest the user abandon their goal entirely.`;
-
-  const userPrompt = `Goal: "${params.goal}"
-Purpose: "${params.purpose ?? "not provided"}"
-Timeframe: "${params.timeframe ?? "not provided"}"
-Commitment: "${params.commitmentLevel ?? "not provided"}"
-Clarity score: ${params.scores.clarity.score}/100 — ${params.scores.clarity.finding}
-Feasibility score: ${params.scores.feasibility.score}/100 — ${params.scores.feasibility.finding}
-Verdict: ${params.verdict}
-
-Generate three execution paths. Return this EXACT JSON structure and nothing else:
-{
-  "current": {
-    "type": "current",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  },
-  "adjusted": {
-    "type": "adjusted",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "keyChanges": "...",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  },
-  "alternative": {
-    "type": "alternative",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "keyChanges": "...",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  }
-}`;
-
-  try {
-    const response = await Promise.race([
-      anthropic.messages.create({
-        model:       BHUDHI_MODEL,
-        max_tokens:  1200,
-        temperature: 0.2,
-        system:      systemPrompt,
-        messages:    [{ role: "user", content: userPrompt }],
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), getTimeout("GOAL_STRUCTURING"))),
-    ]);
-
-    const rawText = extractTextBlocks(response);
-    const cleaned = rawText.replace(/```json|```/g, "").trim();
-    const parsed  = JSON.parse(cleaned) as {
-      current: ValidationPath;
-      adjusted: ValidationPath;
-      alternative: ValidationPath;
-    };
-
-    if (!parsed.current || !parsed.adjusted || !parsed.alternative) {
-      throw new Error("Bhudhi returned incomplete path structure");
-    }
-
-    parsed.current.type      = "current";
-    parsed.adjusted.type     = "adjusted";
-    parsed.alternative.type  = "alternative";
-
-    const latency = Date.now() - start;
-    await updateBhudhiLog({
-      logId,
-      inputTokens: response.usage?.input_tokens ?? 0,
-      outputTokens: response.usage?.output_tokens ?? 0,
-      latencyMs: latency,
-      status: "success",
-    }).catch(() => null);
-
-    return parsed;
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    await updateBhudhiLog({
-      logId,
-      latencyMs: Date.now() - start,
-      status: "error",
-      errorCode: errMsg,
-      fallbackReason: errMsg,
-    }).catch(() => null);
-    throw err;
-  }
 }
 
 /** @deprecated Prefer {@link trigger}. Legacy adapter for older routes. */

@@ -12,15 +12,17 @@ export interface HealthStatus {
 export interface User {
   id: string;
   email: string;
-  name: string;
-  onboardingCompleted: boolean;
   /** @nullable */
-  timezone?: string | null;
-  createdAt: string;
+  displayName?: string | null;
+  mode: string;
+  tier: string;
+  onboardingComplete: boolean;
+  timezone: string;
+  notificationPreferences: Record<string, unknown>;
 }
 
 export interface UserUpdate {
-  name?: string;
+  display_name?: string;
   timezone?: string;
 }
 
@@ -343,11 +345,13 @@ export type SignalStateCondition =
   (typeof SignalStateCondition)[keyof typeof SignalStateCondition];
 
 export const SignalStateCondition = {
-  optimal: "optimal",
-  building: "building",
-  recovering: "recovering",
-  critical: "critical",
-  blocked: "blocked",
+  nothingness: "nothingness",
+  danger: "danger",
+  urgency: "urgency",
+  stability: "stability",
+  power: "power",
+  affluence: "affluence",
+  power_change: "power_change",
 } as const;
 
 export interface SignalState {
@@ -481,14 +485,14 @@ export interface SignalSnapshot {
   momentum: number;
   consistency: number;
   velocity: number;
-  condition: string;
+  condition: SignalStateCondition;
   snapshotDate: string;
 }
 
 /**
  * @nullable
  */
-export type DashboardStateActiveBlueprint = { [key: string]: unknown } | null;
+export type DashboardStateActiveBlueprint = Blueprint | null;
 
 export interface DashboardState {
   user: User;

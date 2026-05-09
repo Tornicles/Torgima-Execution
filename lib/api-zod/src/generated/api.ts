@@ -20,27 +20,31 @@ export const HealthCheckResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
-  name: zod.string(),
-  onboardingCompleted: zod.boolean(),
-  timezone: zod.string().nullish(),
-  createdAt: zod.string(),
+  displayName: zod.string().nullish(),
+  mode: zod.string(),
+  tier: zod.string(),
+  onboardingComplete: zod.boolean(),
+  timezone: zod.string(),
+  notificationPreferences: zod.record(zod.string(), zod.unknown()),
 });
 
 /**
  * @summary Update current user profile
  */
 export const UpdateMeBody = zod.object({
-  name: zod.string().optional(),
+  display_name: zod.string().optional(),
   timezone: zod.string().optional(),
 });
 
 export const UpdateMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
-  name: zod.string(),
-  onboardingCompleted: zod.boolean(),
-  timezone: zod.string().nullish(),
-  createdAt: zod.string(),
+  displayName: zod.string().nullish(),
+  mode: zod.string(),
+  tier: zod.string(),
+  onboardingComplete: zod.boolean(),
+  timezone: zod.string(),
+  notificationPreferences: zod.record(zod.string(), zod.unknown()),
 });
 
 /**
@@ -1018,11 +1022,13 @@ export const GetCurrentSignalsResponse = zod.object({
   consistency: zod.number(),
   velocity: zod.number(),
   condition: zod.enum([
-    "optimal",
-    "building",
-    "recovering",
-    "critical",
-    "blocked",
+    "nothingness",
+    "danger",
+    "urgency",
+    "stability",
+    "power",
+    "affluence",
+    "power_change",
   ]),
   streak: zod.number().optional(),
   computedAt: zod.string(),
@@ -1037,7 +1043,15 @@ export const GetSignalHistoryResponseItem = zod.object({
   momentum: zod.number(),
   consistency: zod.number(),
   velocity: zod.number(),
-  condition: zod.string(),
+  condition: zod.enum([
+    "nothingness",
+    "danger",
+    "urgency",
+    "stability",
+    "power",
+    "affluence",
+    "power_change",
+  ]),
   snapshotDate: zod.string(),
 });
 export const GetSignalHistoryResponse = zod.array(GetSignalHistoryResponseItem);
@@ -1049,10 +1063,12 @@ export const GetDashboardStateResponse = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
-    name: zod.string(),
-    onboardingCompleted: zod.boolean(),
-    timezone: zod.string().nullish(),
-    createdAt: zod.string(),
+    displayName: zod.string().nullish(),
+    mode: zod.string(),
+    tier: zod.string(),
+    onboardingComplete: zod.boolean(),
+    timezone: zod.string(),
+    notificationPreferences: zod.record(zod.string(), zod.unknown()),
   }),
   signals: zod.object({
     userId: zod.string(),
@@ -1060,16 +1076,18 @@ export const GetDashboardStateResponse = zod.object({
     consistency: zod.number(),
     velocity: zod.number(),
     condition: zod.enum([
-      "optimal",
-      "building",
-      "recovering",
-      "critical",
-      "blocked",
+      "nothingness",
+      "danger",
+      "urgency",
+      "stability",
+      "power",
+      "affluence",
+      "power_change",
     ]),
     streak: zod.number().optional(),
     computedAt: zod.string(),
   }),
-  activeBlueprint: zod.object({}).passthrough().nullable(),
+  activeBlueprint: ListBlueprintsResponseItem.nullable(),
   activeOrders: zod.array(
     zod.object({
       id: zod.string(),

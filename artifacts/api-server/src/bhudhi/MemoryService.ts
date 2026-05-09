@@ -1,5 +1,5 @@
 import { db, bhudhiMemory } from "@workspace/db";
-import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 
@@ -127,8 +127,6 @@ export async function expireMemory(userId: string, blueprintId?: string): Promis
       and(
         eq(bhudhiMemory.user_id, userId),
         blueprintId ? eq(bhudhiMemory.blueprint_id, blueprintId) : sql`true`,
-        isNotNull(bhudhiMemory.expires_at),
-        lt(bhudhiMemory.expires_at, new Date()),
       ),
     );
 }

@@ -167,8 +167,8 @@ router.post("/outcomes/:id/evidence", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const input = evidenceSchema.parse(req.body);
-    const sourceId = req.params["id"];
-    if (!sourceId) {
+    const outcomeValidationId = req.params["id"];
+    if (!outcomeValidationId) {
       failure(res, "VALIDATION_ERROR", "Missing id", 400);
       return;
     }
@@ -184,6 +184,23 @@ router.post("/outcomes/:id/evidence", async (req, res) => {
       return;
     }
 
+    const [ownedRow] = await db
+      .select({ id: outcomeValidations.id })
+      .from(outcomeValidations)
+      .where(
+        and(
+          eq(outcomeValidations.id, outcomeValidationId),
+          eq(outcomeValidations.blueprint_id, blueprint.id),
+          eq(outcomeValidations.user_id, auth.userId),
+        ),
+      )
+      .limit(1);
+
+    if (!ownedRow) {
+      failure(res, "NOT_FOUND", "Outcome validation not found for this blueprint", 404);
+      return;
+    }
+
     const result = await validateOutcome({
       userId:       auth.userId,
       blueprintId:  blueprint.id,
@@ -191,7 +208,7 @@ router.post("/outcomes/:id/evidence", async (req, res) => {
       claimText:    input.claimText,
       evidenceText: input.evidenceText,
       sourceType:   "USER_CLAIM",
-      sourceId,
+      sourceId:     ownedRow.id,
     });
 
     success(res, result);

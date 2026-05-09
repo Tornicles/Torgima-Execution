@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { users, sessions } from "@workspace/db";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, like } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { sendEmail } from "../lib/resend.js";
@@ -31,15 +31,10 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
     userId = newUser.id;
   }
 
-  // Delete any existing magic link sessions for this user (single active link)
+  // Delete only pending magic-link rows (prefix `magic:`), not long-lived user sessions
   await db
     .delete(sessions)
-    .where(
-      and(
-        eq(sessions.user_id, userId),
-        gt(sessions.expires_at, new Date()),
-      ),
-    )
+    .where(and(eq(sessions.user_id, userId), like(sessions.token_hash, `${MAGIC_PREFIX}%`)))
     .catch(() => null);
 
   // Store magic link as a short-lived session row

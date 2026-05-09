@@ -14,6 +14,9 @@ import {
   orderKnowledgeLinks,
   taskGenerationLog,
   featureFlags,
+  weeklyReviews,
+  habits,
+  habitCheckins,
 } from "@workspace/db";
 import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -151,8 +154,66 @@ async function loadContext(params: {
     .orderBy(desc(orders.created_at))
     .limit(20);
 
+  const [lastWeekly] = await db
+    .select({ created_at: weeklyReviews.created_at })
+    .from(weeklyReviews)
+    .where(and(eq(weeklyReviews.blueprint_id, blueprintId), eq(weeklyReviews.user_id, userId)))
+    .orderBy(desc(weeklyReviews.created_at))
+    .limit(1);
+
+  const daysSinceWeeklyReview = lastWeekly?.created_at
+    ? (Date.now() - lastWeekly.created_at.getTime()) / 86400000
+    : 999;
+
+  const [{ blockedOpenCount = 0 } = { blockedOpenCount: 0 }] = await db
+    .select({ blockedOpenCount: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.blueprint_id, blueprintId),
+        eq(orders.user_id, userId),
+        eq(orders.status, "blocked"),
+      ),
+    );
+
+  const activeHabitRows = await db
+    .select()
+    .from(habits)
+    .where(
+      and(eq(habits.blueprint_id, blueprintId), eq(habits.user_id, userId), eq(habits.active, true)),
+    );
+
+  let habitCheckinDue = false;
+  for (const h of activeHabitRows) {
+    const [lastCh] = await db
+      .select({ created_at: habitCheckins.created_at })
+      .from(habitCheckins)
+      .where(eq(habitCheckins.habit_id, h.id))
+      .orderBy(desc(habitCheckins.created_at))
+      .limit(1);
+
+    const freq = (h.frequency ?? "daily").toLowerCase();
+    const intervalH = freq === "weekly" ? 24 * 7 - 4 : 20;
+    if (!lastCh) {
+      habitCheckinDue = true;
+      break;
+    }
+    const hoursSince = (Date.now() - lastCh.created_at.getTime()) / 3600000;
+    if (hoursSince >= intervalH) {
+      habitCheckinDue = true;
+      break;
+    }
+  }
+
   const taskLimits = (pkg.task_limits as { min?: number; max?: number }) ?? { min: 1, max: 3 };
   const overrideFlags = (pkg.override_flags as Record<string, unknown>) ?? {};
+
+  const allowedRaw = pkg.allowed_actions;
+  const allowed_actions: string[] = Array.isArray(allowedRaw)
+    ? allowedRaw.map((a) => String(a))
+    : typeof allowedRaw === "string"
+      ? [allowedRaw]
+      : [];
 
   return {
     blueprint: {
@@ -170,7 +231,7 @@ async function loadContext(params: {
     enforcement: {
       task_limits: { min: taskLimits.min ?? 1, max: taskLimits.max ?? 3 },
       difficulty_cap: pkg.difficulty_cap as string,
-      allowed_actions: pkg.allowed_actions ?? [],
+      allowed_actions,
       blocked_actions: pkg.blocked_actions ?? [],
       ai_mode: (pkg.ai_mode as string) ?? "command",
       recovery_required: Boolean(overrideFlags["recovery_required"]),
@@ -188,6 +249,10 @@ async function loadContext(params: {
     enforcement_package_id: pkg.id,
     generation_mode: params.generationMode,
     generation_trigger: params.generationTrigger,
+    days_since_weekly_review: daysSinceWeeklyReview,
+    blocked_open_count: blockedOpenCount ?? 0,
+    habit_checkin_due: habitCheckinDue,
+    has_active_habits: activeHabitRows.length > 0,
   };
 }
 
@@ -237,12 +302,34 @@ function normalizeGenerationTrigger(raw: string): (typeof taskGenerationLog.$inf
 
 // ── TASK TYPE SELECTION ───────────────────────────────────────────────────────
 
+function allowedAction(ctx: Awaited<ReturnType<typeof loadContext>>, key: string): boolean {
+  const k = key.toLowerCase();
+  return ctx.enforcement.allowed_actions.some((a) => String(a).toLowerCase() === k);
+}
+
 function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
   const { enforcement, phase, action, generation_mode } = ctx;
 
   if (generation_mode === "recovery" || enforcement.recovery_required) return "recovery";
 
   if (phase?.status === "gated") return "phase_checkpoint";
+
+  if ((ctx.blocked_open_count ?? 0) > 0) return "blocker_resolution";
+
+  const capabilityGap =
+    enforcement.difficulty_cap === "hard" ||
+    enforcement.difficulty_cap === "very_hard" ||
+    ctx.capability.level === "beginner" ||
+    (ctx.capability.execution_quality ?? 0) < 0.45 ||
+    (ctx.capability.consistency ?? 0) < 0.4;
+
+  if (capabilityGap && allowedAction(ctx, "academy_tasks")) return "academy";
+
+  if ((ctx.days_since_weekly_review ?? 0) >= 7 && allowedAction(ctx, "weekly_review")) return "review";
+
+  if (ctx.habit_checkin_due && ctx.has_active_habits && allowedAction(ctx, "habit_checkins")) {
+    return "habit";
+  }
 
   if (!action && !ctx.project) return "clarification";
 
@@ -487,6 +574,7 @@ async function enrichWithBhudhi(
   content: BuiltContent,
   ctx: Awaited<ReturnType<typeof loadContext>>,
   userId: string,
+  taskType: string,
 ): Promise<BuiltContent | null> {
   const [bp] = await db
     .select({ state_version: blueprints.state_version })
@@ -504,11 +592,14 @@ async function enrichWithBhudhi(
     facts: {
       goal:           ctx.blueprint.goal,
       domain:         ctx.blueprint.current_domain ?? "delivery",
-      taskType:       ctx.generation_mode,
+      taskType:       taskType,
       actionContext:  ctx.action?.name ?? ctx.target?.name ?? "next step",
       difficulty:     content.time_estimate_minutes > 60 ? "hard" : "moderate",
       proofType:      content.proof_type ?? "none",
-      condition:      "urgency",
+      condition:
+        ctx.enforcement.condition_code ??
+        ctx.blueprint.current_condition ??
+        "nothingness",
       allowedActions: ctx.enforcement.allowed_actions,
     },
   });
@@ -599,7 +690,7 @@ export async function generate(params: {
           and(
             eq(orders.blueprint_id, params.blueprintId),
             eq(orders.user_id, params.userId),
-            eq(orders.status, "pending"),
+            inArray(orders.status, ["pending", "active"]),
             inArray(orders.difficulty, invalidDifficulties),
           ),
         );
@@ -673,13 +764,19 @@ export async function generate(params: {
     .where(eq(featureFlags.feature_name, "ai_enabled"))
     .limit(1);
 
-  if (
-    aiFlag?.enabled &&
-    taskType === "execution"
-  ) {
+  const bhudhiEligibleTypes = new Set([
+    "execution",
+    "academy",
+    "review",
+    "habit",
+    "phase_checkpoint",
+    "blocker_resolution",
+  ]);
+
+  if (aiFlag?.enabled && bhudhiEligibleTypes.has(taskType)) {
     try {
       const enriched = await Promise.race([
-        enrichWithBhudhi(content, ctx, params.userId),
+        enrichWithBhudhi(content, ctx, params.userId, taskType),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
       ]);
       if (enriched) {
@@ -767,29 +864,29 @@ export async function generate(params: {
         .catch(() => null);
     }
 
-    return order.id;
-  });
+    await tx.insert(taskGenerationLog).values({
+      blueprint_id: params.blueprintId,
+      user_id: params.userId,
+      generation_trigger: normalizeGenerationTrigger(params.generationTrigger),
+      generation_mode: normalizeGenerationMode(params.generationMode),
+      condition_at_generation: enforcement.condition_code,
+      enforcement_package_id: ctx.enforcement_package_id,
+      capability_level: ctx.capability.level,
+      domain_at_generation: domainGen,
+      input_json: { task_type: taskType, difficulty },
+      orders_generated: 1,
+      order_ids: [order.id],
+      used_fallback: usedFallback,
+      ai_used: usedBhudhi,
+    });
 
-  await insertGenerationLog({
-    blueprintId: params.blueprintId,
-    userId: params.userId,
-    generationTrigger: params.generationTrigger,
-    generationMode: params.generationMode,
-    conditionAtGeneration: enforcement.condition_code,
-    enforcementPackageId: ctx.enforcement_package_id,
-    capabilityLevel: ctx.capability.level,
-    domainAtGeneration: domainGen,
-    inputJson: { task_type: taskType, difficulty },
-    orderIds: [orderId],
-    ordersGenerated: 1,
-    usedFallback,
-    aiUsed: usedBhudhi,
+    return order.id;
   });
 
   if (taskType === "execution" && ctx.action) {
     await db
       .update(actions)
-      .set({ status: "pending" })
+      .set({ status: "active" })
       .where(eq(actions.id, ctx.action.id))
       .catch(() => null);
   }

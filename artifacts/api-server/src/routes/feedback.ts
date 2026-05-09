@@ -245,6 +245,12 @@ router.post("/feedback/habit-checkin", async (req, res) => {
         .set({ streak_count: habit.streak_count + 1 })
         .where(eq(habits.id, input.habitId))
         .catch(() => null);
+    } else {
+      await db
+        .update(habits)
+        .set({ streak_count: 0 })
+        .where(eq(habits.id, input.habitId))
+        .catch(() => null);
     }
 
     success(res, { checkinId: checkin?.id, submitted: true });

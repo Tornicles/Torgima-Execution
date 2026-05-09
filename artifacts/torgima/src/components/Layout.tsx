@@ -46,10 +46,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <NavItem href="/settings" icon={Settings} label="Settings" active={location === "/settings"} />
           <div className="mt-4 px-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-sm bg-secondary border border-border flex items-center justify-center text-xs font-mono font-bold">
-              {me?.name?.charAt(0).toUpperCase() || "U"}
+              {(me?.displayName ?? me?.email ?? "U").charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold truncate max-w-[120px]">{me?.name || "Operator"}</span>
+              <span className="text-xs font-bold truncate max-w-[120px]">
+                {me?.displayName ?? me?.email ?? "Operator"}
+              </span>
               <span className="text-[10px] text-muted-foreground font-mono">ID: {me?.id?.slice(0, 6) || "---"}</span>
             </div>
           </div>

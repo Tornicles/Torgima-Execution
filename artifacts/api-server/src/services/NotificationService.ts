@@ -672,6 +672,39 @@ export async function processUnsubscribe(token: string): Promise<{
   return { success: true, notificationType, isGlobal: false };
 }
 
+/** Handles Resend / Svix-compatible JSON payloads (bounce + complaint). */
+export async function applyEmailWebhookEvent(body: Record<string, unknown>): Promise<void> {
+  const type = body["type"];
+
+  if (type === "bounce" || type === "email.bounced") {
+    const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
+    const bounce = (data?.["bounce"] ?? data?.["bounce_data"]) as Record<string, unknown> | undefined;
+    const bounceTypeRaw = String(bounce?.["type"] ?? data?.["bounce_type"] ?? "").toLowerCase();
+    const bounceType = bounceTypeRaw === "hard" ? "hard" : "soft";
+
+    const to =
+      data?.["to"] ??
+      data?.["recipient"] ??
+      data?.["email"] ??
+      (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
+    const email = typeof to === "string" ? to : undefined;
+
+    if (email) await handleBounce(email, bounceType);
+  }
+
+  if (type === "complaint" || type === "email.complained") {
+    const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
+    const to =
+      data?.["to"] ??
+      data?.["recipient"] ??
+      data?.["email"] ??
+      (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
+    const email = typeof to === "string" ? to : undefined;
+
+    if (email) await handleComplaint(email);
+  }
+}
+
 export async function handleBounce(email: string, bounceType: string): Promise<void> {
   if (bounceType !== "hard") return;
 

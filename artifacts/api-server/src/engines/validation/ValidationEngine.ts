@@ -7,7 +7,7 @@ import {
 import { eq, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { trigger, generateValidationPathsWithBhudhi } from "../../bhudhi/BhudhiCore.js";
+import { trigger } from "../../bhudhi/BhudhiCore.js";
 import type {
   ValidationVerdict,
   ValidationScores,
@@ -394,6 +394,72 @@ export function generatePathsDeterministic(params: {
   };
 
   return { current, adjusted, alternative };
+}
+
+/** Uses {@link trigger} GOAL_STRUCTURING (caps, logging, validation) then merges into deterministic paths. */
+export async function generateValidationPathsWithBhudhi(params: {
+  userId:            string;
+  blueprintId:       string;
+  goal:               string;
+  purpose?:           string;
+  timeframe?:         string;
+  commitmentLevel?:   string;
+  scores:             ValidationScores;
+  verdict:            ValidationVerdict;
+}): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
+  const deterministic = generatePathsDeterministic({
+    goal:             params.goal,
+    purpose:          params.purpose,
+    timeframe:        params.timeframe,
+    commitmentLevel:  params.commitmentLevel,
+    scores:           params.scores,
+    verdict:          params.verdict,
+  });
+
+  const [bp] = await db
+    .select({ state_version: blueprints.state_version })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+
+  const purposeAugmented = [
+    params.purpose,
+    `Execution validation — verdict: ${params.verdict}.`,
+    `Scores — clarity ${params.scores.clarity.score}, feasibility ${params.scores.feasibility.score}, realism ${params.scores.realism.score}, usefulness ${params.scores.usefulness.score}, overall ${params.scores.overall}.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const struct = await trigger({
+    sourceEngine:   "validation",
+    triggerType:    "GOAL_STRUCTURING",
+    userId:         params.userId,
+    blueprintId:    params.blueprintId,
+    stateVersion:   bp?.state_version ?? 0,
+    idempotencyKey: `validation_paths:${params.blueprintId}:${Date.now()}`,
+    facts: {
+      rawGoal:         params.goal,
+      purpose:         purposeAugmented,
+      timeframe:       params.timeframe ?? "",
+      commitmentLevel: params.commitmentLevel ?? "medium",
+    },
+  });
+
+  if (!struct.ok || struct.fallbackUsed || !struct.output?.data) {
+    return deterministic;
+  }
+
+  const d = struct.output.data as Record<string, unknown>;
+  const cleaned = String(d["cleanedGoal"] ?? params.goal).trim() || params.goal;
+
+  return generatePathsDeterministic({
+    goal:             cleaned,
+    purpose:          String(d["purpose"] ?? params.purpose ?? ""),
+    timeframe:        String(d["timeframe"] ?? params.timeframe ?? ""),
+    commitmentLevel:  String(d["commitmentLevel"] ?? params.commitmentLevel ?? "medium"),
+    scores:           params.scores,
+    verdict:          params.verdict,
+  });
 }
 
 // ── PATH GENERATION — BHUDHI ──────────────────────────────────────────────────

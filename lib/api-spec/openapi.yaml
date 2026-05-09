@@ -627,25 +627,37 @@ components:
 
     User:
       type: object
-      required: [id, email, name, onboardingCompleted, createdAt]
+      required:
+        - id
+        - email
+        - mode
+        - tier
+        - onboardingComplete
+        - timezone
       properties:
         id:
           type: string
         email:
           type: string
-        name:
+        displayName:
+          type: ["string", "null"]
+          description: User-chosen display name (from `display_name`).
+        mode:
           type: string
-        onboardingCompleted:
+        tier:
+          type: string
+        onboardingComplete:
           type: boolean
         timezone:
-          type: ["string", "null"]
-        createdAt:
           type: string
+        notificationPreferences:
+          type: object
+          additionalProperties: true
 
     UserUpdate:
       type: object
       properties:
-        name:
+        display_name:
           type: string
         timezone:
           type: string
@@ -1163,7 +1175,14 @@ components:
           type: number
         condition:
           type: string
-          enum: [optimal, building, recovering, critical, blocked]
+          enum:
+            - nothingness
+            - danger
+            - urgency
+            - stability
+            - power
+            - affluence
+            - power_change
         streak:
           type: integer
         computedAt:
@@ -1185,6 +1204,14 @@ components:
           type: number
         condition:
           type: string
+          enum:
+            - nothingness
+            - danger
+            - urgency
+            - stability
+            - power
+            - affluence
+            - power_change
         snapshotDate:
           type: string
 
@@ -1197,7 +1224,9 @@ components:
         signals:
           $ref: "#/components/schemas/SignalState"
         activeBlueprint:
-          type: ["object", "null"]
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Blueprint"
         activeOrders:
           type: array
           items:

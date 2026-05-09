@@ -9,9 +9,11 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
-  onboardingCompleted: boolean;
   /** @nullable */
-  timezone?: string | null;
-  createdAt: string;
+  displayName?: string | null;
+  mode: string;
+  tier: string;
+  onboardingComplete: boolean;
+  timezone: string;
+  notificationPreferences: Record<string, unknown>;
 }

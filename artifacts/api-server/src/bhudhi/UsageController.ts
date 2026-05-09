@@ -84,7 +84,7 @@ export async function logUsage(params: {
         errorCode:    params.errorCode,
       },
       prompt_version: params.promptVersion,
-      model_used:     process.env.BHUDHI_MODEL ?? "claude-sonnet-4-6",
+      model_used:     process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514",
       token_count_in: params.inputTokens,
       token_count_out: params.outputTokens,
       latency_ms:     params.latencyMs,

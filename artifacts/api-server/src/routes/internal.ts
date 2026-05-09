@@ -17,7 +17,7 @@ import { trigger } from "../bhudhi/BhudhiCore.js";
 import { getContract } from "../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
-import { handleBounce, handleComplaint, sendNotification } from "../services/NotificationService.js";
+import { applyEmailWebhookEvent, sendNotification } from "../services/NotificationService.js";
 import { NOTIFICATION_TYPES, type NotificationType } from "../constants/notifications.js";
 const router = Router();
 
@@ -300,43 +300,15 @@ router.get("/internal/bhudhi/usage", async (req, res) => {
   }
 });
 
-// POST /api/internal/notifications/bounce — provider webhooks (Resend-compatible shapes)
+// POST /api/internal/notifications/bounce — operator-only; prefer public POST /api/webhooks/notifications/bounce in production.
 router.post("/internal/notifications/bounce", async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
 
     const body = req.body as Record<string, unknown>;
-    logger.info({ type: body["type"] }, "[Webhook] Provider callback received");
+    logger.info({ type: body["type"] }, "[Webhook] Provider callback received (internal)");
 
-    const type = body["type"];
-
-    if (type === "bounce" || type === "email.bounced") {
-      const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
-      const bounce = (data?.["bounce"] ?? data?.["bounce_data"]) as Record<string, unknown> | undefined;
-      const bounceTypeRaw = String(bounce?.["type"] ?? data?.["bounce_type"] ?? "").toLowerCase();
-      const bounceType = bounceTypeRaw === "hard" ? "hard" : "soft";
-
-      const to =
-        data?.["to"] ??
-        data?.["recipient"] ??
-        data?.["email"] ??
-        (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
-      const email = typeof to === "string" ? to : undefined;
-
-      if (email) await handleBounce(email, bounceType);
-    }
-
-    if (type === "complaint" || type === "email.complained") {
-      const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
-      const to =
-        data?.["to"] ??
-        data?.["recipient"] ??
-        data?.["email"] ??
-        (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
-      const email = typeof to === "string" ? to : undefined;
-
-      if (email) await handleComplaint(email);
-    }
+    await applyEmailWebhookEvent(body);
 
     success(res, { received: true });
   } catch (err) {

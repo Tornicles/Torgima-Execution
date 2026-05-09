@@ -1,8 +1,6 @@
 import { db, feedback, signalSnapshots } from "@workspace/db";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
-import type { SignalState } from "../../types/signal.js";
-import { CONDITIONS, type Condition } from "../../constants/conditions.js";
 import type { SignalMetrics as ExportedSignalMetrics } from "./SignalCalculationEngine.types.js";
 
 export type SignalMetrics = ExportedSignalMetrics;
@@ -391,30 +389,4 @@ export function explainSignal(metrics: SignalMetrics, condition: string): string
     power_change:`Execution state is shifting rapidly. Recent performance change detected.`,
   };
   return conditionMessages[condition] ?? `Condition: ${condition}.`;
-}
-
-// ── Legacy class wrapper (SignalService / orchestration) ──────────────────────
-
-export class SignalCalculationEngine {
-  async calculate(userId: string): Promise<SignalState> {
-    logger.info({ userId }, "[SignalCalculationEngine] calculate — use DB snapshot via SignalService");
-    return {
-      userId,
-      momentum:    0,
-      consistency: 0,
-      velocity:    0,
-      condition:   CONDITIONS.NOTHINGNESS,
-      streak:      0,
-      computedAt:  new Date().toISOString(),
-    };
-  }
-
-  computeCondition(momentum: number, consistency: number, velocity: number): Condition {
-    const composite = momentum * 0.34 + consistency * 0.33 + velocity * 0.33;
-    if (composite >= 80) return CONDITIONS.AFFLUENCE;
-    if (composite >= 60) return CONDITIONS.STABILITY;
-    if (composite >= 40) return CONDITIONS.URGENCY;
-    if (composite >= 20) return CONDITIONS.DANGER;
-    return CONDITIONS.NOTHINGNESS;
-  }
 }

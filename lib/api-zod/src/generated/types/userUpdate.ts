@@ -7,6 +7,6 @@
  */
 
 export interface UserUpdate {
-  name?: string;
+  display_name?: string;
   timezone?: string;
 }

@@ -10,7 +10,14 @@ interface ConditionBadgeProps {
 export function ConditionBadge({ condition, className = "" }: ConditionBadgeProps) {
   if (!condition) return <Badge variant="outline" className={`font-mono ${className}`}>UNKNOWN</Badge>;
 
-  const variants: Record<string, { bg: string, text: string, border: string }> = {
+  const variants: Record<string, { bg: string; text: string; border: string }> = {
+    nothingness: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" },
+    danger: { bg: "bg-destructive/20", text: "text-destructive", border: "border-destructive/30" },
+    urgency: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
+    stability: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
+    power: { bg: "bg-primary/20", text: "text-primary", border: "border-primary/30" },
+    affluence: { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/30" },
+    power_change: { bg: "bg-violet-500/20", text: "text-violet-300", border: "border-violet-500/30" },
     optimal: { bg: "bg-primary/20", text: "text-primary", border: "border-primary/30" },
     building: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
     recovering: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },

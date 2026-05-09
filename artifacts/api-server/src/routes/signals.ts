@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, blueprints, signalSnapshots, conditions as conditionsTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { explainSignal } from "../engines/signal/SignalCalculationEngine.js";
@@ -125,6 +125,14 @@ router.get("/signals/history", async (req, res) => {
     }
 
     const limit = Math.min(parseInt(String(req.query.limit ?? "30"), 10) || 30, 90);
+    const offset = Math.max(0, parseInt(String(req.query.offset ?? "0"), 10) || 0);
+
+    const [{ total: totalRaw } = { total: 0 }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(signalSnapshots)
+      .where(eq(signalSnapshots.blueprint_id, bp.id));
+
+    const total = totalRaw ?? 0;
 
     const snapshots = await db
       .select({
@@ -145,9 +153,12 @@ router.get("/signals/history", async (req, res) => {
       .from(signalSnapshots)
       .where(eq(signalSnapshots.blueprint_id, bp.id))
       .orderBy(desc(signalSnapshots.window_end))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
 
-    success(res, { snapshots, blueprintId: bp.id });
+    const hasMore = offset + snapshots.length < total;
+
+    success(res, { snapshots, total, hasMore, blueprintId: bp.id });
   } catch (e) {
     if (isTorgimaError(e)) {
       failure(res, e.code, e.message, torgimaErrorToStatus(e.code));

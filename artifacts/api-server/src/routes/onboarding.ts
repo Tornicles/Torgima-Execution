@@ -33,10 +33,17 @@ router.get("/onboarding/status", async (req, res) => {
   }
 });
 
+const onboardingCompleteBodySchema = z.object({}).strict();
+
 // POST /api/onboarding/complete — Prompt 14
 router.post("/onboarding/complete", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
+    const parsed = onboardingCompleteBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid body", 400);
+      return;
+    }
     await db.update(users).set({ onboarding_complete: true }).where(eq(users.id, auth.userId));
     success(res, { onboardingComplete: true });
   } catch (err) {

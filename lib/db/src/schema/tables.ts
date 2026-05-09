@@ -109,7 +109,9 @@ export const validations = pgTable(
   "validations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blueprint_id: uuid("blueprint_id").notNull(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
     user_id: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -471,7 +473,9 @@ export const projectDependencies = pgTable(
   "project_dependencies",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blueprint_id: uuid("blueprint_id").notNull(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
     blocking_project_id: uuid("blocking_project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
@@ -489,7 +493,9 @@ export const orderDependencies = pgTable(
   "order_dependencies",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blueprint_id: uuid("blueprint_id").notNull(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
     blocking_order_id: uuid("blocking_order_id")
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
@@ -957,6 +963,7 @@ export const rewardEvents = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     blueprint_id: uuid("blueprint_id"),
     milestone_id: uuid("milestone_id"),
+    idempotency_key: text("idempotency_key").notNull(),
     reward_type: text("reward_type").notNull(),
     title: text("title").notNull(),
     description: text("description"),
@@ -968,6 +975,7 @@ export const rewardEvents = pgTable(
   (t) => [
     index("idx_reward_events_user_id").on(t.user_id),
     index("idx_reward_events_delivered").on(t.delivered),
+    uniqueIndex("uniq_reward_events_idempotency").on(t.idempotency_key),
   ],
 );
 
@@ -1187,8 +1195,12 @@ export const outcomeValidations = pgTable(
   "outcome_validations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blueprint_id: uuid("blueprint_id").notNull(),
-    user_id: uuid("user_id").notNull(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     tasks_completed: integer("tasks_completed").notNull().default(0),
     outcomes_verified: integer("outcomes_verified").notNull().default(0),
     alignment_score: doublePrecision("alignment_score").notNull().default(0),
@@ -1203,8 +1215,12 @@ export const falseProgressFlags = pgTable(
   "false_progress_flags",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blueprint_id: uuid("blueprint_id").notNull(),
-    user_id: uuid("user_id").notNull(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     detection_type: text("detection_type").notNull(),
     evidence_json: jsonb("evidence_json").notNull().default(sql`'{}'::jsonb`),
     severity: text("severity"),

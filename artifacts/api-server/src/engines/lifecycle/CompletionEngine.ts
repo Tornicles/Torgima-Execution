@@ -13,12 +13,12 @@ import {
   userIdentityStates,
   inactivityRecords,
 } from "@workspace/db";
-import { eq, and, sql, desc, asc } from "drizzle-orm";
+import { eq, and, sql, desc, asc, inArray } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { evaluateIdentity } from "../identity/IdentityEngine.js";
 import { deactivateBlueprintBhudhiMemory } from "../../bhudhi/MemoryService.js";
-import { notifyBlueprintCompleted } from "../../services/notification/LifecycleNotificationWiring.js";
+import { notifyBlueprintCompleted, notifyMilestoneAchieved } from "../../services/notification/LifecycleNotificationWiring.js";
 
 export interface CompletionCheckResult {
   eligible: boolean;
@@ -196,6 +196,8 @@ export async function completeBlueprint(params: {
     completed_at: now.toISOString(),
   };
 
+  let blueprintCompleteMilestoneId: string | undefined;
+
   await db.transaction(async (tx: Tx) => {
     await tx
       .update(blueprints)
@@ -210,22 +212,32 @@ export async function completeBlueprint(params: {
     await tx
       .update(orders)
       .set({ status: "cancelled" })
-      .where(and(eq(orders.blueprint_id, params.blueprintId), eq(orders.status, "pending")));
+      .where(
+        and(
+          eq(orders.blueprint_id, params.blueprintId),
+          inArray(orders.status, ["pending", "active", "needs_feedback", "needs_proof", "blocked"]),
+        ),
+      );
 
     await tx
       .update(stateMemory)
       .set({ is_current: false, exited_at: now })
       .where(and(eq(stateMemory.blueprint_id, params.blueprintId), eq(stateMemory.is_current, true)));
 
-    await tx.insert(milestones).values({
-      user_id: params.userId,
-      blueprint_id: params.blueprintId,
-      type: "blueprint_complete",
-      title: "Blueprint Complete",
-      description: `Goal achieved after ${fc} verified execution cycles.`,
-      metadata_json: completionSummary,
-      seen_by_user: false,
-    });
+    const [mile] = await tx
+      .insert(milestones)
+      .values({
+        user_id: params.userId,
+        blueprint_id: params.blueprintId,
+        type: "blueprint_complete",
+        title: "Blueprint Complete",
+        description: `Goal achieved after ${fc} verified execution cycles.`,
+        metadata_json: completionSummary,
+        seen_by_user: false,
+      })
+      .returning({ id: milestones.id });
+
+    blueprintCompleteMilestoneId = mile?.id;
 
     await writeEventInTx(
       {
@@ -240,6 +252,16 @@ export async function completeBlueprint(params: {
       tx,
     );
   });
+
+  if (blueprintCompleteMilestoneId) {
+    await notifyMilestoneAchieved({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      milestoneId: blueprintCompleteMilestoneId,
+      milestoneTitle: "Blueprint Complete",
+      milestoneDesc: `Goal achieved after ${fc} verified execution cycles.`,
+    }).catch(() => null);
+  }
 
   const [bpMeta] = await db
     .select({ created_at: blueprints.created_at })

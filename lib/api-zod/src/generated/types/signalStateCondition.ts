@@ -10,9 +10,11 @@ export type SignalStateCondition =
   (typeof SignalStateCondition)[keyof typeof SignalStateCondition];
 
 export const SignalStateCondition = {
-  optimal: "optimal",
-  building: "building",
-  recovering: "recovering",
-  critical: "critical",
-  blocked: "blocked",
+  nothingness: "nothingness",
+  danger: "danger",
+  urgency: "urgency",
+  stability: "stability",
+  power: "power",
+  affluence: "affluence",
+  power_change: "power_change",
 } as const;

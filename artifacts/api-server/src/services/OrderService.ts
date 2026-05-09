@@ -2,18 +2,82 @@ import { logger } from "../lib/logger.js";
 import { TorgimaError } from "../lib/errors.js";
 import { generateId, now } from "../lib/utils.js";
 import type { Order } from "../types/order.js";
+import { db, orders as ordersTable } from "@workspace/db";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
-// In-memory store for Prompt 1 scaffold — replaced by OrderRepository in Prompt 3
 const store = new Map<string, Order>();
+
+function mapDbOrderRow(row: typeof ordersTable.$inferSelect): Order {
+  const statusMap: Record<string, Order["status"]> = {
+    pending:        "queued",
+    active:         "active",
+    paused:         "paused",
+    blocked:        "blocked",
+    needs_feedback: "in_progress",
+    needs_proof:    "in_progress",
+    completed:      "complete",
+    failed:         "cancelled",
+    skipped:        "cancelled",
+    cancelled:      "cancelled",
+  };
+  const taskTypeMap: Partial<Record<string, Order["type"]>> = {
+    execution: "action",
+    recovery: "action",
+    academy: "review",
+    clarification: "action",
+    blocker_resolution: "action",
+    phase_checkpoint: "checkpoint",
+    habit: "habit",
+    review: "review",
+  };
+  const typeFallback: Order["type"] = "action";
+
+  return {
+    id:               row.id,
+    blueprintId:      row.blueprint_id,
+    userId:           row.user_id,
+    title:            row.title,
+    description:      row.instruction,
+    type:             taskTypeMap[row.task_type] ?? typeFallback,
+    status:           statusMap[row.status] ?? "active",
+    priority:         row.priority,
+    estimatedMinutes: row.time_estimate_minutes,
+    instructions:     row.instruction,
+    proofRequired:    row.proof_required,
+    blockedReason:    row.blocker_description,
+    startedAt:        row.started_at?.toISOString() ?? null,
+    completedAt:      row.finished_at?.toISOString() ?? null,
+    createdAt:        row.created_at.toISOString(),
+  };
+}
 
 export const OrderService = {
   async getActive(userId: string): Promise<Order[]> {
-    return Array.from(store.values()).filter(
-      (o) => o.userId === userId && ["queued", "active", "in_progress", "paused"].includes(o.status),
-    );
+    const rows = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.user_id, userId),
+          inArray(ordersTable.status, ["pending", "active"]),
+        ),
+      )
+      .orderBy(desc(ordersTable.priority), desc(ordersTable.created_at));
+    return rows.map(mapDbOrderRow);
   },
 
   async get(id: string, userId: string): Promise<Order> {
+    try {
+      const [row] = await db
+        .select()
+        .from(ordersTable)
+        .where(and(eq(ordersTable.id, id), eq(ordersTable.user_id, userId)))
+        .limit(1);
+      if (row) return mapDbOrderRow(row);
+    } catch {
+      /* fall through to in-memory */
+    }
+
     const o = store.get(id);
     if (!o) throw new TorgimaError("NOT_FOUND", "Order not found");
     if (o.userId !== userId) throw new TorgimaError("FORBIDDEN", "Access denied");
@@ -56,6 +120,7 @@ export const OrderService = {
   },
 
   seed(blueprintId: string, userId: string): void {
+    logger.info({ blueprintId, userId }, "OrderService.seed (in-memory dev tasks)");
     const tasks: Order[] = [
       {
         id: generateId(),
@@ -68,23 +133,6 @@ export const OrderService = {
         priority: 1,
         estimatedMinutes: 45,
         instructions: "Write it down. Make it measurable. Set a target and a deadline.",
-        proofRequired: false,
-        blockedReason: null,
-        startedAt: null,
-        completedAt: null,
-        createdAt: now(),
-      },
-      {
-        id: generateId(),
-        blueprintId,
-        userId,
-        title: "Map your current reality",
-        description: "Document where you are today, honestly",
-        type: "research",
-        status: "queued",
-        priority: 2,
-        estimatedMinutes: 30,
-        instructions: "No filters. Current state only. What's true right now?",
         proofRequired: false,
         blockedReason: null,
         startedAt: null,

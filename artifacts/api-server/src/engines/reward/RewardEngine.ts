@@ -4,9 +4,11 @@ import {
   falseProgressFlags,
   rewardEvents,
   conditions,
+  milestones,
 } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
+import { notifyMilestoneAchieved } from "../../services/notification/LifecycleNotificationWiring.js";
 
 export type RewardType =
   | "COMPLETION"
@@ -18,6 +20,46 @@ export type RewardType =
   | "OUTCOME_TRUTH"
   | "HONEST_FAILURE"
   | "FOCUS_PROTECTION";
+
+function rewardIdempotencyKey(userId: string, sourceType: string, sourceId: string, rewardType: string): string {
+  return `${userId}:${sourceType}:${sourceId}:${rewardType}`;
+}
+
+async function resolveRewardKind(params: {
+  userId: string;
+  sourceType: string;
+  sourceId: string;
+}): Promise<{ rewardType: RewardType; intensity: "LOW" | "MEDIUM" | "HIGH" } | null> {
+  if (params.sourceType === "FEEDBACK") {
+    const [fb] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, params.sourceId))
+      .limit(1);
+
+    if (!fb) return null;
+    if (fb.validity !== "valid") return null;
+
+    if (fb.completion_status === "failed" || fb.completion_status === "skipped") {
+      return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
+    }
+    if (fb.completion_status === "completed") {
+      const intensity =
+        (fb.score ?? 0) >= 8 ? "HIGH" : (fb.score ?? 0) >= 6 ? "MEDIUM" : "LOW";
+      return { rewardType: "COMPLETION", intensity };
+    }
+    return { rewardType: "COMPLETION", intensity: "LOW" };
+  }
+
+  if (params.sourceType === "INACTIVITY") return { rewardType: "RECOVERY", intensity: "MEDIUM" };
+  if (params.sourceType === "CAPABILITY") return { rewardType: "CAPABILITY_GROWTH", intensity: "HIGH" };
+  if (params.sourceType === "MILESTONE") return { rewardType: "MILESTONE", intensity: "HIGH" };
+  if (params.sourceType === "OUTCOME") return { rewardType: "OUTCOME_TRUTH", intensity: "HIGH" };
+  if (params.sourceType === "SIGNAL") return { rewardType: "CONSISTENCY", intensity: "MEDIUM" };
+  if (params.sourceType === "IDENTITY") return { rewardType: "IDENTITY_ALIGNMENT", intensity: "MEDIUM" };
+
+  return null;
+}
 
 const REWARD_MESSAGES: Record<
   RewardType,
@@ -82,12 +124,23 @@ export async function evaluateReward(params: {
   void params.stateVersion;
   void params.causationEventId;
 
+  const kind = await resolveRewardKind(params);
+  if (!kind) {
+    return { rewardCreated: false };
+  }
+
+  const { rewardType, intensity } = kind;
+  const idempotencyKey = rewardIdempotencyKey(
+    params.userId,
+    params.sourceType,
+    params.sourceId,
+    rewardType,
+  );
+
   const [existing] = await db
     .select()
     .from(rewardEvents)
-    .where(
-      and(eq(rewardEvents.user_id, params.userId), eq(rewardEvents.milestone_id, params.sourceId)),
-    )
+    .where(eq(rewardEvents.idempotency_key, idempotencyKey))
     .limit(1);
 
   if (existing) {
@@ -113,50 +166,6 @@ export async function evaluateReward(params: {
       );
       return { rewardCreated: false };
     }
-  }
-
-  let rewardType: RewardType = "COMPLETION";
-  let intensity: "LOW" | "MEDIUM" | "HIGH" = "LOW";
-
-  if (params.sourceType === "FEEDBACK") {
-    const [fb] = await db
-      .select()
-      .from(feedback)
-      .where(eq(feedback.id, params.sourceId))
-      .limit(1);
-
-    if (!fb) return { rewardCreated: false };
-    if (fb.validity !== "valid") return { rewardCreated: false };
-
-    if (fb.completion_status === "failed" || fb.completion_status === "skipped") {
-      rewardType = "HONEST_FAILURE";
-      intensity = "LOW";
-    } else if (fb.completion_status === "completed") {
-      rewardType = "COMPLETION";
-      intensity =
-        (fb.score ?? 0) >= 8 ? "HIGH" : (fb.score ?? 0) >= 6 ? "MEDIUM" : "LOW";
-    } else {
-      rewardType = "COMPLETION";
-      intensity = "LOW";
-    }
-  } else if (params.sourceType === "INACTIVITY") {
-    rewardType = "RECOVERY";
-    intensity = "MEDIUM";
-  } else if (params.sourceType === "CAPABILITY") {
-    rewardType = "CAPABILITY_GROWTH";
-    intensity = "HIGH";
-  } else if (params.sourceType === "MILESTONE") {
-    rewardType = "MILESTONE";
-    intensity = "HIGH";
-  } else if (params.sourceType === "OUTCOME") {
-    rewardType = "OUTCOME_TRUTH";
-    intensity = "HIGH";
-  } else if (params.sourceType === "SIGNAL") {
-    rewardType = "CONSISTENCY";
-    intensity = "MEDIUM";
-  } else if (params.sourceType === "IDENTITY") {
-    rewardType = "IDENTITY_ALIGNMENT";
-    intensity = "MEDIUM";
   }
 
   let conditionName = "stability";
@@ -192,7 +201,8 @@ export async function evaluateReward(params: {
     .values({
       user_id:      params.userId,
       blueprint_id: params.blueprintId,
-      milestone_id: params.sourceId,
+      milestone_id: params.sourceType === "MILESTONE" ? params.sourceId : null,
+      idempotency_key: idempotencyKey,
       reward_type:  rewardType,
       title:        rewardType.replace(/_/g, " "),
       description:  effectiveMessage,
@@ -200,6 +210,22 @@ export async function evaluateReward(params: {
       delivered:    false,
     })
     .returning();
+
+  if (reward && rewardType === "MILESTONE" && params.blueprintId) {
+    const [m] = await db
+      .select({ title: milestones.title, description: milestones.description })
+      .from(milestones)
+      .where(and(eq(milestones.id, params.sourceId), eq(milestones.user_id, params.userId)))
+      .limit(1);
+
+    await notifyMilestoneAchieved({
+      userId:        params.userId,
+      blueprintId:   params.blueprintId,
+      milestoneId:   params.sourceId,
+      milestoneTitle: m?.title ?? "Milestone",
+      milestoneDesc: m?.description ?? undefined,
+    }).catch(() => null);
+  }
 
   logger.info(
     {

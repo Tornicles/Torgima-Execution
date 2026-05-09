@@ -7,6 +7,13 @@ import { logger } from "./lib/logger.js";
 
 const app: Express = express();
 
+/** Comma-separated list for multiple preview URLs; omit in local dev for permissive origin. */
+const FRONTEND_URL = process.env["FRONTEND_URL"] ?? "";
+const corsOrigin =
+  FRONTEND_URL.trim() !== ""
+    ? FRONTEND_URL.split(",").map((o) => o.trim()).filter(Boolean)
+    : true;
+
 app.use(
   pinoHttp({
     logger,
@@ -26,8 +33,31 @@ app.use(
     },
   }),
 );
-app.use(cors({ credentials: true, origin: true }));
+app.use(
+  cors({
+    origin: corsOrigin,
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-internal-auth",
+      "idempotency-key",
+      "x-expected-state-version",
+    ],
+  }),
+);
 app.use(cookieParser());
+
+app.use(
+  "/api/webhooks",
+  express.raw({
+    type: ["application/json", "application/json; charset=utf-8"],
+    limit: "2mb",
+  }),
+  webhooksRouter,
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

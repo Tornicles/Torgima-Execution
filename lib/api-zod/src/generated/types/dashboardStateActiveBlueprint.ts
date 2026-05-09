@@ -5,8 +5,9 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { Blueprint } from "./blueprint";
 
 /**
  * @nullable
  */
-export type DashboardStateActiveBlueprint = { [key: string]: unknown } | null;
+export type DashboardStateActiveBlueprint = Blueprint | null;
