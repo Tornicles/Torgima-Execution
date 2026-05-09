@@ -19,6 +19,8 @@ import type {
 import type {
   BlockInput,
   Blueprint,
+  BlueprintActivateResult,
+  BlueprintCreateResult,
   BlueprintInput,
   BlueprintState,
   DashboardState,
@@ -677,7 +679,7 @@ export function useListBlueprints<
 }
 
 /**
- * @summary Create a new blueprint
+ * @summary Create a new blueprint draft
  */
 export const getCreateBlueprintUrl = () => {
   return `/api/blueprints`;
@@ -686,8 +688,8 @@ export const getCreateBlueprintUrl = () => {
 export const createBlueprint = async (
   blueprintInput: BlueprintInput,
   options?: RequestInit,
-): Promise<Blueprint> => {
-  return customFetch<Blueprint>(getCreateBlueprintUrl(), {
+): Promise<BlueprintCreateResult> => {
+  return customFetch<BlueprintCreateResult>(getCreateBlueprintUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -740,7 +742,7 @@ export type CreateBlueprintMutationBody = BodyType<BlueprintInput>;
 export type CreateBlueprintMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a new blueprint
+ * @summary Create a new blueprint draft
  */
 export const useCreateBlueprint = <
   TError = ErrorType<unknown>,
@@ -925,7 +927,7 @@ export function useGetBlueprint<
 }
 
 /**
- * @summary Activate a blueprint to start execution
+ * @summary Activate a blueprint and fire the cold start
  */
 export const getActivateBlueprintUrl = (id: string) => {
   return `/api/blueprints/${id}/activate`;
@@ -934,8 +936,8 @@ export const getActivateBlueprintUrl = (id: string) => {
 export const activateBlueprint = async (
   id: string,
   options?: RequestInit,
-): Promise<Blueprint> => {
-  return customFetch<Blueprint>(getActivateBlueprintUrl(id), {
+): Promise<BlueprintActivateResult> => {
+  return customFetch<BlueprintActivateResult>(getActivateBlueprintUrl(id), {
     ...options,
     method: "POST",
   });
@@ -986,7 +988,7 @@ export type ActivateBlueprintMutationResult = NonNullable<
 export type ActivateBlueprintMutationError = ErrorType<unknown>;
 
 /**
- * @summary Activate a blueprint to start execution
+ * @summary Activate a blueprint and fire the cold start
  */
 export const useActivateBlueprint = <
   TError = ErrorType<unknown>,

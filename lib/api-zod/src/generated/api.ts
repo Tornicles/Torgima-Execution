@@ -120,11 +120,16 @@ export const ListBlueprintsResponseItem = zod.object({
 export const ListBlueprintsResponse = zod.array(ListBlueprintsResponseItem);
 
 /**
- * @summary Create a new blueprint
+ * @summary Create a new blueprint draft
  */
 export const CreateBlueprintBody = zod.object({
-  rawGoal: zod.string(),
+  goal: zod.string().optional(),
+  rawGoal: zod.string().optional(),
+  purpose: zod.string().nullish(),
+  timeframeDays: zod.number().nullish(),
+  domainHint: zod.string().nullish(),
   domain: zod.string().nullish(),
+  commitmentLevel: zod.string().nullish(),
 });
 
 /**
@@ -187,33 +192,15 @@ export const GetBlueprintResponse = zod.object({
 });
 
 /**
- * @summary Activate a blueprint to start execution
+ * @summary Activate a blueprint and fire the cold start
  */
 export const ActivateBlueprintParams = zod.object({
   id: zod.coerce.string(),
 });
 
 export const ActivateBlueprintResponse = zod.object({
-  id: zod.string(),
-  userId: zod.string(),
-  title: zod.string(),
-  rawGoal: zod.string().optional(),
-  domain: zod.string(),
-  status: zod.enum([
-    "draft",
-    "validating",
-    "active",
-    "paused",
-    "complete",
-    "abandoned",
-  ]),
-  phase: zod.number(),
-  totalPhases: zod.number().optional(),
-  currentCondition: zod.string().nullish(),
-  pausedReason: zod.string().nullish(),
-  activatedAt: zod.string().nullish(),
-  completedAt: zod.string().nullish(),
-  createdAt: zod.string(),
+  launched: zod.boolean(),
+  blueprintId: zod.string(),
 });
 
 /**

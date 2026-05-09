@@ -84,9 +84,27 @@ export interface Blueprint {
 }
 
 export interface BlueprintInput {
-  rawGoal: string;
+  goal?: string;
+  rawGoal?: string;
+  /** @nullable */
+  purpose?: string | null;
+  /** @nullable */
+  timeframeDays?: number | null;
+  /** @nullable */
+  domainHint?: string | null;
   /** @nullable */
   domain?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
+}
+
+export interface BlueprintCreateResult {
+  blueprintId: string;
+}
+
+export interface BlueprintActivateResult {
+  launched: boolean;
+  blueprintId: string;
 }
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];

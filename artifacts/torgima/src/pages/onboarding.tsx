@@ -58,7 +58,11 @@ export default function Onboarding() {
       { data: { rawGoal, domain: structureData?.domain } },
       {
         onSuccess: (res) => {
-          const id = res.id;
+          const id = (res as any).blueprintId ?? (res as any).id;
+          if (!id) {
+            toast({ title: "Failed to create blueprint", variant: "destructive" });
+            return;
+          }
           setBlueprintId(id);
           activateBlueprint.mutate(
             { id },
@@ -66,9 +70,15 @@ export default function Onboarding() {
               onSuccess: () => {
                 toast({ title: "Blueprint Activated" });
                 setLocation(`/blueprint/${id}`);
+              },
+              onError: () => {
+                toast({ title: "Activation failed", variant: "destructive" });
               }
             }
           );
+        },
+        onError: () => {
+          toast({ title: "Failed to create blueprint", variant: "destructive" });
         }
       }
     );

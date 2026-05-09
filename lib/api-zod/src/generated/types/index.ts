@@ -8,6 +8,8 @@
 
 export * from "./blockInput";
 export * from "./blueprint";
+export * from "./blueprintActivateResult";
+export * from "./blueprintCreateResult";
 export * from "./blueprintInput";
 export * from "./blueprintState";
 export * from "./blueprintStatus";

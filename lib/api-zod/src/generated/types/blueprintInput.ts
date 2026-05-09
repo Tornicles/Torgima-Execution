@@ -7,7 +7,16 @@
  */
 
 export interface BlueprintInput {
-  rawGoal: string;
+  goal?: string;
+  rawGoal?: string;
+  /** @nullable */
+  purpose?: string | null;
+  /** @nullable */
+  timeframeDays?: number | null;
+  /** @nullable */
+  domainHint?: string | null;
   /** @nullable */
   domain?: string | null;
+  /** @nullable */
+  commitmentLevel?: string | null;
 }

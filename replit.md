@@ -55,6 +55,7 @@ artifacts/torgima/src/
 - **Routes return API responses via `success()` / `handleError()`**: Never raw `res.json()` in route handlers.
 - **Demo user in Prompt 1**: Auth not yet implemented. All routes use `UserService.getDemoUser()` for the demo user `demo-user-001`. Auth comes in Prompt 2.
 - **Prompt 2 complete**: Full 58-table Drizzle ORM schema pushed to PostgreSQL. 6 partial unique indexes, 11 updated_at triggers, seed data (14 feature flags, 3 dev users, 10 global knowledge objects) applied and verified.
+- **Prompt 4 complete**: BlueprintEngine (full cold-start 11-step transaction), DomainResolutionEngine (Phase 1 domain rules), BlueprintRepository, BlueprintService (DB-backed), blueprint/onboarding/state/health routes (real auth via requireAuth), DashboardService (real user lookup), OpenAPI spec updated (BlueprintCreateResult, BlueprintActivateResult), codegen regenerated, full typecheck clean.
 
 ## Product
 

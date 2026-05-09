@@ -155,7 +155,7 @@ paths:
     post:
       operationId: createBlueprint
       tags: [blueprints]
-      summary: Create a new blueprint
+      summary: Create a new blueprint draft
       requestBody:
         required: true
         content:
@@ -164,11 +164,11 @@ paths:
               $ref: "#/components/schemas/BlueprintInput"
       responses:
         "201":
-          description: Blueprint created
+          description: Blueprint draft created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Blueprint"
+                $ref: "#/components/schemas/BlueprintCreateResult"
 
   /blueprints/history:
     get:
@@ -210,7 +210,7 @@ paths:
     post:
       operationId: activateBlueprint
       tags: [blueprints]
-      summary: Activate a blueprint to start execution
+      summary: Activate a blueprint and fire the cold start
       parameters:
         - name: id
           in: path
@@ -223,7 +223,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Blueprint"
+                $ref: "#/components/schemas/BlueprintActivateResult"
 
   /blueprints/{id}/state:
     get:
@@ -704,12 +704,37 @@ components:
 
     BlueprintInput:
       type: object
-      required: [rawGoal]
       properties:
+        goal:
+          type: string
         rawGoal:
           type: string
+        purpose:
+          type: ["string", "null"]
+        timeframeDays:
+          type: ["integer", "null"]
+        domainHint:
+          type: ["string", "null"]
         domain:
           type: ["string", "null"]
+        commitmentLevel:
+          type: ["string", "null"]
+
+    BlueprintCreateResult:
+      type: object
+      required: [blueprintId]
+      properties:
+        blueprintId:
+          type: string
+
+    BlueprintActivateResult:
+      type: object
+      required: [launched, blueprintId]
+      properties:
+        launched:
+          type: boolean
+        blueprintId:
+          type: string
 
     BlueprintState:
       type: object

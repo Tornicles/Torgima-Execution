@@ -1,5 +1,5 @@
 import { logger } from "../lib/logger.js";
-import { UserService } from "./UserService.js";
+import { getUser } from "./AuthService.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { OrderService } from "./OrderService.js";
 import { FeedbackService } from "./FeedbackService.js";
@@ -10,7 +10,7 @@ export const DashboardService = {
     logger.info({ userId }, "DashboardService.getDashboardState");
 
     const [user, blueprints, activeOrders, signals, recentFeedback] = await Promise.all([
-      UserService.getDemoUser(),
+      getUser(userId),
       BlueprintService.list(userId),
       OrderService.getActive(userId),
       SignalService.getCurrent(userId),

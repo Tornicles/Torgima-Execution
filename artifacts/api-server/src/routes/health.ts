@@ -15,6 +15,7 @@ router.get("/health", async (req, res) => {
     const checks: Record<string, boolean> = {
       database: false,
       event_table: false,
+      blueprint_table: false,
     };
 
     const client = await pool.connect();
@@ -30,6 +31,13 @@ router.get("/health", async (req, res) => {
       checks["event_table"] = true;
     } catch {
       checks["event_table"] = false;
+    }
+
+    try {
+      await pool.query("SELECT COUNT(*) FROM blueprints LIMIT 1");
+      checks["blueprint_table"] = true;
+    } catch {
+      checks["blueprint_table"] = false;
     }
 
     const pendingResult = await pool
@@ -51,7 +59,7 @@ router.get("/health", async (req, res) => {
         pending_events: pending,
         unresolved_dead_letters: deadLetters,
         timestamp: new Date().toISOString(),
-        version: "phase1-prompt3",
+        version: "phase1-prompt4",
       },
       allPassing ? 200 : 503,
     );

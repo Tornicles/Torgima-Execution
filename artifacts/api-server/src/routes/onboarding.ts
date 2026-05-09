@@ -1,6 +1,9 @@
 import { Router } from "express";
-import { UserService } from "../services/UserService.js";
+import { z } from "zod/v4";
+import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
+import { db, users } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { success, handleError } from "../lib/utils.js";
 
 const router = Router();
@@ -8,12 +11,17 @@ const router = Router();
 // GET /api/onboarding/status
 router.get("/onboarding/status", async (req, res) => {
   try {
-    const user = UserService.getDemoUser();
-    const blueprints = await BlueprintService.list(user.id);
-    const activeBlueprint = blueprints.find((b) => b.status === "active");
+    const auth = await requireAuth(req, "USER_SESSION");
+
+    const userRows = await db.select().from(users).where(eq(users.id, auth.userId)).limit(1);
+    const user = userRows[0] ?? null;
+    const onboardingComplete = user?.onboarding_complete ?? false;
+
+    const activeBlueprint = await BlueprintService.findActive(auth.userId);
+
     success(res, {
-      completed: user.onboardingCompleted,
-      step: user.onboardingCompleted ? "done" : "goal",
+      completed: onboardingComplete,
+      step: onboardingComplete ? "done" : "goal",
       blueprintId: activeBlueprint?.id ?? null,
     });
   } catch (err) {
@@ -24,15 +32,41 @@ router.get("/onboarding/status", async (req, res) => {
 // POST /api/onboarding/goal
 router.post("/onboarding/goal", async (req, res) => {
   try {
-    const user = UserService.getDemoUser();
-    const { rawGoal, domain } = req.body as { rawGoal: string; domain?: string };
-    const blueprint = await BlueprintService.create(user.id, rawGoal, domain ?? null);
-    await BlueprintService.activate(blueprint.id, user.id);
-    await UserService.completeOnboarding(user.id);
+    const auth = await requireAuth(req, "USER_SESSION");
+
+    const schema = z.object({
+      rawGoal: z.string().min(1).max(2000).optional(),
+      goal: z.string().min(1).max(2000).optional(),
+      domain: z.string().optional().nullable(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      success(res, { completed: false, step: "goal", blueprintId: null });
+      return;
+    }
+
+    const goal = parsed.data.goal ?? parsed.data.rawGoal;
+    if (!goal) {
+      success(res, { completed: false, step: "goal", blueprintId: null });
+      return;
+    }
+
+    const { blueprintId } = await BlueprintService.create(auth.userId, {
+      goal,
+      domainHint: parsed.data.domain ?? null,
+    });
+    await BlueprintService.activate(blueprintId, auth.userId);
+
+    await db
+      .update(users)
+      .set({ onboarding_complete: true })
+      .where(eq(users.id, auth.userId));
+
     success(res, {
       completed: true,
       step: "done",
-      blueprintId: blueprint.id,
+      blueprintId,
     });
   } catch (err) {
     handleError(req, res, err);
