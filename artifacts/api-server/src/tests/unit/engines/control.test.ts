@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getBaseRules } from "../../engines/control/ControlEngine.js";
+import { getBaseRules } from "../../../engines/control/ControlEngine.js";
 
 describe("ControlEngine — base rules", () => {
   it("danger has taskMax = 1", () => {

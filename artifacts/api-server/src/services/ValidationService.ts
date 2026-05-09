@@ -34,7 +34,7 @@ export const ValidationService = {
   }): Promise<StructuredGoalDraft> {
     const aiEnabled = params.aiEnabled ?? (await getAiEnabled());
     if (aiEnabled) {
-      return structureGoalWithBhudhi(params.input);
+      return structureGoalWithBhudhi({ ...params.input, userId: params.userId });
     }
     return structureGoalDeterministic(params.input);
   },

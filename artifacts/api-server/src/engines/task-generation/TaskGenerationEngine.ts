@@ -18,9 +18,17 @@ import {
 import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { anthropic, BHUDHI_MODEL } from "../../lib/anthropic.js";
+import { trigger } from "../../bhudhi/BhudhiCore.js";
 
-export const DIFFICULTY_ORDER = ["very_easy", "easy", "moderate", "hard", "very_hard"];
+export const DIFFICULTY_ORDER = [
+  "very_easy",
+  "easy",
+  "moderate",
+  "hard",
+  "very_hard",
+] as const;
+
+type OrderDifficulty = (typeof orders.$inferSelect)["difficulty"];
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -245,8 +253,9 @@ function selectDifficulty(params: {
   current_streak: number;
   is_first_in_phase: boolean;
 }): string {
-  const capIdx = DIFFICULTY_ORDER.indexOf(params.difficulty_cap);
-  const safeCap = capIdx >= 0 ? capIdx : DIFFICULTY_ORDER.indexOf("moderate");
+  const order = DIFFICULTY_ORDER as readonly string[];
+  const capIdx = order.indexOf(params.difficulty_cap);
+  const safeCap = capIdx >= 0 ? capIdx : order.indexOf("moderate");
 
   // Recovery tasks stay deliberately lightweight (verification: difficulty very_easy).
   if (params.generation_mode === "recovery") {
@@ -471,47 +480,46 @@ function difficultyTime(difficulty: string): number {
 async function enrichWithBhudhi(
   content: BuiltContent,
   ctx: Awaited<ReturnType<typeof loadContext>>,
+  userId: string,
 ): Promise<BuiltContent | null> {
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) return null;
+  const [bp] = await db
+    .select({ state_version: blueprints.state_version })
+    .from(blueprints)
+    .where(eq(blueprints.id, ctx.blueprint.id))
+    .limit(1);
 
-  const prompt = `You are enriching a task card for an execution system. Return ONLY JSON.
-
-Task title: "${content.title}"
-Goal: "${ctx.blueprint.goal}"
-Domain: ${ctx.blueprint.current_domain ?? "delivery"}
-
-Improve the instruction and expected_output to be more specific to this goal.
-Keep all other fields identical.
-
-Return this exact JSON shape:
-{
-  "title": "${content.title}",
-  "instruction": "improved, specific to goal",
-  "expected_output": "specific, concrete output",
-  "definition_of_done": ${JSON.stringify(content.definition_of_done)},
-  "why_it_matters": "connected to goal",
-  "time_estimate_minutes": ${content.time_estimate_minutes},
-  "proof_required": ${content.proof_required}
-}`;
-
-  const response = await anthropic.messages.create({
-    model: BHUDHI_MODEL,
-    max_tokens: 500,
-    temperature: 0.2,
-    messages: [{ role: "user", content: prompt }],
+  const result = await trigger({
+    sourceEngine:   "TaskGenerationEngine",
+    triggerType:    "TASK_DRAFTING",
+    userId,
+    blueprintId:    ctx.blueprint.id,
+    stateVersion:   bp?.state_version ?? 0,
+    idempotencyKey: `task_draft:${ctx.blueprint.id}:${Date.now()}`,
+    facts: {
+      goal:           ctx.blueprint.goal,
+      domain:         ctx.blueprint.current_domain ?? "delivery",
+      taskType:       ctx.generation_mode,
+      actionContext:  ctx.action?.name ?? ctx.target?.name ?? "next step",
+      difficulty:     content.time_estimate_minutes > 60 ? "hard" : "moderate",
+      proofType:      content.proof_type ?? "none",
+      condition:      "urgency",
+      allowedActions: ctx.enforcement.allowed_actions,
+    },
   });
 
-  const text = response.content
-    .filter((b): b is { type: "text"; text: string } => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  try {
-    const parsed = JSON.parse(cleaned) as Partial<BuiltContent>;
-    return { ...content, ...parsed };
-  } catch {
-    return null;
-  }
+  if (!result.ok || !result.output) return null;
+  const d = result.output.data as Record<string, unknown>;
+  if (!d["title"] || !d["instruction"]) return null;
+
+  return {
+    ...content,
+    title:            String(d["title"]),
+    instruction:      String(d["instruction"]),
+    why_it_matters:   String(d["userFacingReason"] ?? content.why_it_matters),
+    proof_description: d["proofInstruction"]
+      ? String(d["proofInstruction"])
+      : content.proof_description,
+  };
 }
 
 function buildContentHash(title: string, instruction: string): string {
@@ -575,8 +583,8 @@ export async function generate(params: {
   const { enforcement } = ctx;
 
   if (params.generationMode === "condition_change" || genModeNorm === "condition_change") {
-    const capIdx = DIFFICULTY_ORDER.indexOf(enforcement.difficulty_cap);
-    const invalidDifficulties = DIFFICULTY_ORDER.slice(capIdx + 1) as (typeof orders.$inferInsert)["difficulty"][];
+    const capIdx = (DIFFICULTY_ORDER as readonly string[]).indexOf(enforcement.difficulty_cap);
+    const invalidDifficulties = DIFFICULTY_ORDER.slice(capIdx + 1) as OrderDifficulty[];
     if (invalidDifficulties.length > 0) {
       await db
         .update(orders)
@@ -661,12 +669,11 @@ export async function generate(params: {
 
   if (
     aiFlag?.enabled &&
-    taskType === "execution" &&
-    process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY
+    taskType === "execution"
   ) {
     try {
       const enriched = await Promise.race([
-        enrichWithBhudhi(content, ctx),
+        enrichWithBhudhi(content, ctx, params.userId),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
       ]);
       if (enriched) {

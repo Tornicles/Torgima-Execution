@@ -1,21 +1,40 @@
 import { workerRegistry } from "./WorkerRegistry.js";
-import { handleWorkerJob } from "./BaseWorkerHandler.js";
+import { handleWorkerJob, type WorkerJobData } from "./BaseWorkerHandler.js";
+import { trigger } from "../bhudhi/BhudhiCore.js";
+import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
 
 export const BHUDHI_QUEUE = "bhudhi_trigger_requested";
 
 workerRegistry.register({
-  name: "BhudhiWorker",
-  queue: BHUDHI_QUEUE,
+  name:    "BhudhiWorker",
+  queue:   BHUDHI_QUEUE,
   options: { localConcurrency: 3, pollingIntervalSeconds: 5 },
   handler: async (jobs) => {
     for (const job of jobs) {
-      await handleWorkerJob(job, "BhudhiWorker", async (data) => {
+      await handleWorkerJob(job, "BhudhiWorker", async (data: WorkerJobData) => {
+        const { userId, blueprintId, payload } = data;
+        if (!userId) return { success: false, retryable: false, reason: "Missing userId" };
+
+        const triggerType = payload?.["trigger_type"] as BhudhiTriggerType | undefined;
+        if (!triggerType) return { success: false, retryable: false, reason: "Missing trigger_type" };
+
+        const result = await trigger({
+          sourceEngine:   String(payload?.["source_engine"] ?? "worker"),
+          triggerType,
+          userId,
+          blueprintId,
+          stateVersion:   Number(payload?.["state_version"] ?? 0),
+          userInput:      payload?.["user_input"] as string | undefined,
+          facts:          (payload?.["facts"] as Record<string, unknown>) ?? {},
+          idempotencyKey: data.eventId ?? `bhudhi:${Date.now()}`,
+        });
+
         logger.info(
-          { blueprintId: data.blueprintId, triggerType: (data.payload as Record<string, unknown>)["trigger_type"] },
-          "[BhudhiWorker] Stub — implemented in Prompt 9",
+          { triggerType, userId, ok: result.ok, fallbackUsed: result.fallbackUsed },
+          "[BhudhiWorker] Trigger processed",
         );
-        // TODO (Prompt 9+): BhudhiCore.trigger(data.payload)
+
         return { success: true };
       });
     }

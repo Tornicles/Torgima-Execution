@@ -14,7 +14,7 @@ import {
   assignCondition,
   isPowerChange,
   CONDITION_LEVELS,
-} from "../../engines/signal/SignalCalculationEngine.js";
+} from "../../../engines/signal/SignalCalculationEngine.js";
 
 import { feedback } from "@workspace/db";
 

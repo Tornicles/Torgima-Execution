@@ -84,6 +84,42 @@ export type BhudhiOutputType =
   | "root_cause_candidates"
   | "restart_copy";
 
+export interface BhudhiContextPacket {
+  userId:                 string;
+  blueprintId?:           string;
+  triggerType:            BhudhiTriggerType;
+  bhudhiMode:             BhudhiMode;
+  stateVersion:           number;
+  condition?:             string;
+  enforcementPackageId?:  string;
+  allowedActions:         string[];
+  forbiddenActions:       string[];
+  currentOrder?: {
+    id:         string;
+    type:       string;
+    difficulty: string;
+    proofType:  string;
+    status:     string;
+    title:      string;
+  };
+  userInput?:            string;
+  systemFacts:           Record<string, unknown>;
+  memoryContext?:        string;
+  outputContractName:    string;
+  maxTokens:             number;
+}
+
+export interface BhudhiOutputEnvelope<T = unknown> {
+  outputType:               BhudhiOutputType;
+  contractVersion:         string;
+  stateVersion:            number;
+  confidence:              "LOW" | "MEDIUM" | "HIGH";
+  data:                    T;
+  missingFields:           string[];
+  warnings:                string[];
+  forbiddenActionRequested: boolean;
+}
+
 export interface BhudhiTriggerRequest {
   sourceEngine:    string;
   triggerType:     BhudhiTriggerType;
@@ -95,10 +131,10 @@ export interface BhudhiTriggerRequest {
   idempotencyKey:  string;
 }
 
-export interface BhudhiTriggerResult<TOutput = unknown> {
-  ok:             boolean;
-  output?:        TOutput;
-  fallbackUsed:   boolean;
-  logId:          string;
-  failureReason?: string;
+export interface BhudhiTriggerResult<T = unknown> {
+  ok:              boolean;
+  output?:         BhudhiOutputEnvelope<T>;
+  fallbackUsed:    boolean;
+  logId:           string;
+  failureReason?:  string;
 }

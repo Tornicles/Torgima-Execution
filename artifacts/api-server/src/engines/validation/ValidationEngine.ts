@@ -7,7 +7,7 @@ import {
 import { eq, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { anthropic, BHUDHI_MODEL } from "../../lib/anthropic.js";
+import { trigger, generateValidationPathsWithBhudhi } from "../../bhudhi/BhudhiCore.js";
 import type {
   ValidationVerdict,
   ValidationScores,
@@ -83,6 +83,7 @@ export async function generatePaths(params: {
   scores:           ValidationScores;
   verdict:          ValidationVerdict;
   blueprintId:      string;
+  userId:           string;
   useBhudhi:        boolean;
 }): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
   if (params.useBhudhi) {
@@ -125,6 +126,7 @@ export async function runValidation(params: {
     scores,
     verdict,
     blueprintId:     params.blueprintId,
+    userId:          params.userId,
     useBhudhi:       params.aiEnabled,
   });
 
@@ -404,92 +406,18 @@ async function generatePathsWithBhudhi(params: {
   scores:           ValidationScores;
   verdict:          ValidationVerdict;
   blueprintId:      string;
+  userId:           string;
 }): Promise<{ current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath }> {
-  const systemPrompt = `You are the Torgima Validation Engine. Your ONLY job is to output a JSON object with three execution path options based on the user's goal.
-
-RULES:
-- Return ONLY valid JSON. No markdown, no explanation, no preamble.
-- Each path must be realistic and actionable.
-- Do not invent facts about the user.
-- Keep rationale to 1–2 sentences maximum.
-- planSkeleton.plans must have 2–3 items. planSkeleton.targets must have 2–3 items.
-- riskLevel must be "low", "medium", or "high".
-- Never suggest the user abandon their goal entirely.`;
-
-  const userPrompt = `Goal: "${params.goal}"
-Purpose: "${params.purpose ?? "not provided"}"
-Timeframe: "${params.timeframe ?? "not provided"}"
-Commitment: "${params.commitmentLevel ?? "not provided"}"
-Clarity score: ${params.scores.clarity.score}/100 — ${params.scores.clarity.finding}
-Feasibility score: ${params.scores.feasibility.score}/100 — ${params.scores.feasibility.finding}
-Verdict: ${params.verdict}
-
-Generate three execution paths. Return this EXACT JSON structure and nothing else:
-{
-  "current": {
-    "type": "current",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  },
-  "adjusted": {
-    "type": "adjusted",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "keyChanges": "...",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  },
-  "alternative": {
-    "type": "alternative",
-    "title": "...",
-    "summary": "...",
-    "rationale": "...",
-    "expectedOutcome": "...",
-    "riskLevel": "low|medium|high",
-    "keyChanges": "...",
-    "planSkeleton": {
-      "plans": [{"name": "...", "description": "..."}],
-      "targets": [{"name": "...", "type": "major|primary|vital"}]
-    }
-  }
-}`;
-
-  const response = await anthropic.messages.create({
-    model:      BHUDHI_MODEL,
-    max_tokens: 1200,
-    system:     systemPrompt,
-    messages:   [{ role: "user", content: userPrompt }],
+  return generateValidationPathsWithBhudhi({
+    userId:          params.userId,
+    blueprintId:     params.blueprintId,
+    goal:            params.goal,
+    purpose:         params.purpose,
+    timeframe:       params.timeframe,
+    commitmentLevel: params.commitmentLevel,
+    scores:          params.scores,
+    verdict:         params.verdict,
   });
-
-  const rawText = response.content
-    .filter(b => b.type === "text")
-    .map(b => (b as { type: "text"; text: string }).text)
-    .join("");
-
-  const cleaned = rawText.replace(/```json|```/g, "").trim();
-  const parsed  = JSON.parse(cleaned) as { current: ValidationPath; adjusted: ValidationPath; alternative: ValidationPath };
-
-  if (!parsed.current || !parsed.adjusted || !parsed.alternative) {
-    throw new Error("Bhudhi returned incomplete path structure");
-  }
-
-  parsed.current.type     = "current";
-  parsed.adjusted.type    = "adjusted";
-  parsed.alternative.type = "alternative";
-
-  return parsed;
 }
 
 // ── GOAL STRUCTURING — BHUDHI ─────────────────────────────────────────────────
@@ -502,57 +430,56 @@ export async function structureGoalWithBhudhi(raw: {
   currentContext?:  string;
   successSignal?:   string;
   knownBlockers?:   string;
+  userId?:          string;
 }): Promise<StructuredGoalDraft> {
-  try {
-    const systemPrompt = `You are the Torgima Goal Structuring Engine. Return ONLY JSON. No markdown.
-
-Analyze the user's raw goal input and return a structured JSON object.
-Identify what is missing and flag it. Do not invent information.`;
-
-    const userPrompt = `Raw goal: "${raw.rawGoal}"
-Purpose: "${raw.purpose ?? ""}"
-Timeframe: "${raw.timeframe ?? ""}"
-Commitment: "${raw.commitmentLevel ?? ""}"
-Context: "${raw.currentContext ?? ""}"
-Success signal: "${raw.successSignal ?? ""}"
-Known blockers: "${raw.knownBlockers ?? ""}"
-
-Return this exact JSON:
-{
-  "cleanedGoal": "Rewritten goal, clear and specific",
-  "purpose": "Extracted or inferred purpose",
-  "timeframe": "Extracted timeframe",
-  "commitmentLevel": "low|medium|high|full",
-  "currentContext": "Summary of current situation",
-  "successSignals": ["..."],
-  "blockers": ["..."],
-  "domainHints": ["genesis|market|delivery|continuity"],
-  "missingRequiredFields": ["goal|purpose|timeframe|commitment"],
-  "ambiguityFlags": ["describe ambiguity"],
-  "validationVerdict": "VALID|NEEDS_CLARIFICATION|INVALID"
-}`;
-
-    const response = await anthropic.messages.create({
-      model:      BHUDHI_MODEL,
-      max_tokens: 600,
-      system:     systemPrompt,
-      messages:   [{ role: "user", content: userPrompt }],
-    });
-
-    const rawText = response.content
-      .filter(b => b.type === "text")
-      .map(b => (b as { type: "text"; text: string }).text)
-      .join("");
-
-    const cleaned = rawText.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleaned) as StructuredGoalDraft;
-  } catch (error) {
-    logger.warn(
-      { error: error instanceof Error ? error.message : String(error) },
-      "[ValidationEngine] Bhudhi goal structuring failed — using deterministic fallback",
-    );
+  if (!raw.userId) {
+    logger.warn("[ValidationEngine] structureGoalWithBhudhi without userId — using deterministic fallback");
     return structureGoalDeterministic(raw);
   }
+
+  const result = await trigger({
+    sourceEngine:   "ValidationEngine",
+    triggerType:    "GOAL_STRUCTURING",
+    userId:         raw.userId,
+    stateVersion:   0,
+    idempotencyKey: `goal_structure:${Date.now()}`,
+    facts: {
+      rawGoal:         raw.rawGoal,
+      purpose:         raw.purpose,
+      timeframe:       raw.timeframe,
+      commitmentLevel: raw.commitmentLevel,
+      currentContext:  raw.currentContext,
+      successSignal:   raw.successSignal,
+      blockers:        raw.knownBlockers,
+    },
+  });
+
+  if (!result.ok || !result.output) return structureGoalDeterministic(raw);
+
+  const d = result.output.data as Record<string, unknown>;
+  const rawCommit = String(d["commitmentLevel"] ?? raw.commitmentLevel ?? "medium").toLowerCase();
+  const commitmentLevel: StructuredGoalDraft["commitmentLevel"] =
+    rawCommit === "intense" || rawCommit === "full" ? "full" :
+    rawCommit === "low" ? "low" :
+    rawCommit === "high" ? "high" : "medium";
+
+  const fromAi = (d["missingRequiredFields"] as string[] | undefined) ?? [];
+  const deterministic = structureGoalDeterministic(raw);
+  const missingRequiredFields = fromAi.length > 0 ? fromAi : deterministic.missingRequiredFields;
+
+  return {
+    cleanedGoal:          String(d["cleanedGoal"] ?? raw.rawGoal),
+    purpose:              String(d["purpose"] ?? raw.purpose ?? ""),
+    timeframe:            String(d["timeframe"] ?? raw.timeframe ?? ""),
+    commitmentLevel,
+    currentContext:       raw.currentContext ?? "",
+    successSignals:       raw.successSignal ? [raw.successSignal] : [],
+    blockers:             raw.knownBlockers ? [raw.knownBlockers] : [],
+    domainHints:          (d["domainHints"] as string[]) ?? [],
+    missingRequiredFields,
+    ambiguityFlags:       (d["ambiguityFlags"] as string[]) ?? [],
+    validationVerdict:    missingRequiredFields.length > 0 ? "NEEDS_CLARIFICATION" : "VALID",
+  };
 }
 
 // ── GOAL STRUCTURING — DETERMINISTIC ─────────────────────────────────────────

@@ -52,12 +52,19 @@ export async function sendEmail(
   }
 
   try {
+    const textBody =
+      msg.text?.trim() ||
+      (msg.html
+        ? msg.html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+        : "") ||
+      "(See HTML version of this message.)";
+
     const result = await resend.emails.send({
       from: EMAIL_FROM,
       to: msg.to,
       subject: msg.subject,
-      html: msg.html,
-      text: msg.text,
+      ...(msg.html ? { html: msg.html } : {}),
+      text: textBody,
       replyTo: msg.replyTo ?? EMAIL_REPLY_TO,
     });
 

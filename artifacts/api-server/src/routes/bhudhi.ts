@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { z } from "zod/v4";
+import { db, blueprints, signalSnapshots, conditions, orders } from "@workspace/db";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { ValidationService } from "../services/ValidationService.js";
-import { BhudhiCore } from "../bhudhi/BhudhiCore.js";
+import { explainState } from "../bhudhi/BhudhiCore.js";
 import { success, failure, handleError } from "../lib/utils.js";
 
 const router = Router();
-const bhudhi = new BhudhiCore();
 
 // POST /api/bhudhi/structure-goal
 router.post("/bhudhi/structure-goal", async (req, res) => {
@@ -61,18 +62,60 @@ router.post("/bhudhi/explain-state", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const { blueprintId, focus } = req.body as { blueprintId?: string; focus?: string };
-    const result = await bhudhi.call({
-      trigger: "condition_explanation",
-      userId:  auth.userId,
-      context: { blueprintId, focus },
+    const [blueprint] = await db
+      .select()
+      .from(blueprints)
+      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
+      .orderBy(desc(blueprints.updated_at))
+      .limit(1);
+
+    if (!blueprint) {
+      success(res, { explanation: null, fallbackUsed: false });
+      return;
+    }
+
+    const [signal] = await db
+      .select()
+      .from(signalSnapshots)
+      .where(and(eq(signalSnapshots.blueprint_id, blueprint.id), eq(signalSnapshots.is_current, true)))
+      .limit(1);
+
+    const [condition] = await db
+      .select()
+      .from(conditions)
+      .where(and(eq(conditions.blueprint_id, blueprint.id), eq(conditions.is_current, true)))
+      .limit(1);
+
+    const [currentOrder] = await db
+      .select({ title: orders.title })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.blueprint_id, blueprint.id),
+          eq(orders.user_id, auth.userId),
+          inArray(orders.status, ["pending", "active"]),
+        ),
+      )
+      .orderBy(desc(orders.priority))
+      .limit(1);
+
+    const result = await explainState({
+      userId:            auth.userId,
+      blueprintId:       blueprint.id,
+      stateVersion:      blueprint.state_version,
+      condition:         condition?.condition ?? blueprint.current_condition ?? "urgency",
+      completionRate:    signal?.completion_rate ?? 0,
+      weightedScore:     signal?.weighted_score ?? 0,
+      momentum:          signal?.momentum ?? 0,
+      trend:             signal?.trend ?? "stable",
+      goal:              blueprint.goal,
+      currentTaskTitle:  currentOrder?.title,
+      conditionDuration: condition?.duration_days ?? 0,
     });
-    const output = result.output as Record<string, unknown>;
+
     success(res, {
-      summary:        output["summary"]        ?? "Your execution system is running. Keep going.",
-      condition:      output["condition"]       ?? "stability",
-      recommendation: output["recommendation"] ?? "Complete your next active task.",
-      details:        output["details"]         ?? [],
+      explanation:  result.output?.data ?? null,
+      fallbackUsed: result.fallbackUsed,
     });
   } catch (err) {
     handleError(req, res, err);

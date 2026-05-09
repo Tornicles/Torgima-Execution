@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { FeedbackService } from "../services/FeedbackService.js";
 import { UserService } from "../services/UserService.js";
-import { BhudhiCore } from "../bhudhi/BhudhiCore.js";
+import { trigger } from "../bhudhi/BhudhiCore.js";
 import { success, handleError } from "../lib/utils.js";
 
 const router = Router();
-const bhudhi = new BhudhiCore();
 
 // POST /api/feedback/task
 router.post("/feedback/task", async (req, res) => {
@@ -37,18 +36,28 @@ router.get("/feedback/:id/interrogation", async (req, res) => {
   try {
     const user = UserService.getDemoUser();
     // TODO: Look up feedback by id
-    const result = await bhudhi.call({
-      trigger: "feedback_interrogation",
-      userId: user.id,
-      context: { feedbackId: req.params.id },
+    const result = await trigger({
+      sourceEngine:   "feedback",
+      triggerType:    "CLARIFICATION_PROMPT",
+      userId:         user.id,
+      stateVersion:   0,
+      idempotencyKey: `interrogation:${req.params.id}:${Date.now()}`,
+      facts: {
+        missingContext: "follow-up after task feedback",
+        requiredField:  "reflection",
+        taskTitle:      `Feedback ${req.params.id}`,
+      },
     });
+    const data = result.output?.data as { question?: string } | undefined;
     success(res, {
       feedbackId: req.params.id,
-      questions: result.output["questions"] ?? [
-        "What specifically made this task hard?",
-        "What would have made it easier?",
-        "Is this blocker recurring?",
-      ],
+      questions: data?.question
+        ? [data.question]
+        : [
+            "What specifically made this task hard?",
+            "What would have made it easier?",
+            "Is this blocker recurring?",
+          ],
       context: null,
     });
   } catch (err) {

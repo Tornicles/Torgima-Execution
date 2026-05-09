@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
 
+/** Mirrors FeedbackProcessingEngine order status mapping (integration-neutral unit). */
+function completionStatusToOrderStatus(cs: string): string {
+  if (cs === "failed") return "failed";
+  if (cs === "skipped") return "skipped";
+  if (cs === "partial") return "needs_feedback";
+  return "completed";
+}
+
 describe("FeedbackProcessingEngine — confidence calculation", () => {
   it("full weight for strong reflection and normal score", () => {
     let weight = 1.0;
@@ -51,19 +59,12 @@ describe("FeedbackProcessingEngine — confidence calculation", () => {
 
 describe("FeedbackProcessingEngine — order status transitions", () => {
   it("completed status maps to completed order", () => {
-    const status =
-      "completed" === "failed"
-        ? "failed"
-        : "completed" === "skipped"
-          ? "skipped"
-          : "completed" === "partial"
-            ? "needs_feedback"
-            : "completed";
-    expect(status).toBe("completed");
+    expect(completionStatusToOrderStatus("completed")).toBe("completed");
   });
   it("failed status maps to failed order", () => {
-    const s = "failed";
-    const result = s === "failed" ? "failed" : "completed";
-    expect(result).toBe("failed");
+    expect(completionStatusToOrderStatus("failed")).toBe("failed");
+  });
+  it("partial maps to needs_feedback", () => {
+    expect(completionStatusToOrderStatus("partial")).toBe("needs_feedback");
   });
 });

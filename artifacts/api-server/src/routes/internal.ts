@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { db } from "@workspace/db";
-import { events, eventLogs, deadLetterEvents, systemHealthLogs } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs } from "@workspace/db";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
 import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
 import { success, failure, handleError } from "../lib/utils.js";
-
+import { trigger } from "../bhudhi/BhudhiCore.js";
+import { getContract } from "../bhudhi/PromptRegistry.js";
+import type { BhudhiTriggerType } from "../types/bhudhi.js";
 const router = Router();
 
 // POST /api/internal/events/dispatch
@@ -192,6 +193,98 @@ router.get("/internal/health/logs", async (req, res) => {
       .orderBy(desc(systemHealthLogs.created_at))
       .limit(100);
     success(res, { logs, count: logs.length });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/internal/bhudhi/trigger
+router.post("/internal/bhudhi/trigger", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const schema = z.object({
+      sourceEngine:   z.string(),
+      triggerType:    z.string(),
+      userId:         z.string().uuid(),
+      blueprintId:    z.string().uuid().optional(),
+      stateVersion:   z.number(),
+      userInput:      z.string().optional(),
+      facts:          z.record(z.string(), z.unknown()).optional(),
+      idempotencyKey: z.string(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid input", 400);
+      return;
+    }
+    const triggerType = parsed.data.triggerType as BhudhiTriggerType;
+    if (!getContract(triggerType)) {
+      failure(res, "VALIDATION_ERROR", "Unknown triggerType", 400);
+      return;
+    }
+    const result = await trigger({
+      sourceEngine:   parsed.data.sourceEngine,
+      triggerType,
+      userId:         parsed.data.userId,
+      blueprintId:    parsed.data.blueprintId,
+      stateVersion:   parsed.data.stateVersion,
+      userInput:      parsed.data.userInput,
+      facts:          parsed.data.facts ?? {},
+      idempotencyKey: parsed.data.idempotencyKey,
+    });
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/internal/bhudhi/usage?userId=
+router.get("/internal/bhudhi/usage", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const userCond = userId ? eq(bhudhiLogs.user_id, userId) : sql`true`;
+
+    const [{ todayCount } = { todayCount: 0 }] = await db
+      .select({ todayCount: sql<number>`count(*)::int` })
+      .from(bhudhiLogs)
+      .where(and(userCond, gte(bhudhiLogs.created_at, todayStart)));
+
+    const [agg] = await db
+      .select({
+        inSum:  sql<number>`coalesce(sum(${bhudhiLogs.token_count_in}),0)::int`,
+        outSum: sql<number>`coalesce(sum(${bhudhiLogs.token_count_out}),0)::int`,
+      })
+      .from(bhudhiLogs)
+      .where(userCond);
+
+    const recentLogs = await db
+      .select({
+        trigger_type:   bhudhiLogs.trigger_type,
+        validation_status: bhudhiLogs.validation_status,
+        latency_ms:     bhudhiLogs.latency_ms,
+        created_at:     bhudhiLogs.created_at,
+        output_json:    bhudhiLogs.output_json,
+      })
+      .from(bhudhiLogs)
+      .where(userCond)
+      .orderBy(desc(bhudhiLogs.created_at))
+      .limit(20);
+
+    const inSum  = agg?.inSum ?? 0;
+    const outSum = agg?.outSum ?? 0;
+    const totalCost = inSum * 0.000003 + outSum * 0.000015;
+
+    success(res, {
+      today:        todayCount ?? 0,
+      totalTokens:  inSum + outSum,
+      totalCost,
+      recentLogs,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

@@ -4,15 +4,14 @@ import type { BhudhiTrigger, BhudhiResponse } from "../types/bhudhi.js";
 const core = new BhudhiCore();
 
 /**
- * TriggerRouter — Routes incoming trigger requests to the correct prompt handler.
- * TODO (Prompt 3): Add per-trigger prompt templates from PromptRegistry
+ * TriggerRouter — Legacy wrapper. Prefer {@link import("./BhudhiCore.js").trigger}.
  */
 export class TriggerRouter {
   async route(
-    trigger: BhudhiTrigger,
+    triggerName: BhudhiTrigger,
     userId: string,
     context: Record<string, unknown>,
   ): Promise<BhudhiResponse> {
-    return core.call({ trigger, userId, context });
+    return core.call({ trigger: triggerName, userId, context });
   }
 }
