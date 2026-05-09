@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { TorgimaError } from "../../lib/errors.js";
+import { notifyBlueprintPaused } from "../../services/notification/LifecycleNotificationWiring.js";
 
 const NOTHINGNESS = "nothingness";
 
@@ -91,6 +92,8 @@ export async function pauseBlueprint(params: {
       tx,
     );
   });
+
+  await notifyBlueprintPaused({ userId: params.userId, blueprintId: params.blueprintId }).catch(() => null);
 
   logger.info({ blueprintId: params.blueprintId, userId: params.userId, reason: params.reason }, "[PauseEngine] Blueprint paused");
 }

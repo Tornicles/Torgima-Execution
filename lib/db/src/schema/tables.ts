@@ -1452,6 +1452,8 @@ export const notificationLogs = pgTable(
     idempotency_key: text("idempotency_key").notNull().unique(),
     attempt_count: integer("attempt_count").notNull().default(0),
     last_error: text("last_error"),
+    /** Serialized delivery params for quiet-hours deferral replay (Prompt 13). */
+    payload_snapshot: jsonb("payload_snapshot").notNull().default(sql`'{}'::jsonb`),
     sent_at: timestamp("sent_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true })

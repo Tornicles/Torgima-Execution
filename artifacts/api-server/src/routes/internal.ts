@@ -9,6 +9,9 @@ import { success, failure, handleError } from "../lib/utils.js";
 import { trigger } from "../bhudhi/BhudhiCore.js";
 import { getContract } from "../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { logger } from "../lib/logger.js";
+import { handleBounce, handleComplaint, sendNotification } from "../services/NotificationService.js";
+import { NOTIFICATION_TYPES, type NotificationType } from "../constants/notifications.js";
 const router = Router();
 
 // POST /api/internal/events/dispatch
@@ -285,6 +288,104 @@ router.get("/internal/bhudhi/usage", async (req, res) => {
       totalCost,
       recentLogs,
     });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/internal/notifications/bounce — provider webhooks (Resend-compatible shapes)
+router.post("/internal/notifications/bounce", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+
+    const body = req.body as Record<string, unknown>;
+    logger.info({ type: body["type"] }, "[Webhook] Provider callback received");
+
+    const type = body["type"];
+
+    if (type === "bounce" || type === "email.bounced") {
+      const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
+      const bounce = (data?.["bounce"] ?? data?.["bounce_data"]) as Record<string, unknown> | undefined;
+      const bounceTypeRaw = String(bounce?.["type"] ?? data?.["bounce_type"] ?? "").toLowerCase();
+      const bounceType = bounceTypeRaw === "hard" ? "hard" : "soft";
+
+      const to =
+        data?.["to"] ??
+        data?.["recipient"] ??
+        data?.["email"] ??
+        (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
+      const email = typeof to === "string" ? to : undefined;
+
+      if (email) await handleBounce(email, bounceType);
+    }
+
+    if (type === "complaint" || type === "email.complained") {
+      const data = (body["data"] ?? body["payload"]) as Record<string, unknown> | undefined;
+      const to =
+        data?.["to"] ??
+        data?.["recipient"] ??
+        data?.["email"] ??
+        (Array.isArray(data?.["to"]) ? (data["to"] as string[])[0] : undefined);
+      const email = typeof to === "string" ? to : undefined;
+
+      if (email) await handleComplaint(email);
+    }
+
+    success(res, { received: true });
+  } catch (err) {
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      "[Webhook] Provider callback failed",
+    );
+    handleError(req, res, err);
+  }
+});
+
+const internalSendSchema = z.object({
+  userId: z.string().uuid(),
+  notificationType: z.string(),
+  blueprintId: z.string().uuid().optional(),
+  sourceEventId: z.string().optional(),
+  contextData: z.record(z.string(), z.unknown()).optional(),
+  escalation: z.boolean().optional(),
+});
+
+// POST /api/internal/notifications/send
+router.post("/internal/notifications/send", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const parsed = internalSendSchema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid input", 400);
+      return;
+    }
+
+    const nt = parsed.data.notificationType;
+    if (!(Object.values(NOTIFICATION_TYPES) as string[]).includes(nt)) {
+      failure(res, "VALIDATION_ERROR", "Unknown notification type", 400);
+      return;
+    }
+    if (nt === NOTIFICATION_TYPES.MAGIC_LINK_AUTH) {
+      failure(res, "VALIDATION_ERROR", "Auth notifications are handled by AuthService, not this route", 400);
+      return;
+    }
+
+    const result = await sendNotification({
+      userId: parsed.data.userId,
+      notificationType: nt as NotificationType,
+      blueprintId: parsed.data.blueprintId,
+      sourceEventId: parsed.data.sourceEventId,
+      contextData: parsed.data.contextData,
+      escalation: parsed.data.escalation,
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("notification_send_exhausted")) {
+        return { sent: false, suppressed: false, suppressionReason: "exhausted" as const };
+      }
+      throw err;
+    });
+
+    success(res, result);
   } catch (err) {
     handleError(req, res, err);
   }

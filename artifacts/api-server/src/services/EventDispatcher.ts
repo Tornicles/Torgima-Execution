@@ -15,7 +15,7 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
   // task_generation_completed is a terminal/audit signal — no consumer queue.
   "inactivity_scan_requested":      "inactivity_scan_requested",
   "inactivity_detected":            "task_generation_requested",
-  "reminder_requested":             "notification_send_requested",
+  "reminder_requested":             "reminder_requested",
   "notification_send_requested":    "notification_send_requested",
   "state_changed":                  "projection_refresh_requested",
   "projection_refresh_requested":   "projection_refresh_requested",

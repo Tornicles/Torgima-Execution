@@ -26,6 +26,7 @@ import {
   generatePivotPathOptions,
 } from "../engines/strategy/StrategyEngine.js";
 import { createPivotReview } from "../engines/lifecycle/PivotEngine.js";
+import { processDeferredNotifications } from "../services/NotificationService.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
@@ -104,6 +105,21 @@ export async function startWorkers(): Promise<void> {
     }
   }, 6 * 60 * 60 * 1000);
   logger.info("[Pivot] Scheduled pivot eligibility check started (every 6 hours)");
+
+  setInterval(async () => {
+    try {
+      const count = await processDeferredNotifications();
+      if (count > 0) {
+        logger.info({ count }, "[Notifications] Processed deferred notifications");
+      }
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[Notifications] Deferred processing failed",
+      );
+    }
+  }, 10 * 60 * 1000);
+  logger.info("[Notifications] Deferred notification processor started (every 10 minutes)");
 
   // Event dispatcher polling loop
   logger.info("[EventDispatcher] Starting dispatcher loop...");

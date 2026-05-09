@@ -18,6 +18,7 @@ import { logger } from "../../lib/logger.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { evaluateIdentity } from "../identity/IdentityEngine.js";
 import { deactivateBlueprintBhudhiMemory } from "../../bhudhi/MemoryService.js";
+import { notifyBlueprintCompleted } from "../../services/notification/LifecycleNotificationWiring.js";
 
 export interface CompletionCheckResult {
   eligible: boolean;
@@ -239,6 +240,23 @@ export async function completeBlueprint(params: {
       tx,
     );
   });
+
+  const [bpMeta] = await db
+    .select({ created_at: blueprints.created_at })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+
+  const executionDays = bpMeta?.created_at
+    ? Math.ceil((now.getTime() - bpMeta.created_at.getTime()) / 86400000)
+    : 0;
+
+  await notifyBlueprintCompleted({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    tasksCompleted: fc,
+    executionDays,
+  }).catch(() => null);
 
   await evaluateIdentity({
     userId: params.userId,

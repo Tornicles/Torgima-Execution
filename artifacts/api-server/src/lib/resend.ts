@@ -34,6 +34,8 @@ export interface OutboundEmail {
   html?: string;
   text?: string;
   replyTo?: string;
+  /** Full RFC5322 From, e.g. "Torgima <noreply@domain.com>" */
+  from?: string;
 }
 
 // Best-effort send. Returns { sent: false } when no key is configured or
@@ -60,7 +62,7 @@ export async function sendEmail(
       "(See HTML version of this message.)";
 
     const result = await resend.emails.send({
-      from: EMAIL_FROM,
+      from: msg.from ?? EMAIL_FROM,
       to: msg.to,
       subject: msg.subject,
       ...(msg.html ? { html: msg.html } : {}),

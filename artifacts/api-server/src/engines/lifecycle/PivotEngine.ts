@@ -15,6 +15,7 @@ import { writeEventInTx, writeEvent, EVENT_TYPES } from "../../services/EventSer
 import { TorgimaError } from "../../lib/errors.js";
 import { CONDITIONS } from "../../constants/conditions.js";
 import { deactivateBlueprintBhudhiMemory } from "../../bhudhi/MemoryService.js";
+import { notifyPivotReviewReady } from "../../services/notification/LifecycleNotificationWiring.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -53,6 +54,12 @@ export async function createPivotReview(params: {
     .returning({ id: pivotReviews.id });
 
   if (!review) throw new TorgimaError("INTERNAL_ERROR", "Failed to create pivot review", false);
+
+  await notifyPivotReviewReady({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    reviewId: review.id,
+  }).catch(() => null);
 
   logger.info(
     {
