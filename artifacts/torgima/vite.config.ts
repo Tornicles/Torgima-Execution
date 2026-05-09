@@ -4,27 +4,30 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT;
+// PORT and BASE_PATH are required for the dev/preview server (vite dev / vite preview),
+// but optional for `vite build` because static-host environments (Vercel, Netlify,
+// CDN) don't bind a port and serve from "/". When unset we fall back to Vite's
+// default dev port (5173) and a root base path so the build works on every host.
+const isBuildOnly =
+  process.argv.includes("build") || process.env.VITE_BUILD_ONLY === "1";
 
-if (!rawPort) {
+const rawPort = process.env.PORT;
+let port: number;
+
+if (rawPort) {
+  port = Number(rawPort);
+  if (Number.isNaN(port) || port <= 0) {
+    throw new Error(`Invalid PORT value: "${rawPort}"`);
+  }
+} else if (isBuildOnly) {
+  port = 5173;
+} else {
   throw new Error(
     "PORT environment variable is required but was not provided.",
   );
 }
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
