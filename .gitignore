@@ -3,8 +3,41 @@
 # Secrets — never commit local env files
 .env
 .env.local
+.env.*.local
 .env*.local
 *.env
+.env.production
+.env.staging
+
+# Dependencies
+pnpm-store/
+.pnpm-store/
+
+# Build outputs (common toolchains)
+dist/
+build/
+.next/
+out/
+out-tsc
+tmp
+
+# Test artifacts
+coverage/
+*.lcov
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary
+*.tmp
+*.temp
+
+# One-off scripts with keys risk
+scripts/test-anthropic.ts
 
 # compiled output
 dist
@@ -14,8 +47,8 @@ out-tsc
 .expo
 .expo-shared
 
-# dependencies
-node_modules
+# Dependencies
+node_modules/
 
 # IDEs and editors
 /.idea
@@ -26,9 +59,9 @@ node_modules
 .settings/
 *.sublime-workspace
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
+# IDE - VSCode (keep shared tasks/extensions; exclude local-only settings)
+.vscode/settings.json
+.vscode/*.code-workspace
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -42,6 +75,10 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+
+# Editor swaps
+*.swp
+*.swo
 
 # System Files
 .DS_Store
