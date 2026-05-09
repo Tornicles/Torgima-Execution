@@ -1,45 +1,85 @@
-# [Project name]
+# Torgima
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A deterministic execution operating system for individuals. Torgima converts raw goals into phased blueprints, tracks behavioral performance signals (momentum, consistency, velocity), and enforces an adaptive task system that responds to how well the user is actually executing.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000 / proxied at /api)
+- `pnpm --filter @workspace/torgima run dev` — run the frontend (port 26136 / proxied at /)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL`, `AI_INTEGRATIONS_ANTHROPIC_BASE_URL`, `AI_INTEGRATIONS_ANTHROPIC_API_KEY`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: PostgreSQL + Drizzle ORM (lib/db)
+- Frontend: React + Vite + Wouter + TanStack Query + Zustand + shadcn/ui
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
+- API codegen: Orval (from OpenAPI spec → lib/api-spec/openapi.yaml)
+- Background jobs: pg-boss
+- AI: Anthropic Claude via Replit AI Integrations (BHUDHI_MODEL=claude-sonnet-4-6)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+```
+lib/api-spec/openapi.yaml           → Single source of truth for all API contracts
+lib/api-client-react/src/generated/ → Generated React Query hooks (auto-generated)
+lib/api-zod/src/generated/          → Generated Zod schemas (auto-generated)
+artifacts/api-server/src/
+  app.ts                            → Express app setup
+  index.ts                          → Server entry point
+  routes/                           → Route handlers (me, blueprints, orders, feedback, signals, state, bhudhi, validation)
+  engines/                          → Core computation engines (19 stubs as of Prompt 1)
+  services/                         → Business logic layer
+  bhudhi/                           → AI intelligence layer (BhudhiCore, TriggerRouter)
+  workers/                          → pg-boss worker registry
+  types/                            → TypeScript interfaces
+  constants/                        → Domain rules, signal thresholds, conditions
+artifacts/torgima/src/
+  App.tsx                           → React router + providers
+  pages/                            → Page components
+  store/                            → Zustand stores (blueprint, task, signal, ui)
+```
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **In-memory stubs in Prompt 1**: All services use Map<> for storage. Drizzle DB integration happens in Prompt 3.
+- **Bhudhi = Claude**: All AI calls go through `BhudhiCore.ts`. No engine or service calls Anthropic directly (except ValidationEngine which delegates to BhudhiCore internally).
+- **Condition enforcement is synchronous gate**: Condition code (optimal/building/recovering/critical/blocked) is determined by SignalCalculationEngine, and the ControlEngine enforces it — no route can bypass it.
+- **pg-boss for background work**: All async work (signal recalculation, task generation) is enqueued via pg-boss, not handled inline during HTTP requests.
+- **Routes return API responses via `success()` / `handleError()`**: Never raw `res.json()` in route handlers.
+- **Demo user in Prompt 1**: Auth not yet implemented. All routes use `UserService.getDemoUser()` for the demo user `demo-user-001`. Auth comes in Prompt 2.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Torgima executes on the principle that most people fail not because they lack goals, but because they lack a system that adapts to their real performance. The product:
+- Structures raw goals into phased blueprints with Bhudhi (Claude AI)
+- Tracks three behavioral signals: momentum, consistency, velocity
+- Maps signals to a Condition (optimal/building/recovering/critical/blocked)
+- Enforces what kind of work you can do based on your Condition
+- Adapts task difficulty and volume to your actual execution capacity
+- Detects patterns via feedback interrogation to surface real blockers
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- No emojis in code or UI unless explicitly specified
+- All server logging via `req.log` (routes) and `logger` (elsewhere) — never `console.log`
+- All engine files use `TODO (Prompt N+)` comments to indicate stub status
+- In-memory stores for Prompt 1, database in Prompt 3
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run `pnpm --filter @workspace/api-spec run codegen` after any change to `lib/api-spec/openapi.yaml`
+- Never rename the OpenAPI `info.title: Api` — it controls generated filenames
+- pg-boss `ConstructorOptions` does NOT include `deleteAfterSeconds` (that's a `QueueOptions` property)
+- `WorkHandler` in pg-boss v12 receives `Job<T>[]` (array), not a single job
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Engine stubs numbered by prompt: `TODO (Prompt 5+)` means fully implemented in Prompt 5

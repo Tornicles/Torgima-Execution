@@ -1,0 +1,934 @@
+You are building Torgima — a deterministic execution operating system for individuals. This is Prompt 1 of 16. You are setting up the complete project scaffold, infrastructure, and architecture. Nothing else is built in this prompt. Everything else depends on this being exactly right.
+Read all four uploaded documents fully before writing a single line of code.
+________________________________________
+TECHNOLOGY STACK (LOCKED — DO NOT CHANGE)
+These decisions are final. Every other prompt assumes this exact stack.
+Layer	Technology
+Framework	Next.js 14 App Router (TypeScript)
+Database	PostgreSQL via Supabase
+ORM	Prisma
+Auth	NextAuth.js v5 (magic link)
+Styling	Tailwind CSS + shadcn/ui
+Client State	Zustand
+Server State / Caching	React Query (TanStack Query v5)
+AI (Bhudhi)	Anthropic Claude API — model: claude-sonnet-4-20250514
+Background Jobs	pg-boss (PostgreSQL-native job queue — no Redis)
+Email	Resend
+Validation	Zod
+Testing	Vitest (unit + integration) + Playwright (E2E)
+Deployment	Vercel
+________________________________________
+STEP 1 — CREATE THE NEXT.JS PROJECT
+Run this command from the project root:
+npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+
+Answer every prompt: TypeScript = Yes, ESLint = Yes, Tailwind = Yes, src/ directory = Yes, App Router = Yes, customize import alias = Yes → @/*
+________________________________________
+STEP 2 — INSTALL ALL DEPENDENCIES
+Run these groups in order:
+# Database + ORM
+npm install prisma @prisma/client
+npm install -D prisma
+
+# Auth
+npm install next-auth@beta @auth/prisma-adapter
+
+# Background jobs (pg-boss — PostgreSQL native, no Redis)
+npm install pg-boss
+
+# AI
+npm install @anthropic-ai/sdk
+
+# Email
+npm install resend
+
+# Validation
+npm install zod
+
+# UI components
+npm install @radix-ui/react-dialog @radix-ui/react-dropdown-menu @radix-ui/react-label @radix-ui/react-select @radix-ui/react-separator @radix-ui/react-slot @radix-ui/react-switch @radix-ui/react-tabs @radix-ui/react-toast class-variance-authority clsx tailwind-merge lucide-react
+
+# State management
+npm install zustand @tanstack/react-query
+
+# Utilities
+npm install date-fns nanoid
+
+# Testing
+npm install -D vitest @vitejs/plugin-react playwright @playwright/test
+
+# Type definitions
+npm install -D @types/node @types/react @types/react-dom
+
+Initialize shadcn/ui:
+npx shadcn-ui@latest init
+
+When prompted: style = Default, base color = Slate, CSS variables = Yes.
+Initialize Prisma:
+npx prisma init
+
+________________________________________
+STEP 3 — COMPLETE FOLDER STRUCTURE
+Create every folder and file listed below exactly as shown. Empty folders get a .gitkeep file. Every path is final — all other prompts reference these exact paths.
+src/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   ├── verify/page.tsx
+│   │   └── layout.tsx
+│   ├── (onboarding)/
+│   │   ├── onboarding/page.tsx
+│   │   └── layout.tsx
+│   ├── (app)/
+│   │   ├── dashboard/page.tsx
+│   │   ├── tasks/[orderId]/page.tsx
+│   │   ├── feedback/[orderId]/page.tsx
+│   │   ├── blueprint/[id]/page.tsx
+│   │   ├── signals/page.tsx
+│   │   ├── academy/page.tsx
+│   │   ├── capability/page.tsx
+│   │   ├── identity/page.tsx
+│   │   ├── settings/page.tsx
+│   │   ├── outcomes/page.tsx
+│   │   └── layout.tsx
+│   ├── api/
+│   │   ├── auth/[...nextauth]/route.ts
+│   │   ├── health/route.ts
+│   │   ├── me/route.ts
+│   │   ├── me/settings/route.ts
+│   │   ├── me/notification-preferences/route.ts
+│   │   ├── onboarding/status/route.ts
+│   │   ├── onboarding/goal/route.ts
+│   │   ├── blueprints/route.ts
+│   │   ├── blueprints/[id]/route.ts
+│   │   ├── blueprints/[id]/activate/route.ts
+│   │   ├── blueprints/[id]/state/route.ts
+│   │   ├── blueprints/[id]/pause/route.ts
+│   │   ├── blueprints/[id]/resume/route.ts
+│   │   ├── blueprints/[id]/pause-status/route.ts
+│   │   ├── blueprints/[id]/completion-status/route.ts
+│   │   ├── blueprints/[id]/completion-summary/route.ts
+│   │   ├── blueprints/[id]/pivot-review/current/route.ts
+│   │   ├── blueprints/[id]/pivot-review/[reviewId]/paths/route.ts
+│   │   ├── blueprints/[id]/pivot-review/[reviewId]/resolve/route.ts
+│   │   ├── blueprints/[id]/pivot-review/[reviewId]/dismiss/route.ts
+│   │   ├── blueprints/[id]/strategy-review/request/route.ts
+│   │   ├── blueprints/history/route.ts
+│   │   ├── validation/run/route.ts
+│   │   ├── orders/active/route.ts
+│   │   ├── orders/[id]/route.ts
+│   │   ├── orders/[id]/start/route.ts
+│   │   ├── orders/[id]/pause/route.ts
+│   │   ├── orders/[id]/finish/route.ts
+│   │   ├── orders/[id]/block/route.ts
+│   │   ├── orders/[id]/resume/route.ts
+│   │   ├── orders/[id]/feedback/route.ts
+│   │   ├── feedback/task/route.ts
+│   │   ├── feedback/[id]/interrogation/route.ts
+│   │   ├── feedback/weekly-review/route.ts
+│   │   ├── feedback/phase-checkpoint/route.ts
+│   │   ├── feedback/habit-checkin/route.ts
+│   │   ├── signals/current/route.ts
+│   │   ├── signals/history/route.ts
+│   │   ├── state/dashboard/route.ts
+│   │   ├── outcomes/current/route.ts
+│   │   ├── outcomes/[id]/evidence/route.ts
+│   │   ├── rewards/current/route.ts
+│   │   ├── rewards/history/route.ts
+│   │   ├── notifications/unsubscribe/route.ts
+│   │   ├── notifications/history/route.ts
+│   │   ├── bhudhi/explain-state/route.ts
+│   │   ├── bhudhi/structure-goal/route.ts
+│   │   └── internal/
+│   │       ├── signals/recalculate/route.ts
+│   │       ├── blueprints/[id]/complete/route.ts
+│   │       ├── blueprints/[id]/force-pause/route.ts
+│   │       ├── blueprints/[id]/pivot-review/generate/route.ts
+│   │       ├── notifications/send/route.ts
+│   │       ├── notifications/bounce/route.ts
+│   │       ├── outcomes/validate/route.ts
+│   │       ├── false-progress/[id]/resolve/route.ts
+│   │       ├── rewards/evaluate/route.ts
+│   │       ├── bhudhi/trigger/route.ts
+│   │       ├── bhudhi/validate-output/route.ts
+│   │       ├── bhudhi/usage/route.ts
+│   │       ├── events/dispatch/route.ts
+│   │       ├── events/[id]/replay/route.ts
+│   │       ├── dead-letter/route.ts
+│   │       └── dead-letter/[id]/resolve/route.ts
+│   ├── layout.tsx
+│   └── page.tsx
+├── engines/
+│   ├── execution-loop/
+│   │   └── ExecutionLoopEngine.ts
+│   ├── signal/
+│   │   └── SignalCalculationEngine.ts
+│   ├── condition/
+│   │   └── ConditionEvaluationEngine.ts
+│   ├── control/
+│   │   └── ControlEngine.ts
+│   │   └── EnforcementPackageGenerator.ts
+│   ├── task-generation/
+│   │   └── TaskGenerationEngine.ts
+│   ├── task-guarantee/
+│   │   └── ContinuousTaskGuaranteeEngine.ts
+│   ├── feedback/
+│   │   └── FeedbackProcessingEngine.ts
+│   ├── inactivity/
+│   │   └── InactivityDetectionEngine.ts
+│   ├── blueprint/
+│   │   └── BlueprintEngine.ts
+│   ├── domain/
+│   │   └── DomainResolutionEngine.ts
+│   ├── validation/
+│   │   └── ValidationEngine.ts
+│   ├── identity/
+│   │   └── IdentityEngine.ts
+│   ├── reward/
+│   │   └── RewardEngine.ts
+│   ├── outcome/
+│   │   └── OutcomeValidationEngine.ts
+│   ├── pattern/
+│   │   └── PatternLearningEngine.ts
+│   ├── failure/
+│   │   └── FailureClassificationEngine.ts
+│   ├── priority/
+│   │   └── RealTimePriorityEngine.ts
+│   ├── dependency/
+│   │   └── DependencyMappingEngine.ts
+│   ├── friction/
+│   │   └── FrictionDetectionEngine.ts
+│   ├── capability/
+│   │   └── CapabilityEngine.ts
+│   ├── framework/
+│   │   └── FrameworkActivationEngine.ts
+│   ├── lifecycle/
+│   │   ├── CompletionEngine.ts
+│   │   ├── PauseEngine.ts
+│   │   ├── ResumeEngine.ts
+│   │   └── PivotEngine.ts
+│   ├── strategy/
+│   │   └── StrategyEngine.ts
+│   ├── external-signal/
+│   │   └── ExternalSignalGateway.ts
+│   └── orchestration/
+│       └── SystemOrchestrationEngine.ts
+├── bhudhi/
+│   ├── BhudhiCore.ts
+│   ├── TriggerRouter.ts
+│   ├── PromptRegistry.ts
+│   ├── OutputValidator.ts
+│   ├── FallbackLibrary.ts
+│   ├── MemoryService.ts
+│   └── UsageController.ts
+├── services/
+│   ├── AuthService.ts
+│   ├── UserService.ts
+│   ├── BlueprintService.ts
+│   ├── ValidationService.ts
+│   ├── OrderService.ts
+│   ├── FeedbackService.ts
+│   ├── SignalService.ts
+│   ├── ConditionService.ts
+│   ├── ControlService.ts
+│   ├── TaskGenerationService.ts
+│   ├── AcademyService.ts
+│   ├── CapabilityService.ts
+│   ├── BehaviorService.ts
+│   ├── DashboardService.ts
+│   ├── NotificationService.ts
+│   ├── IdentityService.ts
+│   ├── OutcomeService.ts
+│   ├── RewardService.ts
+│   └── EventService.ts
+├── workers/
+│   ├── WorkerRegistry.ts
+│   ├── SignalWorker.ts
+│   ├── ConditionWorker.ts
+│   ├── ControlWorker.ts
+│   ├── TaskGenerationWorker.ts
+│   ├── FeedbackWorker.ts
+│   ├── InactivityWorker.ts
+│   ├── NotificationWorker.ts
+│   ├── ProjectionWorker.ts
+│   ├── BhudhiWorker.ts
+│   └── HealthWorker.ts
+├── repositories/
+│   ├── UserRepository.ts
+│   ├── BlueprintRepository.ts
+│   ├── OrderRepository.ts
+│   ├── FeedbackRepository.ts
+│   ├── SignalRepository.ts
+│   ├── ConditionRepository.ts
+│   ├── EnforcementRepository.ts
+│   ├── EventRepository.ts
+│   ├── IdentityRepository.ts
+│   ├── CapabilityRepository.ts
+│   ├── BhudhiRepository.ts
+│   └── SystemHealthRepository.ts
+├── lib/
+│   ├── prisma.ts
+│   ├── queue.ts
+│   ├── anthropic.ts
+│   ├── resend.ts
+│   ├── auth.ts
+│   ├── errors.ts
+│   ├── logger.ts
+│   └── utils.ts
+├── types/
+│   ├── blueprint.ts
+│   ├── order.ts
+│   ├── feedback.ts
+│   ├── signal.ts
+│   ├── condition.ts
+│   ├── enforcement.ts
+│   ├── bhudhi.ts
+│   ├── identity.ts
+│   ├── events.ts
+│   └── api.ts
+├── constants/
+│   ├── conditions.ts
+│   ├── signals.ts
+│   ├── domains.ts
+│   ├── task-types.ts
+│   ├── bhudhi.ts
+│   └── feature-flags.ts
+├── hooks/
+│   ├── useBlueprint.ts
+│   ├── useTask.ts
+│   ├── useSignal.ts
+│   ├── useDashboard.ts
+│   └── useIdentity.ts
+├── store/
+│   ├── blueprintStore.ts
+│   ├── taskStore.ts
+│   ├── signalStore.ts
+│   └── uiStore.ts
+└── components/
+    ├── ui/               ← shadcn/ui components go here
+    ├── dashboard/        ← .gitkeep
+    ├── tasks/            ← .gitkeep
+    ├── feedback/         ← .gitkeep
+    ├── signals/          ← .gitkeep
+    ├── identity/         ← .gitkeep
+    ├── onboarding/       ← .gitkeep
+    └── shared/           ← .gitkeep
+
+prisma/
+├── schema.prisma         ← empty for now, will be written in Prompt 2
+├── migrations/           ← .gitkeep
+└── seed.ts               ← empty for now, will be written in Prompt 2
+
+tests/
+├── unit/engines/         ← .gitkeep
+├── unit/bhudhi/          ← .gitkeep
+├── unit/repositories/    ← .gitkeep
+├── integration/api/      ← .gitkeep
+├── integration/workers/  ← .gitkeep
+└── e2e/loop/             ← .gitkeep
+
+________________________________________
+STEP 4 — ENVIRONMENT VARIABLES
+Create .env.local with exactly these keys. Fill in real values for the required ones:
+# DATABASE — Required
+DATABASE_URL="postgresql://[user]:[password]@[host]:[port]/[database]?schema=public"
+DIRECT_URL="postgresql://[user]:[password]@[host]:[port]/[database]?schema=public"
+
+# AUTH — Required
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="[generate with: openssl rand -base64 32]"
+AUTH_SECRET="[same value as NEXTAUTH_SECRET]"
+
+# AI / BHUDHI — Required
+ANTHROPIC_API_KEY="[your Anthropic API key]"
+BHUDHI_MODEL="claude-sonnet-4-20250514"
+BHUDHI_MAX_TOKENS=1000
+BHUDHI_DAILY_CALL_CAP_STARTER=20
+BHUDHI_DAILY_CALL_CAP_GROWTH=50
+BHUDHI_DAILY_CALL_CAP_ULTIMATE=200
+
+# EMAIL — Required
+RESEND_API_KEY="[your Resend API key]"
+EMAIL_FROM="noreply@torgima.com"
+EMAIL_REPLY_TO="support@torgima.com"
+
+# NOTIFICATIONS
+NOTIFICATION_UNSUBSCRIBE_SECRET="[generate with: openssl rand -base64 32]"
+
+# ENVIRONMENT
+NODE_ENV="development"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# FEATURE FLAGS (Phase 1 defaults — do not change)
+NEXT_PUBLIC_TEAM_MODE_ENABLED="false"
+NEXT_PUBLIC_ADVANCED_DOMAINS_ENABLED="false"
+NEXT_PUBLIC_ADVANCED_FRAMEWORKS_ENABLED="false"
+
+Create .env.example with the same keys but empty values. This gets committed to git.
+Add to .gitignore:
+.env.local
+.env*.local
+
+________________________________________
+STEP 5 — CONFIGURATION FILES
+tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
+next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: {
+    typedRoutes: true,
+  },
+  serverExternalPackages: ["pg-boss", "@prisma/client"],
+};
+
+export default nextConfig;
+
+vitest.config.ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import { resolve } from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "node",
+    globals: true,
+    setupFiles: ["./tests/setup.ts"],
+  },
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+    },
+  },
+});
+
+________________________________________
+STEP 6 — CORE LIBRARY FILES
+src/lib/prisma.ts
+Prisma singleton — the only place PrismaClient is instantiated. Every engine, service, and repository imports from here. Never import PrismaClient directly anywhere else.
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+src/lib/queue.ts
+pg-boss singleton. All background jobs go through this. Workers register here. Never create a PgBoss instance anywhere else.
+import PgBoss from "pg-boss";
+
+const globalForBoss = globalThis as unknown as {
+  boss: PgBoss | undefined;
+};
+
+export function createBoss(): PgBoss {
+  return new PgBoss({
+    connectionString: process.env.DATABASE_URL!,
+    max: 10,
+    monitorStateIntervalSeconds: 30,
+    deleteAfterDays: 7,
+    retryLimit: 3,
+    retryDelay: 30,
+    retryBackoff: true,
+    expireInHours: 24,
+    onComplete: true,
+  });
+}
+
+export async function getBoss(): Promise<PgBoss> {
+  if (!globalForBoss.boss) {
+    globalForBoss.boss = createBoss();
+    await globalForBoss.boss.start();
+  }
+  return globalForBoss.boss;
+}
+
+src/lib/anthropic.ts
+Anthropic client singleton for Bhudhi. Only BhudhiCore.ts calls this directly.
+import Anthropic from "@anthropic-ai/sdk";
+
+const globalForAnthropic = globalThis as unknown as {
+  anthropic: Anthropic | undefined;
+};
+
+export const anthropic =
+  globalForAnthropic.anthropic ??
+  new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY!,
+  });
+
+if (process.env.NODE_ENV !== "production")
+  globalForAnthropic.anthropic = anthropic;
+
+export const BHUDHI_MODEL = process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514";
+
+src/lib/resend.ts
+Resend client singleton. Only NotificationService.ts calls this directly.
+import { Resend } from "resend";
+
+export const resend = new Resend(process.env.RESEND_API_KEY!);
+
+export const EMAIL_FROM = process.env.EMAIL_FROM ?? "noreply@torgima.com";
+export const EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO ?? "support@torgima.com";
+
+src/lib/errors.ts
+Central error class. All engines and services throw this. All API routes catch this.
+export type ErrorCode =
+  | "UNAUTHENTICATED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "VALIDATION_ERROR"
+  | "STALE_STATE"
+  | "SYSTEM_LOCKED"
+  | "BLUEPRINT_NOT_ACTIVE"
+  | "BLUEPRINT_PAUSED"
+  | "BLUEPRINT_COMPLETE"
+  | "TASK_IN_PROGRESS"
+  | "NO_ACTIVE_BLUEPRINT"
+  | "PIVOT_REVIEW_OPEN"
+  | "COMPLETION_BLOCKED"
+  | "RATE_LIMITED"
+  | "INTERNAL_ERROR"
+  | "AI_CONTRACT_ERROR"
+  | "FEATURE_DISABLED";
+
+export class TorgimaError extends Error {
+  constructor(
+    public readonly code: ErrorCode,
+    message: string,
+    public readonly retryable: boolean = false,
+    public readonly fieldErrors?: Record<string, string[]>
+  ) {
+    super(message);
+    this.name = "TorgimaError";
+  }
+}
+
+src/lib/logger.ts
+Structured logger. All engines use this. No raw console.log in production code.
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+interface LogEntry {
+  level: LogLevel;
+  message: string;
+  context?: Record<string, unknown>;
+  timestamp: string;
+}
+
+function log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
+  const entry: LogEntry = {
+    level,
+    message,
+    context,
+    timestamp: new Date().toISOString(),
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    console[level === "debug" ? "log" : level](
+      `[${entry.timestamp}] [${level.toUpperCase()}] ${message}`,
+      context ?? ""
+    );
+  } else {
+    console.log(JSON.stringify(entry));
+  }
+}
+
+export const logger = {
+  debug: (message: string, context?: Record<string, unknown>) => log("debug", message, context),
+  info:  (message: string, context?: Record<string, unknown>) => log("info",  message, context),
+  warn:  (message: string, context?: Record<string, unknown>) => log("warn",  message, context),
+  error: (message: string, context?: Record<string, unknown>) => log("error", message, context),
+};
+
+src/types/api.ts
+Standard response envelope. Every API route returns this shape.
+export interface ApiResponse<T = unknown> {
+  ok: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    fieldErrors?: Record<string, string[]>;
+    retryable?: boolean;
+    currentStateVersion?: number;
+  };
+  meta?: {
+    requestId?: string;
+    timestamp?: string;
+  };
+}
+
+export function success<T>(data: T, meta?: ApiResponse["meta"]): ApiResponse<T> {
+  return { ok: true, data, meta };
+}
+
+export function failure(
+  code: string,
+  message: string,
+  opts?: {
+    fieldErrors?: Record<string, string[]>;
+    retryable?: boolean;
+    currentStateVersion?: number;
+  }
+): ApiResponse {
+  return {
+    ok: false,
+    error: { code, message, ...opts },
+  };
+}
+
+src/constants/feature-flags.ts
+All feature flag keys used throughout the system. Never hardcode flag names in engines.
+export const FEATURE_FLAGS = {
+  // Phase 1 ON
+  AI_ENABLED:               "ai_enabled",
+  ACADEMY_ENABLED:          "academy_enabled",
+  IDENTITY_SYSTEM_ENABLED:  "identity_system_enabled",
+  COMPULSION_LOOP_ENABLED:  "compulsion_loop_enabled",
+  OUTCOME_VALIDATION_ENABLED: "outcome_validation_enabled",
+
+  // Phase 2 OFF
+  TEAM_MODE_ENABLED:           "team_mode_enabled",
+  COMMUNITY_ENABLED:           "community_enabled",
+  ADVANCED_DOMAINS_ENABLED:    "advanced_domains_enabled",
+  ADVANCED_FRAMEWORKS_ENABLED: "advanced_frameworks_enabled",
+  AI_ADVANCED_ENABLED:         "ai_advanced_enabled",
+  MARKETPLACE_ENABLED:         "marketplace_enabled",
+  CONTENT_ENGINE_ENABLED:      "content_engine_enabled",
+  PREDICTIVE_SIGNALS_ENABLED:  "predictive_signals_enabled",
+  EXTERNAL_INTEGRATIONS_ENABLED: "external_integrations_enabled",
+} as const;
+
+export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
+
+src/constants/domains.ts
+Domain definitions with Phase 1 activation status.
+export const DOMAINS = {
+  GENESIS:     "genesis",
+  MARKET:      "market",
+  DELIVERY:    "delivery",
+  CONTINUITY:  "continuity",
+  OPERATIONS:  "operations",   // limited in Phase 1
+  GROWTH:      "growth",       // disabled in Phase 1
+  PEOPLE:      "people",       // disabled in Phase 1 (team only)
+} as const;
+
+export type Domain = typeof DOMAINS[keyof typeof DOMAINS];
+
+// Phase 1 activation status
+export const DOMAIN_PHASE1_STATUS: Record<Domain, "always_active" | "active" | "limited" | "disabled"> = {
+  genesis:     "always_active",
+  market:      "active",
+  delivery:    "active",
+  continuity:  "active",
+  operations:  "limited",
+  growth:      "disabled",
+  people:      "disabled",
+};
+
+src/constants/conditions.ts
+All 7 condition names. Single source of truth for condition strings.
+export const CONDITIONS = {
+  NOTHINGNESS:  "nothingness",
+  DANGER:       "danger",
+  URGENCY:      "urgency",
+  STABILITY:    "stability",
+  POWER:        "power",
+  AFFLUENCE:    "affluence",
+  POWER_CHANGE: "power_change",
+} as const;
+
+export type Condition = typeof CONDITIONS[keyof typeof CONDITIONS];
+
+________________________________________
+STEP 7 — WORKER REGISTRY
+src/workers/WorkerRegistry.ts
+All workers register here. This is the single place workers are started. Nothing registers workers directly — they all go through this registry.
+import { getBoss } from "@/lib/queue";
+import { logger } from "@/lib/logger";
+
+export interface WorkerDefinition {
+  name: string;
+  queue: string;
+  handler: (job: any) => Promise<void>;
+  options?: {
+    teamSize?: number;
+    pollingIntervalSeconds?: number;
+  };
+}
+
+class WorkerRegistry {
+  private workers: WorkerDefinition[] = [];
+  private started = false;
+
+  register(worker: WorkerDefinition): void {
+    this.workers.push(worker);
+  }
+
+  async startAll(): Promise<void> {
+    if (this.started) return;
+    const boss = await getBoss();
+
+    for (const worker of this.workers) {
+      await boss.work(
+        worker.queue,
+        worker.options ?? {},
+        async (job) => {
+          logger.info(`[Worker] Processing ${worker.queue}`, { jobId: job.id });
+          try {
+            await worker.handler(job);
+            logger.info(`[Worker] Completed ${worker.queue}`, { jobId: job.id });
+          } catch (error) {
+            logger.error(`[Worker] Failed ${worker.queue}`, {
+              jobId: job.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
+        }
+      );
+      logger.info(`[Worker] Registered ${worker.name} on queue ${worker.queue}`);
+    }
+
+    this.started = true;
+    logger.info(`[WorkerRegistry] All ${this.workers.length} workers started`);
+  }
+}
+
+export const workerRegistry = new WorkerRegistry();
+
+Create empty worker stub files for all 10 workers. Each file exports a handler function that logs a placeholder message. They will be fully implemented in later prompts.
+Example stub (repeat this pattern for all 10):
+// src/workers/SignalWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { logger } from "@/lib/logger";
+
+export const SIGNAL_QUEUE = "signal_recalculation_requested";
+
+workerRegistry.register({
+  name: "SignalWorker",
+  queue: SIGNAL_QUEUE,
+  handler: async (job) => {
+    logger.info("[SignalWorker] Stub — will be implemented in Prompt 7", {
+      blueprintId: job.data?.blueprint_id,
+    });
+    // Full implementation in Prompt 7 — Signal Engine
+  },
+});
+
+Queue names for all 10 workers:
+●	signal_recalculation_requested → SignalWorker
+●	condition_evaluation_requested → ConditionWorker
+●	enforcement_package_requested → ControlWorker
+●	task_generation_requested → TaskGenerationWorker
+●	feedback_processing_requested → FeedbackWorker
+●	inactivity_scan_requested → InactivityWorker
+●	notification_send_requested → NotificationWorker
+●	projection_refresh_requested → ProjectionWorker
+●	bhudhi_trigger_requested → BhudhiWorker
+●	system_health_event → HealthWorker
+________________________________________
+STEP 8 — EMPTY ENGINE STUBS
+Create a stub file for every engine in /src/engines/. Each stub exports the class with a constructor and a comment indicating which prompt implements it.
+Example pattern:
+// src/engines/signal/SignalCalculationEngine.ts
+import { logger } from "@/lib/logger";
+
+export class SignalCalculationEngine {
+  // Implemented in Prompt 7
+  // Spec: DOC_05_Signal_Calculation_Engine.docx
+
+  async calculate(blueprintId: string): Promise<void> {
+    logger.info("[SignalCalculationEngine] Stub", { blueprintId });
+    throw new Error("Not yet implemented — Prompt 7");
+  }
+}
+
+Repeat for all 23 engine files. This ensures imports work from day one and TypeScript compilation passes.
+________________________________________
+STEP 9 — HEALTH CHECK ENDPOINT
+src/app/api/health/route.ts
+This endpoint verifies the system is wired correctly. It must return 200 with all checks passing before Prompt 1 is considered done.
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { success } from "@/types/api";
+
+export async function GET() {
+  const checks = {
+    database: false,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: "phase1-prompt1",
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.database = true;
+  } catch {
+    checks.database = false;
+  }
+
+  const allPassing = checks.database;
+
+  return NextResponse.json(
+    success(checks),
+    { status: allPassing ? 200 : 503 }
+  );
+}
+
+________________________________________
+STEP 10 — PACKAGE.JSON SCRIPTS
+Add these scripts to package.json:
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "workers:start": "ts-node src/workers/start.ts"
+  }
+}
+
+Create src/workers/start.ts — the entry point for running all workers in development:
+import { workerRegistry } from "./WorkerRegistry";
+import { logger } from "@/lib/logger";
+
+// Import all workers to register them
+import "./SignalWorker";
+import "./ConditionWorker";
+import "./ControlWorker";
+import "./TaskGenerationWorker";
+import "./FeedbackWorker";
+import "./InactivityWorker";
+import "./NotificationWorker";
+import "./ProjectionWorker";
+import "./BhudhiWorker";
+import "./HealthWorker";
+
+async function main() {
+  logger.info("[Workers] Starting all workers...");
+  await workerRegistry.startAll();
+  logger.info("[Workers] All workers running. Ctrl+C to stop.");
+}
+
+main().catch((error) => {
+  logger.error("[Workers] Failed to start", { error: error.message });
+  process.exit(1);
+});
+
+________________________________________
+STEP 11 — PRISMA SCHEMA PLACEHOLDER
+prisma/schema.prisma gets this minimal placeholder now. The full schema is written in Prompt 2:
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Full schema written in Prompt 2 — DOC_02_Final_Database_Schema.docx
+
+Run npx prisma generate to generate the client from this empty schema.
+________________________________________
+STEP 12 — TEAM MODE PIPES (KEEP THESE OPEN)
+The following must be true at the end of Prompt 1 so Phase 2 team mode can be added without rewriting this foundation:
+1.	No hardcoded single-user assumptions in any service scaffold. Services accept userId as a parameter — they never pull a user from a singleton.
+
+2.	Feature flag constants include all team flags — team_mode_enabled, advanced_frameworks_enabled, advanced_domains_enabled are in feature-flags.ts set to false.
+
+3.	Domain constants include People and Growth — they exist in domains.ts with disabled status. They are not removed.
+
+4.	URL structure reserves /api/teams/ namespace — no route conflicts. Individual routes stay under /api/ without a team prefix.
+
+5.	Worker architecture is multi-user aware — WorkerRegistry processes jobs with user_id in the payload. It does not assume one user. Jobs are user-scoped, not system-scoped.
+
+________________________________________
+VERIFICATION CHECKLIST
+Do not move to Prompt 2 until every item passes:
+●	[ ] node --version shows 20.x
+●	[ ] .env.local exists with all required keys populated
+●	[ ] .env.local is in .gitignore and not committed
+●	[ ] All folders in the tree above exist
+●	[ ] npm run dev starts without errors
+●	[ ] http://localhost:3000 loads in browser
+●	[ ] GET /api/health returns { ok: true, data: { database: true } }
+●	[ ] npm run typecheck passes with zero TypeScript errors
+●	[ ] npm run lint passes with zero errors
+●	[ ] npx prisma generate runs without errors
+●	[ ] All 10 worker stub files exist in src/workers/
+●	[ ] All 23 engine stub files exist in their src/engines/ subfolders
+●	[ ] All feature flags including team flags exist in src/constants/feature-flags.ts
+●	[ ] Domain constants include all 7 domains with Phase 1 status annotations
+●	[ ] src/lib/prisma.ts uses singleton pattern
+●	[ ] src/lib/queue.ts uses pg-boss singleton pattern
+●	[ ] src/types/api.ts exports ApiResponse<T>, success(), and failure()
+●	[ ] src/lib/errors.ts exports TorgimaError class
+________________________________________
+NON-NEGOTIABLE BUILD RULES (APPLY TO EVERY FUTURE PROMPT)
+These rules are established here and govern the entire 16-prompt build:
+1.	Never use Pages Router. All routes are App Router only. All API routes use route.ts.
+2.	Never import PrismaClient directly. Always use the singleton from src/lib/prisma.ts.
+3.	Never use raw SQL except in the health check. All queries go through Prisma.
+4.	Never commit .env.local. All secrets stay in environment variables.
+5.	Every API response must use ApiResponse<T> from src/types/api.ts.
+6.	Every error must be a TorgimaError or one of its subclasses.
+7.	Every log goes through src/lib/logger.ts. No raw console.log in engine code.
+8.	Every background job registers through WorkerRegistry. No direct PgBoss calls outside workers.
+9.	Every Bhudhi call goes through BhudhiCore.ts. No direct Anthropic SDK calls outside Bhudhi layer.
+10.	TypeScript strict mode is on. Zero type errors permitted before any prompt is marked complete.
+11.	State-changing operations must write an Event row in the same database transaction as the mutation. This is enforced from Prompt 6 onward.
+12.	All services are stateless per-request. No singleton user state anywhere in the service layer.
+When Prompt 1 is fully verified, move to Prompt 2.
+________________________________________
+END OF PROMPT 1

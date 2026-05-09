@@ -1,22 +1,41 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Torgima — Deterministic Execution Operating System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: me
+    description: Current user profile and settings
+  - name: onboarding
+    description: Onboarding flow
+  - name: blueprints
+    description: Goal blueprints — the core execution unit
+  - name: orders
+    description: Task orders — individual execution items
+  - name: feedback
+    description: Feedback submission and interrogation
+  - name: signals
+    description: Signal system — behavioral performance metrics
+  - name: state
+    description: Dashboard state aggregation
+  - name: bhudhi
+    description: Bhudhi AI intelligence layer
+  - name: validation
+    description: Goal validation engine
+  - name: notifications
+    description: Notification history
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +43,981 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [me]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthenticated
+    patch:
+      operationId: updateMe
+      tags: [me]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /me/settings:
+    get:
+      operationId: getSettings
+      tags: [me]
+      summary: Get user settings
+      responses:
+        "200":
+          description: User settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+    patch:
+      operationId: updateSettings
+      tags: [me]
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+  /onboarding/status:
+    get:
+      operationId: getOnboardingStatus
+      tags: [onboarding]
+      summary: Get onboarding completion status
+      responses:
+        "200":
+          description: Onboarding status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingStatus"
+
+  /onboarding/goal:
+    post:
+      operationId: submitOnboardingGoal
+      tags: [onboarding]
+      summary: Submit initial goal during onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingGoalInput"
+      responses:
+        "200":
+          description: Goal submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingStatus"
+
+  /blueprints:
+    get:
+      operationId: listBlueprints
+      tags: [blueprints]
+      summary: List all blueprints for current user
+      responses:
+        "200":
+          description: List of blueprints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Blueprint"
+    post:
+      operationId: createBlueprint
+      tags: [blueprints]
+      summary: Create a new blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlueprintInput"
+      responses:
+        "201":
+          description: Blueprint created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+
+  /blueprints/history:
+    get:
+      operationId: getBlueprintHistory
+      tags: [blueprints]
+      summary: Get completed blueprint history
+      responses:
+        "200":
+          description: Blueprint history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Blueprint"
+
+  /blueprints/{id}:
+    get:
+      operationId: getBlueprint
+      tags: [blueprints]
+      summary: Get a specific blueprint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blueprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+        "404":
+          description: Not found
+
+  /blueprints/{id}/activate:
+    post:
+      operationId: activateBlueprint
+      tags: [blueprints]
+      summary: Activate a blueprint to start execution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blueprint activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+
+  /blueprints/{id}/state:
+    get:
+      operationId: getBlueprintState
+      tags: [blueprints]
+      summary: Get the full runtime state of an active blueprint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blueprint state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlueprintState"
+
+  /blueprints/{id}/pause:
+    post:
+      operationId: pauseBlueprint
+      tags: [blueprints]
+      summary: Pause an active blueprint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PauseInput"
+      responses:
+        "200":
+          description: Blueprint paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+
+  /blueprints/{id}/resume:
+    post:
+      operationId: resumeBlueprint
+      tags: [blueprints]
+      summary: Resume a paused blueprint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blueprint resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+
+  /validation/run:
+    post:
+      operationId: runValidation
+      tags: [validation]
+      summary: Run goal validation through Bhudhi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationInput"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+
+  /orders/active:
+    get:
+      operationId: getActiveOrders
+      tags: [orders]
+      summary: Get the current active orders for the user
+      responses:
+        "200":
+          description: Active orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get a specific order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/start:
+    post:
+      operationId: startOrder
+      tags: [orders]
+      summary: Mark an order as started
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/finish:
+    post:
+      operationId: finishOrder
+      tags: [orders]
+      summary: Mark an order as finished (triggers feedback flow)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/block:
+    post:
+      operationId: blockOrder
+      tags: [orders]
+      summary: Mark an order as blocked
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockInput"
+      responses:
+        "200":
+          description: Order blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/pause:
+    post:
+      operationId: pauseOrder
+      tags: [orders]
+      summary: Pause an in-progress order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/resume:
+    post:
+      operationId: resumeOrder
+      tags: [orders]
+      summary: Resume a paused order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /feedback/task:
+    post:
+      operationId: submitTaskFeedback
+      tags: [feedback]
+      summary: Submit feedback for a completed task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskFeedbackInput"
+      responses:
+        "201":
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+
+  /feedback/{id}/interrogation:
+    get:
+      operationId: getFeedbackInterrogation
+      tags: [feedback]
+      summary: Get Bhudhi interrogation questions for a feedback entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Interrogation questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Interrogation"
+
+  /feedback/weekly-review:
+    post:
+      operationId: submitWeeklyReview
+      tags: [feedback]
+      summary: Submit weekly review feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeeklyReviewInput"
+      responses:
+        "201":
+          description: Weekly review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+
+  /signals/current:
+    get:
+      operationId: getCurrentSignals
+      tags: [signals]
+      summary: Get current signal state for the user
+      responses:
+        "200":
+          description: Current signals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignalState"
+
+  /signals/history:
+    get:
+      operationId: getSignalHistory
+      tags: [signals]
+      summary: Get signal history snapshots
+      responses:
+        "200":
+          description: Signal history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SignalSnapshot"
+
+  /state/dashboard:
+    get:
+      operationId: getDashboardState
+      tags: [state]
+      summary: Get full dashboard state — active blueprint, orders, signals, conditions
+      responses:
+        "200":
+          description: Dashboard state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardState"
+
+  /bhudhi/structure-goal:
+    post:
+      operationId: structureGoal
+      tags: [bhudhi]
+      summary: Ask Bhudhi to structure a raw goal into a blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "200":
+          description: Structured goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StructuredGoal"
+
+  /bhudhi/explain-state:
+    post:
+      operationId: explainState
+      tags: [bhudhi]
+      summary: Ask Bhudhi to explain the current system state in plain language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExplainStateInput"
+      responses:
+        "200":
+          description: State explanation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateExplanation"
+
+  /notifications/history:
+    get:
+      operationId: getNotificationHistory
+      tags: [notifications]
+      summary: Get notification history
+      responses:
+        "200":
+          description: Notification history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    User:
+      type: object
+      required: [id, email, name, onboardingCompleted, createdAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        onboardingCompleted:
+          type: boolean
+        timezone:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        timezone:
+          type: string
+
+    UserSettings:
+      type: object
+      required: [userId, dailyTaskTarget, notificationsEnabled]
+      properties:
+        userId:
+          type: string
+        dailyTaskTarget:
+          type: integer
+        notificationsEnabled:
+          type: boolean
+        weeklyReviewDay:
+          type: ["string", "null"]
+
+    UserSettingsUpdate:
+      type: object
+      properties:
+        dailyTaskTarget:
+          type: integer
+        notificationsEnabled:
+          type: boolean
+        weeklyReviewDay:
+          type: string
+
+    OnboardingStatus:
+      type: object
+      required: [completed, step]
+      properties:
+        completed:
+          type: boolean
+        step:
+          type: string
+        blueprintId:
+          type: ["string", "null"]
+
+    OnboardingGoalInput:
+      type: object
+      required: [rawGoal]
+      properties:
+        rawGoal:
+          type: string
+        domain:
+          type: ["string", "null"]
+
+    Blueprint:
+      type: object
+      required: [id, userId, title, domain, status, phase, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        rawGoal:
+          type: string
+        domain:
+          type: string
+        status:
+          type: string
+          enum: [draft, validating, active, paused, complete, abandoned]
+        phase:
+          type: integer
+        totalPhases:
+          type: integer
+        currentCondition:
+          type: ["string", "null"]
+        pausedReason:
+          type: ["string", "null"]
+        activatedAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    BlueprintInput:
+      type: object
+      required: [rawGoal]
+      properties:
+        rawGoal:
+          type: string
+        domain:
+          type: ["string", "null"]
+
+    BlueprintState:
+      type: object
+      required: [blueprint, activeOrders, signals, condition]
+      properties:
+        blueprint:
+          $ref: "#/components/schemas/Blueprint"
+        activeOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        signals:
+          $ref: "#/components/schemas/SignalState"
+        condition:
+          type: string
+        phaseProgress:
+          type: integer
+
+    PauseInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    ValidationInput:
+      type: object
+      required: [rawGoal]
+      properties:
+        rawGoal:
+          type: string
+        domain:
+          type: ["string", "null"]
+
+    ValidationResult:
+      type: object
+      required: [valid, score, feedback]
+      properties:
+        valid:
+          type: boolean
+        score:
+          type: integer
+        feedback:
+          type: string
+        suggestedDomain:
+          type: ["string", "null"]
+        refinedGoal:
+          type: ["string", "null"]
+        issues:
+          type: array
+          items:
+            type: string
+
+    Order:
+      type: object
+      required: [id, blueprintId, userId, title, type, status, priority, createdAt]
+      properties:
+        id:
+          type: string
+        blueprintId:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        type:
+          type: string
+        status:
+          type: string
+          enum: [queued, active, in_progress, paused, blocked, complete, cancelled]
+        priority:
+          type: integer
+        estimatedMinutes:
+          type: ["integer", "null"]
+        instructions:
+          type: ["string", "null"]
+        proofRequired:
+          type: boolean
+        blockedReason:
+          type: ["string", "null"]
+        startedAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    BlockInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    Feedback:
+      type: object
+      required: [id, orderId, userId, type, completionRating, createdAt]
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+          enum: [task, weekly_review, phase_checkpoint, habit_checkin]
+        completionRating:
+          type: integer
+        effortRating:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        blockers:
+          type: array
+          items:
+            type: string
+        processedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    TaskFeedbackInput:
+      type: object
+      required: [orderId, completionRating]
+      properties:
+        orderId:
+          type: string
+        completionRating:
+          type: integer
+        effortRating:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        blockers:
+          type: array
+          items:
+            type: string
+        proofUrl:
+          type: ["string", "null"]
+
+    WeeklyReviewInput:
+      type: object
+      required: [blueprintId, overallRating]
+      properties:
+        blueprintId:
+          type: string
+        overallRating:
+          type: integer
+        wins:
+          type: array
+          items:
+            type: string
+        challenges:
+          type: array
+          items:
+            type: string
+        notes:
+          type: ["string", "null"]
+
+    Interrogation:
+      type: object
+      required: [feedbackId, questions]
+      properties:
+        feedbackId:
+          type: string
+        questions:
+          type: array
+          items:
+            type: string
+        context:
+          type: ["string", "null"]
+
+    SignalState:
+      type: object
+      required: [userId, momentum, consistency, velocity, condition, computedAt]
+      properties:
+        userId:
+          type: string
+        momentum:
+          type: number
+        consistency:
+          type: number
+        velocity:
+          type: number
+        condition:
+          type: string
+          enum: [optimal, building, recovering, critical, blocked]
+        streak:
+          type: integer
+        computedAt:
+          type: string
+
+    SignalSnapshot:
+      type: object
+      required: [id, userId, momentum, consistency, velocity, condition, snapshotDate]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        momentum:
+          type: number
+        consistency:
+          type: number
+        velocity:
+          type: number
+        condition:
+          type: string
+        snapshotDate:
+          type: string
+
+    DashboardState:
+      type: object
+      required: [user, signals, activeBlueprint, activeOrders, recentFeedback]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        signals:
+          $ref: "#/components/schemas/SignalState"
+        activeBlueprint:
+          type: ["object", "null"]
+        activeOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        recentFeedback:
+          type: array
+          items:
+            $ref: "#/components/schemas/Feedback"
+        streakDays:
+          type: integer
+        tasksCompletedToday:
+          type: integer
+        tasksCompletedThisWeek:
+          type: integer
+
+    GoalInput:
+      type: object
+      required: [rawGoal]
+      properties:
+        rawGoal:
+          type: string
+        context:
+          type: ["string", "null"]
+
+    StructuredGoal:
+      type: object
+      required: [title, domain, phases, milestones]
+      properties:
+        title:
+          type: string
+        domain:
+          type: string
+        phases:
+          type: array
+          items:
+            type: string
+        milestones:
+          type: array
+          items:
+            type: string
+        estimatedWeeks:
+          type: integer
+        reasoning:
+          type: string
+
+    ExplainStateInput:
+      type: object
+      required: [blueprintId]
+      properties:
+        blueprintId:
+          type: string
+        focus:
+          type: ["string", "null"]
+
+    StateExplanation:
+      type: object
+      required: [summary, condition, recommendation]
+      properties:
+        summary:
+          type: string
+        condition:
+          type: string
+        recommendation:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+    Notification:
+      type: object
+      required: [id, userId, type, title, readAt, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: ["string", "null"]
+        readAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string

@@ -1,0 +1,29 @@
+export const SIGNAL_THRESHOLDS = {
+  MOMENTUM: {
+    OPTIMAL: 80,
+    BUILDING: 60,
+    RECOVERING: 40,
+    CRITICAL: 20,
+  },
+  CONSISTENCY: {
+    OPTIMAL: 85,
+    BUILDING: 65,
+    RECOVERING: 45,
+    CRITICAL: 25,
+  },
+  VELOCITY: {
+    OPTIMAL: 75,
+    BUILDING: 55,
+    RECOVERING: 35,
+    CRITICAL: 15,
+  },
+} as const;
+
+export const SIGNAL_WEIGHTS = {
+  MOMENTUM: 0.4,
+  CONSISTENCY: 0.35,
+  VELOCITY: 0.25,
+} as const;
+
+export const STREAK_BONUS_THRESHOLD = 7;
+export const STREAK_BONUS_MULTIPLIER = 1.1;
