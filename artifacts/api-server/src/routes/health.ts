@@ -18,6 +18,8 @@ router.get("/health", async (req, res) => {
       database: false,
       event_table: false,
       blueprint_table: false,
+      signal_table: false,
+      condition_table: false,
     };
 
     const client = await pool.connect();
@@ -40,6 +42,20 @@ router.get("/health", async (req, res) => {
       checks["blueprint_table"] = true;
     } catch {
       checks["blueprint_table"] = false;
+    }
+
+    try {
+      await pool.query("SELECT COUNT(*) FROM signal_snapshots LIMIT 1");
+      checks["signal_table"] = true;
+    } catch {
+      checks["signal_table"] = false;
+    }
+
+    try {
+      await pool.query("SELECT COUNT(*) FROM conditions LIMIT 1");
+      checks["condition_table"] = true;
+    } catch {
+      checks["condition_table"] = false;
     }
 
     const pendingResult = await pool

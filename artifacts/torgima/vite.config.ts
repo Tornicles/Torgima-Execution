@@ -4,13 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// PORT and BASE_PATH are required for the dev/preview server (vite dev / vite preview),
-// but optional for `vite build` because static-host environments (Vercel, Netlify,
-// CDN) don't bind a port and serve from "/". When unset we fall back to Vite's
-// default dev port (5173) and a root base path so the build works on every host.
-const isBuildOnly =
-  process.argv.includes("build") || process.env.VITE_BUILD_ONLY === "1";
-
+// Dev/preview use PORT when set (e.g. Replit/host platforms); otherwise default to 5173
+// so `pnpm dev` works locally without env vars. `vite build` ignores the server port.
 const rawPort = process.env.PORT;
 let port: number;
 
@@ -19,12 +14,10 @@ if (rawPort) {
   if (Number.isNaN(port) || port <= 0) {
     throw new Error(`Invalid PORT value: "${rawPort}"`);
   }
-} else if (isBuildOnly) {
-  port = 5173;
 } else {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  // `vite build` does not need a listening port; dev/preview default to 5173 when PORT is unset
+  // so local `pnpm dev` works without environment wiring (hosts like Replit still set PORT).
+  port = 5173;
 }
 
 const basePath = process.env.BASE_PATH ?? "/";

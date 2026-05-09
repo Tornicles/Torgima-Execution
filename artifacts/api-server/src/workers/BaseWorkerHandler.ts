@@ -111,9 +111,9 @@ async function handleFailure(
       .values({
         original_event_id: data.eventId,
         event_type: event.eventType,
-        blueprint_id: data.blueprintId as unknown as undefined,
-        user_id: data.userId as unknown as undefined,
-        payload: event.payload as Record<string, unknown>,
+        ...(data.blueprintId ? { blueprint_id: data.blueprintId } : {}),
+        ...(data.userId ? { user_id: data.userId } : {}),
+        payload: (event.payload as Record<string, unknown>) ?? {},
         failure_reason: result.reason ?? "Unknown failure",
         retry_count: nextRetryCount,
         last_error: result.reason,

@@ -14,12 +14,25 @@ import "./ProjectionWorker.js";
 import "./BhudhiWorker.js";
 import "./HealthWorker.js";
 import { startScheduledHealthChecks } from "./HealthWorker.js";
+import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
   await workerRegistry.startAll();
 
   startScheduledHealthChecks();
+
+  setInterval(async () => {
+    try {
+      await scanForInactivity();
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        "[InactivityScheduler] Scan failed",
+      );
+    }
+  }, 15 * 60 * 1000);
+  logger.info("[Inactivity] Scheduled scan started (every 15 minutes)");
 
   // Event dispatcher polling loop
   logger.info("[EventDispatcher] Starting dispatcher loop...");
