@@ -8,6 +8,8 @@ import "./ConditionWorker.js";
 import "./ControlWorker.js";
 import "./TaskGenerationWorker.js";
 import "./FeedbackWorker.js";
+import "./IdentityWorker.js";
+import "./RewardWorker.js";
 import "./InactivityWorker.js";
 import "./NotificationWorker.js";
 import "./ProjectionWorker.js";

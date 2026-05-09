@@ -52,6 +52,33 @@ workerRegistry.register({
           causationEventId: data.eventId,
         });
 
+        await writeEvent({
+          eventType: EVENT_TYPES.IDENTITY_EVALUATION_REQUESTED,
+          entityType: "blueprint",
+          entityId: blueprintId,
+          userId,
+          blueprintId,
+          payload: { reason: "feedback_submitted", window_days: 14 },
+          idempotencyKey: `identity_eval:${blueprintId}:${Math.floor(Date.now() / 86400000)}`,
+          causationEventId: data.eventId,
+        }).catch(() => null);
+
+        await writeEvent({
+          eventType: EVENT_TYPES.REWARD_EVALUATION_REQUESTED,
+          entityType: "feedback",
+          entityId: feedbackId ?? "unknown",
+          userId,
+          blueprintId,
+          payload: {
+            source_type: "FEEDBACK",
+            source_id: feedbackId,
+            state_version: 0,
+            idempotency_key: `reward:feedback:${feedbackId ?? Date.now()}`,
+          },
+          idempotencyKey: `reward_eval:${feedbackId ?? data.eventId}`,
+          causationEventId: data.eventId,
+        }).catch(() => null);
+
         logger.info(
           { blueprintId, feedbackId },
           "[FeedbackWorker] Signal recalculation requested",

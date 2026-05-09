@@ -23,6 +23,8 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
   "system_health_degraded":         "system_health_event",
   "blueprint_launched":             "task_generation_requested",
   "pivot_review_requested":         "task_generation_requested",
+  "reward_evaluation_requested":   "reward_evaluation_requested",
+  "identity_evaluation_requested": "identity_evaluation_requested",
 };
 
 // Events that record state transitions but never need to be re-dispatched.
@@ -36,6 +38,7 @@ const TERMINAL_EVENT_TYPES = new Set<string>([
   "friction_adaptation_requested",
   "external_signal_received",
   "ORCHESTRATION_LOCK",
+  "false_progress_detected",
 ]);
 
 const DISPATCH_BATCH_SIZE = 50;

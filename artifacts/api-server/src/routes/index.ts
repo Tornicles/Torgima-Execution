@@ -12,8 +12,8 @@ import validationRouter from "./validation.js";
 import bhudhiRouter from "./bhudhi.js";
 import notificationsRouter from "./notifications.js";
 import intelligenceRouter from "./intelligence.js";
-
-const router: IRouter = Router();
+import engagementRouter from "./engagement.js";
+import internalRouter from "./internal.js";
 
 router.use(healthRouter);
 router.use(authRouter);
@@ -28,6 +28,7 @@ router.use(validationRouter);
 router.use(bhudhiRouter);
 router.use(notificationsRouter);
 router.use(intelligenceRouter);
+router.use(engagementRouter);
 router.use(internalRouter);
 
 export default router;

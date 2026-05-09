@@ -1,6 +1,7 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { calculate } from "../engines/signal/SignalCalculationEngine.js";
+import { runFrameworkCycle } from "../engines/framework/FrameworkActivationEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
@@ -23,6 +24,20 @@ workerRegistry.register({
           blueprintId,
           userId,
           causationEventId: data.eventId,
+        });
+
+        await runFrameworkCycle({
+          blueprintId,
+          userId,
+          signalSnapshotId: result.snapshotId,
+        }).catch((error: unknown) => {
+          logger.warn(
+            {
+              blueprintId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "[SignalWorker] Framework cycle failed — non-critical",
+          );
         });
 
         await incrementStateVersion(blueprintId, "signal_recalculated", data.eventId);

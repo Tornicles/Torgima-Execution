@@ -55,6 +55,10 @@ export const EVENT_TYPES = {
   COGNITIVE_LOAD_HIGH:             "cognitive_load_high",
   FRICTION_ADAPTATION_REQUESTED:   "friction_adaptation_requested",
   EXTERNAL_SIGNAL_RECEIVED:        "external_signal_received",
+  // Engagement / outcome (Prompt 11)
+  FALSE_PROGRESS_DETECTED:         "false_progress_detected",
+  IDENTITY_EVALUATION_REQUESTED:   "identity_evaluation_requested",
+  REWARD_EVALUATION_REQUESTED:     "reward_evaluation_requested",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
