@@ -1,4 +1,4 @@
-import { useGetOrder, useStartOrder, useFinishOrder, useBlockOrder, useSubmitTaskFeedback } from "@workspace/api-client-react";
+import { useGetOrder, useStartOrder, useBlockOrder, useSubmitTaskFeedback } from "@workspace/api-client-react";
 import { useParams, Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -12,17 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 export default function TaskPage() {
   const { id } = useParams();
   const [_, setLocation] = useLocation();
-  const { data: orderRes, isLoading, refetch } = useGetOrder(id!);
-  const order = orderRes?.data;
+  const { data: order, isLoading, refetch } = useGetOrder(id!);
 
   const startMutation = useStartOrder();
   const blockMutation = useBlockOrder();
   const feedbackMutation = useSubmitTaskFeedback();
-  
+
   const [blockReason, setBlockReason] = useState("");
   const [isBlockOpen, setIsBlockOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  
+
   const [completionRating, setCompletionRating] = useState<number>(5);
   const [effortRating, setEffortRating] = useState<number>(3);
   const [notes, setNotes] = useState("");
@@ -31,13 +30,13 @@ export default function TaskPage() {
   if (!order) return <div className="p-8 font-mono">Order not found.</div>;
 
   const handleStart = () => {
-    startMutation.mutate({ params: { id: id! }, data: {} }, {
+    startMutation.mutate({ id: id! }, {
       onSuccess: () => refetch()
     });
   };
 
   const handleBlock = () => {
-    blockMutation.mutate({ params: { id: id! }, data: { reason: blockReason } }, {
+    blockMutation.mutate({ id: id!, data: { reason: blockReason } }, {
       onSuccess: () => {
         setIsBlockOpen(false);
         refetch();
@@ -97,7 +96,7 @@ export default function TaskPage() {
               <p className="whitespace-pre-wrap font-mono text-sm">{order.instructions}</p>
             </div>
           )}
-          
+
           {order.status === "blocked" && order.blockedReason && (
             <div className="p-4 bg-destructive/10 border border-destructive/30 rounded text-destructive font-mono text-sm">
               <span className="font-bold block mb-1">BLOCKED:</span>
@@ -115,7 +114,7 @@ export default function TaskPage() {
               <Button variant="default" onClick={handleComplete} className="font-mono font-bold tracking-wider px-8 bg-green-600 hover:bg-green-700 text-white">
                 <Check className="w-4 h-4 mr-2" /> MARK COMPLETE
               </Button>
-              
+
               <Dialog open={isBlockOpen} onOpenChange={setIsBlockOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="text-destructive border-destructive/50 hover:bg-destructive/10 font-mono">
@@ -125,7 +124,7 @@ export default function TaskPage() {
                 <DialogContent className="font-mono">
                   <DialogHeader><DialogTitle>REPORT IMPEDIMENT</DialogTitle></DialogHeader>
                   <div className="py-4 space-y-4">
-                    <Textarea 
+                    <Textarea
                       placeholder="Describe what is preventing execution..."
                       value={blockReason}
                       onChange={e => setBlockReason(e.target.value)}
@@ -146,7 +145,6 @@ export default function TaskPage() {
         </CardFooter>
       </Card>
 
-      {/* Completion Feedback Dialog */}
       <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
         <DialogContent className="font-mono max-w-lg">
           <DialogHeader>
@@ -157,7 +155,7 @@ export default function TaskPage() {
               <label className="text-xs font-bold text-muted-foreground block">COMPLETION QUALITY (1-5)</label>
               <div className="flex gap-2">
                 {[1,2,3,4,5].map(v => (
-                  <button 
+                  <button
                     key={v}
                     onClick={() => setCompletionRating(v)}
                     className={`w-10 h-10 rounded font-bold border transition-colors ${completionRating === v ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary border-border hover:border-primary/50'}`}
@@ -167,12 +165,12 @@ export default function TaskPage() {
                 ))}
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground block">EFFORT EXPENDED (1-5)</label>
               <div className="flex gap-2">
                 {[1,2,3,4,5].map(v => (
-                  <button 
+                  <button
                     key={v}
                     onClick={() => setEffortRating(v)}
                     className={`w-10 h-10 rounded font-bold border transition-colors ${effortRating === v ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary border-border hover:border-primary/50'}`}
@@ -185,7 +183,7 @@ export default function TaskPage() {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground block">EXECUTION NOTES</label>
-              <Textarea 
+              <Textarea
                 placeholder="Deviations? Discoveries?"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}

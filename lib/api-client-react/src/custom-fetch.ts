@@ -367,5 +367,18 @@ export async function customFetch<T = unknown>(
     throw new ApiError(response, errorData, requestInfo);
   }
 
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  const body = (await parseSuccessBody(response, responseType, requestInfo)) as unknown;
+
+  // Unwrap the Torgima ApiResponse envelope: { ok: true, data: T, meta?: {...} }
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    "ok" in body &&
+    (body as Record<string, unknown>)["ok"] === true &&
+    "data" in body
+  ) {
+    return (body as Record<string, unknown>)["data"] as T;
+  }
+
+  return body as T;
 }

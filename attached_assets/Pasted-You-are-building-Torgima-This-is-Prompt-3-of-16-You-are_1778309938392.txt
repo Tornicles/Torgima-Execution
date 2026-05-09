@@ -1,0 +1,1338 @@
+You are building Torgima. This is Prompt 3 of 16. You are building the authentication system, session management, and the complete event system with the dead letter queue. You are also wiring and registering all 10 workers.
+Read all four uploaded documents fully before writing a single line of code.
+Prompts 1 and 2 must be fully verified. The database schema, all 44 tables, all partial indexes, all triggers, and the seed data must exist before this prompt runs.
+________________________________________
+WHAT YOU ARE BUILDING
+Part A — Authentication & Sessions:
+●	Magic link email flow (request → email → token verify → session create)
+●	Session service (create, validate, refresh, revoke)
+●	Auth middleware (route protection by auth class)
+●	Ownership guard helpers (user-scoped resource protection)
+●	Internal route auth (server-only, never exposed to browser)
+●	Auth API routes: /api/auth/send-magic-link, /api/auth/verify, /api/auth/session, /api/auth/logout, /api/me, /api/me/settings
+Part B — Event System:
+●	Event outbox pattern (state mutation + event in same transaction)
+●	EventDispatcher (claim PENDING → dispatch to worker)
+●	All 10 workers registered and wired to their queues
+●	EventLog writer (records every processing attempt)
+●	Retry policy (5 attempts with backoff)
+●	Dead letter queue (DeadLetterEvent creation and isolation)
+●	Internal repair routes: /api/internal/events/dispatch, /api/internal/events/[id]/replay, /api/internal/dead-letter, /api/internal/dead-letter/[id]/resolve
+________________________________________
+PART A — AUTHENTICATION & SESSION SYSTEM
+A1 — Auth Types and Constants
+Create src/types/auth.ts:
+export type AuthClass =
+  | "PUBLIC"
+  | "OPTIONAL_SESSION"
+  | "USER_SESSION"
+  | "INTERNAL_SERVICE"
+  | "WEBHOOK_SOURCE"
+  | "ADMIN_INTERNAL";
+
+export interface AuthSession {
+  id: string;
+  userId: string;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
+  createdAt: Date;
+  lastSeenAt: Date;
+  expiresAt: Date;
+}
+
+export interface AuthContext {
+  userId: string;
+  sessionId: string;
+  userMode: "individual" | "team";
+  userTier: string;
+  isInternal: boolean;
+}
+
+export interface SafeUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  mode: string;
+  tier: string;
+  onboardingComplete: boolean;
+  timezone: string;
+  notificationPreferences: Record<string, unknown>;
+}
+
+A2 — Session Service
+Create src/services/AuthService.ts:
+import { prisma } from "@/lib/prisma";
+import { resend, EMAIL_FROM } from "@/lib/resend";
+import { TorgimaError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { AuthContext, AuthSession, SafeUser } from "@/types/auth";
+import crypto from "crypto";
+
+// Session config
+const SESSION_MAX_HOURS = 24 * 30;      // 30 days absolute max
+const SESSION_IDLE_HOURS = 24 * 7;      // 7 days idle expiry
+const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000; // refresh lastSeenAt at most every 1 hour
+const MAGIC_LINK_EXPIRY_MINUTES = 15;
+
+// ── MAGIC LINK ──────────────────────────────────────────────────────────────
+
+export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
+  // Normalize email
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Generate a secure token
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000);
+
+  // Upsert user (create if new, find if existing)
+  const user = await prisma.user.upsert({
+    where: { email: normalizedEmail },
+    update: {},
+    create: { email: normalizedEmail },
+  });
+
+  // Store the magic link token in sessions table with a pending status
+  // We store it with a short expiry — once verified it becomes a full session
+  await prisma.session.create({
+    data: {
+      user_id: user.id,
+      token_hash: `magic:${tokenHash}`,
+      expires_at: expiresAt,
+    },
+  });
+
+  // Build the verify URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const verifyUrl = `${appUrl}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+
+  // Send email via Resend
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: normalizedEmail,
+      subject: "Sign in to Torgima",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Sign in to Torgima</h2>
+          <p>Click the link below to sign in. This link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes.</p>
+          <p><a href="${verifyUrl}" style="background: #2E75B6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Sign in to Torgima</a></p>
+          <p>If you didn't request this, you can safely ignore this email.</p>
+          <p style="color: #888; font-size: 12px;">This link can only be used once and expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes.</p>
+        </div>
+      `,
+      text: `Sign in to Torgima: ${verifyUrl}\n\nThis link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes.`,
+    });
+  } catch (error) {
+    logger.error("[AuthService] Failed to send magic link email", {
+      userId: user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    // Don't expose email delivery failure to prevent email enumeration
+  }
+
+  logger.info("[AuthService] Magic link sent", { userId: user.id });
+  return { sent: true };
+}
+
+// ── VERIFY MAGIC LINK ───────────────────────────────────────────────────────
+
+export async function verifyMagicLink(
+  rawToken: string,
+  email: string
+): Promise<{ sessionToken: string; user: SafeUser }> {
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Find the magic link session
+  const magicSession = await prisma.session.findFirst({
+    where: {
+      token_hash: `magic:${tokenHash}`,
+      expires_at: { gt: new Date() },
+      user: { email: normalizedEmail },
+    },
+    include: { user: true },
+  });
+
+  if (!magicSession) {
+    throw new TorgimaError("UNAUTHENTICATED", "Invalid or expired magic link", false);
+  }
+
+  // Delete the magic link session (single use)
+  await prisma.session.delete({ where: { id: magicSession.id } });
+
+  // Create a real session
+  const sessionRawToken = crypto.randomBytes(32).toString("hex");
+  const sessionTokenHash = crypto.createHash("sha256").update(sessionRawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + SESSION_MAX_HOURS * 60 * 60 * 1000);
+
+  await prisma.session.create({
+    data: {
+      user_id: magicSession.user_id,
+      token_hash: sessionTokenHash,
+      expires_at: expiresAt,
+    },
+  });
+
+  logger.info("[AuthService] Magic link verified, session created", {
+    userId: magicSession.user_id,
+  });
+
+  return {
+    sessionToken: sessionRawToken,
+    user: toSafeUser(magicSession.user),
+  };
+}
+
+// ── VALIDATE SESSION ────────────────────────────────────────────────────────
+
+export async function validateSession(sessionToken: string): Promise<AuthContext> {
+  const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
+
+  const session = await prisma.session.findUnique({
+    where: { token_hash: tokenHash },
+    include: { user: true },
+  });
+
+  if (!session) {
+    throw new TorgimaError("UNAUTHENTICATED", "Session not found", false);
+  }
+
+  if (session.expires_at < new Date()) {
+    // Clean up expired session
+    await prisma.session.delete({ where: { id: session.id } }).catch(() => null);
+    throw new TorgimaError("UNAUTHENTICATED", "Session expired", false);
+  }
+
+  if (!session.user.active) {
+    throw new TorgimaError("FORBIDDEN", "Account is inactive", false);
+  }
+
+  // Refresh lastSeenAt at most every hour to avoid excessive writes
+  const lastRefresh = session.last_used_at.getTime();
+  if (Date.now() - lastRefresh > SESSION_REFRESH_INTERVAL_MS) {
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { last_used_at: new Date() },
+    }).catch(() => null); // Non-critical — don't fail the request
+  }
+
+  return {
+    userId: session.user_id,
+    sessionId: session.id,
+    userMode: session.user.mode as "individual" | "team",
+    userTier: session.user.tier,
+    isInternal: false,
+  };
+}
+
+// ── REVOKE SESSION ──────────────────────────────────────────────────────────
+
+export async function revokeSession(sessionToken: string): Promise<void> {
+  const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
+  await prisma.session.deleteMany({ where: { token_hash: tokenHash } });
+  logger.info("[AuthService] Session revoked");
+}
+
+// ── GET CURRENT USER ────────────────────────────────────────────────────────
+
+export async function getUser(userId: string): Promise<SafeUser> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new TorgimaError("NOT_FOUND", "User not found", false);
+  return toSafeUser(user);
+}
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+
+function toSafeUser(user: any): SafeUser {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    mode: user.mode,
+    tier: user.tier,
+    onboardingComplete: user.onboarding_complete,
+    timezone: user.timezone,
+    notificationPreferences: (user.notification_preferences as Record<string, unknown>) ?? {},
+  };
+}
+
+A3 — Auth Middleware
+Create src/lib/auth-middleware.ts:
+import { NextRequest } from "next/server";
+import { validateSession } from "@/services/AuthService";
+import { TorgimaError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { AuthClass, AuthContext } from "@/types/auth";
+
+const INTERNAL_AUTH_HEADER = "x-internal-auth";
+const INTERNAL_AUTH_SECRET = process.env.INTERNAL_AUTH_SECRET ?? "";
+const SESSION_COOKIE_NAME = "torgima_session";
+
+// Extract session token from cookie or Authorization header
+function extractSessionToken(req: NextRequest): string | null {
+  const cookieToken = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (cookieToken) return cookieToken;
+
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) return authHeader.slice(7);
+
+  return null;
+}
+
+// Validate internal service auth
+function validateInternalAuth(req: NextRequest): AuthContext {
+  const secret = req.headers.get(INTERNAL_AUTH_HEADER);
+  if (!secret || secret !== INTERNAL_AUTH_SECRET) {
+    throw new TorgimaError("FORBIDDEN", "Internal auth required", false);
+  }
+  return {
+    userId: "internal",
+    sessionId: "internal",
+    userMode: "individual",
+    userTier: "system",
+    isInternal: true,
+  };
+}
+
+// Main auth middleware
+export async function requireAuth(
+  req: NextRequest,
+  authClass: AuthClass
+): Promise<AuthContext> {
+  if (authClass === "PUBLIC") {
+    return { userId: "", sessionId: "", userMode: "individual", userTier: "", isInternal: false };
+  }
+
+  if (authClass === "INTERNAL_SERVICE" || authClass === "ADMIN_INTERNAL") {
+    // Check if request origin is from browser — reject if so
+    const origin = req.headers.get("origin");
+    if (origin) {
+      logger.error("[Auth] Browser attempted to call internal route", { origin });
+      throw new TorgimaError("FORBIDDEN", "Internal route not accessible from browser", false);
+    }
+    return validateInternalAuth(req);
+  }
+
+  const sessionToken = extractSessionToken(req);
+
+  if (!sessionToken) {
+    if (authClass === "OPTIONAL_SESSION") {
+      return { userId: "", sessionId: "", userMode: "individual", userTier: "", isInternal: false };
+    }
+    throw new TorgimaError("UNAUTHENTICATED", "Authentication required", false);
+  }
+
+  try {
+    return await validateSession(sessionToken);
+  } catch (error) {
+    if (authClass === "OPTIONAL_SESSION") {
+      return { userId: "", sessionId: "", userMode: "individual", userTier: "", isInternal: false };
+    }
+    throw error;
+  }
+}
+
+// Ownership guard — call after requireAuth
+export function assertOwnership(
+  authContext: AuthContext,
+  resourceUserId: string,
+  resourceType: string
+): void {
+  if (authContext.isInternal) return; // Internal service bypasses ownership
+  if (authContext.userId !== resourceUserId) {
+    logger.error("[Auth] Ownership mismatch", {
+      authUserId: authContext.userId,
+      resourceUserId,
+      resourceType,
+    });
+    // Return 404 for hidden resources to prevent enumeration
+    throw new TorgimaError("NOT_FOUND", `${resourceType} not found`, false);
+  }
+}
+
+export { SESSION_COOKIE_NAME };
+
+A4 — Auth API Routes
+src/app/api/auth/send-magic-link/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { sendMagicLink } from "@/services/AuthService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+const schema = z.object({ email: z.string().email() });
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { email } = schema.parse(body);
+    const result = await sendMagicLink(email);
+    return NextResponse.json(success(result));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(failure("VALIDATION_ERROR", "Invalid email", {
+        fieldErrors: { email: error.errors.map(e => e.message) }
+      }), { status: 400 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to send magic link"), { status: 500 });
+  }
+}
+
+src/app/api/auth/verify/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { verifyMagicLink } from "@/services/AuthService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-middleware";
+
+const schema = z.object({ token: z.string(), email: z.string().email() });
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { token, email } = schema.parse(body);
+    const result = await verifyMagicLink(token, email);
+
+    const response = NextResponse.json(success({ user: result.user }));
+    response.cookies.set(SESSION_COOKIE_NAME, result.sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), { status: 401 });
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(failure("VALIDATION_ERROR", "Invalid request"), { status: 400 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Verification failed"), { status: 500 });
+  }
+}
+
+src/app/api/auth/session/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { getUser } from "@/services/AuthService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "OPTIONAL_SESSION");
+    if (!auth.userId) {
+      return NextResponse.json(success({ authenticated: false, user: null }));
+    }
+    const user = await getUser(auth.userId);
+    return NextResponse.json(success({ authenticated: true, user }));
+  } catch (error) {
+    return NextResponse.json(success({ authenticated: false, user: null }));
+  }
+}
+
+src/app/api/auth/logout/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { revokeSession } from "@/services/AuthService";
+import { success } from "@/types/api";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-middleware";
+
+export async function POST(req: NextRequest) {
+  const sessionToken = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (sessionToken) {
+    await revokeSession(sessionToken).catch(() => null);
+  }
+  const response = NextResponse.json(success({ loggedOut: true }));
+  response.cookies.delete(SESSION_COOKIE_NAME);
+  return response;
+}
+
+src/app/api/me/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { getUser } from "@/services/AuthService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const user = await getUser(auth.userId);
+    return NextResponse.json(success(user));
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), {
+        status: error.code === "UNAUTHENTICATED" ? 401 : 403,
+      });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to load user"), { status: 500 });
+  }
+}
+
+src/app/api/me/settings/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { prisma } from "@/lib/prisma";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+import { z } from "zod";
+
+const schema = z.object({
+  display_name: z.string().min(1).max(100).optional(),
+  timezone: z.string().optional(),
+  commitment_level: z.enum(["low", "medium", "high", "full"]).optional(),
+  notification_preferences: z.record(z.unknown()).optional(),
+}).strict();
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const body = await req.json();
+    const updates = schema.parse(body);
+
+    const user = await prisma.user.update({
+      where: { id: auth.userId },
+      data: updates,
+    });
+
+    return NextResponse.json(success({ updated: true, displayName: user.display_name }));
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), { status: 401 });
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(failure("VALIDATION_ERROR", "Invalid settings"), { status: 400 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to update settings"), { status: 500 });
+  }
+}
+
+________________________________________
+PART B — EVENT SYSTEM
+B1 — Event Service (Outbox Writer)
+Create src/services/EventService.ts:
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
+
+// All valid Phase 1 event types
+export const EVENT_TYPES = {
+  // Feedback chain
+  FEEDBACK_SUBMITTED:            "feedback_submitted",
+  FEEDBACK_REJECTED:             "feedback_rejected",
+  // Signal chain
+  SIGNAL_RECALCULATION_REQUESTED: "signal_recalculation_requested",
+  SIGNAL_CALCULATED:             "signal_calculated",
+  // Condition chain
+  CONDITION_EVALUATED:           "condition_evaluated",
+  // Control chain
+  ENFORCEMENT_PACKAGE_CREATED:   "enforcement_package_created",
+  // Task chain
+  TASK_GENERATION_REQUESTED:     "task_generation_requested",
+  TASK_GENERATION_COMPLETED:     "task_generation_completed",
+  TASK_GENERATION_FAILED:        "task_generation_failed",
+  ORDER_AVAILABLE:               "order_available",
+  // Inactivity
+  INACTIVITY_SCAN_REQUESTED:     "inactivity_scan_requested",
+  INACTIVITY_DETECTED:           "inactivity_detected",
+  INACTIVITY_RESOLVED:           "inactivity_resolved",
+  // Blueprint lifecycle
+  BLUEPRINT_LAUNCHED:            "blueprint_launched",
+  BLUEPRINT_PAUSED:              "blueprint_paused",
+  BLUEPRINT_RESUMED:             "blueprint_resumed",
+  BLUEPRINT_COMPLETED:           "blueprint_completed",
+  BLUEPRINT_ADJUSTED:            "blueprint_adjusted",
+  BLUEPRINT_PIVOTED:             "blueprint_pivoted",
+  // Pivot review
+  PIVOT_REVIEW_REQUESTED:        "pivot_review_requested",
+  PIVOT_REVIEW_READY:            "pivot_review_ready",
+  PIVOT_REVIEW_DISMISSED:        "pivot_review_dismissed",
+  PIVOT_PATH_SELECTED:           "pivot_path_selected",
+  // Notifications
+  REMINDER_REQUESTED:            "reminder_requested",
+  NOTIFICATION_SEND_REQUESTED:   "notification_send_requested",
+  // State
+  STATE_CHANGED:                 "state_changed",
+  PROJECTION_REFRESH_REQUESTED:  "projection_refresh_requested",
+  // AI
+  BHUDHI_TRIGGER_REQUESTED:      "bhudhi_trigger_requested",
+  BHUDHI_CALL_COMPLETED:         "bhudhi_call_completed",
+  BHUDHI_FALLBACK_USED:          "bhudhi_fallback_used",
+  // Health
+  SYSTEM_HEALTH_DEGRADED:        "system_health_degraded",
+  SYSTEM_HEALTH_RESTORED:        "system_health_restored",
+} as const;
+
+export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
+
+export interface CreateEventInput {
+  eventType: EventType;
+  entityType: string;
+  entityId?: string;
+  userId?: string;
+  blueprintId?: string;
+  payload?: Record<string, unknown>;
+  idempotencyKey?: string;
+  causationEventId?: string;
+  processAfter?: Date;
+}
+
+// Write an event to the outbox. Call this INSIDE a transaction alongside the state mutation.
+export async function writeEvent(
+  input: CreateEventInput,
+  tx?: Prisma.TransactionClient
+): Promise<string> {
+  const db = tx ?? prisma;
+
+  const event = await db.event.create({
+    data: {
+      event_type:      input.eventType,
+      entity_type:     input.entityType,
+      entity_id:       input.entityId,
+      user_id:         input.userId,
+      blueprint_id:    input.blueprintId,
+      payload:         input.payload ?? {},
+      idempotency_key: input.idempotencyKey,
+      process_after:   input.processAfter ?? new Date(),
+      status:          "pending",
+    },
+  });
+
+  logger.debug("[EventService] Event written to outbox", {
+    eventId: event.id,
+    eventType: event.event_type,
+    blueprintId: input.blueprintId,
+  });
+
+  return event.id;
+}
+
+// Helper: write event + log into EventLog in one call
+export async function writeEventWithLog(
+  input: CreateEventInput,
+  tx?: Prisma.TransactionClient
+): Promise<string> {
+  const eventId = await writeEvent(input, tx);
+  return eventId;
+}
+
+B2 — Event Dispatcher
+Create src/services/EventDispatcher.ts:
+import { prisma } from "@/lib/prisma";
+import { getBoss } from "@/lib/queue";
+import { logger } from "@/lib/logger";
+
+// Queue names mapped from event types
+const EVENT_QUEUE_MAP: Record<string, string> = {
+  "feedback_submitted":              "feedback_processing_requested",
+  "signal_recalculation_requested":  "signal_recalculation_requested",
+  "signal_calculated":               "condition_evaluation_requested",
+  "condition_evaluated":             "enforcement_package_requested",
+  "enforcement_package_created":     "task_generation_requested",
+  "task_generation_requested":       "task_generation_requested",
+  "task_generation_completed":       "task_generation_requested", // triggers guarantee check
+  "inactivity_scan_requested":       "inactivity_scan_requested",
+  "inactivity_detected":             "task_generation_requested",
+  "reminder_requested":              "notification_send_requested",
+  "notification_send_requested":     "notification_send_requested",
+  "state_changed":                   "projection_refresh_requested",
+  "projection_refresh_requested":    "projection_refresh_requested",
+  "bhudhi_trigger_requested":        "bhudhi_trigger_requested",
+  "system_health_degraded":          "system_health_event",
+  "blueprint_launched":              "task_generation_requested",
+  "pivot_review_requested":          "task_generation_requested",
+};
+
+const CLAIM_TIMEOUT_MINUTES = 5;
+const DISPATCH_BATCH_SIZE = 50;
+
+export async function dispatchPendingEvents(): Promise<number> {
+  const claimBefore = new Date(Date.now() - CLAIM_TIMEOUT_MINUTES * 60 * 1000);
+
+  // Return stuck CLAIMED events to PENDING
+  await prisma.event.updateMany({
+    where: {
+      status: "claimed",
+      updated_at: { lt: claimBefore },
+    },
+    data: { status: "pending" },
+  });
+
+  // Claim a batch of PENDING events
+  const events = await prisma.$transaction(async (tx) => {
+    const pending = await tx.event.findMany({
+      where: {
+        status: "pending",
+        process_after: { lte: new Date() },
+      },
+      orderBy: { created_at: "asc" },
+      take: DISPATCH_BATCH_SIZE,
+    });
+
+    if (pending.length === 0) return [];
+
+    const ids = pending.map(e => e.id);
+    await tx.event.updateMany({
+      where: { id: { in: ids } },
+      data: { status: "claimed" },
+    });
+
+    return pending;
+  });
+
+  if (events.length === 0) return 0;
+
+  const boss = await getBoss();
+  let dispatched = 0;
+
+  for (const event of events) {
+    const queueName = EVENT_QUEUE_MAP[event.event_type];
+
+    if (!queueName) {
+      logger.warn("[EventDispatcher] No queue mapping for event type", {
+        eventType: event.event_type,
+        eventId: event.id,
+      });
+      await markEventProcessed(event.id, "noop_no_queue");
+      continue;
+    }
+
+    try {
+      // Check idempotency — if a job for this event already succeeded, skip
+      if (event.idempotency_key) {
+        const existingLog = await prisma.eventLog.findFirst({
+          where: {
+            event_id: event.id,
+            result: "success",
+          },
+        });
+        if (existingLog) {
+          await markEventProcessed(event.id, "noop_duplicate");
+          continue;
+        }
+      }
+
+      await boss.send(queueName, {
+        eventId: event.id,
+        eventType: event.event_type,
+        entityType: event.entity_type,
+        entityId: event.entity_id,
+        userId: event.user_id,
+        blueprintId: event.blueprint_id,
+        payload: event.payload,
+      });
+
+      dispatched++;
+      logger.debug("[EventDispatcher] Event dispatched to queue", {
+        eventId: event.id,
+        queue: queueName,
+      });
+    } catch (error) {
+      logger.error("[EventDispatcher] Failed to dispatch event", {
+        eventId: event.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Return to pending so it gets retried
+      await prisma.event.update({
+        where: { id: event.id },
+        data: { status: "pending", retry_count: { increment: 1 } },
+      });
+    }
+  }
+
+  return dispatched;
+}
+
+async function markEventProcessed(eventId: string, result: string): Promise<void> {
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { status: "processed" },
+  });
+  await prisma.eventLog.create({
+    data: {
+      event_id: eventId,
+      result: result as any,
+      processed_at: new Date(),
+    },
+  });
+}
+
+B3 — Worker Base Handler
+Create src/workers/BaseWorkerHandler.ts — all workers use this pattern:
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+
+export interface WorkerJobData {
+  eventId: string;
+  eventType: string;
+  entityType: string;
+  entityId?: string;
+  userId?: string;
+  blueprintId?: string;
+  payload: Record<string, unknown>;
+}
+
+export interface WorkerResult {
+  success: boolean;
+  retryable?: boolean;
+  reason?: string;
+}
+
+// Standard worker handler wrapper — handles logging, retry, and dead-letter
+export async function handleWorkerJob(
+  job: any,
+  workerName: string,
+  handler: (data: WorkerJobData) => Promise<WorkerResult>
+): Promise<void> {
+  const data = job.data as WorkerJobData;
+  const startedAt = new Date();
+
+  logger.info(`[${workerName}] Processing`, {
+    eventId: data.eventId,
+    eventType: data.eventType,
+    blueprintId: data.blueprintId,
+  });
+
+  try {
+    // Check idempotency: has this event already been successfully processed?
+    const existingSuccess = await prisma.eventLog.findFirst({
+      where: { event_id: data.eventId, result: "success" },
+    });
+
+    if (existingSuccess) {
+      logger.info(`[${workerName}] Noop duplicate`, { eventId: data.eventId });
+      await writeEventLog(data.eventId, workerName, "noop_duplicate", startedAt);
+      // Mark event processed
+      await prisma.event.update({
+        where: { id: data.eventId },
+        data: { status: "processed" },
+      }).catch(() => null);
+      return;
+    }
+
+    const result = await handler(data);
+
+    if (result.success) {
+      // Mark event processed
+      await prisma.event.update({
+        where: { id: data.eventId },
+        data: { status: "processed" },
+      }).catch(() => null);
+      await writeEventLog(data.eventId, workerName, "success", startedAt);
+      logger.info(`[${workerName}] Completed`, { eventId: data.eventId });
+    } else {
+      await handleFailure(data, workerName, startedAt, result);
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`[${workerName}] Error`, { eventId: data.eventId, error: errMsg });
+    await handleFailure(data, workerName, startedAt, { success: false, retryable: true, reason: errMsg });
+    throw error; // Re-throw so pg-boss applies retry policy
+  }
+}
+
+async function handleFailure(
+  data: WorkerJobData,
+  workerName: string,
+  startedAt: Date,
+  result: WorkerResult
+): Promise<void> {
+  const event = await prisma.event.findUnique({ where: { id: data.eventId } });
+  if (!event) return;
+
+  const nextRetryCount = event.retry_count + 1;
+  const maxRetries = event.max_retries;
+
+  if (!result.retryable || nextRetryCount > maxRetries) {
+    // Dead-letter
+    await prisma.event.update({
+      where: { id: data.eventId },
+      data: { status: "dead_lettered", retry_count: nextRetryCount },
+    });
+    await prisma.deadLetterEvent.create({
+      data: {
+        original_event_id: data.eventId,
+        event_type: event.event_type,
+        blueprint_id: data.blueprintId,
+        user_id: data.userId,
+        payload: event.payload as any,
+        failure_reason: result.reason ?? "Unknown failure",
+        retry_count: nextRetryCount,
+        last_error: result.reason,
+      },
+    });
+    await writeEventLog(data.eventId, workerName, "dead_lettered", startedAt, result.reason);
+    logger.error(`[${workerName}] Dead-lettered`, { eventId: data.eventId, reason: result.reason });
+  } else {
+    // Retry
+    await prisma.event.update({
+      where: { id: data.eventId },
+      data: { status: "retry_pending", retry_count: nextRetryCount },
+    });
+    await writeEventLog(data.eventId, workerName, "retry", startedAt, result.reason);
+  }
+}
+
+async function writeEventLog(
+  eventId: string,
+  worker: string,
+  result: string,
+  startedAt: Date,
+  errorMessage?: string
+): Promise<void> {
+  const finishedAt = new Date();
+  await prisma.eventLog.create({
+    data: {
+      event_id: eventId,
+      worker,
+      result: result as any,
+      error_message: errorMessage,
+      duration_ms: finishedAt.getTime() - startedAt.getTime(),
+      processed_at: finishedAt,
+    },
+  }).catch(() => null); // Non-critical — don't fail the job
+}
+
+B4 — All 10 Workers (Fully Registered, Stub Implementations)
+Replace the stub files from Prompt 1 with properly wired workers. Each worker is fully registered with pg-boss, uses BaseWorkerHandler, and logs correctly. The business logic stubs will be replaced in later prompts.
+src/workers/SignalWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const SIGNAL_QUEUE = "signal_recalculation_requested";
+
+workerRegistry.register({
+  name: "SignalWorker",
+  queue: SIGNAL_QUEUE,
+  options: { teamSize: 5, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "SignalWorker", async (data) => {
+      logger.info("[SignalWorker] Stub — implemented in Prompt 7", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 7: SignalCalculationEngine.calculate(data.blueprintId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/ConditionWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const CONDITION_QUEUE = "condition_evaluation_requested";
+
+workerRegistry.register({
+  name: "ConditionWorker",
+  queue: CONDITION_QUEUE,
+  options: { teamSize: 5, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "ConditionWorker", async (data) => {
+      logger.info("[ConditionWorker] Stub — implemented in Prompt 7", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 7: ConditionEvaluationEngine.evaluate(data.blueprintId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/ControlWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const CONTROL_QUEUE = "enforcement_package_requested";
+
+workerRegistry.register({
+  name: "ControlWorker",
+  queue: CONTROL_QUEUE,
+  options: { teamSize: 5, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "ControlWorker", async (data) => {
+      logger.info("[ControlWorker] Stub — implemented in Prompt 7", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 7: ControlEngine.generateEnforcementPackage(data.blueprintId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/TaskGenerationWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const TASK_GENERATION_QUEUE = "task_generation_requested";
+
+workerRegistry.register({
+  name: "TaskGenerationWorker",
+  queue: TASK_GENERATION_QUEUE,
+  options: { teamSize: 3, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "TaskGenerationWorker", async (data) => {
+      logger.info("[TaskGenerationWorker] Stub — implemented in Prompt 8", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 8: TaskGenerationEngine.generate(data.blueprintId, data.payload)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/FeedbackWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const FEEDBACK_QUEUE = "feedback_processing_requested";
+
+workerRegistry.register({
+  name: "FeedbackWorker",
+  queue: FEEDBACK_QUEUE,
+  options: { teamSize: 5, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "FeedbackWorker", async (data) => {
+      logger.info("[FeedbackWorker] Stub — implemented in Prompt 8", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 8: FeedbackProcessingEngine.process(data.payload.feedbackId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/InactivityWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const INACTIVITY_QUEUE = "inactivity_scan_requested";
+
+workerRegistry.register({
+  name: "InactivityWorker",
+  queue: INACTIVITY_QUEUE,
+  options: { teamSize: 2, pollingIntervalSeconds: 30 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "InactivityWorker", async (data) => {
+      logger.info("[InactivityWorker] Stub — implemented in Prompt 8", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 8: InactivityDetectionEngine.scan(data.blueprintId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/NotificationWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const NOTIFICATION_QUEUE = "notification_send_requested";
+
+workerRegistry.register({
+  name: "NotificationWorker",
+  queue: NOTIFICATION_QUEUE,
+  options: { teamSize: 3, pollingIntervalSeconds: 10 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "NotificationWorker", async (data) => {
+      logger.info("[NotificationWorker] Stub — implemented in Prompt 13", {
+        userId: data.userId,
+        notificationType: (data.payload as any)?.notification_type,
+      });
+      // Prompt 13: NotificationService.deliver(data.payload)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/ProjectionWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const PROJECTION_QUEUE = "projection_refresh_requested";
+
+workerRegistry.register({
+  name: "ProjectionWorker",
+  queue: PROJECTION_QUEUE,
+  options: { teamSize: 3, pollingIntervalSeconds: 2 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "ProjectionWorker", async (data) => {
+      logger.info("[ProjectionWorker] Stub — implemented in Prompt 15", {
+        blueprintId: data.blueprintId,
+      });
+      // Prompt 15: DashboardService.refreshProjection(data.blueprintId)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/BhudhiWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { logger } from "@/lib/logger";
+
+export const BHUDHI_QUEUE = "bhudhi_trigger_requested";
+
+workerRegistry.register({
+  name: "BhudhiWorker",
+  queue: BHUDHI_QUEUE,
+  options: { teamSize: 3, pollingIntervalSeconds: 5 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "BhudhiWorker", async (data) => {
+      logger.info("[BhudhiWorker] Stub — implemented in Prompt 9", {
+        blueprintId: data.blueprintId,
+        triggerType: (data.payload as any)?.trigger_type,
+      });
+      // Prompt 9: BhudhiCore.trigger(data.payload)
+      return { success: true };
+    });
+  },
+});
+
+src/workers/HealthWorker.ts
+import { workerRegistry } from "./WorkerRegistry";
+import { handleWorkerJob } from "./BaseWorkerHandler";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+
+export const HEALTH_QUEUE = "system_health_event";
+
+workerRegistry.register({
+  name: "HealthWorker",
+  queue: HEALTH_QUEUE,
+  options: { teamSize: 1, pollingIntervalSeconds: 30 },
+  handler: async (job) => {
+    await handleWorkerJob(job, "HealthWorker", async (data) => {
+      logger.warn("[HealthWorker] System health event received", {
+        blueprintId: data.blueprintId,
+        payload: data.payload,
+      });
+      // Write to SystemHealthLog
+      await prisma.systemHealthLog.create({
+        data: {
+          blueprint_id: data.blueprintId,
+          check_type: (data.payload as any)?.check_type ?? "health_event",
+          status: "degraded",
+          details_json: data.payload as any,
+        },
+      }).catch(() => null);
+      return { success: true };
+    });
+  },
+});
+
+B5 — Event Dispatcher Startup
+Add the dispatcher to src/workers/start.ts (update from Prompt 1):
+import { workerRegistry } from "./WorkerRegistry";
+import { logger } from "@/lib/logger";
+import { dispatchPendingEvents } from "@/services/EventDispatcher";
+
+// Import all workers to register them
+import "./SignalWorker";
+import "./ConditionWorker";
+import "./ControlWorker";
+import "./TaskGenerationWorker";
+import "./FeedbackWorker";
+import "./InactivityWorker";
+import "./NotificationWorker";
+import "./ProjectionWorker";
+import "./BhudhiWorker";
+import "./HealthWorker";
+
+async function main() {
+  logger.info("[Workers] Starting all workers...");
+  await workerRegistry.startAll();
+
+  // Run event dispatcher in a polling loop
+  logger.info("[EventDispatcher] Starting dispatcher loop...");
+  setInterval(async () => {
+    try {
+      const dispatched = await dispatchPendingEvents();
+      if (dispatched > 0) {
+        logger.debug(`[EventDispatcher] Dispatched ${dispatched} events`);
+      }
+    } catch (error) {
+      logger.error("[EventDispatcher] Dispatch cycle failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, 1000); // Poll every second
+
+  logger.info("[Workers] All workers running. Ctrl+C to stop.");
+}
+
+main().catch((error) => {
+  logger.error("[Workers] Failed to start", { error: error.message });
+  process.exit(1);
+});
+
+B6 — Internal Event Routes
+src/app/api/internal/events/dispatch/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { dispatchPendingEvents } from "@/services/EventDispatcher";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const dispatched = await dispatchPendingEvents();
+    return NextResponse.json(success({ dispatched }));
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), { status: 403 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Dispatch failed"), { status: 500 });
+  }
+}
+
+src/app/api/internal/dead-letter/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { prisma } from "@/lib/prisma";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const events = await prisma.deadLetterEvent.findMany({
+      where: { resolved: false },
+      orderBy: { created_at: "desc" },
+      take: 100,
+    });
+    return NextResponse.json(success({ events, count: events.length }));
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), { status: 403 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to list dead letters"), { status: 500 });
+  }
+}
+
+src/app/api/internal/dead-letter/[id]/resolve/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { prisma } from "@/lib/prisma";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+import { z } from "zod";
+
+const schema = z.object({
+  action: z.enum(["skip", "mark_resolved"]),
+  reason: z.string().min(1),
+});
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const body = await req.json();
+    const { action, reason } = schema.parse(body);
+
+    const dlEvent = await prisma.deadLetterEvent.findUnique({ where: { id: params.id } });
+    if (!dlEvent) {
+      return NextResponse.json(failure("NOT_FOUND", "Dead letter event not found"), { status: 404 });
+    }
+
+    await prisma.deadLetterEvent.update({
+      where: { id: params.id },
+      data: { resolved: true, reviewed: true, reviewed_at: new Date() },
+    });
+
+    return NextResponse.json(success({ resolved: true, action, reason }));
+  } catch (error) {
+    if (error instanceof TorgimaError) {
+      return NextResponse.json(failure(error.code, error.message), { status: 403 });
+    }
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to resolve dead letter"), { status: 500 });
+  }
+}
+
+B7 — Add INTERNAL_AUTH_SECRET to environment
+Add to .env.local:
+INTERNAL_AUTH_SECRET="[generate with: openssl rand -base64 32]"
+
+Add to .env.example:
+INTERNAL_AUTH_SECRET=""
+
+B8 — Update Health Check
+Update src/app/api/health/route.ts to also check the event system:
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { success } from "@/types/api";
+
+export async function GET() {
+  const checks: Record<string, boolean> = {
+    database: false,
+    event_table: false,
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.database = true;
+  } catch { checks.database = false; }
+
+  try {
+    await prisma.event.count();
+    checks.event_table = true;
+  } catch { checks.event_table = false; }
+
+  const pendingEvents = await prisma.event
+    .count({ where: { status: "pending" } })
+    .catch(() => -1);
+
+  const deadLetters = await prisma.deadLetterEvent
+    .count({ where: { resolved: false } })
+    .catch(() => -1);
+
+  const allPassing = Object.values(checks).every(Boolean);
+
+  return NextResponse.json(
+    success({
+      ...checks,
+      pending_events: pendingEvents,
+      unresolved_dead_letters: deadLetters,
+      timestamp: new Date().toISOString(),
+      version: "phase1-prompt3",
+    }),
+    { status: allPassing ? 200 : 503 }
+  );
+}
+
+________________________________________
+VERIFICATION CHECKLIST
+Do not move to Prompt 4 until every item passes:
+●	[ ] npm run typecheck passes with zero TypeScript errors
+●	[ ] npm run lint passes with zero errors
+●	[ ] POST /api/auth/send-magic-link with valid email returns { ok: true, data: { sent: true } }
+●	[ ] POST /api/auth/send-magic-link with invalid email returns { ok: false, error: { code: "VALIDATION_ERROR" } }
+●	[ ] GET /api/auth/session without cookie returns { ok: true, data: { authenticated: false } }
+●	[ ] GET /api/me without session returns { ok: false, error: { code: "UNAUTHENTICATED" } } with status 401
+●	[ ] POST /api/internal/events/dispatch without internal auth header returns 403
+●	[ ] POST /api/internal/events/dispatch with correct x-internal-auth header returns 200
+●	[ ] GET /api/internal/dead-letter with correct internal auth returns { ok: true, data: { events: [], count: 0 } }
+●	[ ] GET /api/health returns { ok: true, data: { database: true, event_table: true } }
+●	[ ] src/services/AuthService.ts exists and exports sendMagicLink, verifyMagicLink, validateSession, revokeSession, getUser
+●	[ ] src/services/EventService.ts exists and exports writeEvent, EVENT_TYPES
+●	[ ] src/services/EventDispatcher.ts exists and exports dispatchPendingEvents
+●	[ ] src/workers/BaseWorkerHandler.ts exists and exports handleWorkerJob
+●	[ ] All 10 worker files exist and are properly registered in WorkerRegistry
+●	[ ] npm run workers:start starts all 10 workers and dispatcher without errors
+●	[ ] Internal routes return 403 when called with missing or wrong auth header
+●	[ ] Browser origin header on internal routes is rejected with 403
+●	[ ] SESSION_COOKIE_NAME is torgima_session and is httpOnly, secure in production
+●	[ ] Session token is hashed with SHA-256 before storage — raw token never stored in DB
+●	[ ] INTERNAL_AUTH_SECRET is added to .env.local and .env.example
+________________________________________
+END OF PROMPT 3
+

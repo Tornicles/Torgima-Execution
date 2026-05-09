@@ -8,8 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-  const { data: res, isLoading } = useGetDashboardState();
-  const state = res?.data;
+  const { data: state, isLoading } = useGetDashboardState();
 
   if (isLoading) {
     return (
@@ -35,7 +34,7 @@ export default function Dashboard() {
       <header className="flex justify-between items-end border-b border-border pb-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold font-mono tracking-tight uppercase">SYSTEM_OVERVIEW</h1>
-          <p className="text-muted-foreground text-sm font-mono">Welcome back, {user.name}.</p>
+          <p className="text-muted-foreground text-sm font-mono">Welcome back, {user?.name ?? "Operator"}.</p>
         </div>
         <div className="text-right">
           <ConditionBadge condition={signals?.condition} className="text-sm px-3 py-1" />

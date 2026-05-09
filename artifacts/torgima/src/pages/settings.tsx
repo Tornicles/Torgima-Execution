@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const { data: settingsRes, isLoading } = useGetSettings();
   const updateSettings = useUpdateSettings();
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     dailyTaskTarget: 3,
     notificationsEnabled: true,
@@ -21,11 +21,11 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (settingsRes?.data) {
+    if (settingsRes) {
       setFormData({
-        dailyTaskTarget: settingsRes.data.dailyTaskTarget,
-        notificationsEnabled: settingsRes.data.notificationsEnabled,
-        weeklyReviewDay: settingsRes.data.weeklyReviewDay || "sunday"
+        dailyTaskTarget: settingsRes.dailyTaskTarget,
+        notificationsEnabled: settingsRes.notificationsEnabled,
+        weeklyReviewDay: settingsRes.weeklyReviewDay || "sunday"
       });
     }
   }, [settingsRes]);
@@ -60,19 +60,19 @@ export default function SettingsPage() {
                 <Label className="font-mono font-bold text-sm">SYSTEM NOTIFICATIONS</Label>
                 <div className="text-xs text-muted-foreground font-mono">Allow Torgima to enforce execution via alerts.</div>
               </div>
-              <Switch 
+              <Switch
                 checked={formData.notificationsEnabled}
                 onCheckedChange={(c) => setFormData(p => ({ ...p, notificationsEnabled: c }))}
               />
             </div>
-            
+
             <div className="pt-4 border-t border-border/50 flex items-center justify-between">
               <div className="space-y-0.5 w-1/2">
                 <Label className="font-mono font-bold text-sm">DAILY YIELD TARGET</Label>
                 <div className="text-xs text-muted-foreground font-mono">Expected completed orders per cycle.</div>
               </div>
-              <Input 
-                type="number" 
+              <Input
+                type="number"
                 value={formData.dailyTaskTarget}
                 onChange={(e) => setFormData(p => ({ ...p, dailyTaskTarget: parseInt(e.target.value) || 1 }))}
                 className="w-24 font-mono text-center bg-background"
@@ -100,8 +100,8 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={updateSettings.isPending}
             className="w-full font-mono font-bold tracking-widest h-12"
           >

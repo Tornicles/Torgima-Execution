@@ -13,11 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function BlueprintPage() {
   const { id } = useParams();
-  const { data: bpRes, isLoading: bpLoading } = useGetBlueprint(id!);
-  const { data: stateRes, isLoading: stateLoading, refetch } = useGetBlueprintState(id!);
-  const blueprint = bpRes?.data;
-  const state = stateRes?.data;
-  
+  const { data: blueprint, isLoading: bpLoading } = useGetBlueprint(id!);
+  const { data: state, isLoading: stateLoading, refetch } = useGetBlueprintState(id!);
+
   const pauseMutation = usePauseBlueprint();
   const resumeMutation = useResumeBlueprint();
 
@@ -28,7 +26,7 @@ export default function BlueprintPage() {
   if (!blueprint || !state) return <div className="p-8 font-mono">Blueprint not found.</div>;
 
   const handlePause = () => {
-    pauseMutation.mutate({ params: { id: id! }, data: { reason: pauseReason } }, {
+    pauseMutation.mutate({ id: id!, data: { reason: pauseReason } }, {
       onSuccess: () => {
         setIsPauseOpen(false);
         refetch();
@@ -37,7 +35,7 @@ export default function BlueprintPage() {
   };
 
   const handleResume = () => {
-    resumeMutation.mutate({ params: { id: id! }, data: {} }, {
+    resumeMutation.mutate({ id: id! }, {
       onSuccess: () => refetch()
     });
   };
@@ -73,9 +71,9 @@ export default function BlueprintPage() {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <p className="text-sm text-muted-foreground">State your reason for halting this blueprint. This will be recorded and analyzed.</p>
-                    <Textarea 
-                      placeholder="Reason for pause..." 
-                      value={pauseReason} 
+                    <Textarea
+                      placeholder="Reason for pause..."
+                      value={pauseReason}
                       onChange={e => setPauseReason(e.target.value)}
                       className="bg-background"
                     />

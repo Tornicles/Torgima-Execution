@@ -13,8 +13,7 @@ import { useGetMe } from "@workspace/api-client-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { data: meRes } = useGetMe();
-  const me = meRes?.data;
+  const { data: me } = useGetMe();
   
   if (location === "/onboarding") {
     return <div className="min-h-screen bg-background font-sans text-foreground">{children}</div>;

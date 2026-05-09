@@ -1,16 +1,14 @@
 import { useGetCurrentSignals, useGetSignalHistory } from "@workspace/api-client-react";
+import type { SignalSnapshot } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConditionBadge } from "@/components/ConditionBadge";
 import { Progress } from "@/components/ui/progress";
-import { Activity, Gauge, TrendingUp, BarChart3 } from "lucide-react";
+import { Activity, Gauge, TrendingUp } from "lucide-react";
 
 export default function SignalsPage() {
-  const { data: signalsRes, isLoading } = useGetCurrentSignals();
-  const { data: historyRes } = useGetSignalHistory();
-  
-  const signals = signalsRes?.data;
-  const history = historyRes?.data || [];
+  const { data: signals, isLoading } = useGetCurrentSignals();
+  const { data: history = [] } = useGetSignalHistory();
 
   if (isLoading) {
     return <div className="p-8"><Skeleton className="h-[400px]" /></div>;
@@ -96,7 +94,7 @@ export default function SignalsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {history.map((snap) => (
+                    {history.map((snap: SignalSnapshot) => (
                       <tr key={snap.id} className="hover:bg-secondary/10">
                         <td className="p-3">{new Date(snap.snapshotDate).toLocaleDateString()}</td>
                         <td className="p-3 text-right">{snap.momentum}%</td>

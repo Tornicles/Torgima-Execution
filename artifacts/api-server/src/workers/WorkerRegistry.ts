@@ -1,39 +1,36 @@
-import type { Job } from "pg-boss";
-import { logger } from "../lib/logger.js";
+import type { Job, WorkOptions } from "pg-boss";
 import { getBoss } from "../lib/queue.js";
+import { logger } from "../lib/logger.js";
 
-/**
- * WorkerRegistry — Registers all pg-boss workers on startup.
- * Each worker subscribes to its named job queue.
- *
- * TODO (Prompt 5): Implement full worker registration with SystemOrchestrationEngine
- */
-export async function registerWorkers(): Promise<void> {
-  const boss = await getBoss();
-
-  await boss.work("signal-recalculate", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "SignalWorker — TODO"));
-  });
-
-  await boss.work("condition-evaluate", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "ConditionWorker — TODO"));
-  });
-
-  await boss.work("task-generate", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "TaskGenerationWorker — TODO"));
-  });
-
-  await boss.work("feedback-process", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "FeedbackWorker — TODO"));
-  });
-
-  await boss.work("inactivity-check", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "InactivityWorker — TODO"));
-  });
-
-  await boss.work("notification-send", async (jobs: Job<unknown>[]) => {
-    jobs.forEach((job) => logger.info({ jobId: job.id }, "NotificationWorker — TODO"));
-  });
-
-  logger.info("WorkerRegistry — all workers registered");
+export interface WorkerDefinition {
+  name: string;
+  queue: string;
+  options?: WorkOptions;
+  handler: (jobs: Job<unknown>[]) => Promise<void>;
 }
+
+const _registry: WorkerDefinition[] = [];
+
+export const workerRegistry = {
+  register(def: WorkerDefinition): void {
+    _registry.push(def);
+  },
+
+  async startAll(): Promise<void> {
+    const boss = await getBoss();
+
+    // Collect unique queue names and create them before subscribing
+    const uniqueQueues = [...new Set(_registry.map((d) => d.queue))];
+    for (const queueName of uniqueQueues) {
+      await boss.createQueue(queueName);
+      logger.debug({ queue: queueName }, "[WorkerRegistry] Queue ensured");
+    }
+
+    for (const def of _registry) {
+      await boss.work(def.queue, def.options ?? {}, def.handler);
+      logger.info({ queue: def.queue }, `[WorkerRegistry] Registered: ${def.name}`);
+    }
+
+    logger.info(`[WorkerRegistry] ${_registry.length} workers registered`);
+  },
+};

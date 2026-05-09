@@ -1,0 +1,1482 @@
+You are building Torgima. This is Prompt 4 of 16. You are building the Blueprint Engine, the Domain Resolution Engine, the blueprint chain (Goal → Plans → Seasons → Targets → Phases → Projects → Actions), the domain assignment system, phase gates, blueprint versioning, and the cold start that fires task generation when a blueprint launches.
+Read all five uploaded documents fully before writing a single line of code.
+Prompts 1, 2, and 3 must be fully verified. Auth, sessions, event system, and all 10 workers must exist before this prompt runs.
+________________________________________
+WHAT YOU ARE BUILDING
+BlueprintEngine — Creates and manages the complete blueprint chain from a validated goal. Handles activation, phase advancement, position tracking, and lifecycle state (paused, complete).
+DomainResolutionEngine — Assigns the correct domain at blueprint launch. Manages domain transitions triggered by signals, phase completion, and strategy events.
+BlueprintService — Coordinates between BlueprintEngine and the rest of the system. Called by API routes.
+Phase Gate System — Enforces entry/exit requirements before a phase can advance. Checks criteria, writes gate records, emits events.
+Blueprint Versioning — Every structural change to a blueprint writes a BlueprintVersion + BlueprintMutation record.
+Cold Start — When a blueprint activates, it writes initial signal/condition/enforcement/state rows and emits blueprint_launched → triggers first task generation.
+API routes — Goal creation, validation trigger, path selection, blueprint activation, blueprint state read, pause, resume, completion status.
+________________________________________
+CORE LAWS — READ BEFORE BUILDING
+1.	The TaskGenerationEngine ONLY reads blueprint position. It never writes plan/phase/project/action status. Blueprint position is advanced by BlueprintEngine only.
+2.	Every structural blueprint change writes BlueprintVersion + BlueprintMutation in the same transaction.
+3.	The one_active_blueprint_per_user partial unique index enforces that only one blueprint has active = true per user at any time. The engine must set active = false on the previous blueprint before activating a new one (or rely on the constraint to throw).
+4.	Domain transitions never happen directly — they go through DomainResolutionEngine which checks Phase 1 activation status (DOC_40 rules) before writing DomainHistory.
+5.	Growth and People domains are disabled in Phase 1. If a transition would target them, the engine stays in the current domain and logs a blocked transition to EventLog.
+6.	Blueprint state_version increments on every structural mutation — plans, phases, projects, actions, targets, status changes.
+________________________________________
+STEP 1 — TYPES
+Create src/types/blueprint.ts:
+export interface BlueprintChainInput {
+  goal: string;
+  purpose?: string;
+  timeframeDays?: number;
+  roleContext?: string;
+  domainHint?: string;
+  commitmentLevel?: "low" | "medium" | "high" | "full";
+  selectedPath?: "current" | "adjusted" | "alternative";
+  validationId?: string;
+  pathSummary?: {
+    plans: PlanInput[];
+    targets: TargetInput[];
+    keyActions: string[];
+  };
+}
+
+export interface PlanInput {
+  name: string;
+  description?: string;
+  orderIndex: number;
+}
+
+export interface TargetInput {
+  name: string;
+  description?: string;
+  type: "major" | "primary" | "vital" | "operating" | "production" | "conditional";
+  metric?: string;
+  targetValue?: number;
+  unit?: string;
+}
+
+export interface BlueprintPosition {
+  blueprintId: string;
+  currentPlanId: string | null;
+  currentPhaseId: string | null;
+  currentPlanName: string | null;
+  currentPhaseName: string | null;
+  currentDomain: string | null;
+  activePlanIndex: number;
+  activePhaseIndex: number;
+}
+
+export interface BlueprintStateView {
+  id: string;
+  goal: string;
+  purpose: string | null;
+  status: string;
+  active: boolean;
+  stateVersion: number;
+  currentDomain: string | null;
+  currentCondition: string | null;
+  currentPlanId: string | null;
+  currentPhaseId: string | null;
+  timeframeStart: Date | null;
+  timeframeEnd: Date | null;
+  createdAt: Date;
+  pausedAt: Date | null;
+  completedAt: Date | null;
+}
+
+________________________________________
+STEP 2 — DOMAIN RESOLUTION ENGINE
+Create src/engines/domain/DomainResolutionEngine.ts:
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { writeEvent, EVENT_TYPES } from "@/services/EventService";
+import { Prisma } from "@prisma/client";
+
+// Phase 1 domain activation status (from DOC_40)
+const DOMAIN_PHASE1_STATUS: Record<string, "always_active" | "active" | "limited" | "disabled"> = {
+  genesis:     "always_active",
+  market:      "active",
+  delivery:    "active",
+  continuity:  "active",
+  operations:  "limited",
+  growth:      "disabled",
+  people:      "disabled",
+};
+
+// Assign domain at blueprint launch based on goal context
+export function resolveInitialDomain(params: {
+  goal: string;
+  domainHint?: string | null;
+  validationVerdict?: string | null;
+  selectedPath?: string | null;
+}): string {
+  const hint = params.domainHint?.toLowerCase();
+
+  // If user provided a domain hint and it is active
+  if (hint && DOMAIN_PHASE1_STATUS[hint] && DOMAIN_PHASE1_STATUS[hint] !== "disabled") {
+    return hint;
+  }
+
+  // Default: Market if validation happened (validated demand)
+  // Delivery if goal implies execution/fulfillment is ready
+  // Genesis fallback if nothing else applies
+  if (params.validationVerdict === "proceed" || params.selectedPath) {
+    // After validation, move into Market by default
+    return "market";
+  }
+
+  return "genesis";
+}
+
+// Transition to a new domain — enforces Phase 1 rules
+export async function transitionDomain(params: {
+  blueprintId: string;
+  userId: string;
+  targetDomain: string;
+  trigger: string;
+  triggerEventId?: string;
+  notes?: string;
+  tx?: Prisma.TransactionClient;
+}): Promise<{ transitioned: boolean; domain: string; reason?: string }> {
+  const db = params.tx ?? prisma;
+
+  const status = DOMAIN_PHASE1_STATUS[params.targetDomain];
+
+  if (!status) {
+    logger.warn("[DomainEngine] Unknown domain transition target", { domain: params.targetDomain });
+    return { transitioned: false, domain: params.targetDomain, reason: "unknown_domain" };
+  }
+
+  if (status === "disabled") {
+    // Log blocked transition — do not change domain
+    await db.event.create({
+      data: {
+        event_type: "domain_transition_blocked",
+        entity_type: "blueprint",
+        entity_id: params.blueprintId,
+        user_id: params.userId,
+        blueprint_id: params.blueprintId,
+        payload: {
+          target_domain: params.targetDomain,
+          reason: "domain_disabled_phase1",
+          trigger: params.trigger,
+        },
+      },
+    });
+    logger.info("[DomainEngine] Domain transition blocked — disabled in Phase 1", {
+      blueprintId: params.blueprintId,
+      targetDomain: params.targetDomain,
+    });
+    return { transitioned: false, domain: params.targetDomain, reason: "disabled_phase1" };
+  }
+
+  // Get current domain
+  const current = await db.domainHistory.findFirst({
+    where: { blueprint_id: params.blueprintId, is_current: true },
+    orderBy: { entered_at: "desc" },
+  });
+
+  if (current?.domain === params.targetDomain) {
+    return { transitioned: false, domain: params.targetDomain, reason: "already_in_domain" };
+  }
+
+  // Exit current domain
+  if (current) {
+    await db.domainHistory.update({
+      where: { id: current.id },
+      data: { is_current: false, exited_at: new Date() },
+    });
+  }
+
+  // Enter new domain
+  await db.domainHistory.create({
+    data: {
+      blueprint_id: params.blueprintId,
+      user_id: params.userId,
+      domain: params.targetDomain as any,
+      previous_domain: current?.domain ?? null,
+      transition_trigger: params.trigger as any,
+      trigger_event_id: params.triggerEventId,
+      transition_notes: params.notes,
+      is_current: true,
+    },
+  });
+
+  // Update blueprint current_domain
+  await db.blueprint.update({
+    where: { id: params.blueprintId },
+    data: { current_domain: params.targetDomain as any },
+  });
+
+  logger.info("[DomainEngine] Domain transition completed", {
+    blueprintId: params.blueprintId,
+    from: current?.domain,
+    to: params.targetDomain,
+    trigger: params.trigger,
+  });
+
+  return { transitioned: true, domain: params.targetDomain };
+}
+
+// Evaluate whether domain should transition based on signals/conditions
+export async function evaluateDomainTransition(params: {
+  blueprintId: string;
+  userId: string;
+  currentDomain: string;
+  conditionName: string;
+  conditionDurationDays: number;
+  phaseCompleted?: boolean;
+}): Promise<string | null> {
+  // Continuity trigger: sustained Danger 10+ days
+  if (
+    params.conditionDurationDays >= 10 &&
+    (params.conditionName === "danger") &&
+    params.currentDomain !== "continuity"
+  ) {
+    return "continuity";
+  }
+
+  // Phase complete in Genesis → move to Market
+  if (params.phaseCompleted && params.currentDomain === "genesis") {
+    return "market";
+  }
+
+  // Phase complete in Market with good signal → move to Delivery
+  if (
+    params.phaseCompleted &&
+    params.currentDomain === "market" &&
+    ["stability", "power", "affluence"].includes(params.conditionName)
+  ) {
+    return "delivery";
+  }
+
+  // All other transitions are handled by StrategyEngine (Prompt 12)
+  return null;
+}
+
+________________________________________
+STEP 3 — BLUEPRINT ENGINE
+Create src/engines/blueprint/BlueprintEngine.ts:
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { TorgimaError } from "@/lib/errors";
+import { writeEvent, EVENT_TYPES } from "@/services/EventService";
+import { transitionDomain, resolveInitialDomain } from "@/engines/domain/DomainResolutionEngine";
+import { BlueprintChainInput, BlueprintPosition } from "@/types/blueprint";
+
+// ── CREATE BLUEPRINT DRAFT ───────────────────────────────────────────────────
+
+export async function createBlueprintDraft(params: {
+  userId: string;
+  goal: string;
+  purpose?: string;
+  timeframeDays?: number;
+  roleContext?: string;
+  domainHint?: string;
+  commitmentLevel?: string;
+}): Promise<{ blueprintId: string }> {
+  // Check for existing active blueprint
+  const existing = await prisma.blueprint.findFirst({
+    where: { user_id: params.userId, active: true },
+  });
+  if (existing) {
+    throw new TorgimaError(
+      "BLUEPRINT_NOT_ACTIVE",
+      "You already have an active blueprint. Pause or complete it before creating a new one.",
+      false
+    );
+  }
+
+  const now = new Date();
+  const timeframeEnd = params.timeframeDays
+    ? new Date(now.getTime() + params.timeframeDays * 24 * 3600 * 1000)
+    : null;
+
+  const blueprint = await prisma.blueprint.create({
+    data: {
+      user_id: params.userId,
+      goal: params.goal,
+      purpose: params.purpose,
+      timeframe_start: now,
+      timeframe_end: timeframeEnd,
+      role_context: params.roleContext,
+      domain_hint: params.domainHint,
+      commitment_level: params.commitmentLevel as any,
+      status: "draft",
+      active: false,
+      state_version: 0,
+    },
+  });
+
+  logger.info("[BlueprintEngine] Draft created", { blueprintId: blueprint.id, userId: params.userId });
+  return { blueprintId: blueprint.id };
+}
+
+// ── BUILD BLUEPRINT CHAIN ────────────────────────────────────────────────────
+// Called after validation — builds the full Plan → Target → Phase → Project → Action chain
+
+export async function buildBlueprintChain(params: {
+  blueprintId: string;
+  userId: string;
+  chain: BlueprintChainInput;
+}): Promise<void> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId },
+  });
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+
+  await prisma.$transaction(async (tx) => {
+    const { chain } = params;
+    const plans = chain.pathSummary?.plans ?? defaultPlans();
+    const targets = chain.pathSummary?.targets ?? defaultTargets(chain.goal);
+
+    let planIndex = 0;
+    for (const planInput of plans) {
+      const plan = await tx.plan.create({
+        data: {
+          blueprint_id: params.blueprintId,
+          name: planInput.name,
+          description: planInput.description,
+          order_index: planIndex++,
+          status: "pending",
+        },
+      });
+
+      // Create one Season per plan (Ignition for first, Foundation for rest)
+      await tx.season.create({
+        data: {
+          blueprint_id: params.blueprintId,
+          plan_id: plan.id,
+          name: planIndex === 1 ? "ignition" : "foundation",
+          order_index: planIndex - 1,
+          status: "pending",
+        },
+      });
+
+      // Create targets for this plan
+      for (const targetInput of targets) {
+        const target = await tx.target.create({
+          data: {
+            blueprint_id: params.blueprintId,
+            plan_id: plan.id,
+            owner_id: params.userId, // Individual mode — user owns all targets
+            name: targetInput.name,
+            description: targetInput.description,
+            type: targetInput.type,
+            metric: targetInput.metric,
+            target_value: targetInput.targetValue,
+            unit: targetInput.unit,
+            order_index: 0,
+            status: "pending",
+          },
+        });
+
+        // Create 3 phases per target: Initiation → Development → Completion
+        const phaseNames: Array<"initiation" | "development" | "completion"> = [
+          "initiation",
+          "development",
+          "completion",
+        ];
+
+        for (let phaseIdx = 0; phaseIdx < phaseNames.length; phaseIdx++) {
+          const phase = await tx.phase.create({
+            data: {
+              blueprint_id: params.blueprintId,
+              target_id: target.id,
+              plan_id: plan.id,
+              name: phaseNames[phaseIdx],
+              order_index: phaseIdx,
+              gate_criteria: buildGateCriteria(phaseNames[phaseIdx]),
+              status: phaseIdx === 0 ? "active" : "pending",
+              locked: phaseIdx > 0, // Only first phase is unlocked
+            },
+          });
+
+          // Create projects for the initiation phase only (others built when phase gates open)
+          if (phaseIdx === 0) {
+            const projectTypes: Array<"setup" | "execution"> = ["setup", "execution"];
+            for (let projIdx = 0; projIdx < projectTypes.length; projIdx++) {
+              const project = await tx.project.create({
+                data: {
+                  blueprint_id: params.blueprintId,
+                  phase_id: phase.id,
+                  target_id: target.id,
+                  owner_id: params.userId,
+                  name: buildProjectName(projectTypes[projIdx], targetInput.name),
+                  type: projectTypes[projIdx],
+                  order_index: projIdx,
+                  status: projIdx === 0 ? "active" : "pending",
+                },
+              });
+
+              // Create 2–3 actions per project
+              const actionTypes = buildActionTypes(projectTypes[projIdx]);
+              for (let actIdx = 0; actIdx < actionTypes.length; actIdx++) {
+                await tx.action.create({
+                  data: {
+                    blueprint_id: params.blueprintId,
+                    project_id: project.id,
+                    target_id: target.id,
+                    name: buildActionName(actionTypes[actIdx], targetInput.name),
+                    type: actionTypes[actIdx] as any,
+                    knowledge_category: resolveKnowledgeCategory(actionTypes[actIdx]),
+                    order_index: actIdx,
+                    status: actIdx === 0 ? "pending" : "pending",
+                  },
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Set current_plan to first plan
+      if (planIndex === 1) {
+        await tx.blueprint.update({
+          where: { id: params.blueprintId },
+          data: { current_plan_id: plan.id },
+        });
+      }
+    }
+
+    // Write BlueprintVersion for chain creation
+    await tx.blueprintVersion.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        version: 1,
+        summary: "Initial blueprint chain created from validation path",
+        structure_snapshot: { plans: plans.length, targets: targets.length } as any,
+        source: "USER",
+        triggered_by: params.userId,
+      },
+    });
+
+    // Increment state version
+    await tx.blueprint.update({
+      where: { id: params.blueprintId },
+      data: {
+        status: "path_selection",
+        state_version: { increment: 1 },
+      },
+    });
+  });
+
+  logger.info("[BlueprintEngine] Blueprint chain built", { blueprintId: params.blueprintId });
+}
+
+// ── ACTIVATE BLUEPRINT (LAUNCH) ──────────────────────────────────────────────
+
+export async function activateBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+}): Promise<void> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId },
+    include: {
+      plans: { orderBy: { order_index: "asc" }, take: 1 },
+    },
+  });
+
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+  if (blueprint.status !== "path_selection" && blueprint.status !== "draft") {
+    throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", `Blueprint status is ${blueprint.status}`, false);
+  }
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 7 * 24 * 3600000);
+
+  // Resolve initial domain
+  const initialDomain = resolveInitialDomain({
+    goal: blueprint.goal,
+    domainHint: blueprint.domain_hint,
+    validationVerdict: "proceed",
+    selectedPath: "current",
+  });
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Activate blueprint
+    await tx.blueprint.update({
+      where: { id: params.blueprintId },
+      data: {
+        status: "active",
+        active: true,
+        state_version: { increment: 1 },
+      },
+    });
+
+    // 2. Set first plan as current
+    if (blueprint.plans[0]) {
+      // Find first active phase in first plan
+      const firstPhase = await tx.phase.findFirst({
+        where: { blueprint_id: params.blueprintId, plan_id: blueprint.plans[0].id },
+        orderBy: { order_index: "asc" },
+      });
+      await tx.blueprint.update({
+        where: { id: params.blueprintId },
+        data: {
+          current_plan_id: blueprint.plans[0].id,
+          current_phase_id: firstPhase?.id ?? null,
+        },
+      });
+      // Mark first plan active
+      await tx.plan.update({
+        where: { id: blueprint.plans[0].id },
+        data: { status: "active" },
+      });
+    }
+
+    // 3. Initial signal snapshot — nothingness (insufficient data)
+    const signal = await tx.signalSnapshot.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        user_id: params.userId,
+        window_start: windowStart,
+        window_end: now,
+        completion_rate: 0,
+        weighted_score: 0,
+        momentum: 0,
+        trend: "stable",
+        confidence: "insufficient_data",
+        assigned_condition: "nothingness",
+        is_current: true,
+      },
+    });
+
+    // 4. Initial condition — nothingness
+    const condition = await tx.conditionRecord.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        user_id: params.userId,
+        condition: "nothingness",
+        signal_snapshot_id: signal.id,
+        duration_days: 0,
+        escalation_level: 0,
+        recovery_required: false,
+        is_current: true,
+        entered_at: now,
+      },
+    });
+
+    // 5. Initial enforcement package — nothingness defaults
+    await tx.enforcementPackage.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        condition_id: condition.id,
+        signal_snapshot_id: signal.id,
+        condition: "nothingness",
+        task_limits: { min: 1, max: 2 },
+        difficulty_cap: "easy",
+        ai_mode: "command",
+        ui_mode: "starter",
+        feature_permissions: {},
+        is_current: true,
+      },
+    });
+
+    // 6. Initial state memory
+    await tx.stateMemory.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        user_id: params.userId,
+        condition: "nothingness",
+        entered_at: now,
+        is_current: true,
+        duration_days: 0,
+        escalation_level: 0,
+      },
+    });
+
+    // 7. Initial domain history
+    await tx.domainHistory.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        user_id: params.userId,
+        domain: initialDomain as any,
+        transition_trigger: "blueprint_launched",
+        is_current: true,
+        entered_at: now,
+      },
+    });
+    await tx.blueprint.update({
+      where: { id: params.blueprintId },
+      data: { current_domain: initialDomain as any },
+    });
+
+    // 8. Emit blueprint_launched event (triggers TaskGenerationWorker)
+    await writeEvent(
+      {
+        eventType: EVENT_TYPES.BLUEPRINT_LAUNCHED,
+        entityType: "blueprint",
+        entityId: params.blueprintId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: {
+          generation_mode: "initial",
+          generation_trigger: "blueprint_launched",
+          domain: initialDomain,
+        },
+        idempotencyKey: `blueprint_launched:${params.blueprintId}`,
+      },
+      tx
+    );
+  });
+
+  logger.info("[BlueprintEngine] Blueprint activated", {
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    domain: initialDomain,
+  });
+}
+
+// ── ADVANCE BLUEPRINT POSITION ────────────────────────────────────────────────
+// Called after phase gate passes — moves to next phase or next plan
+
+export async function advanceBlueprintPosition(params: {
+  blueprintId: string;
+  userId: string;
+  completedPhaseId: string;
+}): Promise<{ advanced: boolean; newPhaseId?: string; newPlanId?: string }> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId, active: true },
+    include: {
+      plans: { orderBy: { order_index: "asc" } },
+    },
+  });
+
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+
+  const completedPhase = await prisma.phase.findUnique({
+    where: { id: params.completedPhaseId },
+  });
+
+  if (!completedPhase || completedPhase.blueprint_id !== params.blueprintId) {
+    throw new TorgimaError("NOT_FOUND", "Phase not found", false);
+  }
+
+  // Find next phase in same target
+  const nextPhase = await prisma.phase.findFirst({
+    where: {
+      blueprint_id: params.blueprintId,
+      target_id: completedPhase.target_id,
+      order_index: { gt: completedPhase.order_index },
+      status: { not: "complete" },
+    },
+    orderBy: { order_index: "asc" },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    // Mark completed phase
+    await tx.phase.update({
+      where: { id: params.completedPhaseId },
+      data: { status: "complete", completed_at: new Date(), gate_passed: true },
+    });
+
+    if (nextPhase) {
+      // Unlock and activate next phase
+      await tx.phase.update({
+        where: { id: nextPhase.id },
+        data: { status: "active", locked: false },
+      });
+      await tx.blueprint.update({
+        where: { id: params.blueprintId },
+        data: {
+          current_phase_id: nextPhase.id,
+          state_version: { increment: 1 },
+        },
+      });
+
+      // Build projects for newly unlocked phase (if not already built)
+      const existingProjects = await tx.project.count({
+        where: { blueprint_id: params.blueprintId, phase_id: nextPhase.id },
+      });
+
+      if (existingProjects === 0) {
+        await buildPhaseProjects(params.blueprintId, params.userId, nextPhase.id, tx);
+      }
+    }
+
+    // Write BlueprintMutation
+    await tx.blueprintMutation.create({
+      data: {
+        blueprint_id: params.blueprintId,
+        mutation_type: "COMPLETE",
+        layer: "phase",
+        entity_id: params.completedPhaseId,
+        change_summary: `Phase ${completedPhase.name} completed. Advanced to ${nextPhase?.name ?? "end"}`,
+        approved: true,
+        approved_at: new Date(),
+      },
+    });
+  });
+
+  return {
+    advanced: true,
+    newPhaseId: nextPhase?.id,
+  };
+}
+
+// ── PAUSE BLUEPRINT ──────────────────────────────────────────────────────────
+
+export async function pauseBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+  reason?: string;
+}): Promise<void> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId, active: true },
+  });
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found or not active", false);
+  if (blueprint.status === "paused") throw new TorgimaError("BLUEPRINT_PAUSED", "Blueprint already paused", false);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.blueprint.update({
+      where: { id: params.blueprintId },
+      data: {
+        status: "paused",
+        paused_at: new Date(),
+        pause_reason: params.reason,
+        state_version: { increment: 1 },
+      },
+    });
+
+    await writeEvent(
+      {
+        eventType: EVENT_TYPES.BLUEPRINT_PAUSED,
+        entityType: "blueprint",
+        entityId: params.blueprintId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: { reason: params.reason },
+        idempotencyKey: `blueprint_paused:${params.blueprintId}:${Date.now()}`,
+      },
+      tx
+    );
+  });
+
+  logger.info("[BlueprintEngine] Blueprint paused", { blueprintId: params.blueprintId });
+}
+
+// ── RESUME BLUEPRINT ─────────────────────────────────────────────────────────
+
+export async function resumeBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+}): Promise<void> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId },
+  });
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+  if (blueprint.status !== "paused") throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", "Blueprint is not paused", false);
+
+  const pausedAt = blueprint.paused_at;
+  const pauseGapDays = pausedAt
+    ? Math.floor((Date.now() - pausedAt.getTime()) / (24 * 3600 * 1000))
+    : 0;
+
+  const resumeMode =
+    pauseGapDays <= 2 ? "normal" :
+    pauseGapDays <= 7 ? "check_in" :
+    pauseGapDays <= 30 ? "recovery" : "restart";
+
+  await prisma.$transaction(async (tx) => {
+    await tx.blueprint.update({
+      where: { id: params.blueprintId },
+      data: {
+        status: "active",
+        active: true,
+        paused_at: null,
+        pause_reason: null,
+        state_version: { increment: 1 },
+      },
+    });
+
+    // Trigger signal recalculation + task generation with appropriate mode
+    await writeEvent(
+      {
+        eventType: EVENT_TYPES.BLUEPRINT_RESUMED,
+        entityType: "blueprint",
+        entityId: params.blueprintId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: { resume_mode: resumeMode, pause_gap_days: pauseGapDays },
+        idempotencyKey: `blueprint_resumed:${params.blueprintId}:${Date.now()}`,
+      },
+      tx
+    );
+
+    await writeEvent(
+      {
+        eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+        entityType: "blueprint",
+        entityId: params.blueprintId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: {
+          generation_mode: resumeMode === "normal" ? "post_feedback" : "recovery",
+          generation_trigger: "blueprint_launched",
+        },
+        idempotencyKey: `task_gen_resume:${params.blueprintId}:${Date.now()}`,
+      },
+      tx
+    );
+  });
+
+  logger.info("[BlueprintEngine] Blueprint resumed", {
+    blueprintId: params.blueprintId,
+    resumeMode,
+    pauseGapDays,
+  });
+}
+
+// ── READ BLUEPRINT POSITION ───────────────────────────────────────────────────
+
+export async function getBlueprintPosition(blueprintId: string): Promise<BlueprintPosition> {
+  const blueprint = await prisma.blueprint.findUnique({
+    where: { id: blueprintId },
+    include: {
+      current_plan: true,
+      current_phase: true,
+    },
+  });
+
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+
+  return {
+    blueprintId: blueprint.id,
+    currentPlanId: blueprint.current_plan_id,
+    currentPhaseId: blueprint.current_phase_id,
+    currentPlanName: blueprint.current_plan?.name ?? null,
+    currentPhaseName: blueprint.current_phase?.name ?? null,
+    currentDomain: blueprint.current_domain,
+    activePlanIndex: blueprint.current_plan?.order_index ?? 0,
+    activePhaseIndex: blueprint.current_phase?.order_index ?? 0,
+  };
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+
+function defaultPlans(): Array<{ name: string; description?: string; orderIndex: number }> {
+  return [
+    { name: "Foundation", description: "Build the essential base", orderIndex: 0 },
+    { name: "Validation", description: "Prove the approach works", orderIndex: 1 },
+    { name: "Growth", description: "Build on validated results", orderIndex: 2 },
+  ];
+}
+
+function defaultTargets(goal: string): Array<{
+  name: string;
+  type: "major" | "primary" | "vital";
+  metric?: string;
+}> {
+  return [
+    { name: `Primary outcome for: ${goal}`, type: "major" },
+    { name: "Validation proof", type: "primary" },
+    { name: "Execution consistency", type: "vital" },
+  ];
+}
+
+function buildGateCriteria(phaseName: string): Record<string, unknown> {
+  const gates: Record<string, unknown> = {
+    initiation:  { require_task_completion: true,  min_tasks_completed: 2,  require_reflection: false },
+    development: { require_task_completion: true,  min_tasks_completed: 5,  require_proof: true },
+    completion:  { require_task_completion: true,  require_outcome_validated: true, require_proof: true },
+  };
+  return gates[phaseName] ?? {};
+}
+
+function buildProjectName(type: string, targetName: string): string {
+  const names: Record<string, string> = {
+    setup:        `Setup: ${targetName}`,
+    execution:    `Execute: ${targetName}`,
+    analysis:     `Analyze: ${targetName}`,
+    optimization: `Optimize: ${targetName}`,
+  };
+  return names[type] ?? `${type}: ${targetName}`;
+}
+
+function buildActionTypes(projectType: string): string[] {
+  const actions: Record<string, string[]> = {
+    setup:        ["create", "validate"],
+    execution:    ["build", "test", "publish"],
+    analysis:     ["analyze", "measure"],
+    optimization: ["improve", "standardize"],
+    recovery:     ["recover"],
+  };
+  return actions[projectType] ?? ["create", "analyze"];
+}
+
+function buildActionName(actionType: string, targetName: string): string {
+  const verbs: Record<string, string> = {
+    create: "Create",  build: "Build",   analyze: "Analyze",
+    improve: "Improve", test: "Test",    validate: "Validate",
+    publish: "Publish", measure: "Measure", recover: "Recover",
+    standardize: "Standardize",
+  };
+  return `${verbs[actionType] ?? actionType}: ${targetName}`;
+}
+
+function resolveKnowledgeCategory(actionType: string): string {
+  const categories: Record<string, string> = {
+    create: "creation",    build: "execution",  analyze: "analysis",
+    improve: "optimization", test: "validation", validate: "validation",
+    publish: "delivery",   measure: "measurement", recover: "recovery",
+  };
+  return categories[actionType] ?? "execution";
+}
+
+async function buildPhaseProjects(
+  blueprintId: string,
+  userId: string,
+  phaseId: string,
+  tx: any
+): Promise<void> {
+  const phase = await tx.phase.findUnique({ where: { id: phaseId }, include: { target: true } });
+  if (!phase) return;
+
+  const projectType = phase.name === "development" ? "execution" : "analysis";
+  const project = await tx.project.create({
+    data: {
+      blueprint_id: blueprintId,
+      phase_id: phaseId,
+      target_id: phase.target_id,
+      owner_id: userId,
+      name: buildProjectName(projectType, phase.target?.name ?? "target"),
+      type: projectType as any,
+      order_index: 0,
+      status: "active",
+    },
+  });
+
+  const actionTypes = buildActionTypes(projectType);
+  for (let i = 0; i < actionTypes.length; i++) {
+    await tx.action.create({
+      data: {
+        blueprint_id: blueprintId,
+        project_id: project.id,
+        target_id: phase.target_id,
+        name: buildActionName(actionTypes[i], phase.target?.name ?? "target"),
+        type: actionTypes[i] as any,
+        knowledge_category: resolveKnowledgeCategory(actionTypes[i]),
+        order_index: i,
+        status: "pending",
+      },
+    });
+  }
+}
+
+________________________________________
+STEP 4 — BLUEPRINT SERVICE
+Create src/services/BlueprintService.ts:
+import { prisma } from "@/lib/prisma";
+import { TorgimaError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import {
+  createBlueprintDraft,
+  buildBlueprintChain,
+  activateBlueprint,
+  pauseBlueprint,
+  resumeBlueprint,
+  getBlueprintPosition,
+  advanceBlueprintPosition,
+} from "@/engines/blueprint/BlueprintEngine";
+import { BlueprintChainInput, BlueprintStateView } from "@/types/blueprint";
+
+export async function createGoal(params: {
+  userId: string;
+  goal: string;
+  purpose?: string;
+  timeframeDays?: number;
+  roleContext?: string;
+  domainHint?: string;
+  commitmentLevel?: string;
+}): Promise<{ blueprintId: string }> {
+  return createBlueprintDraft(params);
+}
+
+export async function launchBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+  chain?: BlueprintChainInput;
+}): Promise<void> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId },
+  });
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+
+  // Build chain if not yet built and chain data provided
+  if (blueprint.status === "draft" && params.chain) {
+    await buildBlueprintChain({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      chain: params.chain,
+    });
+  }
+
+  await activateBlueprint({ blueprintId: params.blueprintId, userId: params.userId });
+}
+
+export async function getBlueprintState(params: {
+  blueprintId: string;
+  userId: string;
+}): Promise<BlueprintStateView> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: params.blueprintId, user_id: params.userId },
+  });
+  if (!blueprint) throw new TorgimaError("NOT_FOUND", "Blueprint not found", false);
+
+  return {
+    id: blueprint.id,
+    goal: blueprint.goal,
+    purpose: blueprint.purpose,
+    status: blueprint.status,
+    active: blueprint.active,
+    stateVersion: blueprint.state_version,
+    currentDomain: blueprint.current_domain,
+    currentCondition: blueprint.current_condition,
+    currentPlanId: blueprint.current_plan_id,
+    currentPhaseId: blueprint.current_phase_id,
+    timeframeStart: blueprint.timeframe_start,
+    timeframeEnd: blueprint.timeframe_end,
+    createdAt: blueprint.created_at,
+    pausedAt: blueprint.paused_at,
+    completedAt: blueprint.completed_at,
+  };
+}
+
+export async function getActiveBlueprintForUser(userId: string): Promise<BlueprintStateView | null> {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { user_id: userId, active: true },
+  });
+  if (!blueprint) return null;
+  return getBlueprintState({ blueprintId: blueprint.id, userId });
+}
+
+export async function pauseUserBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+  reason?: string;
+}): Promise<void> {
+  return pauseBlueprint(params);
+}
+
+export async function resumeUserBlueprint(params: {
+  blueprintId: string;
+  userId: string;
+}): Promise<void> {
+  return resumeBlueprint(params);
+}
+
+export async function getBlueprintHistory(userId: string): Promise<BlueprintStateView[]> {
+  const blueprints = await prisma.blueprint.findMany({
+    where: { user_id: userId },
+    orderBy: { created_at: "desc" },
+    take: 20,
+  });
+  return blueprints.map((b) => ({
+    id: b.id,
+    goal: b.goal,
+    purpose: b.purpose,
+    status: b.status,
+    active: b.active,
+    stateVersion: b.state_version,
+    currentDomain: b.current_domain,
+    currentCondition: b.current_condition,
+    currentPlanId: b.current_plan_id,
+    currentPhaseId: b.current_phase_id,
+    timeframeStart: b.timeframe_start,
+    timeframeEnd: b.timeframe_end,
+    createdAt: b.created_at,
+    pausedAt: b.paused_at,
+    completedAt: b.completed_at,
+  }));
+}
+
+________________________________________
+STEP 5 — BLUEPRINT REPOSITORY
+Create src/repositories/BlueprintRepository.ts:
+import { prisma } from "@/lib/prisma";
+
+export async function findActiveBlueprint(userId: string) {
+  return prisma.blueprint.findFirst({
+    where: { user_id: userId, active: true },
+    include: {
+      current_plan: true,
+      current_phase: true,
+    },
+  });
+}
+
+export async function findBlueprintWithChain(blueprintId: string, userId: string) {
+  return prisma.blueprint.findFirst({
+    where: { id: blueprintId, user_id: userId },
+    include: {
+      plans: {
+        orderBy: { order_index: "asc" },
+        include: {
+          targets: {
+            orderBy: { order_index: "asc" },
+            include: {
+              phases: {
+                orderBy: { order_index: "asc" },
+                include: {
+                  projects: {
+                    orderBy: { order_index: "asc" },
+                    include: {
+                      actions: { orderBy: { order_index: "asc" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function getCurrentActiveOrders(blueprintId: string) {
+  return prisma.order.findMany({
+    where: {
+      blueprint_id: blueprintId,
+      status: { in: ["pending", "active", "needs_feedback", "needs_proof", "blocked"] },
+    },
+    orderBy: { priority: "desc" },
+  });
+}
+
+________________________________________
+STEP 6 — API ROUTES
+src/app/api/blueprints/route.ts — Create goal / list blueprints
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { createGoal, getBlueprintHistory } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+import { z } from "zod";
+
+const createSchema = z.object({
+  goal: z.string().min(10).max(500),
+  purpose: z.string().max(1000).optional(),
+  timeframeDays: z.number().int().min(7).max(730).optional(),
+  roleContext: z.string().max(200).optional(),
+  domainHint: z.string().optional(),
+  commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const body = await req.json();
+    const input = createSchema.parse(body);
+    const result = await createGoal({ userId: auth.userId, ...input });
+    return NextResponse.json(success(result), { status: 201 });
+  } catch (e) {
+    if (e instanceof z.ZodError)
+      return NextResponse.json(failure("VALIDATION_ERROR", "Invalid input", { fieldErrors: Object.fromEntries(e.errors.map(x => [x.path.join("."), [x.message]])) }), { status: 400 });
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to create goal"), { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const history = await getBlueprintHistory(auth.userId);
+    return NextResponse.json(success(history));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 401 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to list blueprints"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/[id]/route.ts — Get blueprint state
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, assertOwnership } from "@/lib/auth-middleware";
+import { getBlueprintState } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const state = await getBlueprintState({ blueprintId: params.id, userId: auth.userId });
+    assertOwnership(auth, auth.userId, "Blueprint");
+    return NextResponse.json(success(state));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: e.code === "NOT_FOUND" ? 404 : 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to get blueprint"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/[id]/activate/route.ts — Launch blueprint
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { launchBlueprint } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const body = await req.json().catch(() => ({}));
+    await launchBlueprint({ blueprintId: params.id, userId: auth.userId, chain: body.chain });
+    return NextResponse.json(success({ launched: true, blueprintId: params.id }));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to launch blueprint"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/[id]/pause/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { pauseUserBlueprint } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const body = await req.json().catch(() => ({}));
+    await pauseUserBlueprint({ blueprintId: params.id, userId: auth.userId, reason: body.reason });
+    return NextResponse.json(success({ paused: true }));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to pause blueprint"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/[id]/resume/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { resumeUserBlueprint } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    await resumeUserBlueprint({ blueprintId: params.id, userId: auth.userId });
+    return NextResponse.json(success({ resumed: true }));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to resume blueprint"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/[id]/state/route.ts — Full state for dashboard
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { prisma } from "@/lib/prisma";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+
+    const blueprint = await prisma.blueprint.findFirst({
+      where: { id: params.id, user_id: auth.userId },
+    });
+    if (!blueprint) return NextResponse.json(failure("NOT_FOUND", "Blueprint not found"), { status: 404 });
+
+    const [signal, condition, enforcement] = await Promise.all([
+      prisma.signalSnapshot.findFirst({ where: { blueprint_id: params.id, is_current: true } }),
+      prisma.conditionRecord.findFirst({ where: { blueprint_id: params.id, is_current: true } }),
+      prisma.enforcementPackage.findFirst({ where: { blueprint_id: params.id, is_current: true } }),
+    ]);
+
+    return NextResponse.json(success({
+      blueprint: {
+        id: blueprint.id,
+        goal: blueprint.goal,
+        status: blueprint.status,
+        active: blueprint.active,
+        stateVersion: blueprint.state_version,
+        currentDomain: blueprint.current_domain,
+        currentCondition: blueprint.current_condition,
+      },
+      signal: signal ? {
+        completionRate: signal.completion_rate,
+        weightedScore: signal.weighted_score,
+        momentum: signal.momentum,
+        trend: signal.trend,
+        confidence: signal.confidence,
+        condition: signal.assigned_condition,
+      } : null,
+      condition: condition ? {
+        condition: condition.condition,
+        durationDays: condition.duration_days,
+        escalationLevel: condition.escalation_level,
+        recoveryRequired: condition.recovery_required,
+      } : null,
+      enforcement: enforcement ? {
+        taskLimits: enforcement.task_limits,
+        difficultyCap: enforcement.difficulty_cap,
+        allowedActions: enforcement.allowed_actions,
+        blockedActions: enforcement.blocked_actions,
+        aiMode: enforcement.ai_mode,
+        uiMode: enforcement.ui_mode,
+        riskLevel: enforcement.risk_level,
+      } : null,
+    }));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 400 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to get blueprint state"), { status: 500 });
+  }
+}
+
+src/app/api/blueprints/history/route.ts — Read-only archived blueprints
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { getBlueprintHistory } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const history = await getBlueprintHistory(auth.userId);
+    return NextResponse.json(success(history));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 401 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to get history"), { status: 500 });
+  }
+}
+
+________________________________________
+STEP 7 — ONBOARDING STATUS ROUTE
+src/app/api/onboarding/status/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-middleware";
+import { prisma } from "@/lib/prisma";
+import { getActiveBlueprintForUser } from "@/services/BlueprintService";
+import { success, failure } from "@/types/api";
+import { TorgimaError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const user = await prisma.user.findUnique({ where: { id: auth.userId } });
+    if (!user) return NextResponse.json(failure("NOT_FOUND", "User not found"), { status: 404 });
+
+    const activeBlueprint = await getActiveBlueprintForUser(auth.userId);
+
+    return NextResponse.json(success({
+      onboardingComplete: user.onboarding_complete,
+      hasActiveBlueprint: !!activeBlueprint,
+      activeBlueprint: activeBlueprint ? {
+        id: activeBlueprint.id,
+        goal: activeBlueprint.goal,
+        status: activeBlueprint.status,
+      } : null,
+    }));
+  } catch (e) {
+    if (e instanceof TorgimaError)
+      return NextResponse.json(failure(e.code, e.message), { status: 401 });
+    return NextResponse.json(failure("INTERNAL_ERROR", "Failed to get onboarding status"), { status: 500 });
+  }
+}
+
+________________________________________
+STEP 8 — UPDATE HEALTH CHECK
+Add blueprint check to src/app/api/health/route.ts:
+// Add to existing checks object:
+const blueprintTableCheck = await prisma.blueprint.count().then(() => true).catch(() => false);
+checks.blueprint_table = blueprintTableCheck;
+
+________________________________________
+STEP 9 — TEAM MODE PIPES TO KEEP OPEN
+Ensure the following is true after this prompt:
+1.	blueprint.mode field is written on every blueprint creation using UserMode.individual. When team mode activates in Phase 2, this field is already set correctly without schema changes.
+2.	target.owner_id always uses params.userId in individual mode. Team mode will set this to a specific member's ID.
+3.	DomainResolutionEngine checks Phase 1 flags before transitioning. When advanced_domains_enabled = true, Growth and People will be allowed. No code changes needed — just the flag.
+4.	BlueprintEngine never hardcodes "individual" string. Uses the enum value from the User record so team mode can pass "team" without changing engine logic.
+________________________________________
+STEP 10 — UNIT TESTS
+Create tests/unit/engines/blueprint.test.ts:
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+describe("BlueprintEngine — defaultPlans", () => {
+  it("generates 3 plans in correct order", () => {
+    // Foundation, Validation, Growth
+    const plans = ["Foundation", "Validation", "Growth"];
+    expect(plans).toHaveLength(3);
+    expect(plans[0]).toBe("Foundation");
+  });
+});
+
+describe("BlueprintEngine — buildGateCriteria", () => {
+  it("initiation phase requires task completion", () => {
+    const criteria = { require_task_completion: true, min_tasks_completed: 2 };
+    expect(criteria.require_task_completion).toBe(true);
+    expect(criteria.min_tasks_completed).toBe(2);
+  });
+
+  it("completion phase requires outcome validation", () => {
+    const criteria = { require_outcome_validated: true };
+    expect(criteria.require_outcome_validated).toBe(true);
+  });
+});
+
+describe("DomainResolutionEngine — resolveInitialDomain", () => {
+  it("returns market when validation verdict is proceed", () => {
+    // After validation passes, system moves to Market
+    const result = "market"; // mocked
+    expect(result).toBe("market");
+  });
+
+  it("returns genesis when no validation exists", () => {
+    const result = "genesis"; // mocked
+    expect(result).toBe("genesis");
+  });
+
+  it("respects domain hint when domain is active in Phase 1", () => {
+    const result = "delivery"; // hint = delivery, which is active
+    expect(result).toBe("delivery");
+  });
+
+  it("ignores domain hint when domain is disabled in Phase 1", () => {
+    // hint = growth (disabled) → falls back to market
+    const result = "market";
+    expect(result).toBe("market");
+  });
+});
+
+________________________________________
+VERIFICATION CHECKLIST
+Do not move to Prompt 5 until every item passes:
+●	[ ] npm run typecheck passes with zero TypeScript errors
+●	[ ] npm run lint passes with zero errors
+●	[ ] POST /api/blueprints with valid goal returns { ok: true, data: { blueprintId: "..." } } with status 201
+●	[ ] POST /api/blueprints without auth returns 401
+●	[ ] POST /api/blueprints with goal shorter than 10 chars returns 400 VALIDATION_ERROR
+●	[ ] GET /api/blueprints/[id]/state returns blueprint state including signal, condition, enforcement objects
+●	[ ] POST /api/blueprints/[id]/activate creates initial signal, condition, enforcement, state_memory, and domain_history records in a single transaction
+●	[ ] After activation: blueprint active = true, status = "active", state_version > 0
+●	[ ] After activation: one_active_blueprint_per_user partial index allows only one active blueprint per user
+●	[ ] After activation: signal_snapshots.is_current = true has exactly one row for this blueprint
+●	[ ] After activation: conditions.is_current = true has exactly one row for this blueprint
+●	[ ] After activation: enforcement_packages.is_current = true has exactly one row for this blueprint
+●	[ ] After activation: domain_history.is_current = true has exactly one row for this blueprint
+●	[ ] After activation: an Event row with event_type = "blueprint_launched" exists
+●	[ ] POST /api/blueprints/[id]/pause sets status to "paused" and writes pause event
+●	[ ] POST /api/blueprints/[id]/resume sets status back to "active" and writes resume_mode in event payload
+●	[ ] GET /api/onboarding/status returns { onboardingComplete, hasActiveBlueprint, activeBlueprint }
+●	[ ] GET /api/blueprints/history returns array of blueprints for the user
+●	[ ] Growth and People domain transitions are blocked (log event but don't change domain)
+●	[ ] src/engines/blueprint/BlueprintEngine.ts exists with all 6 exported functions
+●	[ ] src/engines/domain/DomainResolutionEngine.ts exists with resolveInitialDomain, transitionDomain, evaluateDomainTransition
+●	[ ] src/services/BlueprintService.ts exists and is used by all routes (no direct engine calls from routes)
+●	[ ] src/repositories/BlueprintRepository.ts exists with findActiveBlueprint and findBlueprintWithChain
+●	[ ] npm run db:verify still passes all checks
+●	[ ] GET /api/health returns all checks as true
+________________________________________
+END OF PROMPT 4
+

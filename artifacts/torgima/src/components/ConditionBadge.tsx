@@ -1,6 +1,6 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { SignalStateCondition } from "@workspace/api-client-react/src/generated/api.schemas";
+import { SignalStateCondition } from "@workspace/api-client-react";
 
 interface ConditionBadgeProps {
   condition?: SignalStateCondition | string | null;

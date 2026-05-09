@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health.js";
+import authRouter from "./auth.js";
 import meRouter from "./me.js";
 import onboardingRouter from "./onboarding.js";
 import blueprintsRouter from "./blueprints.js";
@@ -10,10 +11,12 @@ import stateRouter from "./state.js";
 import validationRouter from "./validation.js";
 import bhudhiRouter from "./bhudhi.js";
 import notificationsRouter from "./notifications.js";
+import internalRouter from "./internal.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(meRouter);
 router.use(onboardingRouter);
 router.use(blueprintsRouter);
@@ -24,5 +27,6 @@ router.use(stateRouter);
 router.use(validationRouter);
 router.use(bhudhiRouter);
 router.use(notificationsRouter);
+router.use(internalRouter);
 
 export default router;
