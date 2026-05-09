@@ -1,13 +1,8 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import {
-  db,
-  blueprints,
-  orders,
-  orderKnowledgeLinks,
-  knowledgeObjects,
-} from "@workspace/db";
+import { db, blueprints, orders, orderKnowledgeLinks, knowledgeObjects } from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
+import { OrderService } from "../services/OrderService.js";
 import { processFeedback } from "../engines/feedback/FeedbackProcessingEngine.js";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
@@ -58,75 +53,33 @@ router.get("/orders/active", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const [bp] = await db
-      .select({
-        id: blueprints.id,
-        state_version: blueprints.state_version,
-      })
-      .from(blueprints)
-      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
-      .limit(1);
+    const task = await OrderService.getPrimaryDashboardTask(auth.userId);
 
-    if (!bp) {
+    if (!task) {
       success(res, { order: null });
       return;
     }
-
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.blueprint_id, bp.id),
-          eq(orders.user_id, auth.userId),
-          inArray(orders.status, ["pending", "active"]),
-        ),
-      )
-      .orderBy(desc(orders.priority))
-      .limit(1);
-
-    if (!order) {
-      success(res, { order: null });
-      return;
-    }
-
-    const linkRows = await db
-      .select({
-        kid: knowledgeObjects.id,
-        title: knowledgeObjects.title,
-        content: knowledgeObjects.content,
-        type: knowledgeObjects.type,
-      })
-      .from(orderKnowledgeLinks)
-      .innerJoin(knowledgeObjects, eq(orderKnowledgeLinks.knowledge_id, knowledgeObjects.id))
-      .where(eq(orderKnowledgeLinks.order_id, order.id))
-      .limit(3);
 
     success(res, {
       order: {
-        id: order.id,
-        stateVersion: bp.state_version,
-        blueprintId: bp.id,
-        title: order.title,
-        instruction: order.instruction,
-        expectedOutput: order.expected_output,
-        definitionOfDone: order.definition_of_done,
-        whyItMatters: order.why_it_matters,
-        difficulty: order.difficulty,
-        taskType: order.task_type,
-        timeEstimateMinutes: order.time_estimate_minutes,
-        proofRequired: order.proof_required,
-        proofType: order.proof_type,
-        proofDescription: order.proof_description,
-        status: order.status,
-        domain: order.domain,
-        priority: order.priority,
-        knowledgeObjects: linkRows.map((k) => ({
-          id: k.kid,
-          title: k.title,
-          content: k.content,
-          type: k.type,
-        })),
+        id: task.id,
+        stateVersion: task.stateVersion,
+        blueprintId: task.blueprintId,
+        title: task.title,
+        instruction: task.instruction,
+        expectedOutput: task.expectedOutput,
+        definitionOfDone: task.definitionOfDone,
+        whyItMatters: task.whyItMatters,
+        difficulty: task.difficulty,
+        taskType: task.taskType,
+        timeEstimateMinutes: task.timeEstimateMinutes,
+        proofRequired: task.proofRequired,
+        proofType: task.proofType,
+        proofDescription: task.proofDescription,
+        status: task.status,
+        domain: task.domain,
+        priority: task.priority,
+        knowledgeObjects: task.knowledgeObjects,
       },
     });
   } catch (e) {

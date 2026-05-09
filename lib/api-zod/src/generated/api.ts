@@ -1088,6 +1088,7 @@ export const GetDashboardStateResponse = zod.object({
     computedAt: zod.string(),
   }),
   activeBlueprint: ListBlueprintsResponseItem.nullable(),
+  recentCompletionBlueprint: ListBlueprintsResponseItem.nullish(),
   activeOrders: zod.array(
     zod.object({
       id: zod.string(),

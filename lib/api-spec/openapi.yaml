@@ -1227,6 +1227,13 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/Blueprint"
+        recentCompletionBlueprint:
+          description: >-
+            Most recently completed blueprint within 72 hours when none are active —
+            drives the completion surface after finish.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Blueprint"
         activeOrders:
           type: array
           items:
@@ -1241,6 +1248,41 @@ components:
           type: integer
         tasksCompletedThisWeek:
           type: integer
+        stateVersion:
+          type: integer
+          description: Active blueprint concurrency version — send as x-expected-state-version on mutations
+        pivotReviewOpen:
+          type: boolean
+        pivotReviewId:
+          type: ["string", "null"]
+        pivotReview:
+          type: ["object", "null"]
+          additionalProperties: true
+        conditionDetail:
+          type: object
+          additionalProperties: true
+        signalProjection:
+          type: ["object", "null"]
+          additionalProperties: true
+        enforcement:
+          type: ["object", "null"]
+          additionalProperties: true
+        currentAction:
+          description: Highest-priority active/pending execution order (six content fields when present)
+          type: ["object", "null"]
+          additionalProperties: true
+        health:
+          type: object
+          required: [systemOperational]
+          properties:
+            systemOperational:
+              type: boolean
+            message:
+              type: string
+        featureFlags:
+          type: object
+          additionalProperties:
+            type: boolean
 
     GoalInput:
       type: object

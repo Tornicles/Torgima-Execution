@@ -5,6 +5,7 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { Blueprint } from "./blueprint";
 import type { DashboardStateActiveBlueprint } from "./dashboardStateActiveBlueprint";
 import type { Feedback } from "./feedback";
 import type { Order } from "./order";
@@ -16,9 +17,24 @@ export interface DashboardState {
   signals: SignalState;
   /** @nullable */
   activeBlueprint: DashboardStateActiveBlueprint;
+  /** @nullable */
+  recentCompletionBlueprint?: Blueprint | null;
   activeOrders: Order[];
   recentFeedback: Feedback[];
   streakDays?: number;
   tasksCompletedToday?: number;
   tasksCompletedThisWeek?: number;
+  stateVersion?: number;
+  pivotReviewOpen?: boolean;
+  pivotReviewId?: string | null;
+  pivotReview?: Record<string, unknown> | null;
+  conditionDetail?: Record<string, unknown>;
+  signalProjection?: Record<string, unknown> | null;
+  enforcement?: Record<string, unknown> | null;
+  currentAction?: Record<string, unknown> | null;
+  health?: {
+    systemOperational: boolean;
+    message?: string | null;
+  };
+  featureFlags?: Record<string, boolean>;
 }

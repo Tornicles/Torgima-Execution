@@ -2,7 +2,13 @@ import { logger } from "../lib/logger.js";
 import { TorgimaError } from "../lib/errors.js";
 import { generateId, now } from "../lib/utils.js";
 import type { Order } from "../types/order.js";
-import { db, orders as ordersTable } from "@workspace/db";
+import {
+  db,
+  orders as ordersTable,
+  blueprints as blueprintsTable,
+  orderKnowledgeLinks,
+  knowledgeObjects,
+} from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 const store = new Map<string, Order>();
@@ -51,7 +57,104 @@ function mapDbOrderRow(row: typeof ordersTable.$inferSelect): Order {
   };
 }
 
+/** Matches GET /api/orders/active projection — Prompt 15 dashboard `currentAction`. */
+export interface DashboardPrimaryTask {
+  /** Same as {@link DashboardPrimaryTask.orderId} — parity with REST order payloads. */
+  id: string;
+  orderId: string;
+  blueprintId: string;
+  stateVersion: number;
+  title: string;
+  instruction: string;
+  expectedOutput: string;
+  definitionOfDone: string;
+  whyItMatters: string | null;
+  difficulty: string;
+  taskType: string;
+  timeEstimateMinutes: number | null;
+  proofRequired: boolean;
+  proofType: string | null;
+  proofDescription: string | null;
+  status: string;
+  domain: string | null;
+  priority: number;
+  knowledgeObjects: Array<{
+    id: string;
+    title: string | null;
+    content: string | null;
+    type: string | null;
+  }>;
+}
+
 export const OrderService = {
+  /** Highest-priority pending/active order for user's active blueprint, with knowledge links (max 3). */
+  async getPrimaryDashboardTask(userId: string): Promise<DashboardPrimaryTask | null> {
+    const [bp] = await db
+      .select({
+        id: blueprintsTable.id,
+        state_version: blueprintsTable.state_version,
+      })
+      .from(blueprintsTable)
+      .where(and(eq(blueprintsTable.user_id, userId), eq(blueprintsTable.active, true)))
+      .limit(1);
+
+    if (!bp) return null;
+
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.blueprint_id, bp.id),
+          eq(ordersTable.user_id, userId),
+          inArray(ordersTable.status, ["pending", "active"]),
+        ),
+      )
+      .orderBy(desc(ordersTable.priority))
+      .limit(1);
+
+    if (!order) return null;
+
+    const linkRows = await db
+      .select({
+        kid: knowledgeObjects.id,
+        title: knowledgeObjects.title,
+        content: knowledgeObjects.content,
+        type: knowledgeObjects.type,
+      })
+      .from(orderKnowledgeLinks)
+      .innerJoin(knowledgeObjects, eq(orderKnowledgeLinks.knowledge_id, knowledgeObjects.id))
+      .where(eq(orderKnowledgeLinks.order_id, order.id))
+      .limit(3);
+
+    return {
+      id: order.id,
+      orderId: order.id,
+      blueprintId: bp.id,
+      stateVersion: bp.state_version ?? 0,
+      title: order.title,
+      instruction: order.instruction,
+      expectedOutput: order.expected_output,
+      definitionOfDone: order.definition_of_done,
+      whyItMatters: order.why_it_matters,
+      difficulty: order.difficulty,
+      taskType: order.task_type,
+      timeEstimateMinutes: order.time_estimate_minutes,
+      proofRequired: order.proof_required,
+      proofType: order.proof_type,
+      proofDescription: order.proof_description,
+      status: order.status,
+      domain: order.domain,
+      priority: order.priority,
+      knowledgeObjects: linkRows.map((k) => ({
+        id: k.kid,
+        title: k.title,
+        content: k.content,
+        type: k.type,
+      })),
+    };
+  },
+
   async getActive(userId: string): Promise<Order[]> {
     const rows = await db
       .select()

@@ -1,5 +1,7 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
+  /** Sends `x-expected-state-version` (Prompt 15 optimistic concurrency). */
+  expectedStateVersion?: number;
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -327,7 +329,8 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const { responseType = "auto", headers: headersInit, expectedStateVersion, ...init } =
+    options;
 
   const method = resolveMethod(input, init.method);
 
@@ -347,6 +350,10 @@ export async function customFetch<T = unknown>(
 
   if (responseType === "json" && !headers.has("accept")) {
     headers.set("accept", DEFAULT_JSON_ACCEPT);
+  }
+
+  if (expectedStateVersion !== undefined && expectedStateVersion !== null) {
+    headers.set("x-expected-state-version", String(expectedStateVersion));
   }
 
   // Attach bearer token when an auth getter is configured and no

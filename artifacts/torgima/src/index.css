@@ -203,6 +203,18 @@
 
 }
 
+/** Prompt 15 / DOC conditions — semantic hex for overlays and badges */
+:root,
+.dark {
+  --condition-nothingness: #9ca3af;
+  --condition-danger: #ef4444;
+  --condition-urgency: #f97316;
+  --condition-stability: #3b82f6;
+  --condition-power: #8b5cf6;
+  --condition-affluence: #10b981;
+  --condition-power-change: #f59e0b;
+}
+
 @layer base {
   * {
     @apply border-border;

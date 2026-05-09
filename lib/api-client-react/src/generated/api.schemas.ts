@@ -499,11 +499,33 @@ export interface DashboardState {
   signals: SignalState;
   /** @nullable */
   activeBlueprint: DashboardStateActiveBlueprint;
+  /** Completed blueprint spotlight when user has no active blueprint (see server 72h window). */
+  recentCompletionBlueprint?: Blueprint | null;
   activeOrders: Order[];
   recentFeedback: Feedback[];
   streakDays?: number;
   tasksCompletedToday?: number;
   tasksCompletedThisWeek?: number;
+  /** Prompt 15 — optimistic concurrency for mutations */
+  stateVersion?: number;
+  pivotReviewOpen?: boolean;
+  /** @nullable */
+  pivotReviewId?: string | null;
+  /** @nullable */
+  pivotReview?: Record<string, unknown> | null;
+  conditionDetail?: Record<string, unknown>;
+  /** @nullable */
+  signalProjection?: Record<string, unknown> | null;
+  /** @nullable */
+  enforcement?: Record<string, unknown> | null;
+  /** @nullable */
+  currentAction?: Record<string, unknown> | null;
+  health?: {
+    systemOperational: boolean;
+    /** @nullable */
+    message?: string | null;
+  };
+  featureFlags?: Record<string, boolean>;
 }
 
 export interface GoalInput {
