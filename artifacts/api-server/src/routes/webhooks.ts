@@ -1,4 +1,4 @@
-import { Router, type RawBodyRequest } from "express";
+import { Router } from "express";
 import type { Request } from "express";
 import { Webhook } from "svix";
 import { logger } from "../lib/logger.js";
@@ -8,7 +8,7 @@ const router = Router();
 
 router.post("/notifications/bounce", async (req: Request, res) => {
   try {
-    const payload = (req as RawBodyRequest<Request>).body;
+    const payload = req.body as Buffer | undefined;
 
     let body: Record<string, unknown>;
 

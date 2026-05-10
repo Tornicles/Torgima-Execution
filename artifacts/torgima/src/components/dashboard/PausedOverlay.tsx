@@ -7,7 +7,6 @@ import {
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { fetchPauseStatus } from "@/lib/dashboard-api";
-import { withDashboardStaleRetry } from "@/lib/stale-state-retry";
 
 interface Props {
   blueprintId: string;
@@ -24,14 +23,7 @@ export function PausedOverlay({ blueprintId, blueprint }: Props) {
   });
 
   const resumeMut = useMutation({
-    mutationFn: async () => {
-      return withDashboardStaleRetry(queryClient, async (sv) =>
-        resumeBlueprint(blueprintId, {
-          method: "POST",
-          expectedStateVersion: sv,
-        }),
-      );
-    },
+    mutationFn: () => resumeBlueprint(blueprintId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
     },

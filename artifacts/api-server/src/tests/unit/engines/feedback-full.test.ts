@@ -53,7 +53,7 @@ describe("Feedback weighting heuristic — Prompt 16", () => {
   it("failed status never combines with completed interrogation predicate", () => {
     const { weight } = calcWeightAndFlags(0, "x", "failed");
     const confidence = weight >= 0.9 ? "high" : weight >= 0.7 ? "medium" : "low";
-    const completionStatus = "failed";
+    const completionStatus: string = "failed";
     const requiresInterrogation = confidence === "low" && completionStatus === "completed";
     expect(requiresInterrogation).toBe(false);
   });

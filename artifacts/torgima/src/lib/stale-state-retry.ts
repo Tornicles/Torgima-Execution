@@ -27,12 +27,12 @@ export async function withDashboardStaleRetry<T>(
   run: (stateVersion: number) => Promise<T>,
 ): Promise<T> {
   const key = getGetDashboardStateQueryKey();
-  let dash =
+  let dash: DashboardState =
     queryClient.getQueryData<DashboardState>(key) ??
     (await queryClient.fetchQuery({
       queryKey: key,
       queryFn: ({ signal }) => getDashboardState({ signal }),
-    }));
+    })) as DashboardState;
 
   const attempt = async (version: number) => run(version);
 
@@ -40,11 +40,11 @@ export async function withDashboardStaleRetry<T>(
     return await attempt(dash.stateVersion ?? 0);
   } catch (e) {
     if (!isStaleStateConflict(e)) throw e;
-    dash = await queryClient.fetchQuery({
+    dash = (await queryClient.fetchQuery({
       queryKey: key,
       queryFn: ({ signal }) => getDashboardState({ signal }),
       staleTime: 0,
-    });
+    })) as DashboardState;
     return await attempt(dash.stateVersion ?? 0);
   }
 }

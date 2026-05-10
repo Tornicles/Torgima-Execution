@@ -26,7 +26,7 @@ describe("CompletionEngine — contract (Prompt 16)", () => {
   });
 
   it("open false progress flag blocks completion invariant", () => {
-    const openFlags = 1;
+    const openFlags: number = 1;
     const canComplete = openFlags === 0;
     expect(canComplete).toBe(false);
   });
@@ -73,7 +73,7 @@ describe("StrategyEngine — pivot gates (conceptual)", () => {
   });
 
   it("danger allows manual pivot review", () => {
-    const triggerType = "manual";
+    const triggerType: string = "manual";
     const isBlocked = "danger" === "danger" && triggerType === "automatic";
     expect(isBlocked).toBe(false);
   });
