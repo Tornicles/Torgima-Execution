@@ -27,12 +27,19 @@ export async function withDashboardStaleRetry<T>(
   run: (stateVersion: number) => Promise<T>,
 ): Promise<T> {
   const key = getGetDashboardStateQueryKey();
-  let dash =
-    queryClient.getQueryData<DashboardState>(key) ??
-    (await queryClient.fetchQuery({
+
+  const loadDashboard = async (): Promise<DashboardState> => {
+    const cached = queryClient.getQueryData<DashboardState>(key);
+    if (cached != null) return cached;
+    const data = await queryClient.fetchQuery({
       queryKey: key,
       queryFn: ({ signal }) => getDashboardState({ signal }),
-    }));
+    });
+    if (data == null) throw new Error("dashboard state unavailable");
+    return data;
+  };
+
+  let dash = await loadDashboard();
 
   const attempt = async (version: number) => run(version);
 
@@ -40,11 +47,13 @@ export async function withDashboardStaleRetry<T>(
     return await attempt(dash.stateVersion ?? 0);
   } catch (e) {
     if (!isStaleStateConflict(e)) throw e;
-    dash = await queryClient.fetchQuery({
+    const refreshed = await queryClient.fetchQuery({
       queryKey: key,
       queryFn: ({ signal }) => getDashboardState({ signal }),
       staleTime: 0,
     });
+    if (refreshed == null) throw e;
+    dash = refreshed;
     return await attempt(dash.stateVersion ?? 0);
   }
 }

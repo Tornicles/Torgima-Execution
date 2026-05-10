@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Blueprint,
+  type CustomFetchOptions,
   getGetDashboardStateQueryKey,
   resumeBlueprint,
 } from "@workspace/api-client-react";
@@ -29,7 +30,7 @@ export function PausedOverlay({ blueprintId, blueprint }: Props) {
         resumeBlueprint(blueprintId, {
           method: "POST",
           expectedStateVersion: sv,
-        }),
+        } as CustomFetchOptions),
       );
     },
     onSuccess: () => {
