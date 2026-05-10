@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/torgima run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/torgima", "run", "build" ]
-publicDir = "artifacts/torgima/dist/public"
+publicDir = "artifacts/torgima/dist"
 serve = "static"
 
 [[services.production.rewrites]]

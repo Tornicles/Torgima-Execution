@@ -20,6 +20,24 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+function readViteApiBaseUrl(): string | undefined {
+  try {
+    const env = (import.meta as ImportMeta & { env?: { VITE_API_BASE_URL?: string } }).env;
+    const v = env?.VITE_API_BASE_URL;
+    return typeof v === "string" ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Base URL for relative `/api/...` paths when `setBaseUrl` was not called. */
+function resolvedBaseUrlPrefix(): string {
+  if (_baseUrl) return _baseUrl;
+  const fromEnv = readViteApiBaseUrl()?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return "http://localhost:3001";
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -63,12 +81,12 @@ function isUrl(input: RequestInfo | URL): input is URL {
 }
 
 function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
-  if (!_baseUrl) return input;
+  const baseUrl = resolvedBaseUrlPrefix();
   const url = resolveUrl(input);
   // Only prepend to relative paths (starting with /)
   if (!url.startsWith("/")) return input;
 
-  const absolute = `${_baseUrl}${url}`;
+  const absolute = `${baseUrl}${url}`;
   if (typeof input === "string") return absolute;
   if (isUrl(input)) return new URL(absolute);
   return new Request(absolute, input as Request);

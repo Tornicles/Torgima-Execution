@@ -3,16 +3,10 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes/index.js";
+import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 
 const app: Express = express();
-
-/** Comma-separated list for multiple preview URLs; omit in local dev for permissive origin. */
-const FRONTEND_URL = process.env["FRONTEND_URL"] ?? "";
-const corsOrigin =
-  FRONTEND_URL.trim() !== ""
-    ? FRONTEND_URL.split(",").map((o) => o.trim()).filter(Boolean)
-    : true;
 
 app.use(
   pinoHttp({
@@ -35,7 +29,7 @@ app.use(
 );
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: process.env.FRONTEND_URL ?? "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -44,6 +38,7 @@ app.use(
       "x-internal-auth",
       "idempotency-key",
       "x-expected-state-version",
+      "Cookie",
     ],
   }),
 );
