@@ -4,8 +4,8 @@
   "license": "MIT",
   "packageManager": "pnpm@11.0.9",
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=8.0.0"
+    "node": ">=22",
+    "pnpm": ">=11.0.0"
   },
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
