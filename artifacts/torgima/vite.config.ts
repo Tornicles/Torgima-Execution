@@ -16,8 +16,6 @@ export default defineConfig({
       onwarn(warning, warn) {
         if (warning.code === "SOURCEMAP_ERROR") return;
         if (warning.message?.includes("sourcemap")) return;
-        if (warning.message?.includes("Can't resolve original location"))
-          return;
         warn(warning);
       },
     },

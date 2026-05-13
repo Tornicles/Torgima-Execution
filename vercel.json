@@ -1,18 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "artifacts/torgima/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/artifacts/torgima/$1"
-    }
+  "buildCommand": "cd artifacts/torgima && pnpm run build",
+  "outputDirectory": "artifacts/torgima/dist",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
