@@ -256,26 +256,45 @@ describe("OutputValidator", () => {
 });
 
 describe("bhudhi module exports", () => {
-  it("MemoryService exports retrieveMemory", async () => {
-    const { retrieveMemory } = await import("../../../bhudhi/MemoryService.js");
-    expect(typeof retrieveMemory).toBe("function");
-  });
+  // Dynamic imports of Bhudhi subgraph can exceed 5s on cold CI / Windows disks.
+  const importTimeout = 30_000;
 
-  it("UsageController exports checkUsageAllowed", async () => {
-    const { checkUsageAllowed } = await import("../../../bhudhi/UsageController.js");
-    expect(typeof checkUsageAllowed).toBe("function");
-  });
+  it(
+    "MemoryService exports retrieveMemory",
+    async () => {
+      const { retrieveMemory } = await import("../../../bhudhi/MemoryService.js");
+      expect(typeof retrieveMemory).toBe("function");
+    },
+    importTimeout,
+  );
 
-  it("BhudhiCore exports trigger and explainState", async () => {
-    const { trigger, explainState } = await import("../../../bhudhi/BhudhiCore.js");
-    expect(typeof trigger).toBe("function");
-    expect(typeof explainState).toBe("function");
-  });
+  it(
+    "UsageController exports checkUsageAllowed",
+    async () => {
+      const { checkUsageAllowed } = await import("../../../bhudhi/UsageController.js");
+      expect(typeof checkUsageAllowed).toBe("function");
+    },
+    importTimeout,
+  );
 
-  it("PromptRegistry exports getContract", async () => {
-    const { getContract: gc } = await import("../../../bhudhi/PromptRegistry.js");
-    expect(gc("GOAL_STRUCTURING")).not.toBeNull();
-  });
+  it(
+    "BhudhiCore exports trigger and explainState",
+    async () => {
+      const { trigger, explainState } = await import("../../../bhudhi/BhudhiCore.js");
+      expect(typeof trigger).toBe("function");
+      expect(typeof explainState).toBe("function");
+    },
+    importTimeout,
+  );
+
+  it(
+    "PromptRegistry exports getContract",
+    async () => {
+      const { getContract: gc } = await import("../../../bhudhi/PromptRegistry.js");
+      expect(gc("GOAL_STRUCTURING")).not.toBeNull();
+    },
+    importTimeout,
+  );
 });
 
 describe("UsageController caps", () => {
