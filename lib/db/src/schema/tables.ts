@@ -185,7 +185,8 @@ export const blueprints = pgTable(
     current_condition: conditionEnum("current_condition"),
     current_plan_id: uuid("current_plan_id"),
     current_phase_id: uuid("current_phase_id"),
-    validation_id: uuid("validation_id").references(() => validations.id),
+    // FK enforced in Postgres; omit Drizzle `.references()` to avoid circular infer() with `validations`.
+    validation_id: uuid("validation_id"),
     state_version: integer("state_version").notNull().default(0),
     paused_at: timestamp("paused_at", { withTimezone: true }),
     pause_reason: text("pause_reason"),

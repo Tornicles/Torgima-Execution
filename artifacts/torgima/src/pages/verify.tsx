@@ -34,22 +34,19 @@ export default function VerifyPage() {
       body: JSON.stringify({ token, email }),
     })
       .then((r) => r.json())
-      .then(async (d: { ok?: boolean; error?: { message?: string } }) => {
+      .then((d: { ok?: boolean; error?: { message?: string } }) => {
         if (d.ok) {
           setStatus("success");
-          let target = "/dashboard";
-          try {
-            const st = await fetch(`${API_BASE_URL}/api/onboarding/status`, {
-              credentials: "include",
-              headers: { Accept: "application/json" },
-            }).then((r) => r.json() as Promise<{ ok?: boolean; data?: { completed?: boolean } }>);
-            if (st?.ok && st.data && st.data.completed === false) {
-              target = "/onboarding";
-            }
-          } catch {
-            /* keep dashboard */
-          }
-          setTimeout(() => setLocation(target), 1500);
+          fetch(`${API_BASE_URL}/api/me`, { credentials: "include" })
+            .then((r) => r.json())
+            .then((me: { ok?: boolean; data?: { onboardingComplete?: boolean } }) => {
+              if (me?.ok && me?.data?.onboardingComplete === false) {
+                setTimeout(() => setLocation("/onboarding"), 1500);
+              } else {
+                setTimeout(() => setLocation("/dashboard"), 1500);
+              }
+            })
+            .catch(() => setTimeout(() => setLocation("/dashboard"), 1500));
         } else {
           setStatus("error");
           setErrMsg(d.error?.message ?? "Verification failed or link has expired.");

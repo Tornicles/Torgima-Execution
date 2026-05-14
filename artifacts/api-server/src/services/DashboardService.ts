@@ -19,7 +19,7 @@ export const DashboardService = {
   async getDashboardState(userId: string) {
     logger.info({ userId }, "DashboardService.getDashboardState");
 
-    const [user, blueprints, activeOrders, signals, recentFeedback, primaryTask] = await Promise.all([
+    const [user, userBlueprints, activeOrders, signals, recentFeedback, primaryTask] = await Promise.all([
       getUser(userId),
       BlueprintService.list(userId),
       OrderService.getActive(userId),
@@ -28,11 +28,11 @@ export const DashboardService = {
       OrderService.getPrimaryDashboardTask(userId),
     ]);
 
-    const activeBlueprint = blueprints.find((b) => b.status === "active") ?? null;
+    const activeBlueprint = userBlueprints.find((b) => b.status === "active") ?? null;
     /** When execution just finished there is often no longer an "active" row — surface completion UI briefly. */
-    let recentCompletionBlueprint: (typeof blueprints)[number] | null = null;
+    let recentCompletionBlueprint: (typeof userBlueprints)[number] | null = null;
     if (!activeBlueprint) {
-      const completed = blueprints.filter((b) => b.status === "complete");
+      const completed = userBlueprints.filter((b) => b.status === "complete");
       const sorted = [...completed].sort((a, b) => {
         const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
         const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;

@@ -44,7 +44,10 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
     expires_at: expiresAt,
   });
 
-  const appUrl = process.env["APP_URL"] ?? `https://${process.env["REPLIT_DOMAINS"]?.split(",")[0]}`;
+  const appUrl =
+    process.env["APP_URL"] ??
+    process.env["FRONTEND_URL"]?.split(",")[0]?.trim() ??
+    `https://${process.env["REPLIT_DOMAINS"]?.split(",")[0]}`;
   const verifyUrl = `${appUrl}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
   // Always log a dev-friendly trail so the link is recoverable when no

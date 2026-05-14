@@ -39,7 +39,7 @@ describe("Framework activation — Phase 1 DOC_40 rules", () => {
   });
 
   it("limited frameworks monitor-only implies no enforced decisions", () => {
-    const limitedActivationLevel = "monitor";
+    const limitedActivationLevel: string = "monitor";
     const canGenerateDecision = limitedActivationLevel === "enforce" || limitedActivationLevel === "recommend";
     expect(canGenerateDecision).toBe(false);
   });

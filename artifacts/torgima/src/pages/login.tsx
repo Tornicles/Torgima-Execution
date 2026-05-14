@@ -23,6 +23,22 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
+
+    try {
+      const apiOrigin = new URL(API_BASE_URL, typeof window !== "undefined" ? window.location.href : "http://localhost")
+        .origin;
+      if (typeof window !== "undefined" && apiOrigin === window.location.origin && import.meta.env.PROD) {
+        setError(
+          "VITE_API_BASE_URL is set to this Vercel site instead of your Railway API. Use your Railway HTTPS origin (for example …up.railway.app); otherwise POST hits the static host and returns 405.",
+        );
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("VITE_API_BASE_URL does not look like a valid HTTP(S) URL. Fix it in Vercel and redeploy.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/send-magic-link`, {
         method: "POST",

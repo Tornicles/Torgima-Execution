@@ -1,14 +1,16 @@
-import { Router, type RawBodyRequest } from "express";
-import type { Request } from "express";
+import { Router, type Request } from "express";
 import { Webhook } from "svix";
 import { logger } from "../lib/logger.js";
 import { applyEmailWebhookEvent } from "../services/NotificationService.js";
+
+/** Express 5 does not export `RawBodyRequest`; body is `Buffer` from `express.raw`. */
+type RawWebhookRequest = Request & { body?: Buffer | string };
 
 const router = Router();
 
 router.post("/notifications/bounce", async (req: Request, res) => {
   try {
-    const payload = (req as RawBodyRequest<Request>).body;
+    const payload = (req as RawWebhookRequest).body;
 
     let body: Record<string, unknown>;
 

@@ -1,13 +1,12 @@
 /**
- * Resolves the browser-facing API origin for Torgima.
- * - Production: `VITE_API_BASE_URL` must be set (Railway public URL). No hardcoded host.
- * - Development: falls back to local API when the env var is unset.
+ * Resolved API origin (no trailing slash).
+ * Production: require `VITE_API_BASE_URL` (Railway). Development: localhost API when unset.
  */
 export function getDefaultApiBaseUrl(): string {
-  const v = import.meta.env.VITE_API_BASE_URL;
-  const trimmed = typeof v === "string" ? v.trim() : "";
+  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+  const trimmed = raw.trim().replace(/\/+$/, "");
   if (trimmed !== "") {
-    return trimmed.replace(/\/+$/, "");
+    return trimmed;
   }
   if (import.meta.env.DEV) {
     return "http://localhost:3001";

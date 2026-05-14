@@ -21,6 +21,7 @@
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "helmet": "^8.1.0",
     "pg-boss": "^12.18.2",
     "pino": "^9",
     "pino-http": "^10",

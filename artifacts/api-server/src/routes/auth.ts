@@ -13,9 +13,18 @@ import { success, failure, handleError } from "../lib/utils.js";
 const router = Router();
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
+const prod = process.env["NODE_ENV"] === "production";
+
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: prod,
+  sameSite: prod ? ("none" as const) : ("lax" as const),
+  path: "/" as const,
+  maxAge: COOKIE_MAX_AGE * 1000,
+};
 
 // POST /api/auth/send-magic-link
-router.post("/auth/send-magic-link", async (req, res) => {
+router.post("/send-magic-link", async (req, res) => {
   try {
     const schema = z.object({ email: z.email() });
     const result = schema.safeParse(req.body);
@@ -36,7 +45,7 @@ router.post("/auth/send-magic-link", async (req, res) => {
 });
 
 // POST /api/auth/verify
-router.post("/auth/verify", async (req, res) => {
+router.post("/verify", async (req, res) => {
   try {
     const schema = z.object({ token: z.string(), email: z.email() });
     const result = schema.safeParse(req.body);
@@ -46,13 +55,7 @@ router.post("/auth/verify", async (req, res) => {
     }
     const { sessionToken, user } = await verifyMagicLink(result.data.token, result.data.email);
 
-    res.cookie(SESSION_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: process.env["NODE_ENV"] === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: COOKIE_MAX_AGE * 1000, // Express uses ms
-    });
+    res.cookie(SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions);
 
     success(res, { user });
   } catch (err) {
@@ -61,7 +64,7 @@ router.post("/auth/verify", async (req, res) => {
 });
 
 // GET /api/auth/session
-router.get("/auth/session", async (req, res) => {
+router.get("/session", async (req, res) => {
   try {
     const auth = await requireAuth(req, "OPTIONAL_SESSION");
     if (!auth.userId) {
@@ -76,14 +79,18 @@ router.get("/auth/session", async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post("/auth/logout", async (req, res) => {
+router.post("/logout", async (req, res) => {
   try {
     const cookies = req.cookies as Record<string, string | undefined>;
     const sessionToken = cookies[SESSION_COOKIE_NAME];
     if (sessionToken) {
       await revokeSession(sessionToken).catch(() => null);
     }
-    res.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+    res.clearCookie(SESSION_COOKIE_NAME, {
+      path: "/",
+      secure: prod,
+      sameSite: prod ? "none" : "lax",
+    });
     success(res, { loggedOut: true });
   } catch (err) {
     handleError(req, res, err);
