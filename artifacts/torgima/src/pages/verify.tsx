@@ -34,10 +34,22 @@ export default function VerifyPage() {
       body: JSON.stringify({ token, email }),
     })
       .then((r) => r.json())
-      .then((d: { ok?: boolean; error?: { message?: string } }) => {
+      .then(async (d: { ok?: boolean; error?: { message?: string } }) => {
         if (d.ok) {
           setStatus("success");
-          setTimeout(() => setLocation("/dashboard"), 1500);
+          let target = "/dashboard";
+          try {
+            const st = await fetch(`${API_BASE_URL}/api/onboarding/status`, {
+              credentials: "include",
+              headers: { Accept: "application/json" },
+            }).then((r) => r.json() as Promise<{ ok?: boolean; data?: { completed?: boolean } }>);
+            if (st?.ok && st.data && st.data.completed === false) {
+              target = "/onboarding";
+            }
+          } catch {
+            /* keep dashboard */
+          }
+          setTimeout(() => setLocation(target), 1500);
         } else {
           setStatus("error");
           setErrMsg(d.error?.message ?? "Verification failed or link has expired.");
@@ -67,7 +79,7 @@ export default function VerifyPage() {
               <CheckCircle2 className="w-7 h-7 text-green-600" />
             </div>
             <h2 className="text-xl font-bold text-gray-900">You&apos;re in!</h2>
-            <p className="text-gray-500 text-sm">Redirecting to your dashboard...</p>
+            <p className="text-gray-500 text-sm">Redirecting to your workspace…</p>
           </>
         )}
         {status === "error" && (

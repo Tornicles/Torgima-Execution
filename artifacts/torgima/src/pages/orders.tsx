@@ -1,9 +1,24 @@
+import { useMemo } from "react";
 import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
 import { useGetActiveOrders } from "@workspace/api-client-react";
 
+/** Server returns `{ order: Task | null }`; OpenAPI may still type this as `Order[]`. */
+function normalizeActiveOrders(raw: unknown): { id: string; title: string; status: string }[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter((o): o is { id: string; title: string; status: string } => !!o && typeof o === "object" && "id" in o);
+  }
+  if (typeof raw === "object" && "order" in (raw as object)) {
+    const o = (raw as { order: { id: string; title: string; status: string } | null }).order;
+    return o ? [o] : [];
+  }
+  return [];
+}
+
 export default function OrdersPage() {
-  const { data: orders, isLoading, isError } = useGetActiveOrders();
+  const { data: rawOrders, isLoading, isError } = useGetActiveOrders();
+  const orders = useMemo(() => normalizeActiveOrders(rawOrders as unknown), [rawOrders]);
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
@@ -17,10 +32,10 @@ export default function OrdersPage() {
 
       {!isLoading && !isError && (
         <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
-          {(orders ?? []).length === 0 ? (
+          {orders.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">No active orders.</div>
           ) : (
-            (orders ?? []).map((order) => (
+            orders.map((order) => (
               <Link key={order.id} href={`/tasks/${order.id}`}>
                 <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer">
                   <div>

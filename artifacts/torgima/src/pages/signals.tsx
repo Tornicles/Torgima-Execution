@@ -2,19 +2,28 @@ import { useEffect, useState } from "react";
 import { Info, TrendingUp } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
 
-const CONDITIONS = ["Nothingness", "Danger", "Urgency", "Stability", "Power", "Affluence"];
+const CONDITIONS = ["Nothingness", "Danger", "Stability", "Power", "Affluence"];
 
 const CONDITION_ICONS: Record<string, string> = {
   Nothingness: "○",
-  Danger: "⚠️",
-  Urgency: "🔥",
+  Danger: "🛡️",
   Stability: "🛡️",
   Power: "⚡",
   Affluence: "👑",
 };
 
+function spectrumIndex(raw: string): number {
+  const keys = ["nothingness", "danger", "stability", "power", "affluence"];
+  const i = keys.indexOf(raw);
+  if (i >= 0) return i;
+  if (raw === "urgency") return 1;
+  if (raw === "power_change") return 3;
+  return 2;
+}
+
 export default function SignalsPage() {
   const [signals, setSignals] = useState<Record<string, unknown> | null>(null);
+  const [history, setHistory] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,8 +35,12 @@ export default function SignalsPage() {
       fetch(`${API_BASE_URL}/api/signals/current`, { credentials: "include" }).then((r) => r.json()),
       fetch(`${API_BASE_URL}/api/signals/history`, { credentials: "include" }).then((r) => r.json()),
     ])
-      .then(([cur]) => {
+      .then(([cur, hist]) => {
         if (cur.ok) setSignals(cur.data as Record<string, unknown>);
+        if (hist.ok) {
+          const snaps = (hist.data as { snapshots?: unknown[] })?.snapshots ?? [];
+          setHistory(snaps);
+        }
       })
       .catch(() => null)
       .finally(() => setLoading(false));
@@ -55,10 +68,7 @@ export default function SignalsPage() {
     "stability"
   ).toLowerCase();
   const conditionDisplay = conditionRaw.replace(/_/g, " ");
-  const conditionIndex = CONDITIONS.findIndex(
-    (c) => c.toLowerCase() === conditionRaw || c.toLowerCase().replace(" ", "_") === conditionRaw,
-  );
-  const activeConditionIdx = conditionIndex >= 0 ? conditionIndex : 2;
+  const activeConditionIdx = spectrumIndex(conditionRaw);
 
   const completionRate = Math.round(((sig?.completionRate as number) ?? 0) * 100);
   const weightedNum = Number((sig?.weightedScore as number) ?? 0);
@@ -112,6 +122,9 @@ export default function SignalsPage() {
         </div>
         <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
           <span>Last 7 days</span>
+          {history.length > 0 && (
+            <span className="text-gray-400 border-l border-gray-200 pl-2 ml-1">{history.length} snapshots</span>
+          )}
         </div>
       </div>
 
@@ -142,7 +155,6 @@ export default function SignalsPage() {
               const colors: Record<string, string> = {
                 nothingness: "text-gray-400 border-gray-300",
                 danger: "text-red-500 border-red-400",
-                urgency: "text-orange-500 border-orange-400",
                 stability: "text-green-600 border-green-500",
                 power: "text-blue-600 border-blue-500",
                 affluence: "text-purple-600 border-purple-500",

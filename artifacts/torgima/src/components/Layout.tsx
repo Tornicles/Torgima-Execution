@@ -13,8 +13,11 @@ import {
   Settings,
   ChevronRight,
   Bell,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
+import { useTheme } from "@/components/theme-provider";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -40,10 +43,15 @@ interface LayoutProps {
 export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: userProp }: LayoutProps) {
   const [location] = useLocation();
   const { data: me } = useGetMe();
+  const { theme, setTheme } = useTheme();
   const user = userProp ?? me ?? null;
 
   const displayName = user?.displayName ?? user?.email?.split("@")[0] ?? "Builder";
   const tier = user?.tier ?? "Starter";
+
+  function toggleAppearance() {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -108,30 +116,36 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        {(pageTitle || headerRight) && (
-          <header className="flex items-center justify-between px-8 py-5 border-b border-gray-200 bg-white">
-            <div>
-              {pageTitle && <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>}
-              {pageSubtitle && <p className="text-sm text-gray-500 mt-0.5">{pageSubtitle}</p>}
+        <header className="flex items-center justify-between px-8 py-5 border-b border-gray-200 bg-white gap-4">
+          <div className="min-w-0 flex-1">
+            {pageTitle && <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>}
+            {pageSubtitle && <p className="text-sm text-gray-500 mt-0.5">{pageSubtitle}</p>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {headerRight}
+            <button
+              type="button"
+              onClick={toggleAppearance}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 relative"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5 text-gray-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center cursor-pointer">
+              <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
             </div>
-            <div className="flex items-center gap-3">
-              {headerRight}
-              <button
-                type="button"
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 relative"
-                aria-label="Notifications"
-              >
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
-              <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center cursor-pointer">
-                <span className="text-white text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
-              </div>
-            </div>
-          </header>
-        )}
+          </div>
+        </header>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto bg-white">{children}</main>
       </div>
     </div>
   );

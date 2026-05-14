@@ -1,14 +1,5 @@
 import { Link } from "wouter";
-import {
-  Shield,
-  Calendar,
-  TrendingUp,
-  Zap,
-  ChevronRight,
-  CheckCircle2,
-  Circle,
-  MessageSquare,
-} from "lucide-react";
+import { Calendar, TrendingUp, Zap, ChevronRight, CheckCircle2, Circle, MessageSquare } from "lucide-react";
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
 import type { DashboardState, Order } from "@workspace/api-client-react";
 
@@ -98,7 +89,8 @@ export default function Dashboard() {
   const todayCompleted = state.tasksCompletedToday ?? 0;
   const orders: Order[] = state.activeOrders ?? [];
   const signals = state.signals;
-  const orderDone = (o: Order) => o.status === "complete";
+  const orderDone = (o: Order) =>
+    o.status === "complete" || (o.status as string) === "completed";
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -115,7 +107,9 @@ export default function Dashboard() {
         <div className={`rounded-2xl border border-gray-200 p-5 ${conditionCfg.bg}`}>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Condition</p>
           <div className="flex items-center gap-2">
-            <Shield className={`w-6 h-6 shrink-0 ${conditionCfg.color}`} aria-hidden />
+            <span className="text-2xl shrink-0" aria-hidden>
+              {conditionCfg.icon}
+            </span>
             <span className={`text-xl font-bold uppercase ${conditionCfg.color}`}>
               {conditionKey.replace("_", " ")}
             </span>
