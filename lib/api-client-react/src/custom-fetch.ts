@@ -10,6 +10,8 @@ export type BodyType<T> = T;
 
 export type AuthTokenGetter = () => Promise<string | null> | string | null;
 
+import { getDefaultApiBaseUrl } from "./resolve-api-base";
+
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
@@ -20,22 +22,10 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
-function readViteApiBaseUrl(): string | undefined {
-  try {
-    const env = (import.meta as ImportMeta & { env?: { VITE_API_BASE_URL?: string } }).env;
-    const v = env?.VITE_API_BASE_URL;
-    return typeof v === "string" ? v : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Base URL for relative `/api/...` paths when `setBaseUrl` was not called. */
 function resolvedBaseUrlPrefix(): string {
   if (_baseUrl) return _baseUrl;
-  const fromEnv = readViteApiBaseUrl()?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, "");
-  return "http://localhost:3001";
+  return getDefaultApiBaseUrl();
 }
 
 /**
@@ -83,9 +73,9 @@ function isUrl(input: RequestInfo | URL): input is URL {
 function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
   const baseUrl = resolvedBaseUrlPrefix();
   const url = resolveUrl(input);
-  // Only prepend to relative paths (starting with /)
+  if (url.startsWith("http://") || url.startsWith("https://")) return input;
+  // Only prepend base to rooted paths (starting with /)
   if (!url.startsWith("/")) return input;
-
   const absolute = `${baseUrl}${url}`;
   if (typeof input === "string") return absolute;
   if (isUrl(input)) return new URL(absolute);
