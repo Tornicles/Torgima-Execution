@@ -29,17 +29,20 @@ export default function Dashboard() {
 
   if (!state) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 font-mono text-center p-8">
-        <p className="text-muted-foreground">Cannot connect to execution server.</p>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          Make sure the API server is running. Check your connection and try refreshing.
-        </p>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => window.location.reload()} className="text-xs text-primary underline">
-            Refresh
+      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-5 font-mono text-center p-8">
+        <div className="text-4xl opacity-30">⚡</div>
+        <div className="space-y-2">
+          <p className="font-bold uppercase tracking-wider text-sm">Cannot Load Dashboard</p>
+          <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+            The execution server is not responding. Check your connection or try signing in again.
+          </p>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <button type="button" onClick={() => window.location.reload()} className="text-primary underline underline-offset-2">
+            Refresh page
           </button>
           <span className="text-muted-foreground">·</span>
-          <a href="/login" className="text-xs text-primary underline">
+          <a href="/login" className="text-primary underline underline-offset-2">
             Sign in again
           </a>
         </div>

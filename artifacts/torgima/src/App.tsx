@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/Layout";
 import { API_BASE_URL } from "@/lib/api-base";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -24,11 +25,14 @@ import AcademyPage from "@/pages/academy";
 import SettingsPage from "@/pages/settings";
 import UnsubscribePage from "@/pages/unsubscribe";
 
+setBaseUrl(API_BASE_URL || null);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       staleTime: 30_000,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -39,8 +43,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/auth/session`, { credentials: "include" })
-      .then((r) => r.json())
+    if (!API_BASE_URL) {
+      setChecking(false);
+      setLocation("/login");
+      return;
+    }
+    fetch(`${API_BASE_URL}/api/auth/session`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Not authenticated");
+        return r.json();
+      })
       .then((data: { ok?: boolean; data?: { authenticated?: boolean } }) => {
         if (data?.ok && data?.data?.authenticated) {
           setAuthenticated(true);
@@ -54,11 +69,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (checking) {
     return (
-      <div style={{ color: "white", padding: "2rem" }} className="bg-background font-mono text-sm">
-        Loading…
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-mono text-muted-foreground uppercase">Authenticating...</p>
+        </div>
       </div>
     );
   }
+
   if (!authenticated) return null;
   return <>{children}</>;
 }
@@ -84,6 +103,7 @@ const ProtectedAcademyPage = protect(AcademyPage);
 const ProtectedSettingsPage = protect(SettingsPage);
 const ProtectedBlueprintPage = protect(BlueprintPage);
 
+/** wouter matches `component=` only — no nested `<Route><Layout/></Route>` children. */
 function withAppLayout(Page: ComponentType) {
   function Wrapped() {
     return (
@@ -107,7 +127,7 @@ const AcademyRoute = withAppLayout(ProtectedAcademyPage);
 const SettingsRoute = withAppLayout(ProtectedSettingsPage);
 const BlueprintRoute = withAppLayout(ProtectedBlueprintPage);
 
-function Router() {
+function AppRoutes() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
@@ -132,13 +152,13 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="torgima-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
+            <AppRoutes />
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
@@ -146,5 +166,3 @@ function App() {
     </ThemeProvider>
   );
 }
-
-export default App;
