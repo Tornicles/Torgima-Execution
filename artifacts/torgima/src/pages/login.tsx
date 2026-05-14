@@ -14,6 +14,15 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setLoading(true);
     setError("");
+    if (!API_BASE_URL) {
+      setError(
+        import.meta.env.PROD
+          ? "API URL is missing from this build. In Vercel set VITE_API_BASE_URL to your Railway HTTPS URL (no /api suffix), assign it to Production, then redeploy."
+          : "API base URL is not configured.",
+      );
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/send-magic-link`, {
         method: "POST",
@@ -21,13 +30,30 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
-      const data = await res.json();
+
+      const raw = await res.text();
+      let data: { ok?: boolean; error?: { message?: string } };
+      try {
+        data = raw ? (JSON.parse(raw) as typeof data) : {};
+      } catch {
+        setError(
+          `The server replied with non-JSON (HTTP ${res.status}). Often this means VITE_API_BASE_URL points to the wrong host, or Railway returned an error page. Check DevTools → Network for the exact request URL.`,
+        );
+        return;
+      }
+
       if (data.ok) {
         setSent(true);
       } else {
-        setError(data.error?.message ?? "Failed to send link.");
+        setError(data.error?.message ?? (res.ok ? "Failed to send link." : `Request failed (${res.status}).`));
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof TypeError) {
+        setError(
+          "Network error (browser blocked the request or the host is unreachable). Typical causes: CORS — set Railway FRONTEND_URL to https://torgima-execution.vercel.app (exact origin); or wrong VITE_API_BASE_URL; or http:// API URL on an https:// page (use https).",
+        );
+        return;
+      }
       setError("Cannot reach the server.");
     } finally {
       setLoading(false);
