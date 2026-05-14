@@ -1,74 +1,90 @@
 import { Link } from "wouter";
-import { ArrowRight, Zap, Target, Activity, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, CheckCircle2, Zap, Target, Activity, Shield } from "lucide-react";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* ── NAV ── */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-border/50">
+    <div className="min-h-screen bg-white text-gray-900 flex flex-col">
+      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="font-mono font-bold text-lg tracking-tight">TORGIMA_OS</span>
+          <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden>
+            <path d="M14 4L4 10V18L14 24L24 18V10L14 4Z" stroke="#111827" strokeWidth="2" fill="none" />
+            <path d="M9 13L14 10L19 13" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
+            <path d="M14 10V19" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <span className="font-bold text-xl tracking-tight">TORGIMA</span>
         </div>
-        <Link href="/login">
-          <Button variant="outline" size="sm" className="font-mono text-xs uppercase tracking-wider">
-            Sign In →
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/login">
+            <span className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer">Sign in</span>
+          </Link>
+          <Link href="/login">
+            <button
+              type="button"
+              className="bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors"
+            >
+              Get started →
+            </button>
+          </Link>
+        </div>
       </nav>
 
-      {/* ── HERO ── */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
-          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 text-xs font-mono text-primary uppercase tracking-wider">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2 text-xs font-semibold text-green-700 uppercase tracking-wider">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             Phase 1 — Individual Execution System
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-mono tracking-tight leading-[1.1]">
-            Your goal.
+          <h1 className="text-6xl sm:text-7xl font-bold tracking-tight leading-[1.05]">
+            Execute your goals.
             <br />
-            <span className="text-primary">Continuously</span>
-            <br />
-            executed.
+            <span className="text-green-600">Every single day.</span>
           </h1>
 
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Torgima converts your goal into a structured blueprint, then keeps generating the next correct task until the
-            goal is complete. Signals measure reality. Conditions govern execution.
+          <p className="text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            Torgima is your personal execution OS. Give it your goal and it generates the next correct task, adapts to
+            your performance, and keeps you moving forward — without the noise.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">
-              <Button size="lg" className="font-mono uppercase tracking-wider text-sm w-full sm:w-auto group px-8">
-                Begin Execution
-                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <button
+                type="button"
+                className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all text-base group flex items-center gap-2 mx-auto sm:mx-0"
+              >
+                Start executing
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </Link>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm text-gray-400">
+            {["No password required", "Magic link sign-in", "Free to start"].map((f) => (
+              <div key={f} className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                <span>{f}</span>
+              </div>
+            ))}
           </div>
         </div>
       </main>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="border-t border-border/50 px-8 py-20 bg-secondary/5">
+      <section className="border-t border-gray-100 px-8 py-20 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <p className="text-center text-xs font-mono text-muted-foreground uppercase tracking-widest mb-12">
-            How the system works
-          </p>
+          <h2 className="text-2xl font-bold text-center mb-12">How it works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
               {
                 icon: Target,
                 step: "01",
-                title: "Define Goal",
-                desc: "Enter your goal, purpose, and timeframe. The system validates and builds a structured blueprint.",
+                title: "Define Your Goal",
+                desc: "Enter your goal, purpose, and timeframe. Torgima validates and builds a structured execution blueprint.",
               },
               {
                 icon: Zap,
                 step: "02",
-                title: "Generate Tasks",
-                desc: "The execution engine generates specific tasks based on your position, condition, and capability.",
+                title: "Get Daily Tasks",
+                desc: "The system generates specific, actionable tasks based on your position, condition, and capability level.",
               },
               {
                 icon: Activity,
@@ -80,42 +96,40 @@ export default function LandingPage() {
                 icon: Shield,
                 step: "04",
                 title: "Stay On Track",
-                desc: "The control engine enforces correct pacing. Pivot when needed. The loop never goes empty.",
+                desc: "The control engine enforces correct pacing. Pivot when needed. The execution loop never goes empty.",
               },
             ].map((item) => (
-              <div
-                key={item.step}
-                className="bg-card border border-border rounded-xl p-6 space-y-4 hover:border-primary/30 transition-colors"
-              >
+              <div key={item.step} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-primary font-bold text-lg">{item.step}</span>
-                  <item.icon className="w-4 h-4 text-primary/50" />
+                  <span className="text-green-600 font-bold text-lg">{item.step}</span>
+                  <item.icon className="w-4 h-4 text-green-500" />
                 </div>
-                <h3 className="font-bold font-mono">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                <h3 className="font-bold text-gray-900">{item.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA STRIP ── */}
-      <section className="border-t border-border/50 px-8 py-16 text-center">
-        <div className="max-w-xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold font-mono">Ready to execute?</h2>
-          <p className="text-muted-foreground text-sm">Create your account with a magic link. No password required.</p>
+      <section className="border-t border-gray-100 px-8 py-20 text-center">
+        <div className="max-w-md mx-auto space-y-5">
+          <h2 className="text-2xl font-bold">Ready to start executing?</h2>
+          <p className="text-gray-500 text-sm">Create your account in under 60 seconds. No password required.</p>
           <Link href="/login">
-            <Button size="lg" className="font-mono uppercase tracking-wider px-10">
-              Get Started
-            </Button>
+            <button
+              type="button"
+              className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all w-full text-base"
+            >
+              Get started for free
+            </button>
           </Link>
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-border/50 px-8 py-6 flex items-center justify-between">
-        <span className="font-mono text-xs text-muted-foreground">TORGIMA_OS v1.0</span>
-        <span className="font-mono text-xs text-muted-foreground">Individual Execution System — Phase 1</span>
+      <footer className="border-t border-gray-100 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span className="text-sm font-bold">TORGIMA</span>
+        <span className="text-xs text-gray-400">Individual Execution System — Phase 1</span>
       </footer>
     </div>
   );

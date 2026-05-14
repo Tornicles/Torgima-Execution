@@ -16,14 +16,17 @@ import VerifyPage from "@/pages/verify";
 import Dashboard from "@/pages/dashboard";
 import Onboarding from "@/pages/onboarding";
 import BlueprintPage from "@/pages/blueprint";
+import BlueprintIndexPage from "@/pages/blueprint-index";
 import TaskPage from "@/pages/task";
 import FeedbackPage from "@/pages/feedback";
 import SignalsPage from "@/pages/signals";
-import IdentityPage from "@/pages/identity";
-import CapabilityPage from "@/pages/capability";
-import AcademyPage from "@/pages/academy";
 import SettingsPage from "@/pages/settings";
 import UnsubscribePage from "@/pages/unsubscribe";
+import OrdersPage from "@/pages/orders";
+import StrategyPage from "@/pages/strategy";
+import RecoveryPage from "@/pages/recovery";
+import CharacterPage from "@/pages/character";
+import KnowledgePage from "@/pages/knowledge";
 
 setBaseUrl(API_BASE_URL || null);
 
@@ -69,10 +72,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-mono text-muted-foreground uppercase">Authenticating...</p>
+          <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Authenticating…</p>
         </div>
       </div>
     );
@@ -97,13 +100,15 @@ const ProtectedDashboard = protect(Dashboard);
 const ProtectedTaskPage = protect(TaskPage);
 const ProtectedFeedbackPage = protect(FeedbackPage);
 const ProtectedSignalsPage = protect(SignalsPage);
-const ProtectedIdentityPage = protect(IdentityPage);
-const ProtectedCapabilityPage = protect(CapabilityPage);
-const ProtectedAcademyPage = protect(AcademyPage);
 const ProtectedSettingsPage = protect(SettingsPage);
 const ProtectedBlueprintPage = protect(BlueprintPage);
+const ProtectedBlueprintIndex = protect(BlueprintIndexPage);
+const ProtectedOrdersPage = protect(OrdersPage);
+const ProtectedStrategyPage = protect(StrategyPage);
+const ProtectedRecoveryPage = protect(RecoveryPage);
+const ProtectedCharacterPage = protect(CharacterPage);
+const ProtectedKnowledgePage = protect(KnowledgePage);
 
-/** wouter matches `component=` only — no nested `<Route><Layout/></Route>` children. */
 function withAppLayout(Page: ComponentType) {
   function Wrapped() {
     return (
@@ -116,16 +121,20 @@ function withAppLayout(Page: ComponentType) {
   return Wrapped;
 }
 
-const OnboardingRoute = withAppLayout(ProtectedOnboarding);
+/** Onboarding is a full-page flow (no app sidebar). */
+const OnboardingRoute = ProtectedOnboarding;
 const DashboardRoute = withAppLayout(ProtectedDashboard);
 const TaskRoute = withAppLayout(ProtectedTaskPage);
 const FeedbackRoute = withAppLayout(ProtectedFeedbackPage);
 const SignalsRoute = withAppLayout(ProtectedSignalsPage);
-const IdentityRoute = withAppLayout(ProtectedIdentityPage);
-const CapabilityRoute = withAppLayout(ProtectedCapabilityPage);
-const AcademyRoute = withAppLayout(ProtectedAcademyPage);
 const SettingsRoute = withAppLayout(ProtectedSettingsPage);
 const BlueprintRoute = withAppLayout(ProtectedBlueprintPage);
+const BlueprintIndexRoute = withAppLayout(ProtectedBlueprintIndex);
+const OrdersRoute = withAppLayout(ProtectedOrdersPage);
+const StrategyRoute = withAppLayout(ProtectedStrategyPage);
+const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
+const CharacterRoute = withAppLayout(ProtectedCharacterPage);
+const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
 
 function AppRoutes() {
   return (
@@ -141,11 +150,14 @@ function AppRoutes() {
       <Route path="/feedback/:orderId" component={FeedbackRoute} />
       <Route path="/feedback" component={FeedbackRoute} />
       <Route path="/signals" component={SignalsRoute} />
-      <Route path="/identity" component={IdentityRoute} />
-      <Route path="/capability" component={CapabilityRoute} />
-      <Route path="/academy" component={AcademyRoute} />
+      <Route path="/orders" component={OrdersRoute} />
+      <Route path="/strategy" component={StrategyRoute} />
+      <Route path="/recovery" component={RecoveryRoute} />
+      <Route path="/character" component={CharacterRoute} />
+      <Route path="/knowledge" component={KnowledgeRoute} />
       <Route path="/settings" component={SettingsRoute} />
       <Route path="/blueprint/:id" component={BlueprintRoute} />
+      <Route path="/blueprint" component={BlueprintIndexRoute} />
 
       <Route component={NotFound} />
     </Switch>
@@ -154,7 +166,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="torgima-theme">
+    <ThemeProvider defaultTheme="light" storageKey="torgima-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

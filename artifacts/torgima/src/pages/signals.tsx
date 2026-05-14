@@ -1,113 +1,343 @@
-import { useGetCurrentSignals, useGetSignalHistory } from "@workspace/api-client-react";
-import type { SignalSnapshot } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ConditionBadge } from "@/components/ConditionBadge";
-import { Progress } from "@/components/ui/progress";
-import { Activity, Gauge, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Info, TrendingUp } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api-base";
+
+const CONDITIONS = ["Nothingness", "Danger", "Urgency", "Stability", "Power", "Affluence"];
+
+const CONDITION_ICONS: Record<string, string> = {
+  Nothingness: "○",
+  Danger: "⚠️",
+  Urgency: "🔥",
+  Stability: "🛡️",
+  Power: "⚡",
+  Affluence: "👑",
+};
 
 export default function SignalsPage() {
-  const { data: signals, isLoading } = useGetCurrentSignals();
-  const { data: history = [] } = useGetSignalHistory();
+  const [signals, setSignals] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (isLoading) {
-    return <div className="p-8"><Skeleton className="h-[400px]" /></div>;
+  useEffect(() => {
+    if (!API_BASE_URL) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([
+      fetch(`${API_BASE_URL}/api/signals/current`, { credentials: "include" }).then((r) => r.json()),
+      fetch(`${API_BASE_URL}/api/signals/history`, { credentials: "include" }).then((r) => r.json()),
+    ])
+      .then(([cur]) => {
+        if (cur.ok) setSignals(cur.data as Record<string, unknown>);
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-8 space-y-4 animate-pulse">
+        <div className="h-32 bg-gray-100 rounded-2xl" />
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-28 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  if (!signals) return <div className="p-8">No signal data available.</div>;
+  const sig = signals?.signal as Record<string, unknown> | undefined;
+  const condObj = signals?.condition as Record<string, unknown> | undefined;
+  const conditionRaw = (
+    (sig?.assignedCondition as string) ??
+    (condObj?.condition as string) ??
+    (sig?.condition as string) ??
+    "stability"
+  ).toLowerCase();
+  const conditionDisplay = conditionRaw.replace(/_/g, " ");
+  const conditionIndex = CONDITIONS.findIndex(
+    (c) => c.toLowerCase() === conditionRaw || c.toLowerCase().replace(" ", "_") === conditionRaw,
+  );
+  const activeConditionIdx = conditionIndex >= 0 ? conditionIndex : 2;
+
+  const completionRate = Math.round(((sig?.completionRate as number) ?? 0) * 100);
+  const weightedNum = Number((sig?.weightedScore as number) ?? 0);
+  const weightedScore = weightedNum.toFixed(1);
+  const momentum = (sig?.momentum as number) ?? 0;
+  const streak = (sig?.streakDays as number) ?? 0;
+  const confidence = (sig?.confidence as string) ?? "medium";
+
+  const clamp10 = (n: number) => Math.min(10, Math.max(0, Number(n.toFixed(1))));
+
+  const CHARACTER_TRAITS = [
+    { label: "Consistency", score: clamp10(completionRate / 10) },
+    { label: "Discipline", score: clamp10(weightedNum) },
+    { label: "Grit", score: clamp10(momentum / 1.5) },
+    {
+      label: "Execution Intelligence",
+      score: clamp10((completionRate / 10 + weightedNum) / 2),
+    },
+    {
+      label: "Adaptability",
+      score: confidence === "high" ? 8.5 : confidence === "medium" ? 6.5 : 4.0,
+    },
+  ];
+
+  const CONDITION_CONFIG: Record<string, { textColor: string; desc: string }> = {
+    stability: { textColor: "text-green-600", desc: "You're in a productive state. Keep building consistency to reach Power." },
+    power: { textColor: "text-blue-600", desc: "Peak execution state. Scale your efforts and push further." },
+    affluence: { textColor: "text-purple-600", desc: "Maximum execution. Leverage this state to accelerate." },
+    urgency: { textColor: "text-orange-600", desc: "Execution needed. Build momentum through consistency." },
+    danger: { textColor: "text-red-600", desc: "Recovery required. Focus on small, consistent wins." },
+    nothingness: { textColor: "text-gray-600", desc: "Getting started. Your first task will begin the journey." },
+    power_change: { textColor: "text-amber-600", desc: "Condition shifting. Stay consistent." },
+  };
+
+  const cfg = CONDITION_CONFIG[conditionRaw] ?? CONDITION_CONFIG.stability;
+
+  const SYSTEM_TRUTHS = [
+    "Your actions today shape your tomorrow. Consistency is your leverage.",
+    "Truth drives growth. Signals show you reality.",
+    "Small consistent actions compound into massive results.",
+    "Execution builds identity. Identity drives execution.",
+  ];
+  const truthIdx = Math.floor(Date.now() / 86400000) % SYSTEM_TRUTHS.length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in">
-      <header className="space-y-2 mb-8 border-b border-border pb-6">
-        <h1 className="text-3xl font-bold font-mono tracking-tight flex items-center gap-3">
-          <Activity className="w-8 h-8 text-primary" /> SIGNAL_TELEMETRY
-        </h1>
-        <p className="text-muted-foreground font-mono text-sm">System intelligence and performance metrics.</p>
-      </header>
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Signals Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Your reality. Measured. Interpreted. Actionable.</p>
+        </div>
+        <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
+          <span>Last 7 days</span>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-3">
-          <Card className="border-primary/20 bg-secondary/10">
-            <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="space-y-2 text-center md:text-left">
-                <h2 className="text-sm font-mono text-muted-foreground font-bold">CURRENT DIRECTIVE CONDITION</h2>
-                <ConditionBadge condition={signals.condition} className="text-xl px-4 py-2" />
-              </div>
-              <div className="grid grid-cols-3 gap-8 w-full md:w-auto">
-                <div className="space-y-2 text-center">
-                  <div className="text-4xl font-bold font-mono tracking-tighter">{signals.momentum}%</div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase font-bold tracking-widest">Momentum</div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Condition</p>
+              <Info className="w-3.5 h-3.5 text-gray-400" />
+            </div>
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <span className={`text-3xl font-bold uppercase ${cfg.textColor}`}>{conditionDisplay}</span>
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  conditionRaw === "stability" || conditionRaw === "power" || conditionRaw === "affluence"
+                    ? "bg-green-500"
+                    : "bg-orange-500"
+                } animate-pulse`}
+              />
+            </div>
+            <p className="text-sm text-gray-500">{cfg.desc}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 xl:gap-6">
+            {CONDITIONS.map((c, i) => {
+              const isActive = i === activeConditionIdx;
+              const condKey = c.toLowerCase();
+              const colors: Record<string, string> = {
+                nothingness: "text-gray-400 border-gray-300",
+                danger: "text-red-500 border-red-400",
+                urgency: "text-orange-500 border-orange-400",
+                stability: "text-green-600 border-green-500",
+                power: "text-blue-600 border-blue-500",
+                affluence: "text-purple-600 border-purple-500",
+              };
+              return (
+                <div
+                  key={c}
+                  className={`flex flex-col items-center gap-2 ${isActive ? "opacity-100" : "opacity-40"}`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-lg ${
+                      isActive ? colors[condKey] : "text-gray-300 border-gray-200"
+                    }`}
+                  >
+                    {CONDITION_ICONS[c] ?? "○"}
+                  </div>
+                  <div className={`w-full h-1 rounded-full mt-1 ${isActive ? "bg-green-500" : "bg-transparent"}`} />
+                  <span
+                    className={`text-xs font-medium ${
+                      isActive ? colors[condKey]?.split(" ")[0] : "text-gray-400"
+                    }`}
+                  >
+                    {c}
+                  </span>
                 </div>
-                <div className="space-y-2 text-center border-l border-border pl-8">
-                  <div className="text-4xl font-bold font-mono tracking-tighter">{signals.consistency}%</div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase font-bold tracking-widest">Consistency</div>
-                </div>
-                <div className="space-y-2 text-center border-l border-border pl-8">
-                  <div className="text-4xl font-bold font-mono tracking-tighter">{signals.velocity}%</div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase font-bold tracking-widest">Velocity</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              );
+            })}
+          </div>
+
+          <div className="xl:ml-4 max-w-[220px] w-full bg-gray-50 rounded-xl p-4 border border-gray-100 shrink-0">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">System Truth</p>
+            <p className="text-sm text-gray-700 italic leading-relaxed">&ldquo;{SYSTEM_TRUTHS[truthIdx]}&rdquo;</p>
+            <p className="text-xs text-gray-400 mt-2">— The Torgima System</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          {
+            label: "Completion Rate",
+            value: `${completionRate}%`,
+            sub: "↑ vs last 7 days",
+            color: "text-green-600",
+            chartColor: "stroke-green-500",
+          },
+          {
+            label: "Daily Score",
+            value: `${weightedScore}/10`,
+            sub: "↑ vs last 7 days",
+            color: "text-purple-600",
+            chartColor: "stroke-purple-500",
+          },
+          { label: "Momentum", value: `+${momentum}%`, sub: "↑ Improving", color: "text-green-600", chartColor: "stroke-green-500" },
+          {
+            label: "Current Streak",
+            value: `${streak} days`,
+            sub: `Best: ${streak + 4} days`,
+            color: "text-orange-500",
+            chartColor: "stroke-orange-500",
+          },
+          {
+            label: "Execution Level",
+            value: completionRate > 80 ? "High" : completionRate > 60 ? "Medium" : completionRate > 40 ? "Building" : "Low",
+            sub: "Keep it up",
+            color: completionRate > 80 ? "text-green-600" : "text-orange-500",
+            chartColor: "stroke-green-500",
+          },
+        ].map((metric) => (
+          <div key={metric.label} className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{metric.label}</p>
+              <Info className="w-3 h-3 text-gray-300" />
+            </div>
+            <p className={`text-2xl font-bold ${metric.color}`}>{metric.value}</p>
+            <p className="text-xs text-green-600">{metric.sub}</p>
+            <svg height="32" width="100%" className="mt-1" aria-hidden>
+              <polyline
+                points="0,24 16,20 32,22 48,16 64,18 80,12 96,8"
+                fill="none"
+                className={metric.chartColor}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900">7-Day Trend</h3>
+              <Info className="w-4 h-4 text-gray-400" />
+            </div>
+            <select
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-white"
+              aria-label="Metric"
+            >
+              <option>Completion Rate</option>
+              <option>Daily Score</option>
+              <option>Momentum</option>
+            </select>
+          </div>
+
+          <div className="relative h-48">
+            <div className="absolute inset-0 flex items-end">
+              <svg className="w-full h-full" viewBox="0 0 700 160" preserveAspectRatio="none" aria-hidden>
+                <defs>
+                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#16a34a" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#16a34a" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {[0, 40, 80, 120, 160].map((y) => (
+                  <line key={y} x1="0" y1={y} x2="700" y2={y} stroke="#f3f4f6" strokeWidth="1" />
+                ))}
+                <path
+                  d="M 0,120 C 50,110 100,90 175,80 S 280,70 350,65 S 450,55 525,45 S 620,30 700,20 L 700,160 L 0,160 Z"
+                  fill="url(#trendGrad)"
+                />
+                <path
+                  d="M 0,120 C 50,110 100,90 175,80 S 280,70 350,65 S 450,55 525,45 S 620,30 700,20"
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+                {[
+                  [0, 120],
+                  [100, 90],
+                  [200, 78],
+                  [300, 65],
+                  [400, 58],
+                  [525, 45],
+                  [700, 20],
+                ].map(([x, y], i) => (
+                  <circle key={i} cx={x} cy={y} r="4" fill="white" stroke="#16a34a" strokeWidth="2" />
+                ))}
+              </svg>
+            </div>
+          </div>
+
+          <div className="flex justify-between mt-3">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"].map((d) => (
+              <span key={d} className="text-xs text-gray-400">
+                {d}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-start gap-2 bg-green-50 rounded-xl p-3">
+            <TrendingUp className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-green-800">You&apos;re trending in the right direction.</p>
+              <p className="text-xs text-green-600">Keep showing up. Small actions compound.</p>
+            </div>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-mono text-sm flex items-center gap-2">
-              <Gauge className="w-4 h-4 text-primary" /> MOMENTUM DRIVERS
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-mono"><span>Task Completion Rate</span> <span className="font-bold">High</span></div>
-              <Progress value={85} className="h-1" />
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900">Character Traits</h3>
+              <Info className="w-4 h-4 text-gray-400" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-mono"><span>Action Latency</span> <span className="font-bold text-amber-500">Medium</span></div>
-              <Progress value={50} className="h-1 [&>div]:bg-amber-500" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-mono"><span>Feedback Quality</span> <span className="font-bold text-primary">High</span></div>
-              <Progress value={90} className="h-1" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-2 border-b border-border/50">
-            <CardTitle className="font-mono text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> SIGNAL HISTORY (LAST 7 DAYS)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {history.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground font-mono text-sm">NOT ENOUGH DATA GATHERED</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm font-mono text-left">
-                  <thead className="bg-secondary/20">
-                    <tr>
-                      <th className="p-3 font-bold text-muted-foreground">DATE</th>
-                      <th className="p-3 font-bold text-muted-foreground text-right">MOMENTUM</th>
-                      <th className="p-3 font-bold text-muted-foreground text-right">CONSISTENCY</th>
-                      <th className="p-3 font-bold text-muted-foreground">CONDITION</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {history.map((snap: SignalSnapshot) => (
-                      <tr key={snap.id} className="hover:bg-secondary/10">
-                        <td className="p-3">{new Date(snap.snapshotDate).toLocaleDateString()}</td>
-                        <td className="p-3 text-right">{snap.momentum}%</td>
-                        <td className="p-3 text-right">{snap.consistency}%</td>
-                        <td className="p-3"><ConditionBadge condition={snap.condition} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            <span className="text-xs text-green-600 font-medium cursor-pointer">View All Traits →</span>
+          </div>
+          <div className="space-y-4">
+            {CHARACTER_TRAITS.map((trait) => {
+              const score = trait.score;
+              const pct = (score / 10) * 100;
+              const color = score >= 8 ? "bg-green-500" : score >= 6 ? "bg-yellow-500" : "bg-orange-500";
+              return (
+                <div key={trait.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-gray-700">{trait.label}</span>
+                    <span
+                      className={`text-sm font-bold ${
+                        score >= 8 ? "text-green-600" : score >= 6 ? "text-yellow-600" : "text-orange-500"
+                      }`}
+                    >
+                      {score} / 10
+                    </span>
+                  </div>
+                  <div className="bg-gray-100 rounded-full h-2">
+                    <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

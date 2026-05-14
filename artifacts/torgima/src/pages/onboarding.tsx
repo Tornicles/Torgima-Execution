@@ -1,131 +1,158 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
 
-type Step = "goal" | "context" | "validating" | "paths" | "launching";
-type CommitmentLevel = "low" | "medium" | "high" | "full";
-type PathType = "current" | "adjusted" | "alternative";
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
-interface GoalInput {
-  rawGoal: string;
+const DOMAINS = [
+  { id: "business", label: "Business", icon: "💼" },
+  { id: "health", label: "Health", icon: "❤️" },
+  { id: "financial", label: "Financial", icon: "💰" },
+  { id: "relationships", label: "Relationships", icon: "👥" },
+  { id: "personal_growth", label: "Personal Growth", icon: "🌱" },
+  { id: "impact", label: "Impact", icon: "🌍" },
+  { id: "creative", label: "Creative", icon: "✏️" },
+  { id: "other", label: "Other", icon: "···" },
+];
+
+const COMMITMENT_OPTIONS = [
+  { value: "low", label: "Low", sub: "A few hours per week" },
+  { value: "medium", label: "Medium", sub: "Daily focused work" },
+  { value: "high", label: "High", sub: "My primary focus" },
+  { value: "full", label: "Full", sub: "All in — everything toward this" },
+];
+
+interface FormData {
+  primaryGoal: string;
+  secondaryGoals: string;
+  domain: string;
+  specificTarget: string;
   purpose: string;
+  purposeDeep: string;
   timeframe: string;
-  commitmentLevel: CommitmentLevel;
+  targetDate: string;
+  commitmentLevel: string;
+  hoursPerWeek: string;
   currentContext: string;
-  successSignal: string;
+  resources: string;
+  experience: string;
   knownBlockers: string;
+  budget: string;
 }
 
-interface PathData {
-  title: string;
-  summary: string;
-  riskLevel: string;
-}
+const STEPS = [
+  { number: 1, label: "Your Goals", sub: "What do you want to achieve?" },
+  { number: 2, label: "Purpose", sub: "Why is this important?" },
+  { number: 3, label: "Timeframe", sub: "When will you achieve this?" },
+  { number: 4, label: "Commitment", sub: "Your level of commitment" },
+  { number: 5, label: "Context", sub: "Your current environment" },
+  { number: 6, label: "Review", sub: "Confirm and launch" },
+];
 
-interface ValidationResult {
-  blueprintId: string;
-  verdict: string;
-  scores: Record<string, { score: number; finding: string }>;
-  paths: Record<string, PathData>;
-  canProceed: boolean;
-}
-
-type GoalApiPayload = {
+type ValidationPayload = {
   status?: string;
   blueprintId?: string;
-  verdict?: string;
-  scores?: Record<string, { score: number; finding?: string }>;
-  paths?: Record<string, PathData>;
-  canProceed?: boolean;
-  missingFields?: unknown;
+  scores?: Record<string, { score?: number }>;
+  paths?: Record<string, { summary?: string; benefits?: string[] }>;
 };
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState<Step>("goal");
+  const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [selectedPath, setSelectedPath] = useState<PathType>("current");
+  const [validation, setValidation] = useState<ValidationPayload | null>(null);
+  const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
   const [, setLocation] = useLocation();
 
-  const [input, setInput] = useState<GoalInput>({
-    rawGoal: "",
+  const [form, setForm] = useState<FormData>({
+    primaryGoal: "",
+    secondaryGoals: "",
+    domain: "",
+    specificTarget: "",
     purpose: "",
-    timeframe: "",
+    purposeDeep: "",
+    timeframe: "90 days",
+    targetDate: "",
     commitmentLevel: "medium",
+    hoursPerWeek: "",
     currentContext: "",
-    successSignal: "",
+    resources: "",
+    experience: "",
     knownBlockers: "",
+    budget: "",
   });
 
-  function update<K extends keyof GoalInput>(field: K, value: GoalInput[K]) {
-    setInput((p) => ({ ...p, [field]: value }));
+  function setField<K extends keyof FormData>(k: K, v: FormData[K]) {
+    setForm((p) => ({ ...p, [k]: v }));
+  }
+
+  function canContinue(): boolean {
+    if (step === 1) return !!form.primaryGoal.trim() && !!form.domain;
+    if (step === 2) return !!form.purpose.trim();
+    if (step === 3) return !!form.timeframe.trim();
+    if (step === 4) return !!form.commitmentLevel;
+    return true;
+  }
+
+  async function handleNext() {
+    if (step < 5) {
+      setStep((s) => (s + 1) as Step);
+      return;
+    }
+    if (step === 5) {
+      setStep(6);
+      await handleValidate();
+    }
   }
 
   async function handleValidate() {
     if (!API_BASE_URL) {
-      setError("API URL is not configured. Set VITE_API_BASE_URL on Vercel.");
+      setError("VITE_API_BASE_URL is not configured.");
+      setLoading(false);
       return;
     }
     setLoading(true);
     setError("");
-    setStep("validating");
-
+    setValidation(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/onboarding/goal`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...input,
+          rawGoal: form.primaryGoal,
+          purpose: form.purpose,
+          timeframe: form.timeframe,
+          commitmentLevel: form.commitmentLevel,
+          currentContext: form.currentContext,
+          successSignal: form.specificTarget,
+          knownBlockers: form.knownBlockers,
+          domainHints: form.domain ? [form.domain] : undefined,
           idempotencyKey: `onboarding-${Date.now()}`,
         }),
       });
-
-      const data = (await res.json()) as { ok?: boolean; data?: GoalApiPayload; error?: { message?: string } };
-
-      if (!res.ok || !data.ok) {
-        setError(data.error?.message ?? "Validation failed. Please try again.");
-        setStep("context");
+      const data = (await res.json()) as { ok?: boolean; data?: ValidationPayload; error?: { message?: string } };
+      if (!data.ok) {
+        setError(data.error?.message ?? "Validation failed.");
         return;
       }
-
       const d = data.data;
       if (!d) {
         setError("Unexpected response from server.");
-        setStep("context");
         return;
       }
-      if (d.status === "invalid") {
-        setError("Goal could not be validated. Refine your goal and try again.");
-        setStep("context");
-        return;
+      if (d.status === "validated" && d.blueprintId) {
+        setValidation(d);
+      } else if (d.status === "needs_clarification") {
+        setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
+      } else if (d.status === "invalid") {
+        setError("Your goal could not be validated. Refine it on earlier steps and try again.");
+      } else {
+        setError("Validation did not complete. Try again.");
       }
-      if (d.status === "needs_clarification") {
-        setError("More detail is required before validation can continue.");
-        setStep("context");
-        return;
-      }
-      if (d.status !== "validated" || !d.paths || !d.blueprintId) {
-        setError("Validation did not return execution paths.");
-        setStep("context");
-        return;
-      }
-
-      setValidation({
-        blueprintId: d.blueprintId,
-        verdict: d.verdict ?? "adjust",
-        scores: (d.scores ?? {}) as ValidationResult["scores"],
-        paths: d.paths,
-        canProceed: d.canProceed !== false,
-      });
-      setStep("paths");
     } catch {
-      setError("Cannot connect to the server.");
-      setStep("context");
+      setError("Cannot connect to server.");
     } finally {
       setLoading(false);
     }
@@ -136,297 +163,734 @@ export default function OnboardingPage() {
     if (!API_BASE_URL) return;
     setLoading(true);
     setError("");
-    setStep("launching");
-
     try {
-      const activateRes = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
+      const res = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedPath }),
       });
-
-      const activateData = (await activateRes.json()) as { ok?: boolean; error?: { message?: string } };
-
-      if (!activateRes.ok || !activateData.ok) {
-        setError(activateData.error?.message ?? "Failed to launch blueprint.");
-        setStep("paths");
-        setLoading(false);
-        return;
+      const data = (await res.json()) as { ok?: boolean; error?: { message?: string } };
+      if (data.ok) {
+        await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        setLocation("/dashboard");
+      } else {
+        setError(data.error?.message ?? "Launch failed.");
       }
-
-      await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-
-      setLocation("/dashboard");
     } catch {
-      setError("Cannot connect to the server.");
-      setStep("paths");
+      setError("Cannot connect to server.");
     } finally {
       setLoading(false);
     }
   }
 
-  const verdictColor = (v: string) =>
-    v === "proceed" ? "text-green-400" : v === "adjust" ? "text-yellow-400" : "text-orange-400";
+  const WHY_THIS_MATTERS: Record<number, { title: string; points: string[]; quote: string; author: string }> = {
+    1: {
+      title: "Why this matters",
+      points: [
+        "Personalized execution plan",
+        "Daily actionable orders",
+        "Progress tracking",
+        "Adaptive strategy",
+      ],
+      quote: "A goal without a plan is just a wish.",
+      author: "Antoine de Saint-Exupéry",
+    },
+    2: {
+      title: "Why purpose matters",
+      points: [
+        "Fuels execution during hard days",
+        "Connects daily tasks to meaning",
+        "Prevents abandonment",
+        "Builds identity",
+      ],
+      quote: "He who has a why can endure any how.",
+      author: "Friedrich Nietzsche",
+    },
+    3: {
+      title: "Why timeframes matter",
+      points: ["Creates urgency without panic", "Breaks goals into phases", "Measures real progress", "Adjusts pace intelligently"],
+      quote: "A goal is a dream with a deadline.",
+      author: "Napoleon Hill",
+    },
+    4: {
+      title: "Why commitment matters",
+      points: ["Determines task intensity", "Sets realistic daily output", "Calibrates difficulty", "Prevents burnout"],
+      quote: "Commitment is the foundation of great accomplishments.",
+      author: "Heidi Reeder",
+    },
+    5: {
+      title: "Why context matters",
+      points: ["Tasks match your reality", "Constraints are accounted for", "Resources are optimized", "Execution is realistic"],
+      quote: "Context is everything.",
+      author: "The Torgima System",
+    },
+    6: {
+      title: "What happens next",
+      points: ["Blueprint generation", "Daily execution orders", "Progress tracking", "Adaptive strategy"],
+      quote: "The secret of getting ahead is getting started.",
+      author: "Mark Twain",
+    },
+  };
 
-  const riskColor = (r: string) =>
-    r === "low" ? "text-green-400" : r === "medium" ? "text-yellow-400" : "text-red-400";
-
-  const stepLabel = {
-    goal: "Step 1 of 3 — Define Your Goal",
-    context: "Step 2 of 3 — Set The Context",
-    validating: "Step 3 of 3 — Analysing...",
-    paths: "Step 3 of 3 — Choose Your Path",
-    launching: "Launching Blueprint...",
-  }[step];
+  const sideInfo = WHY_THIS_MATTERS[step] ?? WHY_THIS_MATTERS[1];
+  const showStepNav = !(step === 6 && !loading && validation && !error);
+  const validated = validation?.status === "validated" && validation.blueprintId;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-xl space-y-6">
-        <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="font-mono font-bold text-lg">TORGIMA_OS</span>
+    <div className="min-h-screen bg-white flex flex-col">
+      <header className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-2">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
+            <path d="M14 4L4 10V18L14 24L24 18V10L14 4Z" stroke="#111827" strokeWidth="2" fill="none" />
+            <path d="M9 13L14 10L19 13" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
+            <path d="M14 10V19" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <span className="font-bold text-lg text-gray-900">TORGIMA</span>
+        </div>
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">Step {step} of 6</span>
+            <div className="w-48 bg-gray-200 rounded-full h-1.5">
+              <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(step / 6) * 100}%` }} />
+            </div>
           </div>
-          <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">{stepLabel}</p>
         </div>
+        <div className="w-8 h-8 rounded-full bg-gray-200" aria-hidden />
+      </header>
 
-        <div className="flex gap-2">
-          {["goal", "context", "paths"].map((s, i) => (
-            <div
-              key={s}
-              className={`flex-1 h-1 rounded-full transition-colors ${
-                (step === "goal" && i === 0) ||
-                (step === "context" && i <= 1) ||
-                ((step === "validating" || step === "paths" || step === "launching") && i <= 2)
-                  ? "bg-primary"
-                  : "bg-border"
-              }`}
-            />
-          ))}
-        </div>
+      <div className="flex flex-1 min-h-0">
+        <aside className="w-64 border-r border-gray-200 p-6 space-y-1 shrink-0">
+          <div className="mb-6">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Welcome to</p>
+            <p className="text-xl font-bold text-gray-900">TORGIMA</p>
+            <p className="text-sm text-gray-500 mt-1">Let&apos;s set up your execution system in a few simple steps.</p>
+          </div>
 
-        <div className="bg-card border border-border rounded-xl p-8 space-y-6">
-          {step === "goal" && (
-            <div className="space-y-5">
-              <FieldGroup label="What is your goal?" required>
-                <textarea
-                  value={input.rawGoal}
-                  onChange={(e) => update("rawGoal", e.target.value)}
-                  placeholder="Be specific. What exactly will be different when this goal is achieved?"
-                  rows={3}
-                  className="w-full bg-background border border-input rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Why does this matter?" required>
-                <textarea
-                  value={input.purpose}
-                  onChange={(e) => update("purpose", e.target.value)}
-                  placeholder="What changes in your life or work when this is complete?"
-                  rows={2}
-                  className="w-full bg-background border border-input rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
-                />
-              </FieldGroup>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FieldGroup label="Timeframe" required>
-                  <Input
-                    value={input.timeframe}
-                    onChange={(e) => update("timeframe", e.target.value)}
-                    placeholder="e.g. 90 days"
-                  />
-                </FieldGroup>
-
-                <FieldGroup label="Commitment" required>
-                  <select
-                    value={input.commitmentLevel}
-                    onChange={(e) => update("commitmentLevel", e.target.value as CommitmentLevel)}
-                    className="w-full bg-background border border-input rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="low">Low — a few hours/week</option>
-                    <option value="medium">Medium — daily work</option>
-                    <option value="high">High — primary focus</option>
-                    <option value="full">Full — all in</option>
-                  </select>
-                </FieldGroup>
-              </div>
-
-              <Button
-                onClick={() => setStep("context")}
-                disabled={!input.rawGoal.trim() || !input.purpose.trim() || !input.timeframe.trim()}
-                className="w-full font-mono uppercase tracking-wider text-xs"
-                size="lg"
-              >
-                Continue →
-              </Button>
-            </div>
-          )}
-
-          {step === "context" && (
-            <div className="space-y-5">
-              <FieldGroup label="Current situation">
-                <textarea
-                  value={input.currentContext}
-                  onChange={(e) => update("currentContext", e.target.value)}
-                  placeholder="What is your starting point? What resources or knowledge do you already have?"
-                  rows={2}
-                  className="w-full bg-background border border-input rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="What does success look like?">
-                <Input
-                  value={input.successSignal}
-                  onChange={(e) => update("successSignal", e.target.value)}
-                  placeholder="How will you know when this goal is achieved?"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Known blockers (optional)">
-                <Input
-                  value={input.knownBlockers}
-                  onChange={(e) => update("knownBlockers", e.target.value)}
-                  placeholder="What might slow you down?"
-                />
-              </FieldGroup>
-
-              {error && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
-                  <p className="text-destructive text-sm font-mono">{error}</p>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("goal")} className="flex-1 font-mono text-xs uppercase">
-                  ← Back
-                </Button>
-                <Button
-                  onClick={handleValidate}
-                  disabled={loading}
-                  className="flex-[2] font-mono uppercase tracking-wider text-xs"
-                  size="lg"
+          {STEPS.map((s) => {
+            const isDone = s.number < step;
+            const isActive = s.number === step;
+            const isLocked = s.number > step;
+            return (
+              <div key={s.number} className={`flex items-start gap-3 p-3 rounded-xl transition-all ${isActive ? "bg-green-50" : ""}`}>
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${
+                    isDone ? "bg-green-500 text-white" : isActive ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"
+                  }`}
                 >
-                  Validate Goal →
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {step === "validating" && (
-            <div className="py-12 flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="font-mono text-muted-foreground text-sm">Analysing your goal...</p>
-              <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Running validation against clarity, feasibility, realism, and usefulness dimensions.
-              </p>
-            </div>
-          )}
-
-          {step === "paths" && validation && (
-            <div className="space-y-6">
-              <div className="bg-secondary/20 border border-border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Validation Result</p>
-                  <span className={`font-mono font-bold uppercase text-lg ${verdictColor(validation.verdict)}`}>
-                    {validation.verdict}
-                  </span>
+                  {isDone ? <CheckCircle2 className="w-4 h-4" /> : s.number}
                 </div>
-                {validation.scores && (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    {Object.entries(validation.scores)
-                      .filter(([k]) => k !== "overall")
-                      .map(([key, s]) => (
-                        <div key={key} className="flex items-center justify-between text-xs font-mono">
-                          <span className="text-muted-foreground capitalize">{key}</span>
-                          <span className={s.score >= 60 ? "text-green-400" : "text-orange-400"}>{s.score}/100</span>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                <div>
+                  <p className={`text-sm font-semibold ${isActive ? "text-gray-900" : isLocked ? "text-gray-400" : "text-gray-700"}`}>
+                    {s.label}
+                  </p>
+                  <p className={`text-xs ${isLocked ? "text-gray-300" : "text-gray-500"}`}>{s.sub}</p>
+                </div>
               </div>
+            );
+          })}
 
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Choose your execution path:</p>
-                {(["current", "adjusted", "alternative"] as PathType[]).map((pathKey) => {
-                  const path = validation.paths?.[pathKey];
-                  if (!path) return null;
-                  const isSelected = selectedPath === pathKey;
-                  return (
+          <div className="pt-6">
+            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+              <ShieldCheck className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Your data is private and secure.</p>
+                <p className="text-xs text-gray-500 mt-0.5">We never share your information.</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 flex flex-col lg:flex-row gap-8 p-6 lg:p-10 max-w-6xl overflow-y-auto">
+          <div className="flex-1 space-y-7 min-w-0">
+            {step === 1 && (
+              <>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">What are your goals?</h2>
+                  <p className="text-gray-500 mt-1">Define what you want to achieve so TORGIMA can build your personalized blueprint.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Primary Goal <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-400">What is the one main outcome you want to achieve?</p>
+                  <textarea
+                    value={form.primaryGoal}
+                    onChange={(e) => setField("primaryGoal", e.target.value)}
+                    placeholder="e.g., Build a profitable SaaS business"
+                    rows={4}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Secondary Goals <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    value={form.secondaryGoals}
+                    onChange={(e) => setField("secondaryGoals", e.target.value)}
+                    placeholder="e.g., Financial freedom, Help 1M people, Travel the world"
+                    rows={3}
+                    maxLength={300}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                  />
+                  <div className="text-right text-xs text-gray-400">{form.secondaryGoals.length} / 300</div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Domain / Focus Area <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.domain}
+                    onChange={(e) => setField("domain", e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  >
+                    <option value="">Select a domain</option>
+                    {DOMAINS.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                    {DOMAINS.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setField("domain", d.id)}
+                        className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition-all ${
+                          form.domain === d.id
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-200 text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="text-xl">{d.icon}</span>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Specific Target <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    value={form.specificTarget}
+                    onChange={(e) => setField("specificTarget", e.target.value)}
+                    placeholder="e.g., $10,000 MRR, 100K users, Launch by Dec 31, 2025"
+                    rows={2}
+                    maxLength={150}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                  />
+                  <div className="text-right text-xs text-gray-400">{form.specificTarget.length} / 150</div>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Why is this important?</h2>
+                  <p className="text-gray-500 mt-1">
+                    Understanding your purpose helps us build a blueprint that stays aligned with what truly matters to you.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Primary Purpose <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={form.purpose}
+                    onChange={(e) => setField("purpose", e.target.value)}
+                    placeholder="e.g., I want financial freedom so I can spend more time with family…"
+                    rows={4}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Deep Why <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    value={form.purposeDeep}
+                    onChange={(e) => setField("purposeDeep", e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                  />
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">When will you achieve this?</h2>
+                  <p className="text-gray-500 mt-1">Setting a realistic timeframe helps us create the right execution pace for you.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Timeframe <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={form.timeframe}
+                      onChange={(e) => setField("timeframe", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      <option value="30 days">30 days</option>
+                      <option value="60 days">60 days</option>
+                      <option value="90 days">90 days</option>
+                      <option value="6 months">6 months</option>
+                      <option value="12 months">12 months</option>
+                      <option value="2 years">2 years</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Target Date <span className="text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={form.targetDate}
+                      onChange={(e) => setField("targetDate", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Select</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {["30 days", "60 days", "90 days", "6 months", "12 months", "2 years"].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setField("timeframe", t)}
+                        className={`py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                          form.timeframe === t ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Your level of commitment</h2>
+                  <p className="text-gray-500 mt-1">Be honest — this helps us calibrate your daily workload and task difficulty.</p>
+                </div>
+                <div className="space-y-3">
+                  {COMMITMENT_OPTIONS.map((opt) => (
                     <button
+                      key={opt.value}
                       type="button"
-                      key={pathKey}
-                      onClick={() => setSelectedPath(pathKey)}
-                      className={`w-full text-left border rounded-xl p-4 cursor-pointer transition-all space-y-2 ${
-                        isSelected
-                          ? "border-primary bg-primary/10 shadow-[0_0_20px_-8px_var(--primary)]"
-                          : "border-border bg-secondary/10 hover:border-border/80"
+                      onClick={() => setField("commitmentLevel", opt.value)}
+                      className={`w-full text-left flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        form.commitmentLevel === opt.value ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-3 h-3 rounded-full border-2 shrink-0 transition-colors ${
-                              isSelected ? "border-primary bg-primary" : "border-muted-foreground"
-                            }`}
-                          />
-                          <span className="font-semibold text-sm">{path.title}</span>
-                        </div>
-                        <span className={`text-xs font-mono uppercase ${riskColor(path.riskLevel)}`}>
-                          {path.riskLevel} risk
-                        </span>
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          form.commitmentLevel === opt.value ? "border-green-500" : "border-gray-300"
+                        }`}
+                      >
+                        {form.commitmentLevel === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
                       </div>
-                      <p className="text-muted-foreground text-xs leading-relaxed ml-5">{path.summary}</p>
+                      <div>
+                        <p className={`font-semibold text-sm ${form.commitmentLevel === opt.value ? "text-green-800" : "text-gray-900"}`}>
+                          {opt.label}
+                        </p>
+                        <p className="text-xs text-gray-500">{opt.sub}</p>
+                      </div>
                     </button>
-                  );
-                })}
-              </div>
-
-              {error && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
-                  <p className="text-destructive text-sm font-mono">{error}</p>
+                  ))}
                 </div>
-              )}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Hours per week <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.hoursPerWeek}
+                    onChange={(e) => setField("hoursPerWeek", e.target.value)}
+                    placeholder="e.g., 20+ hours per week"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                  />
+                </div>
+              </>
+            )}
 
-              <Button
-                onClick={handleLaunch}
-                disabled={loading || !validation.canProceed}
-                className="w-full font-mono uppercase tracking-wider text-xs"
-                size="lg"
-              >
-                Launch Execution Blueprint →
-              </Button>
-            </div>
-          )}
+            {step === 5 && (
+              <>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Your current environment</h2>
+                  <p className="text-gray-500 mt-1">Tell us about your starting point so we can build a realistic execution plan.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-gray-700">Current Situation</label>
+                  <textarea
+                    value={form.currentContext}
+                    onChange={(e) => setField("currentContext", e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
+                    placeholder="e.g., Full-time role, building on the side…"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Available Resources</label>
+                    <input
+                      value={form.resources}
+                      onChange={(e) => setField("resources", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                      placeholder="e.g., Laptop, savings"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Experience Level</label>
+                    <select
+                      value={form.experience}
+                      onChange={(e) => setField("experience", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      <option value="">Select level</option>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Known Blockers</label>
+                    <input
+                      value={form.knownBlockers}
+                      onChange={(e) => setField("knownBlockers", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                      placeholder="e.g., Limited time"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Budget Range</label>
+                    <select
+                      value={form.budget}
+                      onChange={(e) => setField("budget", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      <option value="">Select budget</option>
+                      <option value="$0">$0 — Bootstrap only</option>
+                      <option value="$0-$1000">$0 – $1,000</option>
+                      <option value="$1000-$5000">$1,000 – $5,000</option>
+                      <option value="$5000-$10000">$5,000 – $10,000</option>
+                      <option value="$10000+">$10,000+</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
 
-          {step === "launching" && (
-            <div className="py-12 flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="font-mono text-muted-foreground text-sm">Building your execution blueprint...</p>
-              <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Creating plans, targets, phases, projects, and actions. Generating your first task.
+            {step === 6 && (
+              <>
+                {loading && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-gray-500 text-sm">Validating your goal and building paths...</p>
+                  </div>
+                )}
+
+                {!loading && !validation && !error && (
+                  <div className="text-center py-16 space-y-4">
+                    <p className="text-gray-500">Preparing your validation...</p>
+                    <button type="button" onClick={handleValidate} className="text-green-600 underline text-sm">
+                      Try again
+                    </button>
+                  </div>
+                )}
+
+                {!loading && error && !validation && (
+                  <div className="text-center py-12 space-y-4">
+                    <p className="text-red-600 text-sm">{error}</p>
+                    <button type="button" onClick={() => { setError(""); setStep(5); }} className="text-green-600 underline text-sm">
+                      ← Back to edit
+                    </button>
+                  </div>
+                )}
+
+                {!loading && validated && validation && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Validation Results</h2>
+                        <p className="text-gray-500 text-sm">
+                          Your blueprint foundation is ready. Review your results and choose your path forward.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📋</span>
+                        <h3 className="font-bold text-gray-900">Reality Check Summary</h3>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        Based on your inputs, here&apos;s an honest assessment of your current reality and what it will take to achieve your goal.
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {Object.entries(validation.scores ?? {})
+                          .filter(([k]) => k !== "overall")
+                          .slice(0, 4)
+                          .map(([key, s]) => {
+                            const score = (s as { score?: number }).score ?? 0;
+                            const color = score >= 7 ? "text-green-600" : score >= 5 ? "text-yellow-500" : "text-orange-500";
+                            const barCol = score >= 7 ? "bg-green-500" : score >= 5 ? "bg-yellow-400" : "bg-orange-400";
+                            const label = score >= 7 ? "Clear" : score >= 5 ? "Moderate" : "Needs Work";
+                            return (
+                              <div key={key} className="bg-gray-50 rounded-xl p-3 text-center space-y-2">
+                                <p className="text-xs text-gray-500 capitalize">{key.replace(/_/g, " ")}</p>
+                                <p className={`text-2xl font-bold ${color}`}>
+                                  {score} <span className="text-sm text-gray-400 font-normal">/ 10</span>
+                                </p>
+                                <p className={`text-xs font-semibold ${color}`}>{label}</p>
+                                <div className="bg-gray-200 rounded-full h-1.5 mx-2">
+                                  <div className={`${barCol} h-1.5 rounded-full`} style={{ width: `${score * 10}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">💡</span>
+                        <h3 className="font-bold text-gray-900">Key Insights</h3>
+                      </div>
+                      {[
+                        "You have a clear vision and strong motivation.",
+                        "Your timeline is ambitious but achievable with focused execution.",
+                        "Consistency will be the biggest factor in your success.",
+                      ].map((insight, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                          <p className="text-sm text-gray-700">{insight}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">📄</span>
+                        <h3 className="font-bold text-gray-900">
+                          Your Inputs <span className="text-gray-400 font-normal text-sm">(Summary)</span>
+                        </h3>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                        {[
+                          ["Primary Goal", form.primaryGoal],
+                          ["Domain", form.domain],
+                          ["Timeframe", form.timeframe],
+                          ["Commitment", form.commitmentLevel],
+                          ["Experience", form.experience || "Not specified"],
+                          ["Budget", form.budget || "Not specified"],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="flex justify-between border-b border-gray-50 pb-1.5 gap-2">
+                            <span className="text-gray-500 shrink-0">{label}</span>
+                            <span className="text-gray-900 font-medium text-right max-w-[60%] truncate capitalize">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Target className="w-4 h-4 text-gray-500" />
+                        <p className="text-sm font-semibold text-gray-700">Next Step</p>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        Choose the path that best aligns with your current reality and desired outcome.
+                      </p>
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm">{error}</p>}
+                  </>
+                )}
+              </>
+            )}
+
+            {showStepNav && (
+              <div className="pt-2">
+                {step < 6 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleNext()}
+                    disabled={!canContinue()}
+                    className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm"
+                  >
+                    Continue →
+                  </button>
+                )}
+                {step > 1 && step < 6 && (
+                  <p className="text-center text-xs text-gray-400 mt-3">
+                    <button type="button" onClick={() => setStep((s) => (s - 1) as Step)} className="hover:text-gray-600">
+                      ← Back
+                    </button>
+                  </p>
+                )}
+                <p className="text-center text-xs text-gray-400 mt-2">🔒 You can always edit these details later.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="w-full lg:w-72 shrink-0 space-y-4">
+            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center">
+                  <Target className="w-4 h-4 text-green-600" />
+                </div>
+                <p className="font-semibold text-gray-900 text-sm">{sideInfo.title}</p>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Clear goals help TORGIMA create a blueprint that aligns with what truly matters to you.
               </p>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-700">You&apos;ll get:</p>
+                {sideInfo.points.map((point, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                    </div>
+                    <p className="text-xs text-gray-600">{point}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-white rounded-xl border border-gray-100 p-4">
+                <p className="text-2xl text-gray-400 mb-1">&ldquo;</p>
+                <p className="text-sm text-gray-700 italic leading-relaxed">{sideInfo.quote}</p>
+                <p className="text-xs text-gray-400 mt-2">— {sideInfo.author}</p>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function FieldGroup({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </label>
-      {children}
+            {step === 6 && !loading && validated && validation && (
+              <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-1">Choose Your Path</h3>
+                  <p className="text-xs text-gray-500">
+                    Select the path that best fits your current reality. You can adjust later as you progress.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {(["current", "adjusted", "alternative"] as const).map((pathKey) => {
+                    const path = validation.paths?.[pathKey];
+                    if (!path) return null;
+                    const isSelected = selectedPath === pathKey;
+                    const pathConfig = {
+                      current: { label: "Current Path", badge: "Recommended", icon: "🚩", badgeColor: "bg-green-100 text-green-700" },
+                      adjusted: { label: "Adjusted Path", badge: null, icon: "⚙️", badgeColor: "" },
+                      alternative: { label: "Alternative Path", badge: null, icon: "↗️", badgeColor: "" },
+                    }[pathKey];
+
+                    return (
+                      <button
+                        key={pathKey}
+                        type="button"
+                        onClick={() => setSelectedPath(pathKey)}
+                        className={`w-full text-left border-2 rounded-xl p-4 cursor-pointer transition-all ${
+                          isSelected ? "border-green-500 bg-white shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span>{pathConfig.icon}</span>
+                            <p className="font-semibold text-sm text-gray-900">{pathConfig.label}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {pathConfig.badge && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pathConfig.badgeColor}`}>
+                                {pathConfig.badge}
+                              </span>
+                            )}
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                isSelected ? "border-green-500" : "border-gray-300"
+                              }`}
+                            >
+                              {isSelected && <div className="w-2 h-2 rounded-full bg-green-500" />}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">{path.summary}</p>
+                        <div className="mt-2 space-y-1">
+                          {(path.benefits ?? ["Best fit for current reality", "Balanced risk and reward"]).slice(0, 2).map((b, i) => (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+                              <p className="text-xs text-gray-600">{b}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleLaunch()}
+                  disabled={loading}
+                  className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" /> Building...
+                    </>
+                  ) : (
+                    <>
+                      <span>🚀</span> Launch Blueprint
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full border border-gray-200 text-gray-600 font-medium py-2.5 rounded-xl hover:bg-gray-50 text-sm"
+                >
+                  ↩ Save & Review Later
+                </button>
+
+                <div className="pt-2 space-y-2">
+                  <p className="text-xs font-semibold text-gray-700">What Happens Next?</p>
+                  {[
+                    { n: "1.", label: "Blueprint Generation", sub: "We'll create your personalized execution blueprint." },
+                    { n: "2.", label: "Daily Execution", sub: "You'll get actionable orders every day." },
+                    { n: "3.", label: "Track & Adapt", sub: "We track your progress and adapt as you grow." },
+                  ].map((item) => (
+                    <div key={item.n} className="flex items-start gap-2">
+                      <span className="text-xs font-bold text-gray-400 shrink-0">{item.n}</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700">{item.label}</p>
+                        <p className="text-xs text-gray-400">{item.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
