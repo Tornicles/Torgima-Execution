@@ -38,7 +38,13 @@ export default function VerifyPage() {
       .then((data: { ok?: boolean; error?: { message?: string } }) => {
         if (data.ok) {
           setStatus("success");
-          setTimeout(() => setLocation("/dashboard"), 1500);
+          void fetch(`${API_BASE_URL}/api/onboarding/status`, { credentials: "include" })
+            .then((r) => r.json())
+            .then((s: { ok?: boolean; data?: { completed?: boolean } }) => {
+              const done = Boolean(s?.ok && s?.data?.completed);
+              setTimeout(() => setLocation(done ? "/dashboard" : "/onboarding"), 1500);
+            })
+            .catch(() => setTimeout(() => setLocation("/dashboard"), 1500));
         } else {
           setStatus("error");
           setErrorMsg(
