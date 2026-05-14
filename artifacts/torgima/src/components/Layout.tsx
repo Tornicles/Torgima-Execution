@@ -1,38 +1,22 @@
 import { Link, useLocation } from "wouter";
-import { 
-  TerminalSquare, 
-  LayoutDashboard, 
-  Activity, 
-  CheckSquare, 
-  MessageSquare, 
-  Settings, 
-  LogOut,
-  Target
+import type { ComponentType, ReactNode } from "react";
+import {
+  TerminalSquare,
+  LayoutDashboard,
+  Activity,
+  CheckSquare,
+  MessageSquare,
+  Settings,
+  Target,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 
-const PUBLIC_SHELL_PATHS = new Set([
-  "/",
-  "/login",
-  "/verify",
-  "/notifications/unsubscribe",
-]);
-
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { data: me } = useGetMe();
 
-  if (PUBLIC_SHELL_PATHS.has(location) || location.startsWith("/notifications/unsubscribe")) {
-    return <div className="min-h-screen bg-background font-sans text-foreground">{children}</div>;
-  }
-
-  if (location === "/onboarding") {
-    return <div className="min-h-screen bg-background font-sans text-foreground">{children}</div>;
-  }
-
   return (
     <div className="flex h-screen overflow-hidden bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
-      {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-sidebar flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center px-6 border-b border-border">
@@ -43,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
           </div>
-          
+
           <nav className="p-4 space-y-1 mt-4">
             <NavItem
               href="/dashboard"
@@ -58,7 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               label="Active Task"
               active={location.startsWith("/tasks")}
             />
-            <NavItem href="/feedback" icon={MessageSquare} label="Feedback" active={location === "/feedback"} />
+            <NavItem href="/feedback" icon={MessageSquare} label="Feedback" active={location.startsWith("/feedback")} />
             <NavItem href="/identity" icon={Target} label="Identity" active={location === "/identity"} />
           </nav>
         </div>
@@ -79,23 +63,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto bg-background relative">
-        <div className="absolute inset-0 pointer-events-none opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjMDAwIi8+PC9zdmc+')] mix-blend-overlay z-50"></div>
+        <div className="absolute inset-0 pointer-events-none opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiLz48cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjMDAwIi8+PC9zdmc+')] mix-blend-overlay z-50" />
         {children}
       </main>
     </div>
   );
 }
 
-function NavItem({ href, icon: Icon, label, active }: { href: string; icon: any; label: string; active: boolean }) {
+function NavItem({ href, icon: Icon, label, active }: { href: string; icon: ComponentType<{ className?: string }>; label: string; active: boolean }) {
   return (
     <Link href={href}>
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-sm cursor-pointer transition-colors text-sm font-medium ${
-        active 
-          ? "bg-primary/10 text-primary font-bold border-l-2 border-primary" 
-          : "text-muted-foreground hover:bg-secondary hover:text-foreground border-l-2 border-transparent"
-      }`}>
+      <div
+        className={`flex items-center gap-3 px-3 py-2 rounded-sm cursor-pointer transition-colors text-sm font-medium ${
+          active
+            ? "bg-primary/10 text-primary font-bold border-l-2 border-primary"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground border-l-2 border-transparent"
+        }`}
+      >
         <Icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
         <span>{label}</span>
       </div>

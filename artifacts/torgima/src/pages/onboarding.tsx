@@ -1,404 +1,359 @@
-import { useState, useId } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TerminalSquare, Loader2, AlertCircle, CheckCircle2, ChevronRight, ArrowLeft } from "lucide-react";
-import {
-  useSubmitOnboardingGoal,
-  useActivateBlueprint,
-} from "@workspace/api-client-react";
-import { useToast } from "@/hooks/use-toast";
-import { Progress } from "@/components/ui/progress";
-import type {
-  OnboardingGoalResult,
-  ValidationPath,
-} from "@workspace/api-client-react";
+import { API_BASE_URL } from "@/lib/api-base";
 
-// ── TYPES ─────────────────────────────────────────────────────────────────────
+type Step = "goal" | "context" | "validating" | "paths" | "launching";
 
-type Step = "goal_entry" | "validation_result" | "path_selection" | "activating";
+interface GoalInput {
+  rawGoal: string;
+  purpose: string;
+  timeframe: string;
+  commitmentLevel: "low" | "medium" | "high" | "full";
+  currentContext: string;
+  successSignal: string;
+  knownBlockers: string;
+}
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+interface ValidationResult {
+  blueprintId: string;
+  verdict: string;
+  scores: Record<string, { score: number; finding: string }>;
+  paths: Record<string, { title: string; summary: string; riskLevel: string }>;
+  canProceed: boolean;
+}
 
-function ScoreBar({ label, score }: { label: string; score: number }) {
-  const colour = score >= 70 ? "bg-green-500" : score >= 50 ? "bg-amber-400" : "text-red-500 bg-red-500";
+type GoalApiData = {
+  status?: string;
+  blueprintId?: string;
+  verdict?: string;
+  scores?: Record<string, { score: number; finding?: string }>;
+  paths?: Record<string, { title: string; summary: string; riskLevel: string }>;
+  canProceed?: boolean;
+  missingFields?: unknown;
+};
+
+export default function OnboardingPage() {
+  const [step, setStep] = useState<Step>("goal");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
+  const [, setLocation] = useLocation();
+
+  const [input, setInput] = useState<GoalInput>({
+    rawGoal: "",
+    purpose: "",
+    timeframe: "",
+    commitmentLevel: "medium",
+    currentContext: "",
+    successSignal: "",
+    knownBlockers: "",
+  });
+
+  function update<K extends keyof GoalInput>(field: K, value: GoalInput[K]) {
+    setInput((p) => ({ ...p, [field]: value }));
+  }
+
+  async function handleValidate() {
+    setLoading(true);
+    setError("");
+    setStep("validating");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/onboarding/goal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...input,
+          idempotencyKey: `onboarding:${Date.now()}`,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; data?: GoalApiData; error?: { message?: string } };
+      if (!res.ok || !data.ok) {
+        setError(data.error?.message ?? "Validation failed.");
+        setStep("context");
+        return;
+      }
+      const d = data.data;
+      if (!d) {
+        setError("Unexpected response from server.");
+        setStep("context");
+        return;
+      }
+      if (d.status === "invalid") {
+        setError(typeof d.missingFields === "string" ? d.missingFields : "Goal could not be validated. Refine your goal.");
+        setStep("context");
+        return;
+      }
+      if (d.status === "needs_clarification") {
+        setError("More detail is required before validation can continue.");
+        setStep("context");
+        return;
+      }
+      if (d.status !== "validated" || !d.paths || !d.blueprintId) {
+        setError("Validation did not return execution paths.");
+        setStep("context");
+        return;
+      }
+      setValidation({
+        blueprintId: d.blueprintId,
+        verdict: d.verdict ?? "adjust",
+        scores: (d.scores ?? {}) as ValidationResult["scores"],
+        paths: d.paths,
+        canProceed: d.canProceed !== false,
+      });
+      setStep("paths");
+    } catch {
+      setError("Cannot connect to server.");
+      setStep("context");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLaunch() {
+    if (!validation?.blueprintId) return;
+    setLoading(true);
+    setError("");
+    setStep("launching");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ selectedPath }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: { message?: string } };
+      if (!res.ok || !data.ok) {
+        setError(data.error?.message ?? "Failed to launch blueprint.");
+        setStep("paths");
+        return;
+      }
+      await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      setLocation("/dashboard");
+    } catch {
+      setError("Cannot connect to server.");
+      setStep("paths");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const riskColor = (r: string) =>
+    r === "low" ? "text-green-400" : r === "medium" ? "text-yellow-400" : "text-red-400";
+
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs font-mono">
-        <span className="text-muted-foreground">{label}</span>
-        <span className={score >= 70 ? "text-green-400" : score >= 50 ? "text-amber-400" : "text-red-400"}>{score}/100</span>
-      </div>
-      <div className="h-1 bg-secondary rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${colour}`} style={{ width: `${score}%` }} />
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-xl space-y-6">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-bold font-mono">
+            {step === "goal" && "Define Your Goal"}
+            {step === "context" && "Set The Context"}
+            {step === "validating" && "Analysing..."}
+            {step === "paths" && "Choose Your Path"}
+            {step === "launching" && "Launching Blueprint..."}
+          </h1>
+          <p className="text-xs font-mono text-muted-foreground uppercase">
+            {step === "goal" && "Step 1 of 3"}
+            {step === "context" && "Step 2 of 3"}
+            {(step === "paths" || step === "validating" || step === "launching") && "Step 3 of 3"}
+          </p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-8 space-y-6">
+          {step === "goal" && (
+            <>
+              <Field label="What is your goal?" required>
+                <textarea
+                  value={input.rawGoal}
+                  onChange={(e) => update("rawGoal", e.target.value)}
+                  placeholder="Be specific. What exactly will be different when this is achieved?"
+                  rows={3}
+                  className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label="Why does this matter?" required>
+                <textarea
+                  value={input.purpose}
+                  onChange={(e) => update("purpose", e.target.value)}
+                  placeholder="What changes in your life or work when this is complete?"
+                  rows={2}
+                  className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Timeframe" required>
+                  <Input
+                    value={input.timeframe}
+                    onChange={(e) => update("timeframe", e.target.value)}
+                    placeholder="e.g. 90 days"
+                  />
+                </Field>
+                <Field label="Commitment level" required>
+                  <select
+                    value={input.commitmentLevel}
+                    onChange={(e) => update("commitmentLevel", e.target.value as GoalInput["commitmentLevel"])}
+                    className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="low">Low — a few hours/week</option>
+                    <option value="medium">Medium — daily work</option>
+                    <option value="high">High — primary focus</option>
+                    <option value="full">Full — everything toward this</option>
+                  </select>
+                </Field>
+              </div>
+              <Button
+                onClick={() => setStep("context")}
+                disabled={!input.rawGoal.trim() || !input.purpose.trim() || !input.timeframe.trim()}
+                className="w-full font-mono uppercase text-xs"
+              >
+                Continue
+              </Button>
+            </>
+          )}
+
+          {step === "context" && (
+            <>
+              <Field label="Current situation">
+                <textarea
+                  value={input.currentContext}
+                  onChange={(e) => update("currentContext", e.target.value)}
+                  placeholder="What is your starting point? What do you already have or know?"
+                  rows={2}
+                  className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </Field>
+              <Field label="What does success look like?">
+                <Input
+                  value={input.successSignal}
+                  onChange={(e) => update("successSignal", e.target.value)}
+                  placeholder="How will you know when you have achieved this?"
+                />
+              </Field>
+              <Field label="Known blockers (optional)">
+                <Input
+                  value={input.knownBlockers}
+                  onChange={(e) => update("knownBlockers", e.target.value)}
+                  placeholder="What might slow you down?"
+                />
+              </Field>
+              {error && <p className="text-destructive text-sm font-mono">{error}</p>}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep("goal")} className="flex-1 font-mono text-xs uppercase">
+                  Back
+                </Button>
+                <Button onClick={handleValidate} disabled={loading} className="flex-[2] min-w-0 font-mono uppercase text-xs px-8">
+                  Validate Goal
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === "validating" && (
+            <div className="text-center py-8 space-y-4">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="font-mono text-muted-foreground text-sm">Analysing your goal...</p>
+            </div>
+          )}
+
+          {step === "paths" && validation && (
+            <>
+              <div className="bg-secondary/20 rounded-lg p-4 space-y-1">
+                <p className="text-xs font-mono text-muted-foreground uppercase">Validation Result</p>
+                <p
+                  className={`text-xl font-bold font-mono uppercase ${
+                    validation.verdict === "proceed"
+                      ? "text-green-400"
+                      : validation.verdict === "adjust"
+                        ? "text-yellow-400"
+                        : "text-orange-400"
+                  }`}
+                >
+                  {validation.verdict}
+                </p>
+                {validation.scores && (
+                  <div className="grid grid-cols-2 gap-1 mt-2">
+                    {Object.entries(validation.scores)
+                      .filter(([k]) => k !== "overall")
+                      .map(([key, s]) => (
+                        <div key={key} className="text-xs font-mono">
+                          <span className="text-muted-foreground capitalize">{key}: </span>
+                          <span className={s.score >= 60 ? "text-green-400" : "text-orange-400"}>{s.score}/100</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Choose your execution path:</p>
+                {(["current", "adjusted", "alternative"] as const).map((pathType) => {
+                  const path = validation.paths?.[pathType];
+                  if (!path) return null;
+                  return (
+                    <button
+                      type="button"
+                      key={pathType}
+                      onClick={() => setSelectedPath(pathType)}
+                      className={`w-full text-left border rounded-xl p-4 cursor-pointer transition-all ${
+                        selectedPath === pathType
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-secondary/10 hover:border-border/80"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-3 h-3 rounded-full border-2 shrink-0 ${
+                              selectedPath === pathType ? "border-primary bg-primary" : "border-muted-foreground"
+                            }`}
+                          />
+                          <span className="font-semibold text-sm">{path.title}</span>
+                        </div>
+                        <span className={`text-xs font-mono ${riskColor(path.riskLevel)}`}>{path.riskLevel} risk</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs ml-5">{path.summary}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {error && <p className="text-destructive text-sm font-mono">{error}</p>}
+
+              <Button onClick={handleLaunch} disabled={loading || !validation.canProceed} className="w-full font-mono uppercase text-xs">
+                {loading ? "Launching..." : "Launch Execution Blueprint"}
+              </Button>
+            </>
+          )}
+
+          {step === "launching" && (
+            <div className="text-center py-8 space-y-4">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="font-mono text-muted-foreground text-sm">Building your execution blueprint...</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function VerdictBadge({ verdict }: { verdict: string }) {
-  if (verdict === "proceed") {
-    return <span className="text-xs font-mono font-bold text-green-400 border border-green-400/40 rounded px-2 py-0.5">PROCEED</span>;
-  }
-  if (verdict === "adjust") {
-    return <span className="text-xs font-mono font-bold text-amber-400 border border-amber-400/40 rounded px-2 py-0.5">ADJUST</span>;
-  }
-  return <span className="text-xs font-mono font-bold text-red-400 border border-red-400/40 rounded px-2 py-0.5">PIVOT REQUIRED</span>;
-}
-
-function PathCard({
-  path,
-  selected,
-  onSelect,
-}: {
-  path: ValidationPath;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const riskColour = {
-    low:    "text-green-400 border-green-400/30",
-    medium: "text-amber-400 border-amber-400/30",
-    high:   "text-red-400 border-red-400/30",
-  }[path.riskLevel ?? "medium"] ?? "text-muted-foreground border-border";
-
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
-    <button
-      onClick={onSelect}
-      className={`w-full text-left p-4 rounded border transition-all space-y-3 ${
-        selected
-          ? "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary))]"
-          : "border-border hover:border-primary/50 bg-card/50"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-              {path.type}
-            </span>
-            <span className={`text-[10px] font-mono border rounded px-1.5 py-0.5 ${riskColour}`}>
-              {path.riskLevel?.toUpperCase()} RISK
-            </span>
-          </div>
-          <p className="font-bold font-mono text-sm">{path.title}</p>
-        </div>
-        {selected && <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0 mt-1" />}
-      </div>
-
-      <p className="text-xs text-muted-foreground leading-relaxed">{path.summary}</p>
-
-      <div className="text-xs text-muted-foreground">
-        <span className="text-primary/70 font-mono">EXPECTED:</span>{" "}
-        {path.expectedOutcome}
-      </div>
-
-      {path.keyChanges && (
-        <div className="text-xs text-muted-foreground">
-          <span className="text-primary/70 font-mono">CHANGES:</span>{" "}
-          {path.keyChanges}
-        </div>
-      )}
-    </button>
-  );
-}
-
-// ── MAIN PAGE ────────────────────────────────────────────────────────────────
-
-export default function Onboarding() {
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const idempotencyKey = useId();
-
-  const [step, setStep] = useState<Step>("goal_entry");
-  const [rawGoal, setRawGoal] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [timeframe, setTimeframe] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [currentContext, setCurrentContext] = useState("");
-  const [successSignal, setSuccessSignal] = useState("");
-
-  const [onboardingResult, setOnboardingResult] = useState<OnboardingGoalResult | null>(null);
-  const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative" | null>(null);
-
-  const submitGoal   = useSubmitOnboardingGoal();
-  const activateBp   = useActivateBlueprint();
-
-  const stepNum = { goal_entry: 1, validation_result: 2, path_selection: 3, activating: 4 }[step];
-
-  // ── STEP 1: submit goal ──────────────────────────────────────────────────
-
-  const handleSubmitGoal = () => {
-    if (!rawGoal.trim()) return;
-    submitGoal.mutate(
-      {
-        data: {
-          rawGoal,
-          purpose:        purpose || undefined,
-          timeframe:      timeframe || undefined,
-          currentContext: currentContext || undefined,
-          successSignal:  successSignal || undefined,
-          idempotencyKey: `onboarding_${idempotencyKey}`,
-        },
-      },
-      {
-        onSuccess: (res) => {
-          const r = res as unknown as OnboardingGoalResult;
-          setOnboardingResult(r);
-
-          if (r.status === "invalid" || r.status === "needs_clarification") {
-            toast({
-              title:       r.status === "invalid" ? "Goal needs more detail" : "A few things are missing",
-              description: r.missingFields?.join(", ") ?? "Add more context to proceed.",
-              variant:     "destructive",
-            });
-            return;
-          }
-
-          setStep("validation_result");
-        },
-        onError: () => {
-          toast({ title: "Could not process goal", variant: "destructive" });
-        },
-      },
-    );
-  };
-
-  // ── STEP 2 → 3: advance to path selection ───────────────────────────────
-
-  const handleProceedToPathSelection = () => {
-    setStep("path_selection");
-  };
-
-  // ── STEP 3 → activate ────────────────────────────────────────────────────
-
-  const handleActivate = () => {
-    const blueprintId = onboardingResult?.blueprintId;
-    if (!blueprintId) return;
-
-    setStep("activating");
-
-    activateBp.mutate(
-      {
-        id:   blueprintId,
-        data: { selectedPath: selectedPath ?? undefined },
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Blueprint activated" });
-          setLocation(`/blueprint/${blueprintId}`);
-        },
-        onError: () => {
-          setStep("path_selection");
-          toast({ title: "Activation failed — please try again", variant: "destructive" });
-        },
-      },
-    );
-  };
-
-  // ── RENDER ────────────────────────────────────────────────────────────────
-
-  const paths = onboardingResult?.paths;
-  const scores = onboardingResult?.scores;
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-2xl space-y-8 animate-in fade-in zoom-in duration-700">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
-            <TerminalSquare className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-mono font-bold tracking-tight">INITIALIZE SYSTEM</h1>
-          <div className="w-full max-w-md mx-auto">
-            <Progress value={(stepNum / 4) * 100} className="h-1 bg-secondary" />
-          </div>
-          <p className="text-xs font-mono text-muted-foreground">STEP {stepNum} OF 4</p>
-        </div>
-
-        <Card className="border-primary/20 shadow-2xl bg-card/80 backdrop-blur-xl">
-          <CardContent className="p-8">
-
-            {/* ── STEP 1: Goal Entry ─────────────────────────────────────── */}
-            {step === "goal_entry" && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold font-mono">STATE YOUR OBJECTIVE</h2>
-                  <p className="text-sm text-muted-foreground">Be raw. Be honest. What are you trying to accomplish?</p>
-                </div>
-
-                <Textarea
-                  value={rawGoal}
-                  onChange={(e) => setRawGoal(e.target.value)}
-                  placeholder="e.g., I want to build a SaaS app and reach $10k MRR in 6 months..."
-                  className="min-h-[120px] font-mono text-sm bg-background border-border resize-none focus-visible:ring-primary/50"
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-mono text-muted-foreground">WHY THIS GOAL?</Label>
-                    <Input
-                      value={purpose}
-                      onChange={(e) => setPurpose(e.target.value)}
-                      placeholder="To become financially free"
-                      className="font-mono text-sm bg-background"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-mono text-muted-foreground">TIMEFRAME</Label>
-                    <Input
-                      value={timeframe}
-                      onChange={(e) => setTimeframe(e.target.value)}
-                      placeholder="e.g., 6 months"
-                      className="font-mono text-sm bg-background"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-xs font-mono text-primary/60 hover:text-primary flex items-center gap-1"
-                >
-                  <ChevronRight className={`w-3 h-3 transition-transform ${showAdvanced ? "rotate-90" : ""}`} />
-                  {showAdvanced ? "HIDE" : "ADD"} CONTEXT (optional)
-                </button>
-
-                {showAdvanced && (
-                  <div className="grid grid-cols-1 gap-4 border-t border-border pt-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-mono text-muted-foreground">CURRENT SITUATION</Label>
-                      <Input
-                        value={currentContext}
-                        onChange={(e) => setCurrentContext(e.target.value)}
-                        placeholder="e.g., Currently at $0 MRR, product is live with 50 users"
-                        className="font-mono text-sm bg-background"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-mono text-muted-foreground">SUCCESS SIGNAL</Label>
-                      <Input
-                        value={successSignal}
-                        onChange={(e) => setSuccessSignal(e.target.value)}
-                        placeholder="e.g., Quit my job and work on this full-time"
-                        className="font-mono text-sm bg-background"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleSubmitGoal}
-                  disabled={!rawGoal.trim() || submitGoal.isPending}
-                  className="w-full font-mono font-bold tracking-widest"
-                >
-                  {submitGoal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  ANALYZE INTENT
-                </Button>
-              </div>
-            )}
-
-            {/* ── STEP 2: Validation Result ─────────────────────────────── */}
-            {step === "validation_result" && onboardingResult && scores && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-bold font-mono">SYSTEM ANALYSIS</h2>
-                    <p className="text-sm text-muted-foreground">Bhudhi has evaluated your goal.</p>
-                  </div>
-                  <VerdictBadge verdict={onboardingResult.verdict ?? "adjust"} />
-                </div>
-
-                <div className="p-4 bg-secondary/50 rounded border border-border space-y-3">
-                  <div className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-2">SCORES</div>
-                  <ScoreBar label="CLARITY"     score={scores.clarity?.score     ?? 0} />
-                  <ScoreBar label="FEASIBILITY" score={scores.feasibility?.score ?? 0} />
-                  <ScoreBar label="REALISM"     score={scores.realism?.score     ?? 0} />
-                  <ScoreBar label="USEFULNESS"  score={scores.usefulness?.score  ?? 0} />
-                  <div className="pt-2 border-t border-border">
-                    <ScoreBar label="OVERALL" score={scores.overall ?? 0} />
-                  </div>
-                </div>
-
-                {onboardingResult.verdict === "pivot" && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded flex gap-2 text-destructive/80 text-xs font-mono">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    Your goal needs significant restructuring. Three alternative paths have been generated below.
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep("goal_entry")} className="font-mono w-1/3">
-                    <ArrowLeft className="w-3 h-3 mr-1" /> REVISE
-                  </Button>
-                  <Button onClick={handleProceedToPathSelection} className="font-mono font-bold w-2/3">
-                    CHOOSE EXECUTION PATH <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: Path Selection ────────────────────────────────── */}
-            {step === "path_selection" && paths && (
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-bold font-mono">CHOOSE YOUR PATH</h2>
-                  <p className="text-sm text-muted-foreground">Select how you want Torgima to structure your execution.</p>
-                </div>
-
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  {(["current", "adjusted", "alternative"] as const).map((type) => {
-                    const path = paths[type] as ValidationPath | undefined;
-                    if (!path) return null;
-                    return (
-                      <PathCard
-                        key={type}
-                        path={path}
-                        selected={selectedPath === type}
-                        onSelect={() => setSelectedPath(type)}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded">
-                  <div className="flex gap-2 text-destructive font-mono text-sm font-bold mb-2">
-                    <AlertCircle className="w-4 h-4" /> WARNING
-                  </div>
-                  <p className="text-xs text-destructive/80 font-mono">
-                    Activating this blueprint hands execution authority to Torgima. You will be held to the standard required to achieve this goal.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep("validation_result")} className="font-mono w-1/3">
-                    <ArrowLeft className="w-3 h-3 mr-1" /> BACK
-                  </Button>
-                  <Button
-                    onClick={handleActivate}
-                    disabled={!selectedPath}
-                    className="font-mono font-bold w-2/3 tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 h-12"
-                  >
-                    ACKNOWLEDGE AND ACTIVATE
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 4: Activating ───────────────────────────────────── */}
-            {step === "activating" && (
-              <div className="space-y-6 text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold font-mono">ACTIVATING BLUEPRINT</h2>
-                  <p className="text-sm text-muted-foreground font-mono">Building your execution chain...</p>
-                </div>
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-1.5">
+      <label className="text-xs font-mono uppercase text-muted-foreground">
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </label>
+      {children}
     </div>
   );
 }

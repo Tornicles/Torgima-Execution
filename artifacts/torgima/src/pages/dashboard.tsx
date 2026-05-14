@@ -28,7 +28,23 @@ export default function Dashboard() {
   }
 
   if (!state) {
-    return <div className="p-8">Failed to load dashboard.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 font-mono text-center p-8">
+        <p className="text-muted-foreground">Cannot connect to execution server.</p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          Make sure the API server is running. Check your connection and try refreshing.
+        </p>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => window.location.reload()} className="text-xs text-primary underline">
+            Refresh
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <a href="/login" className="text-xs text-primary underline">
+            Sign in again
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -186,7 +202,7 @@ function DashboardChrome({
                         <p className="text-xs text-muted-foreground font-mono">EST: {order.estimatedMinutes} MIN</p>
                       ) : null}
                     </div>
-                    <Link href={`/task/${order.id}`}>
+                    <Link href={`/tasks/${order.id}`}>
                       <Button variant="default" className="font-mono uppercase text-xs w-full sm:w-auto shadow-[0_0_15px_rgba(0,180,255,0.2)] hover:shadow-[0_0_20px_rgba(0,180,255,0.4)] transition-all">
                         <Play className="w-3 h-3 mr-2" /> EXECUTE
                       </Button>
@@ -289,7 +305,7 @@ function PrimaryActionBanner({ action }: { action: ReturnType<typeof parseCurren
           </CardDescription>
           <CardTitle className="text-xl">{action.title}</CardTitle>
         </div>
-        <Link href={`/task/${action.orderId}`}>
+        <Link href={`/tasks/${action.orderId}`}>
           <Button className="font-mono uppercase text-xs shrink-0">
             <Play className="mr-2 h-3 w-3" /> Execute
           </Button>

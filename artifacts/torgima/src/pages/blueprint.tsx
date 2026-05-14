@@ -152,7 +152,7 @@ export default function BlueprintPage() {
                   </div>
                   <h3 className="font-bold">{order.title}</h3>
                 </div>
-                <Link href={`/task/${order.id}`}>
+                <Link href={`/tasks/${order.id}`}>
                   <Button variant="secondary" size="sm" className="font-mono text-xs">OPEN</Button>
                 </Link>
               </div>
