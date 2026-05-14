@@ -3,8 +3,8 @@
   "buildCommand": "cd artifacts/torgima && pnpm run build",
   "outputDirectory": "artifacts/torgima/dist",
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

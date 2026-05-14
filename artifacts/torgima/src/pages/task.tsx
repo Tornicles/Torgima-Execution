@@ -10,9 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Textarea } from "@/components/ui/textarea";
 
 export default function TaskPage() {
-  const { id } = useParams();
+  const { orderId } = useParams<{ orderId: string }>();
   const [_, setLocation] = useLocation();
-  const { data: order, isLoading, refetch } = useGetOrder(id!);
+  const { data: order, isLoading, refetch } = useGetOrder(orderId!);
 
   const startMutation = useStartOrder();
   const blockMutation = useBlockOrder();
@@ -30,13 +30,13 @@ export default function TaskPage() {
   if (!order) return <div className="p-8 font-mono">Order not found.</div>;
 
   const handleStart = () => {
-    startMutation.mutate({ id: id! }, {
+    startMutation.mutate({ id: orderId! }, {
       onSuccess: () => refetch()
     });
   };
 
   const handleBlock = () => {
-    blockMutation.mutate({ id: id!, data: { reason: blockReason } }, {
+    blockMutation.mutate({ id: orderId!, data: { reason: blockReason } }, {
       onSuccess: () => {
         setIsBlockOpen(false);
         refetch();
@@ -51,7 +51,7 @@ export default function TaskPage() {
   const submitFeedback = () => {
     feedbackMutation.mutate({
       data: {
-        orderId: id!,
+        orderId: orderId!,
         completionRating,
         effortRating,
         notes

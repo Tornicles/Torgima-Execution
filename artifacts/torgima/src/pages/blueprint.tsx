@@ -45,7 +45,7 @@ export default function BlueprintPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center gap-4 text-muted-foreground font-mono text-sm mb-4">
-        <Link href="/"><span className="hover:text-primary cursor-pointer transition-colors flex items-center"><ArrowLeft className="w-3 h-3 mr-1" /> BACK TO DASHBOARD</span></Link>
+        <Link href="/dashboard"><span className="hover:text-primary cursor-pointer transition-colors flex items-center"><ArrowLeft className="w-3 h-3 mr-1" /> BACK TO DASHBOARD</span></Link>
       </div>
 
       <header className="space-y-4">

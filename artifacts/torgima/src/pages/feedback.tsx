@@ -1,15 +1,22 @@
+import { useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function FeedbackPage() {
+  const params = useParams<{ orderId?: string }>();
+  const orderId = params.orderId;
+
   // Currently a stub for weekly review submission
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in">
       <header className="space-y-2 border-b border-border pb-6">
         <h1 className="text-3xl font-bold font-mono tracking-tight flex items-center gap-3">
           <MessageSquare className="w-8 h-8 text-primary" /> SYSTEM_FEEDBACK
+          {orderId ? (
+            <span className="text-xs font-mono text-muted-foreground normal-case"> / ORDER {orderId}</span>
+          ) : null}
         </h1>
         <p className="text-muted-foreground font-mono text-sm">Process reviews and system interrogations.</p>
       </header>

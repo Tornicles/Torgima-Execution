@@ -11,10 +11,21 @@ import {
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 
+const PUBLIC_SHELL_PATHS = new Set([
+  "/",
+  "/login",
+  "/verify",
+  "/notifications/unsubscribe",
+]);
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: me } = useGetMe();
-  
+
+  if (PUBLIC_SHELL_PATHS.has(location) || location.startsWith("/notifications/unsubscribe")) {
+    return <div className="min-h-screen bg-background font-sans text-foreground">{children}</div>;
+  }
+
   if (location === "/onboarding") {
     return <div className="min-h-screen bg-background font-sans text-foreground">{children}</div>;
   }
@@ -25,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 border-r border-border bg-sidebar flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center px-6 border-b border-border">
-            <Link href="/">
+            <Link href="/dashboard">
               <div className="flex items-center gap-3 cursor-pointer text-primary font-mono tracking-tight font-bold text-lg hover:text-primary/80 transition-colors">
                 <TerminalSquare className="h-5 w-5" />
                 <span>TORGIMA_OS</span>
@@ -34,9 +45,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           
           <nav className="p-4 space-y-1 mt-4">
-            <NavItem href="/" icon={LayoutDashboard} label="Dashboard" active={location === "/"} />
+            <NavItem
+              href="/dashboard"
+              icon={LayoutDashboard}
+              label="Dashboard"
+              active={location === "/dashboard"}
+            />
             <NavItem href="/signals" icon={Activity} label="Signals" active={location === "/signals"} />
-            <NavItem href="/task/current" icon={CheckSquare} label="Active Task" active={location.startsWith("/task")} />
+            <NavItem
+              href="/tasks/current"
+              icon={CheckSquare}
+              label="Active Task"
+              active={location.startsWith("/tasks")}
+            />
             <NavItem href="/feedback" icon={MessageSquare} label="Feedback" active={location === "/feedback"} />
             <NavItem href="/identity" icon={Target} label="Identity" active={location === "/identity"} />
           </nav>

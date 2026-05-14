@@ -87,7 +87,7 @@ export function CompletionScreen({ blueprintId }: CompletionScreenProps) {
           <Link href="/onboarding">
             <Button className="w-full font-mono uppercase text-xs sm:w-auto">Start new blueprint</Button>
           </Link>
-          <Link href="/">
+          <Link href="/dashboard">
             <Button variant="outline" className="w-full font-mono uppercase text-xs sm:w-auto">
               Return home
             </Button>
