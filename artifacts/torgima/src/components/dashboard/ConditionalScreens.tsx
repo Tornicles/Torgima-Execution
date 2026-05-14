@@ -1,8 +1,9 @@
-import type { DashboardState } from "@workspace/api-client-react";
 import { BlueprintStatus } from "@workspace/api-client-react";
 import { CompletionScreen } from "@/components/dashboard/CompletionScreen";
 import { PausedOverlay } from "@/components/dashboard/PausedOverlay";
 import { PivotReviewScreen } from "@/components/dashboard/PivotReviewScreen";
+
+type DashboardState = Record<string, any>;
 
 /** Full-viewport overlays driven by Prompt 15 dashboard projection precedence. */
 export function ConditionalScreen({ state }: { state: DashboardState }) {

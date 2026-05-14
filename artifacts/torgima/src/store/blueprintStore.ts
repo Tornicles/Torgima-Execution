@@ -1,4 +1,4 @@
-import type { DashboardState } from "@workspace/api-client-react";
+type DashboardState = Record<string, any>;
 import { create } from "zustand";
 
 interface BlueprintStore {

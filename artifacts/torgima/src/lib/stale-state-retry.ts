@@ -1,10 +1,7 @@
-import {
-  ApiError,
-  getDashboardState,
-  getGetDashboardStateQueryKey,
-  type DashboardState,
-} from "@workspace/api-client-react";
+import { ApiError, getDashboardState, getGetDashboardStateQueryKey } from "@workspace/api-client-react";
 import type { QueryClient } from "@tanstack/react-query";
+
+type DashboardState = Record<string, any>;
 
 export function isStaleStateConflict(err: unknown): boolean {
   if (!(err instanceof ApiError) || err.status !== 409) return false;
@@ -16,7 +13,8 @@ export function isStaleStateConflict(err: unknown): boolean {
   const code = data?.error?.code ?? data?.code;
   if (code === "STALE_STATE") return true;
   if (typeof data?.error?.message === "string" && /STALE_STATE/i.test(data.error.message)) return true;
-  return /STALE_STATE|stale state|State changed/i.test(err.message);
+  const error = err as Error;
+  return /STALE_STATE|stale state|State changed/i.test(error.message);
 }
 /**
  * Refetches dashboard, then re-runs the mutation with the latest `stateVersion`.
@@ -45,14 +43,14 @@ export async function withDashboardStaleRetry<T>(
 
   try {
     return await attempt(dash.stateVersion ?? 0);
-  } catch (e) {
-    if (!isStaleStateConflict(e)) throw e;
+  } catch (err) {
+    if (!isStaleStateConflict(err)) throw err;
     const refreshed = await queryClient.fetchQuery({
       queryKey: key,
       queryFn: ({ signal }) => getDashboardState({ signal }),
       staleTime: 0,
     });
-    if (refreshed == null) throw e;
+    if (refreshed == null) throw err as Error;
     dash = refreshed;
     return await attempt(dash.stateVersion ?? 0);
   }

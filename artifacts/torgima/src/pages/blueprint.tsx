@@ -4,8 +4,9 @@ import {
   usePauseBlueprint,
   useResumeBlueprint,
 } from "@workspace/api-client-react";
-import type { Order } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
+
+type Order = Record<string, any>;
 import {
   ArrowLeft,
   Info,
@@ -85,8 +86,8 @@ export default function BlueprintPage() {
   const currentPhase = blueprint.phase ?? 1;
   const overall = Math.round(state.phaseProgress ?? 0);
   const orders = state.activeOrders ?? [];
-  const completedOrders = orders.filter((o) => o.status === "complete").length;
-  const nextOrder = orders.find((o) => o.status !== "complete");
+  const completedOrders = orders.filter((o: any) => o.status === "complete").length;
+  const nextOrder = orders.find((o: any) => o.status !== "complete");
 
   const handlePause = () => {
     pauseMutation.mutate(
@@ -283,7 +284,7 @@ export default function BlueprintPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {phaseOrders.map((order) => {
+                              {phaseOrders.map((order: any) => {
                                 const st = orderStatusLabel(order);
                                 const pct = orderProgress(order);
                                 return (
@@ -359,8 +360,10 @@ export default function BlueprintPage() {
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Upcoming Milestones</p>
             <ul className="space-y-4">
-              {(nextOrder ? [nextOrder, ...orders.filter((o) => o.id !== nextOrder.id).slice(0, 2)] : orders.slice(0, 3)).map(
-                (o, i) => (
+              {(nextOrder
+                ? [nextOrder, ...orders.filter((o: any) => o.id !== nextOrder.id).slice(0, 2)]
+                : orders.slice(0, 3)
+              ).map((o: any, i: any) => (
                   <li key={o.id} className="flex gap-3">
                     {i === 0 ? (
                       <Star className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
@@ -372,8 +375,7 @@ export default function BlueprintPage() {
                       <p className="text-xs text-gray-500 mt-0.5 capitalize">{o.status.replace("_", " ")}</p>
                     </div>
                   </li>
-                ),
-              )}
+                ))}
               {orders.length === 0 && <li className="text-sm text-gray-500">Milestones appear as orders are generated.</li>}
             </ul>
           </div>

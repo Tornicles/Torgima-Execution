@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { Calendar, TrendingUp, Zap, ChevronRight, CheckCircle2, Circle, MessageSquare } from "lucide-react";
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
-import type { DashboardState, Order } from "@workspace/api-client-react";
+type DashboardState = Record<string, any>;
+type Order = Record<string, any>;
 
 function getHourGreeting() {
   const h = new Date().getHours();
