@@ -7,6 +7,13 @@ The repo is a pnpm monorepo with two deployable artifacts that **MUST be hosted 
 | `artifacts/torgima` | Vite + React 19 SPA | **Vercel** (static hosting) |
 | `artifacts/api-server` | Express 5 API + pg-boss workers + event dispatcher loop | **Long-running platform** (Railway / Fly.io / Render / VM) — **NOT Vercel** |
 
+## One Vercel project only (frontend)
+
+Link **exactly one** Vercel project to this GitHub repo, at the **repository root**, for the SPA.
+
+- **Do not** create a second Vercel project such as `torgima-execution-api-server`. The Express app is not a valid Vercel serverless deployment for this codebase; builds fail or production never activates, and **GitHub commit checks** stay red (`Vercel - … api-server`).
+- Production API traffic belongs on **Railway** (or another long-running Node host). The SPA must use **`VITE_API_BASE_URL`** pointing at that API URL.
+
 ## Why the API can't run on Vercel
 
 Vercel's serverless functions can't run any of the following, all of which are core to the API:
@@ -18,7 +25,7 @@ Vercel's serverless functions can't run any of the following, all of which are c
 
 Each of these requires a persistent Node process, which Vercel doesn't provide. Trying to "split" the API across Vercel functions would require ripping out pg-boss entirely (replace with Inngest / Trigger.dev / Vercel Queues) — that's a separate, much larger refactor.
 
-The pragmatic split is: **frontend on Vercel, API + workers on a Node host that supports `node dist/server.js` and `node dist/workers/start.js` as long-running processes.**
+The pragmatic split is: **frontend on Vercel, API + in-process workers on a Node host** (see Railway below).
 
 ---
 
@@ -26,7 +33,7 @@ The pragmatic split is: **frontend on Vercel, API + workers on a Node host that 
 
 ### One-time project setup
 
-1. Create a new Vercel project from the GitHub repo `Tornicles/Torgima-Execution`.
+1. Create **one** Vercel project from the GitHub repo `Tornicles/Torgima-Execution` (frontend only — see [One Vercel project only](#one-vercel-project-only-frontend)).
 2. **Root Directory:** leave as the repo root (`/`). The `vercel.json` at the repo root drives build configuration; it must be at the root for the pnpm workspace to resolve `@workspace/*` packages.
 3. **Framework Preset:** "Other".
 4. Vercel auto-detects pnpm via the lockfile. `vercel.json` already specifies the install/build commands.
@@ -41,13 +48,14 @@ That is the only variable the SPA needs. **No trailing slash.** It must point to
 
 `PORT` and `BASE_PATH` are **NOT** required on Vercel — they are only used by `vite dev` / `vite preview` for local development. The Vite config (`artifacts/torgima/vite.config.ts`) defaults them when running under `vite build`.
 
-### What `vercel.json` does
+### What root `vercel.json` does (must stay at repo root)
 
-- `installCommand`: `pnpm install --no-frozen-lockfile` — uses pnpm at the workspace root, tolerant of catalog drift between local and Vercel's pnpm version.
-- `buildCommand`: `pnpm -F @workspace/torgima build` — builds only the SPA, not the API or other workspace packages.
-- `outputDirectory`: `artifacts/torgima/dist/public` — matches Vite's configured `outDir`.
-- `rewrites`: serves `/index.html` for any non-asset route so wouter's client-side routing works on hard refresh / direct links.
-- `headers`: 1-year immutable cache for hashed static assets in `/assets/*`.
+- **`installCommand`**: `pnpm install --no-frozen-lockfile` — workspace-wide install so `@workspace/*` packages resolve.
+- **`buildCommand`**: `pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/torgima build` — shared client typings/build, then the SPA.
+- **`outputDirectory`**: `artifacts/torgima/dist` — matches Vite `outDir` (`dist` under `artifacts/torgima`).
+- **`routes`**: filesystem first, then `/(.*)` → `/index.html` for client-side routing (wouter) on refresh and deep links.
+
+If anything here drifts from the actual `vercel.json` in git, trust the checked-in JSON.
 
 ### Local copy of build env
 
@@ -57,12 +65,14 @@ For local Vercel-style builds, copy `artifacts/torgima/.env.example` to `artifac
 
 ## API + workers → Long-running host
 
-The API service is a **single deployable unit** that runs two processes:
+The packaged service (`pnpm --filter @workspace/api-server build` → `pnpm --filter @workspace/api-server start`) runs **one Node process**:
 
-1. **Web** — `node dist/server.js` (Express on `$PORT`)
-2. **Worker** — `node dist/workers/start.js` (registers all pg-boss workers, starts the event dispatcher loop, and the scheduled health-check interval)
+- **`start`** executes `node --enable-source-maps ./dist/index.mjs`.
+- **`index`** binds Express on **`PORT`** and then calls **`startWorkers()`**, which registers **pg-boss** workers and the **`setInterval` event dispatcher**.
 
-You can run both on the same host as separate processes (Railway/Render Procfile-style), or split them across two services that share the same `DATABASE_URL`.
+So web + worker logic share **one deployment** — which matches `artifacts/api-server/railway.json` (`pnpm --filter @workspace/api-server start`).
+
+(Optional advanced setup: split web and `./dist/workers/start.mjs` into two Railway services with the same `DATABASE_URL`; not required by default.)
 
 ### Required environment variables
 
@@ -71,9 +81,10 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Postgres URL. Provider must support `LISTEN`/`NOTIFY` and `pg_advisory_lock` (Supabase / Neon / Railway Postgres / RDS all qualify). |
-| `FRONTEND_URL` | Required for production browsers | Exact SPA origin (`https://app.vercel.app`) for credentialed CORS. Comma-separated for multiple preview deployments. Omit in local dev to allow permissive `origin`. |
-| `AI_INTEGRATIONS_ANTHROPIC_API_KEY` | Yes for Bhudhi | Without it, `BhudhiService` will fail; deterministic fallbacks still work. |
-| `RESEND_API_KEY` | Yes in production | Without it, `sendMagicLink` returns `{ sent: false }` and auth doesn't work for new users. Dev mode logs the magic link to the console regardless. |
+| `PORT` | Yes on Railway etc. | e.g. `3001`; required at boot — see `artifacts/api-server/src/index.ts`. |
+| `FRONTEND_URL` | Required for production browsers | Exact SPA origin (e.g. `https://torgima-execution.vercel.app`) for credentialed CORS. Comma-separated for multiple preview deployments. |
+| `ANTHROPIC_API_KEY` | Yes for Bhudhi | Preferred. Legacy alias: `AI_INTEGRATIONS_ANTHROPIC_API_KEY`. Without either, Bhudhi features degrade. |
+| `RESEND_API_KEY` | Yes in production | Email for magic links. Without it, `sendMagicLink` can still persist the session but `{ sent: false }`. Dev logs magic link URLs when not production. |
 | `RESEND_WEBHOOK_SECRET` | Recommended in production | Signing secret from the Resend dashboard for **webhooks**. Used by `POST /api/webhooks/notifications/bounce` (Svix verification). If unset, the public webhook still accepts JSON in development but will not verify signatures. Register the public URL in Resend after deploy. |
 | `EMAIL_FROM` | Recommended | Defaults to `noreply@torgima.com`. |
 | `EMAIL_REPLY_TO` | Optional | Defaults to `support@torgima.com`. |
@@ -117,15 +128,16 @@ pnpm -F @workspace/api-spec codegen
 ```
 GitHub: Tornicles/Torgima-Execution (main)
     │
-    ├──► Vercel (auto-deploy on push to main)
-    │       Builds artifacts/torgima → static SPA
-    │       Reads:  VITE_API_BASE_URL
+    ├──► Vercel (one project — SPA only — auto-deploy on push)
+    │       Builds: @workspace/api-client-react → @workspace/torgima (see root vercel.json)
+    │       Reads:  VITE_API_BASE_URL (= public Railway API URL, no trailing slash)
     │
     └──► Railway / Fly.io / Render (manual or auto-deploy on push)
-            Builds artifacts/api-server + lib/db
-            Runs:   node dist/server.js  (web)
-                    node dist/workers/start.js  (worker)
-            Reads:  DATABASE_URL, FRONTEND_URL, AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+            Build + start (see railway.json):  pnpm --filter @workspace/api-server start
+            → node ./dist/index.mjs (Express + workers in one process)
+
+            Reads:  DATABASE_URL, PORT, FRONTEND_URL,
+                    ANTHROPIC_API_KEY (or legacy AI_INTEGRATIONS_ANTHROPIC_API_KEY),
                     RESEND_API_KEY, EMAIL_FROM, EMAIL_REPLY_TO,
                     NODE_ENV, LOG_LEVEL, BHUDHI_*
 ```
