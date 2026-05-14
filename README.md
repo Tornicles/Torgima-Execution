@@ -26,4 +26,6 @@ pnpm run build
 
 ## CI
 
-GitHub Actions **CI** workflow (`.github/workflows/ci.yml`) runs `pnpm run typecheck` and `pnpm run build` on pushes and PRs to `main`.
+GitHub Actions **CI** (`.github/workflows/ci.yml`): `pnpm install --frozen-lockfile`, then `pnpm run typecheck` and `pnpm run build` on pushes and PRs to `main`.
+
+`pnpm-workspace.yaml` sets **`strictDepBuilds: false`** so non-interactive CI does not exit with an error when a dependency wants build-script approval (use **`pnpm approve-builds`** locally to expand **`allowBuilds`** over time).

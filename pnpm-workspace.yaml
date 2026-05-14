@@ -10,6 +10,10 @@ allowBuilds:
   msw: true
   unrs-resolver: true
 
+# pnpm 11+ (strictDepBuilds default true) fails non-interactive CI when deps need build scripts
+# not listed above. Use `pnpm approve-builds` locally to grow the list over time.
+strictDepBuilds: false
+
 autoInstallPeers: false
 
 catalog:
