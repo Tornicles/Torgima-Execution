@@ -76,7 +76,8 @@ app.use(
   }),
 );
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// Express 5 / path-to-regexp@8 rejects bare "*"; use a named splat for OPTIONS preflight.
+app.options("/{*splat}", cors(corsOptions));
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
