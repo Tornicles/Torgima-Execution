@@ -1,8 +1,11 @@
+import type { ComponentProps } from "react"
 import { Loader2Icon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
+type LoaderProps = Omit<ComponentProps<typeof Loader2Icon>, "children" | "ref">
+
+function Spinner({ className, ...props }: LoaderProps) {
   return (
     <Loader2Icon
       role="status"

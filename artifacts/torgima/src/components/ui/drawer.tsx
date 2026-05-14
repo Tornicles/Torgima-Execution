@@ -16,7 +16,10 @@ Drawer.displayName = "Drawer"
 
 const DrawerTrigger = DrawerPrimitive.Trigger
 
-const DrawerPortal = DrawerPrimitive.Portal
+/** Wrapper: vaul’s Portal typing can omit `children` under React 19, but the runtime API accepts them. */
+function DrawerPortal({ children }: { children: React.ReactNode }) {
+  return <DrawerPrimitive.Portal>{children}</DrawerPrimitive.Portal>
+}
 
 const DrawerClose = DrawerPrimitive.Close
 
