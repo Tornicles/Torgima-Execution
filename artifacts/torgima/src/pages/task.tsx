@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { ChevronRight, Clock, Zap, Camera } from "lucide-react";
+import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+
+type Trace = { goal?: string; plan?: string; phase?: string; project?: string; action?: string; task?: string };
 
 type CommandCtx = {
   where?: string;
   how?: string;
+  proof?: string;
+  unlockConsequence?: string;
+  aiPromptIfNeeded?: string | null;
+  platformIfNeeded?: string | null;
+  traceChain?: Trace;
   whatItUnlocks?: string;
   contributesTo?: string;
 };
@@ -21,9 +28,6 @@ type OrderVm = {
   taskType?: string;
   difficulty?: string | null;
   priority?: number;
-  phaseName?: string | null;
-  projectName?: string | null;
-  actionName?: string | null;
   commandContext?: CommandCtx;
   knowledgeObjects?: Array<{ id: string; title: string; content?: string | null }>;
 };
@@ -35,6 +39,7 @@ export default function TaskPage() {
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!orderId || !API_BASE_URL) return;
@@ -59,28 +64,34 @@ export default function TaskPage() {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
-    });
+    }).catch(() => null);
     setStarted(true);
+  }
+
+  function copyAIPrompt() {
+    const prompt = order?.commandContext?.aiPromptIfNeeded;
+    if (!prompt || typeof prompt !== "string") return;
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-gray-400 font-mono uppercase">Loading execution order</p>
       </div>
     );
   }
 
-  if (!order) {
+  if (!order || !API_BASE_URL) {
     return (
       <div className="p-8 text-center">
-        <p className="text-gray-500">Order not found</p>
-        <button
-          type="button"
-          onClick={() => setLocation("/orders")}
-          className="mt-4 text-green-600 underline text-sm"
-        >
-          Back to orders
+        <p className="text-gray-500 text-sm">Order not found.</p>
+        <button type="button" onClick={() => setLocation("/orders")} className="mt-3 text-green-600 underline text-sm">
+          Return to execution queue
         </button>
       </div>
     );
@@ -89,156 +100,223 @@ export default function TaskPage() {
   const timeLimit = order.timeEstimateMinutes ?? 45;
   const timeProgress = Math.min((timeElapsed / (timeLimit * 60)) * 100, 100);
   const isOverTime = timeElapsed > timeLimit * 60;
-
-  const commandContext = order.commandContext ?? {};
+  const ctx = order.commandContext ?? {};
+  const trace = ctx.traceChain ?? {};
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-        <span>GOAL</span>
-        <ChevronRight className="w-3 h-3" />
-        <span>{order.phaseName ?? "PHASE"}</span>
-        <ChevronRight className="w-3 h-3" />
-        <span>{order.projectName ?? "PROJECT"}</span>
-        <ChevronRight className="w-3 h-3" />
-        <span>{order.actionName ?? "ACTION"}</span>
-        <ChevronRight className="w-3 h-3" />
+    <div className="max-w-3xl mx-auto p-6 space-y-5">
+      <div className="flex items-center gap-1.5 flex-wrap text-xs text-gray-400 font-mono">
+        {trace.goal ? (
+          <>
+            <span className="text-gray-700 max-w-[10rem] truncate">{trace.goal}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+          </>
+        ) : null}
+        {trace.plan ? (
+          <>
+            <span className="max-w-[8rem] truncate">{trace.plan}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+          </>
+        ) : null}
+        {trace.phase ? (
+          <>
+            <span className="max-w-[8rem] truncate">{trace.phase}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+          </>
+        ) : null}
+        {trace.project ? (
+          <>
+            <span className="max-w-[8rem] truncate">{trace.project}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+          </>
+        ) : null}
+        {trace.action ? (
+          <>
+            <span className="max-w-[8rem] truncate">{trace.action}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+          </>
+        ) : null}
         <span className="text-green-600 font-bold">THIS ORDER</span>
       </div>
 
-      <div className="bg-gray-900 text-white rounded-2xl p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
-            {order.taskType?.toUpperCase() ?? "EXECUTION ORDER"} · {order.difficulty?.toUpperCase() ?? "—"}
-          </span>
-          <span
-            className={`text-xs font-mono px-2 py-1 rounded ${
-              (order.priority ?? 0) > 5 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
-            }`}
-          >
-            {(order.priority ?? 0) > 5 ? `PRIORITY ${order.priority}` : "STANDARD"}
-          </span>
+      <div className="bg-gray-900 text-white rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
+              {order.taskType?.toUpperCase() ?? "EXECUTION ORDER"}
+            </span>
+            <span className="text-xs font-mono text-gray-500">·</span>
+            <span className="text-xs font-mono text-gray-400 uppercase">{order.difficulty?.toUpperCase()}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {(order.priority ?? 0) > 0 ? (
+              <span className="text-xs font-mono bg-red-500/20 text-red-400 px-2 py-1 rounded">
+                PRIORITY {order.priority}
+              </span>
+            ) : null}
+            {order.proofRequired ? (
+              <span className="text-xs font-mono bg-amber-500/20 text-amber-400 px-2 py-1 rounded flex items-center gap-1">
+                <Camera className="w-3 h-3" />
+                PROOF REQUIRED
+              </span>
+            ) : null}
+          </div>
         </div>
+
         <h1 className="text-2xl font-bold">{order.title}</h1>
+
         <div className="flex items-center gap-4 text-sm text-gray-400">
           <span className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
             {timeLimit} min guidance
           </span>
-          {order.proofRequired && (
-            <span className="flex items-center gap-1 text-amber-400">
-              <Camera className="w-4 h-4" />
-              Proof required
-            </span>
-          )}
         </div>
       </div>
 
-      {started && (
-        <div
-          className={`rounded-xl p-4 ${isOverTime ? "bg-red-50 border border-red-200" : "bg-green-50 border border-green-200"}`}
-        >
+      {started ? (
+        <div className={`rounded-xl p-4 border ${isOverTime ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold">{isOverTime ? "Over guidance window" : "Time running"}</span>
-            <span className={`font-mono font-bold ${isOverTime ? "text-red-600" : "text-green-600"}`}>
+            <span className="text-xs font-semibold text-gray-600 uppercase">
+              {isOverTime ? "Over guidance window" : "Execution timer"}
+            </span>
+            <span className={`font-mono font-bold text-lg ${isOverTime ? "text-red-600" : "text-gray-900"}`}>
               {Math.floor(timeElapsed / 60)}:{String(timeElapsed % 60).padStart(2, "0")}
             </span>
           </div>
-          <div className="bg-white rounded-full h-2">
+          <div className="bg-white rounded-full h-1.5">
             <div
-              className={`h-2 rounded-full transition-all ${isOverTime ? "bg-red-500" : "bg-green-500"}`}
+              className={`h-1.5 rounded-full transition-all ${isOverTime ? "bg-red-500" : "bg-green-500"}`}
               style={{ width: `${timeProgress}%` }}
             />
           </div>
         </div>
-      )}
+      ) : null}
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+      <div className="bg-white border-2 border-gray-900 rounded-2xl p-6 space-y-5">
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">The Order</p>
-          <p className="text-gray-900 leading-relaxed">{order.instruction}</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">The order</p>
+          <p className="text-gray-900 text-base leading-relaxed font-medium">{order.instruction}</p>
         </div>
 
-        {commandContext.where && (
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Where</p>
-            <p className="text-sm text-gray-700">{commandContext.where}</p>
-          </div>
-        )}
-
-        {commandContext.how && (
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">How</p>
-            <p className="text-sm text-gray-700">{commandContext.how}</p>
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {ctx.where ? (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Where</p>
+              <p className="text-sm text-gray-700">{ctx.where}</p>
+            </div>
+          ) : null}
+          {ctx.how ? (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">How</p>
+              <p className="text-sm text-gray-700">{ctx.how}</p>
+            </div>
+          ) : null}
+        </div>
 
         <div className="space-y-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Required Output</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Required output</p>
           <p className="text-sm text-gray-700">{order.expectedOutput}</p>
         </div>
 
         <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Definition of Done</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Definition of done</p>
           <p className="text-sm text-gray-700">{order.definitionOfDone}</p>
         </div>
 
-        {order.whyItMatters && (
+        {ctx.proof ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-1">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider font-mono flex items-center gap-1">
+              <Camera className="w-3 h-3" />
+              Proof requirement
+            </p>
+            <p className="text-sm text-amber-800">{ctx.proof}</p>
+          </div>
+        ) : null}
+
+        {order.whyItMatters ? (
           <div className="border-l-4 border-green-500 pl-4 space-y-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Why This Matters</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Strategic reason</p>
             <p className="text-sm text-gray-700">{order.whyItMatters}</p>
           </div>
-        )}
+        ) : null}
 
-        {commandContext.whatItUnlocks && (
-          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl p-3">
-            <Zap className="w-4 h-4 shrink-0" />
-            <span>
-              Completing this unlocks: <strong>{commandContext.whatItUnlocks}</strong>
-            </span>
+        {ctx.unlockConsequence ? (
+          <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl p-3">
+            <Zap className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-green-700 uppercase font-mono mb-0.5">Progression coupling</p>
+              <p className="text-sm text-green-800">{ctx.unlockConsequence}</p>
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {order.knowledgeObjects && order.knowledgeObjects.length > 0 && (
+      {ctx.aiPromptIfNeeded ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-blue-600" />
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider font-mono">Optional AI prompt</p>
+            </div>
+            <button
+              type="button"
+              onClick={copyAIPrompt}
+              className="text-xs text-blue-600 border border-blue-300 rounded-lg px-3 py-1.5 hover:bg-blue-100 font-mono shrink-0"
+            >
+              {copied ? "Copied" : "Copy prompt"}
+            </button>
+          </div>
+          <p className="text-sm text-blue-800 font-mono leading-relaxed bg-white rounded-lg p-3 border border-blue-100 whitespace-pre-wrap">
+            {ctx.aiPromptIfNeeded}
+          </p>
+        </div>
+      ) : null}
+
+      {ctx.platformIfNeeded ? (
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <span className="text-xs font-semibold text-gray-500 uppercase font-mono">Platform:</span>
+          <span className="text-sm font-medium text-gray-900">{ctx.platformIfNeeded}</span>
+        </div>
+      ) : null}
+
+      {order.knowledgeObjects && order.knowledgeObjects.length > 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reference Intelligence</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Intelligence context</p>
           {order.knowledgeObjects.slice(0, 3).map((k) => (
-            <div key={k.id} className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
-              <p className="font-medium">{k.title}</p>
-              {k.content && (
-                <p className="text-gray-500 text-xs mt-1">{k.content.substring(0, 150)}…</p>
-              )}
+            <div key={k.id} className="bg-gray-50 rounded-lg p-3 space-y-1">
+              <p className="text-sm font-medium text-gray-900">{k.title}</p>
+              {k.content ? <p className="text-xs text-gray-500">{String(k.content).substring(0, 200)}...</p> : null}
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <div className="flex gap-3">
         {!started ? (
           <button
             type="button"
             onClick={handleStart}
-            className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-gray-800 transition-all text-sm uppercase tracking-wider"
+            className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-gray-800 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
           >
-            Begin Execution →
+            <Play className="w-4 h-4" />
+            Begin execution
           </button>
         ) : (
           <button
             type="button"
             onClick={() => setLocation(`/feedback/${orderId}`)}
-            className="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-all text-sm uppercase tracking-wider"
+            className="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
           >
-            Submit Completion Report →
+            <CheckCircle2 className="w-4 h-4" />
+            Submit execution report
           </button>
         )}
-
         <button
           type="button"
-          onClick={() => orderId && setLocation(`/feedback/${orderId}`)}
-          className="px-6 py-4 border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-50"
+          onClick={() => setLocation(`/feedback/${orderId}`)}
+          className="px-5 py-4 border border-gray-200 text-gray-600 rounded-2xl text-sm hover:bg-gray-50 font-mono"
         >
-          Skip
+          Report + skip
         </button>
       </div>
     </div>

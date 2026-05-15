@@ -226,7 +226,12 @@ export default function OnboardingPage() {
     },
     5: {
       title: "Why context matters",
-      points: ["Tasks match your reality", "Constraints are accounted for", "Resources are optimized", "Execution is realistic"],
+      points: [
+        "Orders match your operational reality",
+        "Constraints are accounted for",
+        "Resources are optimized",
+        "Execution is realistic",
+      ],
       quote: "Context is everything.",
       author: "The Torgima System",
     },

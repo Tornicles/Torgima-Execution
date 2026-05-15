@@ -255,8 +255,9 @@ export class BlueprintEngine {
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 
     const intelligence = await RealityIntelligenceEngine.analyze({
-      goal:    existing.goal,
-      domain:  String(existing.current_domain ?? resolvedDomain),
+      rawGoal: existing.goal,
+      goal: existing.goal,
+      domain: String(existing.current_domain ?? resolvedDomain),
       purpose: existing.purpose ?? "",
       blueprintId,
       userId,
@@ -323,7 +324,9 @@ export class BlueprintEngine {
             realityIntelligence: intelligence,
             marketMomentum: intelligence.marketMomentum,
             strongestAngle: intelligence.positioning.strongestAngle,
-            blueprintSeedingInstructions: intelligence.blueprintSeedingInstructions,
+            blueprintSeedingInstructions: intelligence.blueprintSeedInstructions,
+            executionImplication: intelligence.executionImplication,
+            intelligenceGeneratedAt: new Date().toISOString(),
           },
         })
         .where(eq(blueprints.id, blueprintId));

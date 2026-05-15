@@ -7,6 +7,7 @@ import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { assessCapabilityLevel } from "../engines/capability/CapabilityEngine.js";
 import { getActivePatterns } from "../engines/pattern/PatternLearningEngine.js";
 import { RealityIntelligenceEngine } from "../engines/intelligence/RealityIntelligenceEngine.js";
+import { normalizeRealityIntelligenceData } from "../types/reality-intelligence.js";
 
 const router = Router();
 
@@ -32,13 +33,15 @@ router.get("/intelligence/blueprint/:id", async (req, res) => {
     }
 
     const meta = bp.intel_metadata as { realityIntelligence?: unknown } | null;
-    const cached = meta?.realityIntelligence;
-    if (cached && typeof cached === "object") {
+    const cachedRaw = meta?.realityIntelligence;
+    const cached = normalizeRealityIntelligenceData(cachedRaw);
+    if (cached) {
       success(res, cached);
       return;
     }
 
     const fresh = await RealityIntelligenceEngine.analyze({
+      rawGoal: bp.goal,
       goal: bp.goal,
       domain: bp.current_domain ?? "genesis",
       purpose: bp.purpose ?? "",
@@ -53,6 +56,44 @@ router.get("/intelligence/blueprint/:id", async (req, res) => {
       return;
     }
     failure(res, "INTERNAL_ERROR", "Failed to load intelligence", 500);
+  }
+});
+
+router.post("/intelligence/blueprint/:id/refresh", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+    const [bp] = await db
+      .select({
+        id: blueprints.id,
+        goal: blueprints.goal,
+        purpose: blueprints.purpose,
+        current_domain: blueprints.current_domain,
+      })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const fresh = await RealityIntelligenceEngine.analyze({
+      rawGoal: bp.goal,
+      goal: bp.goal,
+      domain: bp.current_domain ?? "genesis",
+      purpose: bp.purpose ?? "",
+      blueprintId: id,
+      userId: auth.userId,
+    });
+    success(res, fresh);
+  } catch (e) {
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
+    failure(res, "INTERNAL_ERROR", "Failed to refresh intelligence", 500);
   }
 });
 

@@ -83,14 +83,14 @@ export default function LandingPage() {
               {
                 icon: Zap,
                 step: "02",
-                title: "Get Daily Tasks",
-                desc: "The system generates specific, actionable tasks based on your position, condition, and capability level.",
+                title: "Daily execution orders",
+                desc: "The system generates specific operational orders from your blueprint position, capability, and condition enforcement.",
               },
               {
                 icon: Activity,
                 step: "03",
-                title: "Submit Feedback",
-                desc: "Complete tasks and submit honest feedback. Signals update. Conditions adapt. Next task generates.",
+                title: "Submit feedback",
+                desc: "Complete orders and submit honest execution reports. Signals update; conditions adapt; the next execution order generates.",
               },
               {
                 icon: Shield,

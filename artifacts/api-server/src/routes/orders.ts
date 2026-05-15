@@ -54,8 +54,8 @@ const feedbackBodySchema = z.object({
   completionStatus: z.enum(["completed", "partial", "failed", "skipped"]),
   score: z.number().int().min(0).max(10),
   reflection: z.string().min(10).max(5000),
-  proofJson: z.record(z.string(), z.unknown()).optional(),
-  blockerJson: z.record(z.string(), z.unknown()).optional(),
+  proofJson: z.record(z.string(), z.unknown()).nullish(),
+  blockerJson: z.record(z.string(), z.unknown()).nullish(),
   durationMinutes: z.number().optional(),
   frictionScore: z.number().min(1).max(5).optional(),
   confidenceScore: z.number().min(1).max(5).optional(),
@@ -161,13 +161,18 @@ router.get("/orders/:id", async (req, res) => {
       .where(eq(orderKnowledgeLinks.order_id, order.id))
       .limit(3);
 
-    const commandContext = buildOrderCommandContext({
+    const commandContextBase = buildOrderCommandContext({
       domain: order.domain,
       actionName: joined.actionName,
       phaseName: joined.phaseName,
       projectName: joined.projectName,
       orderTitle: order.title,
     });
+    const storedCtx = order.command_context as Record<string, unknown> | null | undefined;
+    const commandContext =
+      storedCtx && typeof storedCtx === "object" && Object.keys(storedCtx).length > 0
+        ? { ...commandContextBase, ...storedCtx }
+        : commandContextBase;
 
     success(res, {
       id: order.id,

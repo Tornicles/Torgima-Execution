@@ -22,6 +22,12 @@ import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { RealityIntelligenceEngine } from "../intelligence/RealityIntelligenceEngine.js";
+import {
+  CommandOrderIntelligenceEngine,
+  buildServerTraceChain,
+  type CommandTraceChain,
+} from "../intelligence/CommandOrderIntelligenceEngine.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -506,15 +512,18 @@ function buildTaskContent(params: {
       proof_required: false,
     }),
 
-    academy: () => ({
-      title: "Learn: " + truncate(context, 60),
-      instruction: `Study the concept or skill needed for: ${context}.\n\nAfter studying:\n1. Write a 2-3 sentence summary of what you learned\n2. Describe how you will apply it\n3. Identify one practice exercise you can complete today`,
+    academy: () => {
+      const label = truncate(goal, 60);
+      return {
+        title: `Learn: ${label}`,
+        instruction: `Study the concept or skill needed for: "${truncate(goal, 200)}". After studying:\n1. Write a short summary\n2. Describe how you apply it today\n3. Name one deliberate practice repetition`,
       expected_output: "Written learning summary and application plan.",
       definition_of_done: "Summary written and one practice step identified and ready to execute.",
       why_it_matters: "Capability gaps block execution. Learning fills the gap.",
       time_estimate_minutes: 30,
       proof_required: false,
-    }),
+      };
+    },
 
     habit: () => ({
       title: "Habit Check-In",
@@ -667,53 +676,180 @@ function buildExecutionCommandContent(params: {
 
 // ── BHUDHI ENRICHMENT ─────────────────────────────────────────────────────────
 
-async function enrichWithBhudhi(
+function commandOrderWhereHint(domain: string | null | undefined): string {
+  const d = domain?.toLowerCase() ?? "genesis";
+  const platformMap: Record<string, string> = {
+    genesis: "Primary shipping surface: notes, calendar, or the tool you use to publish work",
+    market: "Customer-visible channels or outbound stack",
+    delivery: "Operational delivery toolchain",
+    continuity: "Reflection, metrics, or maintenance systems",
+    business: "Core business tooling or outreach channels",
+    health: "Health tracking or physical training environment",
+    financial: "Accounts, spreadsheets, or capital platforms",
+    creative: "Studio or publishing environment",
+    personal_growth: "Learning modality or journaling system",
+    technology: "Repository, IDE, CI, or hosting surfaces",
+  };
+  return platformMap[d] ?? "Operational environment mapped to active domain";
+}
+
+function buildExecutionCommandContextSnapshot(
   content: BuiltContent,
   ctx: Awaited<ReturnType<typeof loadContext>>,
-  userId: string,
-  taskType: string,
-): Promise<BuiltContent | null> {
+): Record<string, unknown> {
+  const actionTitle = ctx.action?.name ?? ctx.target?.name ?? "Current action";
+  const projectTitle = ctx.project?.name ?? "Current project";
+  const phaseTitle = ctx.phase?.name ?? "Current phase";
+  const planTitle = ctx.plan?.name ?? "Current plan";
+  const domain = ctx.blueprint.current_domain ?? "genesis";
+  const d = CommandOrderIntelligenceEngine.deterministicFallback({
+    taskTitle: content.title,
+    domain,
+    actionTitle,
+    projectTitle,
+    phaseTitle,
+    planTitle,
+    goal: ctx.blueprint.goal,
+    timeEstimateMinutes: content.time_estimate_minutes ?? 45,
+  });
+  const traceChain = buildServerTraceChain({
+    taskTitle: content.title,
+    actionTitle,
+    projectTitle,
+    phaseTitle,
+    planTitle,
+    goal: ctx.blueprint.goal,
+  });
+  return {
+    where: d.where,
+    how: d.how,
+    proof: d.proof,
+    unlockConsequence: d.unlockConsequence,
+    traceChain,
+    aiPromptIfNeeded: d.aiPromptIfNeeded ?? null,
+    platformIfNeeded: d.platformIfNeeded ?? null,
+  };
+}
+
+async function enrichWithBhudhi(params: {
+  content: BuiltContent;
+  ctx: Awaited<ReturnType<typeof loadContext>>;
+  userId: string;
+  taskType: string;
+  difficulty: string;
+  commandContext: Record<string, unknown>;
+}): Promise<{ content: BuiltContent; commandContext: Record<string, unknown>; usedAi: boolean }> {
+  const { ctx, userId, taskType, difficulty } = params;
+  let next = { ...params.content };
+  let commandContext = { ...params.commandContext };
+
+  const blueprintId = ctx.blueprint.id;
+  const intel = await RealityIntelligenceEngine.retrieveNormalized(blueprintId);
+  const intelligenceHint = intel?.executionImplication ?? "";
+
+  const actionTitle = ctx.action?.name ?? ctx.target?.name ?? "Current action";
+  const projectTitle = ctx.project?.name ?? "Current project";
+  const phaseTitle = ctx.phase?.name ?? "Current phase";
+  const planTitle = ctx.plan?.name ?? "Current plan";
+  const domain = ctx.blueprint.current_domain ?? "genesis";
+
+  const traceChain: CommandTraceChain =
+    (commandContext.traceChain as CommandTraceChain | undefined) ??
+    buildServerTraceChain({
+      taskTitle: next.title,
+      actionTitle,
+      projectTitle,
+      phaseTitle,
+      planTitle,
+      goal: ctx.blueprint.goal,
+    });
+
   const [bp] = await db
     .select({ state_version: blueprints.state_version })
     .from(blueprints)
-    .where(eq(blueprints.id, ctx.blueprint.id))
+    .where(eq(blueprints.id, blueprintId))
     .limit(1);
+
+  const commandOrderMode = taskType === "execution";
 
   const result = await trigger({
     sourceEngine:   "TaskGenerationEngine",
     triggerType:    "TASK_DRAFTING",
     userId,
-    blueprintId:    ctx.blueprint.id,
+    blueprintId,
     stateVersion:   bp?.state_version ?? 0,
-    idempotencyKey: `task_draft:${ctx.blueprint.id}:${Date.now()}`,
+    idempotencyKey: `task_draft:${blueprintId}:${Date.now()}`,
     facts: {
       goal:           ctx.blueprint.goal,
-      domain:         ctx.blueprint.current_domain ?? "delivery",
-      taskType:       taskType,
-      actionContext:  ctx.action?.name ?? ctx.target?.name ?? "next step",
-      difficulty:     content.time_estimate_minutes > 60 ? "hard" : "moderate",
-      proofType:      content.proof_type ?? "none",
+      domain,
+      taskType,
+      actionContext:  actionTitle,
+      actionTitle,
+      projectTitle,
+      phaseTitle,
+      planTitle,
+      taskTitle:      next.title,
+      difficulty,
+      proofType:      next.proof_type ?? "none",
       condition:
         ctx.enforcement.condition_code ??
         ctx.blueprint.current_condition ??
         "nothingness",
       allowedActions: ctx.enforcement.allowed_actions,
+      timeEstimateMinutes: next.time_estimate_minutes ?? 45,
+      intelligenceHint,
+      commandOrderMode,
+      whereHint: commandOrderWhereHint(domain),
+      stateVersion: bp?.state_version ?? 0,
     },
   });
 
-  if (!result.ok || !result.output) return null;
-  const d = result.output.data as Record<string, unknown>;
-  if (!d["title"] || !d["instruction"]) return null;
+  if (!result.ok || !result.output) {
+    return { content: next, commandContext: { ...commandContext, traceChain }, usedAi: false };
+  }
 
-  return {
-    ...content,
+  const d = result.output.data as Record<string, unknown>;
+  const hasCommand = typeof d["command"] === "string" && String(d["command"]).trim().length > 0;
+
+  if (commandOrderMode && hasCommand) {
+    next = {
+      ...next,
+      title:              String(d["title"] ?? next.title).slice(0, 500),
+      instruction:        String(d["command"]),
+      expected_output:    String(d["requiredOutput"] ?? next.expected_output),
+      definition_of_done: String(d["doneCriteria"] ?? next.definition_of_done),
+      why_it_matters: String(d["userFacingReason"] ?? next.why_it_matters),
+      proof_description: d["proofInstruction"]
+        ? String(d["proofInstruction"])
+        : next.proof_description,
+    };
+    commandContext = {
+      ...commandContext,
+      where: String(d["where"] ?? commandContext.where),
+      how: String(d["how"] ?? commandContext.how),
+      proof: String(d["proof"] ?? commandContext.proof),
+      unlockConsequence: String(d["unlockConsequence"] ?? commandContext.unlockConsequence),
+      traceChain,
+      aiPromptIfNeeded: d["aiPromptIfNeeded"] ?? null,
+      platformIfNeeded: d["platformIfNeeded"] ?? null,
+    };
+    return { content: next, commandContext, usedAi: true };
+  }
+
+  if (!d["title"] || !d["instruction"]) {
+    return { content: next, commandContext: { ...commandContext, traceChain }, usedAi: false };
+  }
+
+  next = {
+    ...next,
     title:            String(d["title"]),
     instruction:      String(d["instruction"]),
-    why_it_matters:   String(d["userFacingReason"] ?? content.why_it_matters),
+    why_it_matters:   String(d["userFacingReason"] ?? next.why_it_matters),
     proof_description: d["proofInstruction"]
       ? String(d["proofInstruction"])
-      : content.proof_description,
+      : next.proof_description,
   };
+  return { content: next, commandContext: { ...commandContext, traceChain }, usedAi: true };
 }
 
 function buildContentHash(title: string, instruction: string): string {
@@ -856,6 +992,9 @@ export async function generate(params: {
   let usedBhudhi = false;
   let usedFallback = false;
 
+  let commandContext: Record<string, unknown> =
+    taskType === "execution" ? buildExecutionCommandContextSnapshot(content, ctx) : {};
+
   const [aiFlag] = await db
     .select({ enabled: featureFlags.enabled })
     .from(featureFlags)
@@ -874,13 +1013,21 @@ export async function generate(params: {
   if (aiFlag?.enabled && bhudhiEligibleTypes.has(taskType)) {
     try {
       const enriched = await Promise.race([
-        enrichWithBhudhi(content, ctx, params.userId, taskType),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+        enrichWithBhudhi({
+          content,
+          ctx,
+          userId: params.userId,
+          taskType,
+          difficulty,
+          commandContext,
+        }),
+        new Promise<{ content: BuiltContent; commandContext: Record<string, unknown>; usedAi: boolean }>(
+          (_, reject) => setTimeout(() => reject(new Error("timeout")), 5000),
+        ),
       ]);
-      if (enriched) {
-        content = enriched;
-        usedBhudhi = true;
-      }
+      content = enriched.content;
+      commandContext = enriched.commandContext;
+      if (enriched.usedAi) usedBhudhi = true;
     } catch {
       usedFallback = true;
     }
@@ -904,6 +1051,7 @@ export async function generate(params: {
     });
     content.instruction += `\n\n(unique ref: ${Date.now()})`;
     hash = buildContentHash(content.title, content.instruction);
+    commandContext = {};
   }
 
   const valueScore = calculateValueScore({
@@ -946,6 +1094,7 @@ export async function generate(params: {
         domain_at_generation: domainGen,
         generation_reason: `${params.generationTrigger} — ${params.generationMode} — ${taskType}`,
         status: "pending",
+        command_context: commandContext as typeof orders.$inferInsert["command_context"],
       })
       .returning({ id: orders.id });
 

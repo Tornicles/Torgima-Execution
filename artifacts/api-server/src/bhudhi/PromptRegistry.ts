@@ -65,49 +65,70 @@ Return ONLY this JSON:
 });
 
 registry.set("REALITY_INTELLIGENCE", {
-  name:         "reality.intelligence.v1",
-  version:      "1.0",
+  name:         "REALITY_INTELLIGENCE_ANALYSIS",
+  version:      "2.0",
   triggerType:  "REALITY_INTELLIGENCE",
   mode:         "STRUCTURE",
   outputType:   "reality_intelligence",
-  maxTokens:    2500,
-  temperature:  0.35,
-  memoryAllowed: false,
-  fallbackKey:  "fallback.reality_intelligence",
-  systemPrompt: STANDARD_SYSTEM_HEADER,
+  maxTokens:    2400,
+  temperature:  0.28,
+  memoryAllowed: true,
+  fallbackKey:  "reality_intelligence_deterministic",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nYou analyze market and positioning CONTEXT as strategic framing grounded ONLY in supplied inputs.` +
+    ` You do not pretend to scrape the web.` +
+    ` You do not authorize execution unlocks.` +
+    ` You do not mutate signals or conditions.`,
   buildUserPrompt: (ctx) => `
-Analyze market and positioning context for this execution goal.
+Analyze this execution goal — return ONLY JSON in the mandated envelope shape (no markdown).
 
-Goal: "${String(ctx["goal"] ?? "")}"
-Domain: "${String(ctx["domain"] ?? "business")}"
-Purpose: "${String(ctx["purpose"] ?? "")}"
+GOAL (rawGoal): "${String(ctx["rawGoal"] ?? ctx["goal"] ?? "")}"
+PURPOSE: "${String(ctx["purpose"] ?? "")}"
+DOMAIN: "${String(ctx["domain"] ?? "genesis")}"
+TIMEFRAME: "${String(ctx["timeframe"] ?? "not provided")}"
+COMMITMENT: "${String(ctx["commitmentLevel"] ?? "")}"
+CONTEXT: "${String(ctx["currentContext"] ?? "Not provided")}"
+SUCCESS SIGNAL HINT (non-authoritative context only): "${String(ctx["successSignal"] ?? "")}"
+KNOWN BLOCKERS (context only): "${String(ctx["blockers"] ?? "")}"
 
-Return ONLY JSON with this envelope (no markdown):
+Envelope:
 {
   "outputType": "reality_intelligence",
-  "contractVersion": "1.0",
+  "contractVersion": "2.0",
   "stateVersion": ${ctx["stateVersion"] ?? 0},
   "confidence": "MEDIUM",
   "data": {
     "marketMomentum": "growing|declining|emerging|oversaturated|behavior_shifting",
-    "similarCompanies": [
-      {"name": "Company X", "reason": "why similar", "outcome": "succeeded|failed|pivoted", "lesson": "what to learn"}
+    "demandConfidence": "high|medium|low",
+    "trendExplanation": "Framed read using provided inputs — not claimed live telemetry",
+    "similarConcepts": [
+      {"name":"","reason":"","outcome":"succeeded|failed|pivoted","lesson":"","differentiationInsight":""}
     ],
     "positioning": {
       "strongestAngle": "",
       "weakestAngle": "",
       "userMisconception": "",
-      "differentiationOpportunity": ""
+      "differentiationPath": "",
+      "positioningRule": ""
     },
     "whiteSpace": {
       "underservedUsers": [],
       "emotionalGaps": [],
       "executionGaps": [],
-      "unclaimedPositioning": []
+      "competitorWeaknesses": [],
+      "unclaimedPositioning": [],
+      "opportunityPath": ""
+    },
+    "timingAnalysis": {
+      "risk": "",
+      "opportunity": "",
+      "urgency": "immediate|moderate|patient",
+      "reason": ""
     },
     "strategicWarnings": [],
-    "competitorWeaknesses": [],
-    "blueprintSeedingInstructions": ""
+    "blueprintSeedInstructions": "",
+    "executionImplication": ""
   },
   "missingFields": [],
   "warnings": [],
@@ -117,17 +138,67 @@ Return ONLY JSON with this envelope (no markdown):
 });
 
 registry.set("TASK_DRAFTING", {
-  name:         "task.draft.v1",
-  version:      "1.0",
+  name:         "task.draft.command.v2",
+  version:      "2.0",
   triggerType:  "TASK_DRAFTING",
   mode:         "DRAFT",
   outputType:   "task_copy",
-  maxTokens:    500,
-  temperature:  0.25,
+  maxTokens:    900,
+  temperature:  0.22,
   memoryAllowed: true,
   fallbackKey:  "fallback.task_copy",
-  systemPrompt: STANDARD_SYSTEM_HEADER,
-  buildUserPrompt: (ctx) => `
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nDraft execution ORDER wording only.` +
+    ` Do not bypass allowedActions / blocked_actions.` +
+    ` Do not claim completion, unlock phases, change conditions, or modify signals.`,
+  buildUserPrompt: (ctx) => {
+    if (ctx["commandOrderMode"] === true) {
+      return `
+Operational command drafting (COMMAND mode). Facts are authoritative ceilings — obey them.
+
+Blueprint goal: "${String(ctx["goal"] ?? "")}"
+Domain: ${String(ctx["domain"] ?? "genesis")}
+Task type: ${String(ctx["taskType"] ?? "execution")}
+Action title (context): "${String(ctx["actionTitle"] ?? ctx["actionContext"] ?? "")}"
+Project: "${String(ctx["projectTitle"] ?? "")}"
+Phase: "${String(ctx["phaseTitle"] ?? "")}"
+Plan: "${String(ctx["planTitle"] ?? "")}"
+Difficulty: ${String(ctx["difficulty"] ?? "moderate")}
+Minutes budget: ${String(ctx["timeEstimateMinutes"] ?? 45)}
+Proof type: ${String(ctx["proofType"] ?? "none")}
+Condition snapshot (reference only): ${String(ctx["condition"] ?? "")}
+Allowed actions: ${JSON.stringify(ctx["allowedActions"] ?? [])}
+Strategic implication hint (reference only — not authoritative): "${String(ctx["intelligenceHint"] ?? "")}"
+
+Return ONLY this JSON envelope:
+{
+  "outputType": "task_copy",
+  "contractVersion": "2.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "title": "short title ≤80 chars aligned to actionTitle",
+    "command": "imperative order text ≤900 chars — what to execute now under allowed actions",
+    "requiredOutput": "what measurable artifact/output must exist",
+    "proof": "how to prove completion (match proof type)",
+    "doneCriteria": "definition of complete",
+    "where": "primary environment/channel for this domain",
+    "how": "most direct compliant method; if blocked, document blocker in feedback",
+    "unlockConsequence": "neutral description of downstream progression coupling (do not invent unlock mechanics)",
+    "userFacingReason": "why this order exists in strategic continuity",
+    "successCriteria": ["1-3 bullets"],
+    "estimatedEffortLabel": "SMALL|MEDIUM|LARGE",
+    "proofInstruction": "align with proof requirement",
+    "aiPromptIfNeeded": null | "verbatim helper prompt OR null",
+    "platformIfNeeded": null | "named platform focus OR null"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`;
+    }
+    return `
 Goal: "${String(ctx["goal"] ?? "")}"
 Domain: ${String(ctx["domain"] ?? "delivery")}
 Task type: ${String(ctx["taskType"] ?? "execution")}
@@ -137,62 +208,28 @@ Proof type: ${String(ctx["proofType"] ?? "none")}
 Current condition: ${String(ctx["condition"] ?? "urgency")}
 Allowed actions: ${JSON.stringify(ctx["allowedActions"] ?? [])}
 
-Improve this task for the user. Return ONLY this JSON:
+Improve this order copy for the user. Return ONLY this JSON:
 {
   "outputType": "task_copy",
-  "contractVersion": "1.0",
+  "contractVersion": "2.0",
   "stateVersion": ${ctx["stateVersion"] ?? 0},
   "confidence": "MEDIUM",
   "data": {
     "title": "specific action title (max 80 chars)",
-    "instruction": "clear instruction tied to goal (max 400 chars)",
-    "proofInstruction": "what to submit as proof (max 150 chars)",
+    "instruction": "clear instruction tied to goal (max 800 chars)",
+    "proofInstruction": "what to submit as proof (max 200 chars)",
     "successCriteria": ["1 to 3 specific criteria"],
     "estimatedEffortLabel": "SMALL|MEDIUM|LARGE",
-    "userFacingReason": "why this matters for the goal (max 100 chars)"
+    "userFacingReason": "why this matters for the goal (max 160 chars)"
   },
   "missingFields": [],
   "warnings": [],
   "forbiddenActionRequested": false
-}`,
+}`;
+  },
 });
 
 registry.set("FEEDBACK_CLASSIFICATION", {
-  name:         "feedback.classify_blocker.v1",
-  version:      "1.0",
-  triggerType:  "FEEDBACK_CLASSIFICATION",
-  mode:         "INTERPRET",
-  outputType:   "blocker_classification",
-  maxTokens:    300,
-  temperature:  0.1,
-  memoryAllowed: true,
-  fallbackKey:  "fallback.blocker_classification",
-  systemPrompt: STANDARD_SYSTEM_HEADER,
-  buildUserPrompt: (ctx) => `
-User's blocker or friction description: "${String(ctx["userInput"] ?? "")}"
-Task title: "${String(ctx["taskTitle"] ?? "unknown")}"
-Task difficulty: ${String(ctx["difficulty"] ?? "moderate")}
-
-Classify the blocker. Return ONLY this JSON:
-{
-  "outputType": "blocker_classification",
-  "contractVersion": "1.0",
-  "stateVersion": ${ctx["stateVersion"] ?? 0},
-  "confidence": "LOW|MEDIUM|HIGH",
-  "data": {
-    "blockerCategory": "MISSING_INFORMATION|DEPENDENCY_BLOCKED|TOO_DIFFICULT|TIME_CONSTRAINT|ENERGY_CONSTRAINT|EXTERNAL_WAIT|UNCLEAR_TASK|OTHER",
-    "severity": "LOW|MEDIUM|HIGH",
-    "needsDependencyResolution": false,
-    "needsRecoveryTask": false,
-    "summary": "one-sentence user-facing description (max 120 chars)"
-  },
-  "missingFields": [],
-  "warnings": [],
-  "forbiddenActionRequested": false
-}`,
-});
-
-registry.set("CLARIFICATION_PROMPT", {
   name:         "task.clarification.v1",
   version:      "1.0",
   triggerType:  "CLARIFICATION_PROMPT",

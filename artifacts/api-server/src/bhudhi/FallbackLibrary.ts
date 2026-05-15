@@ -23,23 +23,58 @@ fallbacks.set("fallback.goal_structure", (ctx, sv) => ({
   forbiddenActionRequested: false,
 }));
 
-fallbacks.set("fallback.task_copy", (ctx, sv) => ({
-  outputType: "task_copy",
-  contractVersion: "1.0",
-  stateVersion: sv,
-  confidence: "MEDIUM",
-  data: {
-    title:                ((ctx["actionContext"] as string) ?? "Next execution step").slice(0, 80),
-    instruction:          `Complete the next concrete step toward your goal: "${((ctx["goal"] as string) ?? "your goal").slice(0, 150)}". Be specific about what you will do and what output you will produce.`,
-    proofInstruction:     "Describe what you completed and what changed as a result.",
-    successCriteria:      ["The task is done and you can describe the output"],
-    estimatedEffortLabel: "MEDIUM",
-    userFacingReason:     "This advances your blueprint toward your goal.",
-  },
-  missingFields:           [],
-  warnings:                ["AI task drafting unavailable — template used"],
-  forbiddenActionRequested: false,
-}));
+fallbacks.set("fallback.task_copy", (ctx, sv) => {
+  if (ctx["commandOrderMode"] === true) {
+    const taskTitle = String(ctx["taskTitle"] ?? ctx["actionContext"] ?? "Next execution order").slice(0, 120);
+    const mins = Number(ctx["timeEstimateMinutes"] ?? 45);
+    return {
+      outputType: "task_copy",
+      contractVersion: "1.0",
+      stateVersion: sv,
+      confidence: "LOW",
+      data: {
+        title: taskTitle.slice(0, 80),
+        command: `Execute now: ${taskTitle}. Complete within ${mins} minutes, produce proof, and submit an execution report.`,
+        requiredOutput: `Completed "${taskTitle}" with a measurable artifact (link, screenshot, or written outcome).`,
+        doneCriteria:
+          "(1) Real-world execution happened — not planned only. (2) Proof artifact exists. (3) You can describe what changed.",
+        proof: "Screenshot, link, or dated notes proving completion.",
+        where: String(ctx["whereHint"] ?? "Use the primary environment for your domain."),
+        how: "Most direct path. If blocked for 10+ minutes, document the blocker and submit anyway.",
+        unlockConsequence: "Maintains blueprint progression signal quality for the active execution chain.",
+        successCriteria: ["Execution completed or blocker documented with specificity"],
+        estimatedEffortLabel: "MEDIUM",
+        userFacingReason: String(
+          ctx["intelligenceHint"] ?? "This advances the active blueprint under current condition enforcement.",
+        ),
+        proofInstruction: "Attach proof consistent with enforcement (image/text as required).",
+        aiPromptIfNeeded: null,
+        platformIfNeeded: null,
+      },
+      missingFields: [],
+      warnings: ["AI command drafting unavailable — deterministic command template used"],
+      forbiddenActionRequested: false,
+    };
+  }
+
+  return {
+    outputType: "task_copy",
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "MEDIUM",
+    data: {
+      title: ((ctx["actionContext"] as string) ?? "Next execution step").slice(0, 80),
+      instruction: `Complete the next concrete step toward your goal: "${((ctx["goal"] as string) ?? "your goal").slice(0, 150)}". Be specific about what you will do and what output you will produce.`,
+      proofInstruction: "Describe what you completed and what changed as a result.",
+      successCriteria: ["The task is done and you can describe the output"],
+      estimatedEffortLabel: "MEDIUM",
+      userFacingReason: "This advances your blueprint toward your goal.",
+    },
+    missingFields: [],
+    warnings: ["AI task drafting unavailable — template used"],
+    forbiddenActionRequested: false,
+  };
+});
 
 fallbacks.set("fallback.blocker_classification", (ctx, sv) => ({
   outputType: "blocker_classification",
@@ -82,8 +117,8 @@ fallbacks.set("fallback.state_explanation", (ctx, sv) => ({
   confidence: "MEDIUM",
   data: {
     headline:         `Current state: ${(ctx["condition"] as string) ?? "active"}`,
-    explanation:      "Your execution system is running. Your next task is ready when you are.",
-    nextActionReason: "Completing the next task keeps your execution momentum.",
+    explanation:      "Blueprint position is advancing. Next execution order awaits when enforcement allows.",
+    nextActionReason: "Completing the next execution order strengthens signal coherence.",
     reassurance:      undefined,
     displayTone:      "CALM",
   },
@@ -158,48 +193,70 @@ fallbacks.set("fallback.root_cause", (ctx, sv) => ({
   forbiddenActionRequested: false,
 }));
 
-fallbacks.set("fallback.reality_intelligence", (ctx, sv) => {
-  const domain = String(ctx["domain"] ?? "business");
+const realityIntelFallbackFn: FallbackFn = (ctx, sv) => {
+  const domain = String(ctx["domain"] ?? ctx["goalDomain"] ?? "genesis");
   return {
     outputType: "reality_intelligence",
-    contractVersion: "1.0",
+    contractVersion: "2.0",
     stateVersion: sv,
     confidence: "LOW",
     data: {
       marketMomentum: "growing",
-      similarCompanies: [
+      demandConfidence: "medium",
+      trendExplanation: `Strategic framing: ${domain} favors operators who publish proof-of-work rather than intentions.`,
+      similarConcepts: [
         {
-          name: "Early-stage competitor",
-          reason: "Similar problem space",
+          name: "Operator-first execution tooling",
+          reason: "Bridges intention to verified action with accountability",
           outcome: "succeeded",
-          lesson: "Execution consistency was the differentiator",
+          lesson: "Retention correlates with proof rituals, not feature breadth",
+          differentiationInsight: "Win on reality enforcement mechanics others treat as secondary",
+        },
+        {
+          name: "Planner-centric productivity stacks",
+          reason: "Adjacent UX without systemic enforcement",
+          outcome: "failed",
+          lesson: "Voluntary accountability fails past day-30 churn cliffs",
+          differentiationInsight: "Own execution headquarters — not planning surface area",
         },
       ],
       positioning: {
-        strongestAngle: `Direct execution focus in ${domain}`,
-        weakestAngle: "Awareness and distribution",
-        userMisconception: "Users may see this as another planning tool",
-        differentiationOpportunity: "Real execution tracking, not just planning",
+        strongestAngle: `Reality-aligned execution rails in ${domain}`,
+        weakestAngle: "Distribution and expectation calibration",
+        userMisconception: "Risk of mistaken identity as generic assistant",
+        differentiationPath: "Own execution infrastructure + proof coupling",
+        positioningRule: "Only measured reality progresses state — never narrative intent alone",
       },
       whiteSpace: {
-        underservedUsers: ["Serious operators who need accountability"],
-        emotionalGaps: ["Gap between intention and consistent execution"],
-        executionGaps: ["No system that forces daily real-world action"],
-        unclaimedPositioning: ["Execution OS for individual operators"],
+        underservedUsers: ["Operators who demand external accountability loops"],
+        emotionalGaps: ["Shame-after-repeated-planning loops without proof"],
+        executionGaps: ["No lightweight linkage between proofs and progression"],
+        competitorWeaknesses: ["Assume discipline is user's problem, not system design"],
+        unclaimedPositioning: ["Individual execution headquarters", "Reality-first progression rails"],
+        opportunityPath: "Claim proof-before-scale positioning while AI-plan noise peaks",
       },
-      strategicWarnings: ["Avoid feature creep", "Distribution is the hardest problem"],
-      competitorWeaknesses: [
-        "Most tools are planners not executors",
-        "No real accountability mechanism",
+      timingAnalysis: {
+        risk: "Planner commoditization from generic AI wrappers",
+        opportunity: "Backlash creates appetite for enforced reality loops",
+        urgency: "moderate",
+        reason: "Window open while defaults stay chat-first",
+      },
+      strategicWarnings: [
+        "Feature creep destroys signal→condition fidelity",
+        "Validate distribution via external-facing proof milestones early",
       ],
-      blueprintSeedingInstructions:
-        "Build phases around real-world execution milestones. Tasks must be specific operational commands, not generic suggestions.",
+      blueprintSeedInstructions:
+        "Phases hinge on externally verifiable milestones; disallow inward-only checklist theater.",
+      executionImplication: "Every layer should increase signal fidelity and proof culture density.",
     },
     missingFields: [],
-    warnings: ["AI reality intelligence unavailable — deterministic fallback used"],
+    warnings: ["AI reality intelligence unavailable — deterministic fallback"],
     forbiddenActionRequested: false,
   };
-});
+};
+
+fallbacks.set("fallback.reality_intelligence", realityIntelFallbackFn);
+fallbacks.set("reality_intelligence_deterministic", realityIntelFallbackFn);
 
 function getMissingGoalFields(ctx: Record<string, unknown>): string[] {
   const missing: string[] = [];

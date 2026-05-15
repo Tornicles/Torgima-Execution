@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { users, sessions } from "@workspace/db";
+import { users, sessions, blueprints } from "@workspace/db";
 import { eq, and, gt, like } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
@@ -195,7 +195,12 @@ export async function revokeSession(sessionToken: string): Promise<void> {
 export async function getUser(userId: string): Promise<SafeUser> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new TorgimaError("NOT_FOUND", "User not found");
-  return toSafeUser(user);
+  const [activeBp] = await db
+    .select({ id: blueprints.id })
+    .from(blueprints)
+    .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true)))
+    .limit(1);
+  return toSafeUser(user, activeBp?.id ?? null);
 }
 
 // ── UPDATE USER SETTINGS ───────────────────────────────────────────────────────
@@ -215,12 +220,17 @@ export async function updateUserSettings(
     .where(eq(users.id, userId))
     .returning();
   if (!updated) throw new TorgimaError("NOT_FOUND", "User not found");
-  return toSafeUser(updated);
+  const [activeBp] = await db
+    .select({ id: blueprints.id })
+    .from(blueprints)
+    .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true)))
+    .limit(1);
+  return toSafeUser(updated, activeBp?.id ?? null);
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────
 
-function toSafeUser(user: typeof users.$inferSelect): SafeUser {
+function toSafeUser(user: typeof users.$inferSelect, activeBlueprintId: string | null): SafeUser {
   return {
     id: user.id,
     email: user.email,
@@ -228,6 +238,7 @@ function toSafeUser(user: typeof users.$inferSelect): SafeUser {
     mode: user.mode,
     tier: user.tier,
     onboardingComplete: user.onboarding_complete,
+    activeBlueprintId,
     timezone: user.timezone,
     notificationPreferences: (user.notification_preferences as Record<string, unknown>) ?? {},
   };

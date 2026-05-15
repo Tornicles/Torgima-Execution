@@ -12,13 +12,38 @@ function getHourGreeting() {
 }
 
 const CONDITION_CONFIG: Record<string, { color: string; bg: string; icon: string; message: string }> = {
-  stability: { color: "text-green-600", bg: "bg-green-50", icon: "🛡️", message: "You're in a productive state. Maintain consistency." },
-  power: { color: "text-blue-600", bg: "bg-blue-50", icon: "⚡", message: "Peak execution state. Scale your efforts." },
-  affluence: { color: "text-purple-600", bg: "bg-purple-50", icon: "👑", message: "Maximum execution state. Push your limits." },
-  urgency: { color: "text-orange-600", bg: "bg-orange-50", icon: "🔥", message: "Execution needed. Build momentum now." },
-  danger: { color: "text-red-600", bg: "bg-red-50", icon: "⚠️", message: "Recovery mode. Focus on small wins." },
-  nothingness: { color: "text-gray-600", bg: "bg-gray-50", icon: "○", message: "Getting started. Complete your first task." },
-  power_change: { color: "text-amber-600", bg: "bg-amber-50", icon: "↗️", message: "Condition shifting. Stay consistent." },
+  stability: { color: "text-green-600", bg: "bg-green-50", icon: "🛡️", message: "Execution chain stable — maintain continuity." },
+  power: { color: "text-blue-600", bg: "bg-blue-50", icon: "⚡", message: "Elevated execution state — scale disciplined output." },
+  affluence: {
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    icon: "👑",
+    message: "Maximum execution capacity window — prioritize high-leverage execution orders.",
+  },
+  urgency: {
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+    icon: "🔥",
+    message: "Execution continuity needs reinforcement — stabilize momentum.",
+  },
+  danger: {
+    color: "text-red-600",
+    bg: "bg-red-50",
+    icon: "⚠️",
+    message: "Recovery stance — shorten loop; protect signal quality.",
+  },
+  nothingness: {
+    color: "text-gray-600",
+    bg: "bg-gray-50",
+    icon: "○",
+    message: "Baseline initializing — complete your first execution order.",
+  },
+  power_change: {
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    icon: "↗️",
+    message: "Condition transition detected — adaptation active.",
+  },
 };
 
 function blueprintExtras(blueprint: NonNullable<DashboardState["activeBlueprint"]>) {
@@ -104,6 +129,34 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {blueprint ? (
+        <div className="bg-gray-900 text-white rounded-2xl p-4 flex items-start gap-4">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 shrink-0 animate-pulse" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-mono text-gray-400 uppercase tracking-wider mb-1">System awareness</p>
+            <p className="text-sm text-white leading-relaxed">
+              {conditionKey === "affluence" &&
+                "Execution capacity peaked. Maintain strategic continuity — scale externally verifiable output before regimes normalize."}
+              {conditionKey === "power" &&
+                "Execution momentum elevated. Operational intelligence: preserve cadence — each completed order compounds the signal stack."}
+              {conditionKey === "stability" &&
+                "Execution chain stable — blueprint position on track under current enforcement. Increase difficulty deliberately to bias toward Power."}
+              {conditionKey === "urgency" &&
+                "Execution continuity softening — restore rhythm: clear pending execution orders before signal quality degrades further."}
+              {conditionKey === "danger" &&
+                "Execution chain interrupted — recovery stance active. Single high-leverage execution order restores signal coherence."}
+              {conditionKey === "nothingness" &&
+                "Execution baseline initializing — first completed order establishes the signal ledger. Execute immediately."}
+              {conditionKey === "power_change" &&
+                "Condition transition logged — adaptation in progress across enforcement. Continue executing; operational pauses distort signal fidelity."}
+            </p>
+          </div>
+          <a href="/signals" className="text-xs text-green-400 font-mono uppercase tracking-wider whitespace-nowrap hover:text-green-300 shrink-0">
+            View signals →
+          </a>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`rounded-2xl border border-gray-200 p-5 ${conditionCfg.bg}`}>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Condition</p>
@@ -182,7 +235,7 @@ export default function Dashboard() {
             <div className="divide-y divide-gray-50">
               {orders.length === 0 ? (
                 <div className="px-6 py-8 text-center text-gray-400 text-sm">
-                  No active orders. The system is generating your next task.
+                  No active orders. System is assembling your next execution order.
                 </div>
               ) : (
                 orders.slice(0, 6).map((order) => {
@@ -221,7 +274,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-4 px-6 py-3.5 bg-green-50 hover:bg-green-100 cursor-pointer transition-colors">
                   <MessageSquare className="w-5 h-5 text-green-600 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-green-800">Submit feedback for completed tasks</p>
+                    <p className="text-sm font-semibold text-green-800">Submit execution reports for completed orders</p>
                     <p className="text-xs text-green-600">Help the system adjust to your reality.</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-green-500" />
@@ -342,7 +395,7 @@ export default function Dashboard() {
                 <Calendar className="w-5 h-5 text-indigo-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">Tomorrow</p>
-                  <p className="text-xs text-gray-500">{orders.length} tasks scheduled</p>
+                  <p className="text-xs text-gray-500">{orders.length} orders queued</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </div>
@@ -352,7 +405,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">Focus</p>
-                  <p className="text-xs text-gray-500">Complete high-impact tasks</p>
+                  <p className="text-xs text-gray-500">Prioritize highest-leverage execution orders</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </div>

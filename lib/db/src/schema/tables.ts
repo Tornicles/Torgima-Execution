@@ -438,6 +438,8 @@ export const orders = pgTable(
     why_it_matters: text("why_it_matters"),
     time_estimate_minutes: integer("time_estimate_minutes"),
     content_hash: text("content_hash"),
+    /** Server-computed + optional Bhudhi copy: trace, proof wording, AI prompt hints (never authority). */
+    command_context: jsonb("command_context").notNull().default(sql`'{}'::jsonb`),
     proof_required: boolean("proof_required").notNull().default(false),
     proof_type: proofTypeEnum("proof_type"),
     proof_description: text("proof_description"),

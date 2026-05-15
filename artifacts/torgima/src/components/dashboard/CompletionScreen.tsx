@@ -58,7 +58,7 @@ export function CompletionScreen({ blueprintId }: CompletionScreenProps) {
         </section>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat label="Tasks" value={String(data.tasksCompleted)} />
+          <Stat label="Orders completed" value={String(data.tasksCompleted)} />
           <Stat label="Avg score" value={data.averageScore.toFixed(1)} />
           <Stat label="Capability" value={data.finalCapabilityLevel} />
           <Stat label="Identity" value={data.finalIdentityStage} />
