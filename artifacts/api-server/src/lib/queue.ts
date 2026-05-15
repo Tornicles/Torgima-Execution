@@ -1,4 +1,5 @@
 import { PgBoss } from "pg-boss";
+import { resolvePgSsl } from "@workspace/db";
 import { logger } from "./logger.js";
 
 const globalForBoss = globalThis as unknown as {
@@ -13,9 +14,7 @@ export function createBoss(): PgBoss {
 
   return new PgBoss({
     connectionString,
-    ssl: connectionString.includes("supabase.com")
-      ? { rejectUnauthorized: false }
-      : false,
+    ssl: resolvePgSsl(connectionString),
     max: 5,
     deleteAfterDays: 7,
     monitorStateIntervalSeconds: 30,

@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { resolvePgSsl } from "./pg-ssl";
 
 const { Pool } = pg;
 
@@ -10,11 +11,11 @@ if (!connectionString) {
   throw new Error("[DB] DATABASE_URL is not set. Cannot start.");
 }
 
+export { resolvePgSsl };
+
 export const pool = new Pool({
   connectionString,
-  ssl: connectionString.includes("supabase.com")
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: resolvePgSsl(connectionString),
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
