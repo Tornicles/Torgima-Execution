@@ -88,7 +88,11 @@ export const ValidationService = {
     if (!bp) throw new TorgimaError("NOT_FOUND", "Blueprint not found");
 
     // Accept path_selection OR draft (if validation ran but status not updated yet)
-    if (bp.status !== "path_selection" && bp.status !== "draft") {
+    if (
+      bp.status !== "path_selection" &&
+      bp.status !== "awaiting_selection" &&
+      bp.status !== "draft"
+    ) {
       throw new TorgimaError(
         "STALE_STATE",
         `Blueprint is not in path selection state (current: ${bp.status})`,

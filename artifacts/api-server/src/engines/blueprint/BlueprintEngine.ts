@@ -27,6 +27,16 @@ import { CONDITIONS } from "../../constants/conditions.js";
 import { pauseBlueprint } from "../lifecycle/PauseEngine.js";
 import { resumeBlueprint } from "../lifecycle/ResumeEngine.js";
 import { RealityIntelligenceEngine } from "../intelligence/RealityIntelligenceEngine.js";
+import { buildTierAwareBlueprintChain } from "./BlueprintChainGenerator.js";
+import {
+  assertSelectionComplete,
+  getTierRules,
+  intelligenceDepthForTier,
+  parseMode,
+  parseTier,
+  type BlueprintMode,
+  type BlueprintTier,
+} from "./BlueprintRuleEngine.js";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -72,171 +82,52 @@ export class BlueprintEngine {
     return { blueprintId: bp.id };
   }
 
-  // ── BUILD CHAIN ───────────────────────────────────────────────────────────
+  // ── CONFIGURE SELECTION ───────────────────────────────────────────────────
 
-  /**
-   * Creates the full 6-layer execution chain inside an active transaction:
-   * Plan → Season → Target → Phases (3) → Project → Actions
-   *
-   * If a pathSkeleton is provided (from a validation path selection), its
-   * plan names/descriptions and target names are used in place of the generic defaults.
-   */
-  private async buildChain(
+  async configureSelection(
     blueprintId: string,
     userId: string,
-    goal: string,
-    tx: DbTx,
-    pathSkeleton?: {
-      plans:   Array<{ name: string; description: string }>;
-      targets: Array<{ name: string; type: string }>;
-    },
-  ): Promise<{
-    planId: string;
-    phaseId: string;
-    planCount: number;
-    phaseCount: number;
-    targetCount: number;
-    actionCount: number;
-  }> {
-    const planDef = pathSkeleton?.plans?.[0];
-    const targetDef = pathSkeleton?.targets?.[0];
+    input: { tier: BlueprintTier; mode: BlueprintMode },
+  ): Promise<{ blueprintId: string; tier: BlueprintTier; mode: BlueprintMode; intelligenceDepth: string }> {
+    const bp = await BlueprintRepository.findById(blueprintId, userId);
+    if (bp.status === "active") {
+      throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Cannot change selection on an active blueprint");
+    }
 
-    // Plan
-    const [plan] = await tx
-      .insert(plans)
-      .values({
-        blueprint_id: blueprintId,
-        name:         planDef?.name        ?? `Execution Plan — ${goal.slice(0, 60)}`,
-        description:  planDef?.description ?? `Primary execution plan for: ${goal}`,
-        order_index: 1,
-        status: "active",
-      })
-      .returning({ id: plans.id });
-    if (!plan) throw new TorgimaError("INTERNAL_ERROR", "Failed to create plan");
+    const tier = parseTier(input.tier);
+    const mode = parseMode(input.mode);
+    const tierRules = getTierRules(tier);
+    const depth = intelligenceDepthForTier(tier);
+    const now = new Date();
 
-    // Season (ignition)
-    await tx.insert(seasons).values({
-      blueprint_id: blueprintId,
-      plan_id: plan.id,
-      name: "ignition",
-      order_index: 1,
-      effort_level: "moderate",
-      status: "active",
-    });
+    const nextStatus =
+      bp.validation_id ? "path_selection"
+      : bp.status === "draft" || bp.status === "validating" ? "awaiting_selection"
+      : "awaiting_selection";
 
-    // Target
-    const [target] = await tx
-      .insert(targets)
-      .values({
-        blueprint_id: blueprintId,
-        plan_id: plan.id,
-        owner_id: userId,
-        name:        targetDef?.name ?? `Primary target: ${goal.slice(0, 80)}`,
-        description: goal,
-        type:        (["major", "primary", "vital", "operating", "conditional", "production"].includes(targetDef?.type ?? "")
-          ? targetDef!.type
-          : "primary") as "major" | "primary" | "vital" | "operating" | "conditional" | "production",
-        order_index: 1,
-        status: "active",
-      })
-      .returning({ id: targets.id });
-    if (!target) throw new TorgimaError("INTERNAL_ERROR", "Failed to create target");
-
-    // Phases — initiation (active), development (pending+locked), completion (pending+locked)
-    const phaseDefinitions = [
-      { name: "initiation" as const, orderIndex: 1, status: "active" as const, locked: false },
-      { name: "development" as const, orderIndex: 2, status: "pending" as const, locked: true },
-      { name: "completion" as const, orderIndex: 3, status: "pending" as const, locked: true },
-    ];
-
-    const insertedPhases: { id: string; name: string; orderIndex: number }[] = [];
-    for (const def of phaseDefinitions) {
-      const [p] = await tx
-        .insert(phases)
-        .values({
-          blueprint_id: blueprintId,
-          target_id: target.id,
-          plan_id: plan.id,
-          name: def.name,
-          order_index: def.orderIndex,
-          status: def.status,
-          locked: def.locked,
-          gate_passed: false,
-          gate_criteria: {
-            min_completion_rate: def.name === "initiation" ? 0.6 : 0.75,
-            min_momentum: 40,
+    await db
+      .update(blueprints)
+      .set({
+        tier,
+        mode,
+        intelligence_depth: depth,
+        selection_confirmed_at: now,
+        blueprint_config: {
+          tierRules: {
+            allowedSystems: tierRules.allowedSystems,
+            lockedSystems: tierRules.lockedSystems,
+            maxDailyOrders: tierRules.maxDailyOrders,
+            validationDepth: tierRules.validationDepth,
           },
-          started_at: def.name === "initiation" ? new Date() : null,
-        })
-        .returning({ id: phases.id });
-      if (!p) throw new TorgimaError("INTERNAL_ERROR", `Failed to create phase: ${def.name}`);
-      insertedPhases.push({ id: p.id, name: def.name, orderIndex: def.orderIndex });
-    }
-
-    const initiationPhase = insertedPhases.find((p) => p.name === "initiation")!;
-
-    // Project for initiation phase
-    const [project] = await tx
-      .insert(projects)
-      .values({
-        blueprint_id: blueprintId,
-        phase_id: initiationPhase.id,
-        target_id: target.id,
-        owner_id: userId,
-        name: `Setup & Foundation`,
-        description: `Initial setup and foundation work for: ${goal.slice(0, 60)}`,
-        type: "setup",
-        order_index: 1,
-        status: "active",
-        started_at: new Date(),
+          mode,
+          intelligenceDepth: depth,
+        },
+        status: nextStatus,
       })
-      .returning({ id: projects.id });
-    if (!project) throw new TorgimaError("INTERNAL_ERROR", "Failed to create project");
+      .where(eq(blueprints.id, blueprintId));
 
-    // Actions for the setup project
-    const actionDefs = [
-      {
-        name: "Define scope and success criteria",
-        type: "analyze" as const,
-        description: "Establish clear, measurable success criteria for this goal",
-        orderIndex: 1,
-      },
-      {
-        name: "Identify immediate first steps",
-        type: "create" as const,
-        description: "Break down the goal into concrete, actionable first steps",
-        orderIndex: 2,
-      },
-      {
-        name: "Establish baseline metrics",
-        type: "measure" as const,
-        description: "Record your current starting point for all relevant metrics",
-        orderIndex: 3,
-      },
-    ];
-
-    for (const def of actionDefs) {
-      await tx.insert(actions).values({
-        blueprint_id: blueprintId,
-        project_id: project.id,
-        target_id: target.id,
-        name: def.name,
-        description: def.description,
-        type: def.type,
-        knowledge_category: "execution",
-        order_index: def.orderIndex,
-        status: "pending",
-      });
-    }
-
-    return {
-      planId: plan.id,
-      phaseId: initiationPhase.id,
-      planCount: 1,
-      phaseCount: phaseDefinitions.length,
-      targetCount: 1,
-      actionCount: actionDefs.length,
-    };
+    logger.info({ blueprintId, tier, mode, depth }, "BlueprintEngine.configureSelection");
+    return { blueprintId, tier, mode, intelligenceDepth: depth };
   }
 
   // ── ACTIVATE (COLD START) ─────────────────────────────────────────────────
@@ -251,6 +142,16 @@ export class BlueprintEngine {
     if (existing.status === "active") {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
+
+    assertSelectionComplete({
+      tier: existing.tier,
+      mode: existing.mode,
+      selectionConfirmedAt: existing.selection_confirmed_at,
+    });
+
+    const tier = parseTier(existing.tier);
+    const mode = parseMode(existing.mode);
+    const tierRules = getTierRules(tier);
 
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 
@@ -311,8 +212,16 @@ export class BlueprintEngine {
         }
       }
 
-      // 3. Build execution chain (customised by path skeleton if available)
-      const chain = await this.buildChain(blueprintId, userId, existing.goal, tx, pathSkeleton);
+      // 3. Build tier/mode-aware execution chain (customised by path skeleton if available)
+      const chain = await buildTierAwareBlueprintChain(tx, {
+        blueprintId,
+        userId,
+        goal: existing.goal,
+        purpose: existing.purpose,
+        tier,
+        mode,
+        pathSkeleton,
+      });
 
       // 4. Update blueprint with current plan and phase
       await tx
@@ -367,13 +276,22 @@ export class BlueprintEngine {
         blueprint_id:        blueprintId,
         condition:           CONDITIONS.NOTHINGNESS,
         task_limits:         { daily_max: 1, active_max: 1 },
-        difficulty_cap:      "very_easy",
-        allowed_actions:     ["create", "analyze"],
-        blocked_actions:     [],
-        phase_permission:    "restricted",
-        ai_mode:             "command",
-        ui_mode:             "starter",
-        feature_permissions: { weekly_review: false, phase_advance: false, pivot: false },
+        difficulty_cap:
+          tier === "starter" ? "very_easy"
+          : tier === "growth" ? "moderate"
+          : "hard",
+        allowed_actions:     tier === "starter" ? ["create", "analyze"] : ["create", "analyze", "measure", "improve"],
+        blocked_actions:     tierRules.lockedSystems,
+        phase_permission:    tier === "starter" ? "restricted" : "normal",
+        ai_mode:             tier === "ultimate" ? "analytical" : "command",
+        ui_mode:             tierRules.uiMode as typeof enforcementPackages.$inferInsert["ui_mode"],
+        feature_permissions: {
+          weekly_review: tier !== "starter",
+          phase_advance: tier !== "starter",
+          pivot: tier === "ultimate",
+          team_mode: mode === "team",
+          predictive_signals: tier === "ultimate",
+        },
         risk_level:          "low",
         is_current:          true,
       });
@@ -440,8 +358,12 @@ export class BlueprintEngine {
           blueprintId,
           payload: {
             domain: resolvedDomain,
+            tier,
+            mode,
+            intelligenceDepth: intelligenceDepthForTier(tier),
             chain: {
               plans:   chain.planCount,
+              seasons: chain.seasonCount,
               phases:  chain.phaseCount,
               targets: chain.targetCount,
               actions: chain.actionCount,
@@ -667,9 +589,21 @@ export class BlueprintEngine {
     phaseCount: number;
     targetCount: number;
     actionCount: number;
+    seasonCount: number;
   }> {
+    const bp = await BlueprintRepository.findById(blueprintId, userId);
+    const tier = parseTier(bp.tier);
+    const mode = parseMode(bp.mode);
     return db.transaction(async (tx) => {
-      return this.buildChain(blueprintId, userId, goal, tx, pathSkeleton);
+      return buildTierAwareBlueprintChain(tx, {
+        blueprintId,
+        userId,
+        goal,
+        purpose: bp.purpose,
+        tier,
+        mode,
+        pathSkeleton,
+      });
     });
   }
 

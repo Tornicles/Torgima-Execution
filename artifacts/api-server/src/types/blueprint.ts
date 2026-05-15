@@ -1,6 +1,7 @@
 export type BlueprintStatus =
   | "draft"
   | "validating"
+  | "awaiting_selection"
   | "path_selection"
   | "active"
   | "paused"

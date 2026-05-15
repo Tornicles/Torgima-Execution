@@ -2,8 +2,14 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import {
+  BlueprintSelectionPanel,
+  type ModeId,
+  type TierId,
+} from "@/components/blueprint/BlueprintSelectionPanel";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+const TOTAL_STEPS = 7;
 
 const DOMAINS = [
   { id: "business", label: "Business", icon: "💼" },
@@ -47,7 +53,8 @@ const STEPS = [
   { number: 3, label: "Timeframe", sub: "When will you achieve this?" },
   { number: 4, label: "Commitment", sub: "Your level of commitment" },
   { number: 5, label: "Context", sub: "Your current environment" },
-  { number: 6, label: "Review", sub: "Confirm and launch" },
+  { number: 6, label: "Blueprint Type", sub: "Tier, mode, and execution depth" },
+  { number: 7, label: "Review", sub: "Validate path and launch" },
 ];
 
 type ValidationPayload = {
@@ -63,6 +70,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
+  const [selectedTier, setSelectedTier] = useState<TierId | null>(null);
+  const [selectedMode, setSelectedMode] = useState<ModeId | null>(null);
   const [, setLocation] = useLocation();
 
   const [form, setForm] = useState<FormData>({
@@ -92,6 +101,23 @@ export default function OnboardingPage() {
     if (step === 2) return !!form.purpose.trim();
     if (step === 3) return !!form.timeframe.trim();
     if (step === 4) return !!form.commitmentLevel;
+    if (step === 6) return !!selectedTier && !!selectedMode;
+    return true;
+  }
+
+  async function saveBlueprintSelection(blueprintId: string): Promise<boolean> {
+    if (!API_BASE_URL || !selectedTier || !selectedMode) return false;
+    const res = await fetch(`${API_BASE_URL}/api/blueprints/${blueprintId}/configure-selection`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tier: selectedTier, mode: selectedMode }),
+    });
+    const data = (await res.json()) as { ok?: boolean; error?: { message?: string } };
+    if (!data.ok) {
+      setError(data.error?.message ?? "Could not save blueprint selection.");
+      return false;
+    }
     return true;
   }
 
@@ -102,6 +128,10 @@ export default function OnboardingPage() {
     }
     if (step === 5) {
       setStep(6);
+      return;
+    }
+    if (step === 6) {
+      setStep(7);
       await handleValidate();
     }
   }
@@ -143,6 +173,8 @@ export default function OnboardingPage() {
         return;
       }
       if (d.status === "validated" && d.blueprintId) {
+        const saved = await saveBlueprintSelection(d.blueprintId);
+        if (!saved) return;
         setValidation(d);
       } else if (d.status === "needs_clarification") {
         setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
@@ -159,11 +191,14 @@ export default function OnboardingPage() {
   }
 
   async function handleLaunch() {
-    if (!validation?.blueprintId) return;
+    if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
     if (!API_BASE_URL) return;
     setLoading(true);
     setError("");
     try {
+      const saved = await saveBlueprintSelection(validation.blueprintId);
+      if (!saved) return;
+
       const res = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
         method: "POST",
         credentials: "include",
@@ -236,6 +271,17 @@ export default function OnboardingPage() {
       author: "The Torgima System",
     },
     6: {
+      title: "Why blueprint type matters",
+      points: [
+        "Tier controls depth and intelligence",
+        "Mode controls execution distribution",
+        "Structure stays fixed across all types",
+        "Launch is blocked until you confirm",
+      ],
+      quote: "Structure stays fixed. Tier defines intelligence. Mode defines distribution.",
+      author: "TORGIMA Master Blueprint",
+    },
+    7: {
       title: "What happens next",
       points: ["Blueprint generation", "Daily execution orders", "Progress tracking", "Adaptive strategy"],
       quote: "The secret of getting ahead is getting started.",
@@ -244,7 +290,7 @@ export default function OnboardingPage() {
   };
 
   const sideInfo = WHY_THIS_MATTERS[step] ?? WHY_THIS_MATTERS[1];
-  const showStepNav = !(step === 6 && !loading && validation && !error);
+  const showStepNav = !(step === 7 && !loading && validation && !error);
   const validated = validation?.status === "validated" && validation.blueprintId;
 
   return (
@@ -260,9 +306,9 @@ export default function OnboardingPage() {
         </div>
         <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">Step {step} of 6</span>
+            <span className="text-sm text-gray-500">Step {step} of {TOTAL_STEPS}</span>
             <div className="w-48 bg-gray-200 rounded-full h-1.5">
-              <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(step / 6) * 100}%` }} />
+              <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
             </div>
           </div>
         </div>
@@ -605,6 +651,16 @@ export default function OnboardingPage() {
             )}
 
             {step === 6 && (
+              <BlueprintSelectionPanel
+                selectedTier={selectedTier}
+                selectedMode={selectedMode}
+                onTierChange={setSelectedTier}
+                onModeChange={setSelectedMode}
+                disabled={loading}
+              />
+            )}
+
+            {step === 7 && (
               <>
                 {loading && (
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -625,8 +681,8 @@ export default function OnboardingPage() {
                 {!loading && error && !validation && (
                   <div className="text-center py-12 space-y-4">
                     <p className="text-red-600 text-sm">{error}</p>
-                    <button type="button" onClick={() => { setError(""); setStep(5); }} className="text-green-600 underline text-sm">
-                      ← Back to edit
+                    <button type="button" onClick={() => { setError(""); setStep(6); }} className="text-green-600 underline text-sm">
+                      ← Back to blueprint type
                     </button>
                   </div>
                 )}
@@ -737,17 +793,17 @@ export default function OnboardingPage() {
 
             {showStepNav && (
               <div className="pt-2">
-                {step < 6 && (
+                {step < 7 && (
                   <button
                     type="button"
                     onClick={() => void handleNext()}
                     disabled={!canContinue()}
                     className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm"
                   >
-                    Continue →
+                    {step === 6 ? "Continue to validation →" : "Continue →"}
                   </button>
                 )}
-                {step > 1 && step < 6 && (
+                {step > 1 && step < 7 && (
                   <p className="text-center text-xs text-gray-400 mt-3">
                     <button type="button" onClick={() => setStep((s) => (s - 1) as Step)} className="hover:text-gray-600">
                       ← Back
@@ -788,7 +844,7 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            {step === 6 && !loading && validated && validation && (
+            {step === 7 && !loading && validated && validation && (
               <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
                 <div>
                   <h3 className="font-bold text-gray-900 mb-1">Choose Your Path</h3>

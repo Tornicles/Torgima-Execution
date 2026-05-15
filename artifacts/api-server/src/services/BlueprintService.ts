@@ -72,6 +72,14 @@ export const BlueprintService = {
     return engine.mapToLegacy(bp, currentPhaseIndex, totalPhases);
   },
 
+  async configureSelection(
+    blueprintId: string,
+    userId: string,
+    input: { tier: "starter" | "growth" | "ultimate"; mode: "individual" | "team" },
+  ) {
+    return engine.configureSelection(blueprintId, userId, input);
+  },
+
   async activate(blueprintId: string, userId: string): Promise<{ launched: true; blueprintId: string }> {
     logger.info({ blueprintId, userId }, "BlueprintService.activate");
     return engine.activateBlueprint(blueprintId, userId);

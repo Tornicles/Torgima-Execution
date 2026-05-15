@@ -7,7 +7,19 @@ export const commitmentLevelEnum = pgEnum("commitment_level", ["low", "medium", 
 
 // GROUP 2 — BLUEPRINT & EXECUTION
 export const blueprintStatusEnum = pgEnum("blueprint_status", [
-  "draft", "validating", "path_selection", "active", "paused", "complete", "abandoned",
+  "draft",
+  "validating",
+  "awaiting_selection",
+  "path_selection",
+  "active",
+  "paused",
+  "complete",
+  "abandoned",
+]);
+export const intelligenceDepthEnum = pgEnum("intelligence_depth", [
+  "guided",
+  "operational",
+  "strategic",
 ]);
 export const validationVerdictEnum = pgEnum("validation_verdict", ["proceed", "adjust", "pivot"]);
 export const selectedPathEnum = pgEnum("selected_path", ["current", "adjusted", "alternative"]);

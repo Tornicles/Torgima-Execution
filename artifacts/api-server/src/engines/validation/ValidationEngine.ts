@@ -181,11 +181,23 @@ export async function runValidation(params: {
   }
 
   // Link validation to blueprint and advance status
+  const [bpRow] = await db
+    .select({
+      selection_confirmed_at: blueprints.selection_confirmed_at,
+      tier: blueprints.tier,
+    })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+
+  const nextStatus =
+    bpRow?.selection_confirmed_at && bpRow?.tier ? "path_selection" : "awaiting_selection";
+
   await db
     .update(blueprints)
     .set({
       validation_id: validationId,
-      status:        "path_selection",
+      status:        nextStatus,
     })
     .where(eq(blueprints.id, params.blueprintId));
 

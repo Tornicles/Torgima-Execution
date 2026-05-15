@@ -14,6 +14,7 @@ import {
   evaluatePivotEligibility,
   generatePivotPathOptions,
 } from "../engines/strategy/StrategyEngine.js";
+import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleEngine.js";
 import {
   createPivotReview,
   resolvePivotReview,
@@ -32,6 +33,16 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 
 const router = Router();
+
+// GET /api/blueprints/selection-catalog — tier/mode comparison for mandatory selection UI
+router.get("/blueprints/selection-catalog", async (req, res) => {
+  try {
+    await requireAuth(req, "USER_SESSION");
+    success(res, BLUEPRINT_SELECTION_CATALOG);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
 
 // GET /api/blueprints
 router.get("/blueprints", async (req, res) => {
@@ -103,6 +114,30 @@ router.get("/blueprints/:id", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprint = await BlueprintService.get(req.params.id!, auth.userId);
     success(res, blueprint);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/blueprints/:id/configure-selection — mandatory tier + mode before launch
+router.post("/blueprints/:id/configure-selection", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const schema = z.object({
+      tier: z.enum(["starter", "growth", "ultimate"]),
+      mode: z.enum(["individual", "team"]),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "tier and mode are required", 422);
+      return;
+    }
+    const result = await BlueprintService.configureSelection(
+      req.params.id!,
+      auth.userId,
+      parsed.data,
+    );
+    success(res, result);
   } catch (err) {
     handleError(req, res, err);
   }

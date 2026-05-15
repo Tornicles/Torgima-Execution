@@ -28,6 +28,7 @@ import {
   buildServerTraceChain,
   type CommandTraceChain,
 } from "../intelligence/CommandOrderIntelligenceEngine.js";
+import { buildTraceMetadata, getTierRules, parseMode, parseTier } from "../blueprint/BlueprintRuleEngine.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -211,7 +212,13 @@ async function loadContext(params: {
     }
   }
 
-  const taskLimits = (pkg.task_limits as { min?: number; max?: number }) ?? { min: 1, max: 3 };
+  let taskLimits = (pkg.task_limits as { min?: number; max?: number }) ?? { min: 1, max: 3 };
+  const tierRules = getTierRules(parseTier(blueprint.tier));
+  const tierMax = tierRules.maxDailyOrders;
+  taskLimits = {
+    min: Math.min(taskLimits.min ?? 1, tierMax),
+    max: Math.min(taskLimits.max ?? tierMax, tierMax),
+  };
   const overrideFlags = (pkg.override_flags as Record<string, unknown>) ?? {};
 
   const allowedRaw = pkg.allowed_actions;
@@ -228,6 +235,8 @@ async function loadContext(params: {
       purpose: blueprint.purpose ?? undefined,
       current_domain: blueprint.current_domain ?? undefined,
       current_condition: blueprint.current_condition ?? undefined,
+      tier: blueprint.tier ?? undefined,
+      mode: blueprint.mode ?? undefined,
     },
     plan: currentPlan,
     phase: currentPhase,
@@ -1093,6 +1102,15 @@ export async function generate(params: {
         condition_at_generation: enforcement.condition_code,
         domain_at_generation: domainGen,
         generation_reason: `${params.generationTrigger} — ${params.generationMode} — ${taskType}`,
+        assigned_member_id: params.userId,
+        trace_metadata: buildTraceMetadata({
+          layer: "order",
+          parentId: ctx.action?.id ?? ctx.project?.id ?? null,
+          parentLayer: ctx.action ? "action" : "project",
+          tier: parseTier(ctx.blueprint.tier),
+          mode: parseMode(ctx.blueprint.mode),
+          generationReason: `${params.generationTrigger}:${params.generationMode}`,
+        }),
         status: "pending",
         command_context: commandContext as typeof orders.$inferInsert["command_context"],
       })

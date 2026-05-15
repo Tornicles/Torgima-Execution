@@ -216,6 +216,13 @@ export interface ExecutionTargetDTO {
 export interface ExecutionCommandCenterDTO {
   blueprintId: string;
   blueprintStatus: string;
+  blueprintType: {
+    tier: string | null;
+    mode: string | null;
+    intelligenceDepth: string | null;
+    allowedSystems: string[];
+    lockedSystems: string[];
+  };
   pausedAt: string | null;
   pauseReason: string | null;
   /** Orders with no `action_id` — still traced to blueprint, not shown under an action row. */
@@ -794,9 +801,20 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
     operatingPattern: patternRow?.pattern_type ?? null,
   });
 
+  const blueprintConfig = (blueprint.blueprint_config ?? {}) as {
+    tierRules?: { allowedSystems?: string[]; lockedSystems?: string[] };
+  };
+
   return {
     blueprintId,
     blueprintStatus: blueprint.status,
+    blueprintType: {
+      tier: blueprint.tier ?? null,
+      mode: blueprint.mode ?? null,
+      intelligenceDepth: blueprint.intelligence_depth ?? null,
+      allowedSystems: blueprintConfig.tierRules?.allowedSystems ?? [],
+      lockedSystems: blueprintConfig.tierRules?.lockedSystems ?? [],
+    },
     pausedAt: blueprint.paused_at ? blueprint.paused_at.toISOString() : null,
     pauseReason: blueprint.pause_reason,
     detachedOrders,

@@ -113,6 +113,13 @@ interface HierarchyPlan {
 interface CommandCenterPayload {
   blueprintId: string;
   blueprintStatus: string;
+  blueprintType?: {
+    tier: string | null;
+    mode: string | null;
+    intelligenceDepth: string | null;
+    allowedSystems: string[];
+    lockedSystems: string[];
+  };
   pausedAt: string | null;
   pauseReason: string | null;
   detachedOrders: OrderTraceDTO[];
@@ -326,6 +333,21 @@ export default function BlueprintPage() {
             </span>
           </Link>
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Blueprint command center</h1>
+          {cc.blueprintType?.tier && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              <span className="text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200">
+                {cc.blueprintType.tier} tier
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded-md bg-sky-50 text-sky-800 ring-1 ring-sky-200">
+                {cc.blueprintType.mode} mode
+              </span>
+              {cc.blueprintType.intelligenceDepth && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+                  {cc.blueprintType.intelligenceDepth} depth
+                </span>
+              )}
+            </div>
+          )}
           <p className="text-slate-500 text-sm mt-2 max-w-2xl">
             Full execution machine: mission, control policies, hierarchy, locks, signals, targets, and order traceability
             sourced from persisted blueprint state — not illustrative data.

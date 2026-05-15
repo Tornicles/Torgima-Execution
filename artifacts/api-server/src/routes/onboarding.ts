@@ -92,7 +92,11 @@ router.post("/onboarding/goal", async (req, res) => {
       .limit(20);
 
     const existing = existingRows.find(
-      b => b.status === "draft" || b.status === "validating" || b.status === "path_selection",
+      (b) =>
+        b.status === "draft" ||
+        b.status === "validating" ||
+        b.status === "awaiting_selection" ||
+        b.status === "path_selection",
     );
 
     let blueprintId: string;

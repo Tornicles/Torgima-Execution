@@ -17,7 +17,8 @@ export type ErrorCode =
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
   | "AI_CONTRACT_ERROR"
-  | "FEATURE_DISABLED";
+  | "FEATURE_DISABLED"
+  | "BLUEPRINT_SELECTION_REQUIRED";
 
 export class TorgimaError extends Error {
   constructor(
@@ -49,6 +50,8 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
       return 409;
     case "FEATURE_DISABLED":
       return 403;
+    case "BLUEPRINT_SELECTION_REQUIRED":
+      return 422;
     case "RATE_LIMITED":
       return 429;
     default:
