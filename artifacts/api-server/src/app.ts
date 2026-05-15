@@ -51,6 +51,7 @@ app.use(
       if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
       if (origin.endsWith(".vercel.app")) return callback(null, true);
       if (origin.includes("localhost")) return callback(null, true);
+      if (origin.startsWith("http://127.0.0.1:")) return callback(null, true);
       console.warn("[CORS] Blocked origin:", origin);
       callback(new Error(`CORS blocked: ${origin}`));
     },
