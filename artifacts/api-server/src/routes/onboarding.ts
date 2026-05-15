@@ -197,6 +197,14 @@ router.post("/onboarding/goal", async (req, res) => {
       systemsProgress: validationResult.systemsProgress,
     });
   } catch (err) {
+    req.log.error(
+      {
+        err,
+        userId: (err as { userId?: string }).userId,
+        message: err instanceof Error ? err.message : String(err),
+      },
+      "[Onboarding] POST /onboarding/goal failed",
+    );
     handleError(req, res, err);
   }
 });

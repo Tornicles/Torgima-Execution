@@ -106,6 +106,22 @@ function mapInfrastructureFailure(err: unknown): {
   }
 
   if (
+    combinedMsg.includes("column") && combinedMsg.includes("does not exist") ||
+    combinedMsg.includes("type") && combinedMsg.includes("does not exist") ||
+    combinedMsg.includes("validation_readiness") ||
+    combinedMsg.includes("launch_blocked") ||
+    combinedMsg.includes("eis_rate_limits")
+  ) {
+    return {
+      status: 503,
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        "The database schema is out of date. Redeploy the API server (it applies patches on boot) or run scripts/migrations/*.sql on your Postgres instance.",
+      retryable: true,
+    };
+  }
+
+  if (
     combinedMsg.includes("password authentication failed") ||
     combinedMsg.includes("no pg_hba.conf") ||
     combinedMsg.includes("connection terminated") ||

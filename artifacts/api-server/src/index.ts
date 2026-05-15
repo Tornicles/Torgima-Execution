@@ -5,6 +5,7 @@ import { logger } from "./lib/logger.js";
 import { startWorkers } from "./workers/start.js";
 import { stopBoss } from "./lib/queue.js";
 import { stopProductionSchedulers } from "./schedulers/ProductionScheduler.js";
+import { ensureSchemaPatches } from "./lib/ensureSchema.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
@@ -21,6 +22,7 @@ server = app.listen(PORT, async () => {
     await client.query("SELECT 1");
     client.release();
     console.log("[SERVER] Database connection: OK");
+    await ensureSchemaPatches();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[SERVER] Database connection FAILED:", msg);
