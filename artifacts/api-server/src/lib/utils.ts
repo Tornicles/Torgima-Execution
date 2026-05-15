@@ -48,6 +48,87 @@ export function failure(
   res.status(status).json(body);
 }
 
+function mapInfrastructureFailure(err: unknown): {
+  code: string;
+  message: string;
+  status: number;
+  retryable: boolean;
+} | null {
+  if (err == null) return null;
+
+  const parts: { code: string; message: string }[] = [];
+  const visit = (e: unknown): void => {
+    if (!e || typeof e !== "object") return;
+    const o = e as Record<string, unknown>;
+    const code = o["code"];
+    const msg = o["message"];
+    if (typeof code === "string" || typeof code === "number") {
+      parts.push({ code: String(code), message: typeof msg === "string" ? msg : "" });
+    } else if (typeof msg === "string") {
+      parts.push({ code: "", message: msg });
+    }
+    if ("cause" in o && o["cause"] != null) visit(o["cause"]);
+  };
+  visit(err);
+
+  const combinedMsg = parts
+    .map((p) => p.message)
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const codes = new Set(parts.map((p) => p.code).filter(Boolean));
+
+  const nodeNet = new Set(["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET", "EAI_AGAIN"]);
+  for (const c of codes) {
+    if (nodeNet.has(c)) {
+      return {
+        status: 503,
+        code: "SERVICE_UNAVAILABLE",
+        message:
+          "Cannot reach the database (network). On Railway, confirm DATABASE_URL is set to your Postgres connection string (pooler URLs often need ?sslmode=require for remote hosts).",
+        retryable: true,
+      };
+    }
+  }
+
+  for (const c of codes) {
+    if (/^[0-9A-Z]{5}$/.test(c)) {
+      if (c.startsWith("08") || c === "57P01" || c === "57P03" || c === "28P01" || c === "3D000") {
+        return {
+          status: 503,
+          code: "SERVICE_UNAVAILABLE",
+          message:
+            "Database rejected the connection or credentials. Double-check DATABASE_URL on the API host and that the database accepts connections from Railway.",
+          retryable: true,
+        };
+      }
+    }
+  }
+
+  if (
+    combinedMsg.includes("password authentication failed") ||
+    combinedMsg.includes("no pg_hba.conf") ||
+    combinedMsg.includes("connection terminated") ||
+    combinedMsg.includes("server closed the connection") ||
+    combinedMsg.includes("ssl") ||
+    combinedMsg.includes("certificate") ||
+    combinedMsg.includes("self signed") ||
+    combinedMsg.includes("timeout") ||
+    combinedMsg.includes("connect econnrefused") ||
+    combinedMsg.includes("getaddrinfo")
+  ) {
+    return {
+      status: 503,
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        "Sign-in service cannot talk to the database. Fix DATABASE_URL / SSL on Railway, redeploy the API, then try again.",
+      retryable: true,
+    };
+  }
+
+  return null;
+}
+
 export function handleError(req: Request, res: Response, err: unknown): void {
   if (isTorgimaError(err)) {
     const status = torgimaErrorToStatus(err.code);
@@ -55,6 +136,13 @@ export function handleError(req: Request, res: Response, err: unknown): void {
       fieldErrors: err.fieldErrors,
       retryable: err.retryable,
     });
+    return;
+  }
+
+  const infra = mapInfrastructureFailure(err);
+  if (infra) {
+    req.log.error({ err }, "Infrastructure error in route handler");
+    failure(res, infra.code, infra.message, infra.status, { retryable: infra.retryable });
     return;
   }
 

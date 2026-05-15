@@ -95,6 +95,17 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 
 Set **`FRONTEND_URL`** on the API to the exact SPA origin (e.g. `https://your-app.vercel.app`). The API uses **`credentials: true`** and the browser client uses **`credentials: "include"`**. If `FRONTEND_URL` is unset, local development keeps a permissive reflected origin; production should always set it (comma-separated origins are supported for preview deployments).
 
+Preview URLs like **`https://…-git-main-….vercel.app`** are allowed automatically (any **`*.vercel.app`** origin is permitted by the API).
+
+### Troubleshooting login / SERVICE_UNAVAILABLE
+
+If the SPA shows a **database** or **`SERVICE_UNAVAILABLE`** message when sending a magic link, the browser reached Railway but Postgres failed (`send-magic-link` writes sessions):
+
+1. Fix **`DATABASE_URL`** on Railway (credentials, hostname, SSL, or wrong URI variant). Many hosts require **`?sslmode=require`** on the JDBC/Postgres URL.
+2. Redeploy the API after changing variables.
+
+Email never arrives despite a success toast means **`RESEND_API_KEY`** / verified **`EMAIL_FROM`** are missing or invalid.
+
 ### Database schema + seed
 
 **Note:** This repo uses **`pnpm -F @workspace/db push`** (Drizzle Kit *push*). That syncs the Drizzle schema straight to `DATABASE_URL`; it is **not** a ledger of versioned migrations, so there is no automated down-migration path. Review the emitted DDL in staging before applying to production.
