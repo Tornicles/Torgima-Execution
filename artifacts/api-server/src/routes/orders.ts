@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { db, blueprints, orders, orderKnowledgeLinks, knowledgeObjects } from "@workspace/db";
+import { db, orders, orderKnowledgeLinks, knowledgeObjects, actions, phases, projects } from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { OrderService } from "../services/OrderService.js";
 import { processFeedback } from "../engines/feedback/FeedbackProcessingEngine.js";
@@ -13,6 +13,42 @@ import {
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 
 const router = Router();
+
+function buildOrderCommandContext(params: {
+  domain: string | null | undefined;
+  actionName: string | null | undefined;
+  phaseName: string | null | undefined;
+  projectName: string | null | undefined;
+  orderTitle: string;
+}): {
+  where: string;
+  how: string;
+  whatItUnlocks: string;
+  contributesTo: string;
+} {
+  const domain = params.domain?.toLowerCase() ?? "general";
+  const platformMap: Record<string, string> = {
+    genesis:      "Your primary tools, notebook, calendar, or where you ship work",
+    market:       "Your customer-facing channels, CRM, or growth stack",
+    delivery:     "Your primary business tools, communication channels, or target platforms",
+    continuity:   "Your tracking, journaling, or maintenance systems",
+    business:     "Your primary business tools, communication channels, or target platforms",
+    health:       "Your tracking app, gym, or health monitoring system",
+    financial:    "Your financial accounts, spreadsheet, or investment platform",
+    creative:     "Your creative tools, portfolio, or publishing platform",
+    personal_growth: "Your learning platform, journal, or habit tracker",
+    technology:   "Your development environment, GitHub, or deployment platform",
+  };
+  const where = platformMap[domain] ?? "The platform or environment most relevant to this action";
+  const how =
+    "Use the most direct path. If stuck for more than 10 minutes, document the blocker and submit feedback anyway.";
+  return {
+    where,
+    how,
+    whatItUnlocks: params.actionName ?? params.orderTitle,
+    contributesTo: params.phaseName ?? params.projectName ?? "your current execution chain",
+  };
+}
 
 const feedbackBodySchema = z.object({
   completionStatus: z.enum(["completed", "partial", "failed", "skipped"]),
@@ -93,12 +129,21 @@ router.get("/orders/:id", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
 
-    const [order] = await db
-      .select()
+    const [joined] = await db
+      .select({
+        order: orders,
+        actionName: actions.name,
+        phaseName: phases.name,
+        projectName: projects.name,
+      })
       .from(orders)
+      .leftJoin(actions, eq(orders.action_id, actions.id))
+      .leftJoin(phases, eq(orders.linked_phase_id, phases.id))
+      .leftJoin(projects, eq(orders.linked_project_id, projects.id))
       .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId)))
       .limit(1);
 
+    const order = joined?.order;
     if (!order) {
       failure(res, "NOT_FOUND", "Order not found", 404);
       return;
@@ -115,6 +160,14 @@ router.get("/orders/:id", async (req, res) => {
       .innerJoin(knowledgeObjects, eq(orderKnowledgeLinks.knowledge_id, knowledgeObjects.id))
       .where(eq(orderKnowledgeLinks.order_id, order.id))
       .limit(3);
+
+    const commandContext = buildOrderCommandContext({
+      domain: order.domain,
+      actionName: joined.actionName,
+      phaseName: joined.phaseName,
+      projectName: joined.projectName,
+      orderTitle: order.title,
+    });
 
     success(res, {
       id: order.id,
@@ -135,6 +188,10 @@ router.get("/orders/:id", async (req, res) => {
       priority: order.priority,
       startedAt: order.started_at,
       finishedAt: order.finished_at,
+      phaseName: joined.phaseName,
+      projectName: joined.projectName,
+      actionName: joined.actionName,
+      commandContext,
       knowledgeObjects: linkRows.map((kl) => ({
         id: kl.kid,
         title: kl.title,

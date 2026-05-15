@@ -51,6 +51,7 @@ export async function checkUsageAllowed(params: {
 
 export function getTimeout(triggerType: string): number {
   if (triggerType === "TASK_DRAFTING") return TASK_TIMEOUT_MS;
+  if (triggerType === "REALITY_INTELLIGENCE") return 75_000;
   return TIMEOUT_MS;
 }
 

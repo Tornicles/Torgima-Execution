@@ -428,24 +428,20 @@ function buildTaskContent(params: {
   phase?: { name: string } | null;
   project?: { name: string } | null;
   difficulty: string;
+  domain?: string | null;
 }): BuiltContent {
-  const { task_type, goal, action, target, phase, project, difficulty } = params;
-  const context = action?.name ?? target?.name ?? project?.name ?? "your goal";
+  const { task_type, goal, action, target, phase, project, difficulty, domain } = params;
 
   const templates: Record<string, () => BuiltContent> = {
-    execution: () => ({
-      title: `${actionVerb(action?.type ?? "create")}: ${truncate(context, 60)}`,
-      instruction: `Execute the next step for: ${context}.\n\nYour goal is: "${truncate(goal, 200)}"\n\nComplete the specific deliverable for this action. Be concrete about what you will do, how long it will take, and what output you will produce.`,
-      expected_output: `A completed deliverable for: ${context}. Something concrete that can be reviewed.`,
-      definition_of_done: `The action "${context}" has a visible, reviewable output. You can describe exactly what changed as a result of this work.`,
-      why_it_matters: `This advances your blueprint toward: "${truncate(goal, 100)}"`,
-      time_estimate_minutes: difficultyTime(difficulty),
-      proof_required: ["hard", "very_hard"].includes(difficulty),
-      proof_type: ["hard", "very_hard"].includes(difficulty) ? "text" : undefined,
-      proof_description: ["hard", "very_hard"].includes(difficulty)
-        ? "Describe the output you produced."
-        : undefined,
-    }),
+    execution: () =>
+      buildExecutionCommandContent({
+        goal,
+        action,
+        phase,
+        project,
+        domain,
+        difficulty,
+      }),
 
     recovery: () => ({
       title: "Restart Your Execution",
@@ -566,6 +562,107 @@ function difficultyTime(difficulty: string): number {
     very_hard: 120,
   };
   return times[difficulty] ?? 45;
+}
+
+function buildCommandInstruction(params: {
+  domain: string;
+  action?: { name: string; type: string } | null;
+}): string {
+  const domain = params.domain?.toLowerCase() ?? "business";
+  void domain;
+  const actionTitle = params.action?.name ?? "complete this task";
+
+  const commandPrefixes = ["Execute:", "Action required:", "Complete now:", "Your order:", "Immediate action:"];
+  const prefix = commandPrefixes[Math.floor(Math.random() * commandPrefixes.length)];
+
+  return `${prefix} ${actionTitle}. This is a direct execution order — not a suggestion. Complete it within the time limit and submit proof when required.`;
+}
+
+function buildExpectedOutputCommand(params: {
+  action?: { name: string; type: string } | null;
+}): string {
+  return `Completed ${params.action?.name ?? "this task"} with documented evidence of completion: a screenshot, link, written output, or measurable result that proves this was done.`;
+}
+
+function buildDefinitionOfDoneCommand(): string {
+  return `This task is complete when: (1) The action has been physically executed, not just planned. (2) You have proof of completion ready if proof is required. (3) You can describe what changed as a result of doing this.`;
+}
+
+function buildWhyItMattersCommand(params: {
+  goal: string;
+  phase?: { name: string } | null;
+  project?: { name: string } | null;
+}): string {
+  return `This task is part of ${params.phase?.name ?? "your current phase"} → ${params.project?.name ?? "your current project"} → your goal (${truncate(params.goal, 120)}). Skipping this delays your execution chain — every incomplete order sets the next one back.`;
+}
+
+function buildWhereContext(params: { domain: string | null | undefined }): string {
+  const domain = params.domain?.toLowerCase() ?? "general";
+
+  const platformMap: Record<string, string> = {
+    genesis:      "Your primary tools, notebook, calendar, or the environment where you ship work",
+    market:       "Your customer-facing channels, CRM, or growth stack",
+    delivery:     "Your primary business tools, communication channels, or target platforms",
+    continuity:   "Your tracking, journaling, or maintenance systems",
+
+    business:     "Your primary business tools, communication channels, or target platforms",
+    health:       "Your tracking app, gym, or health monitoring system",
+    financial:    "Your financial accounts, spreadsheet, or investment platform",
+    creative:     "Your creative tools, portfolio, or publishing platform",
+    personal_growth: "Your learning platform, journal, or habit tracker",
+    technology:   "Your development environment, GitHub, or deployment platform",
+  };
+
+  return platformMap[domain] ?? "The platform or environment most relevant to this action";
+}
+
+function buildHowContext(): string {
+  return `Use the most direct path available. If you are stuck for more than 10 minutes, document the blocker and submit it in feedback anyway. Speed of execution matters more than perfection at this stage.`;
+}
+
+function buildExecutionCommandContent(params: {
+  goal: string;
+  action?: { name: string; type: string } | null;
+  phase?: { name: string } | null;
+  project?: { name: string } | null;
+  domain: string | null | undefined;
+  difficulty: string;
+}): BuiltContent {
+  const difficulty = params.difficulty;
+  const timeLimit =
+    ({
+      very_easy: 15,
+      easy: 30,
+      moderate: 60,
+      hard: 90,
+      very_hard: 120,
+    } as Record<string, number>)[difficulty] ?? difficultyTime(difficulty);
+
+  const actionForVerb = params.action ?? { name: "Execute Next Action", type: "create" };
+
+  const title = `${actionVerb(actionForVerb.type)}: ${truncate(actionForVerb.name, 60)}`;
+
+  return {
+    title,
+    instruction: buildCommandInstruction({
+      domain: String(params.domain ?? "business"),
+      action: params.action,
+    }),
+    expected_output: buildExpectedOutputCommand({ action: params.action }),
+    definition_of_done: buildDefinitionOfDoneCommand(),
+    why_it_matters: buildWhyItMattersCommand({
+      goal: params.goal,
+      phase: params.phase,
+      project: params.project,
+    }),
+    time_estimate_minutes: timeLimit,
+    proof_required: difficulty === "hard" || difficulty === "very_hard",
+    proof_type: difficulty === "hard" || difficulty === "very_hard" ? "image" : undefined,
+    proof_description:
+      difficulty === "hard" || difficulty === "very_hard"
+        ? "Screenshot or link proving completion"
+        : undefined,
+  };
 }
 
 // ── BHUDHI ENRICHMENT ─────────────────────────────────────────────────────────
@@ -753,6 +850,7 @@ export async function generate(params: {
     phase: ctx.phase ? { name: ctx.phase.name } : null,
     project: ctx.project ? { name: ctx.project.name } : null,
     difficulty,
+    domain: ctx.blueprint.current_domain ?? null,
   });
 
   let usedBhudhi = false;
@@ -802,6 +900,7 @@ export async function generate(params: {
       phase: ctx.phase ? { name: ctx.phase.name } : null,
       project: null,
       difficulty,
+      domain: ctx.blueprint.current_domain ?? null,
     });
     content.instruction += `\n\n(unique ref: ${Date.now()})`;
     hash = buildContentHash(content.title, content.instruction);

@@ -62,6 +62,7 @@ export const FORBIDDEN_MODES: readonly BhudhiMode[] = ["DECIDE", "MUTATE", "OVER
 
 export type BhudhiTriggerType =
   | "GOAL_STRUCTURING"
+  | "REALITY_INTELLIGENCE"
   | "TASK_DRAFTING"
   | "FEEDBACK_CLASSIFICATION"
   | "CLARIFICATION_PROMPT"
@@ -74,6 +75,7 @@ export type BhudhiTriggerType =
 
 export type BhudhiOutputType =
   | "structured_goal"
+  | "reality_intelligence"
   | "task_copy"
   | "blocker_classification"
   | "clarification_request"

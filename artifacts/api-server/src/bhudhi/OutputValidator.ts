@@ -107,6 +107,33 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       }
       break;
 
+    case "reality_intelligence": {
+      const momentum = ["growing", "declining", "emerging", "oversaturated", "behavior_shifting"];
+      if (!momentum.includes(String(d["marketMomentum"]))) {
+        errors.push("reality_intelligence: invalid marketMomentum");
+      }
+      const pos = d["positioning"] as Record<string, unknown> | undefined;
+      if (!pos || typeof pos !== "object") errors.push("reality_intelligence: missing positioning");
+      else {
+        if (!pos["strongestAngle"]) errors.push("reality_intelligence: positioning.strongestAngle");
+        if (!pos["weakestAngle"]) errors.push("reality_intelligence: positioning.weakestAngle");
+        if (!pos["userMisconception"]) errors.push("reality_intelligence: positioning.userMisconception");
+        if (!pos["differentiationOpportunity"]) errors.push("reality_intelligence: positioning.differentiationOpportunity");
+      }
+      const ws = d["whiteSpace"] as Record<string, unknown> | undefined;
+      if (!ws || typeof ws !== "object") errors.push("reality_intelligence: missing whiteSpace");
+      else {
+        for (const k of ["underservedUsers", "emotionalGaps", "executionGaps", "unclaimedPositioning"]) {
+          if (!Array.isArray(ws[k])) errors.push(`reality_intelligence: whiteSpace.${k} must be array`);
+        }
+      }
+      if (!Array.isArray(d["similarCompanies"])) errors.push("reality_intelligence: similarCompanies must be array");
+      if (!Array.isArray(d["strategicWarnings"])) errors.push("reality_intelligence: strategicWarnings must be array");
+      if (!Array.isArray(d["competitorWeaknesses"])) errors.push("reality_intelligence: competitorWeaknesses must be array");
+      if (!d["blueprintSeedingInstructions"]) errors.push("reality_intelligence: missing blueprintSeedingInstructions");
+      break;
+    }
+
     case "recovery_copy":
       if (!d["title"]) errors.push("recovery_copy: missing title");
       if (!d["instruction"]) errors.push("recovery_copy: missing instruction");

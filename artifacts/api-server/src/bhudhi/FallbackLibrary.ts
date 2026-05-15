@@ -158,6 +158,49 @@ fallbacks.set("fallback.root_cause", (ctx, sv) => ({
   forbiddenActionRequested: false,
 }));
 
+fallbacks.set("fallback.reality_intelligence", (ctx, sv) => {
+  const domain = String(ctx["domain"] ?? "business");
+  return {
+    outputType: "reality_intelligence",
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "LOW",
+    data: {
+      marketMomentum: "growing",
+      similarCompanies: [
+        {
+          name: "Early-stage competitor",
+          reason: "Similar problem space",
+          outcome: "succeeded",
+          lesson: "Execution consistency was the differentiator",
+        },
+      ],
+      positioning: {
+        strongestAngle: `Direct execution focus in ${domain}`,
+        weakestAngle: "Awareness and distribution",
+        userMisconception: "Users may see this as another planning tool",
+        differentiationOpportunity: "Real execution tracking, not just planning",
+      },
+      whiteSpace: {
+        underservedUsers: ["Serious operators who need accountability"],
+        emotionalGaps: ["Gap between intention and consistent execution"],
+        executionGaps: ["No system that forces daily real-world action"],
+        unclaimedPositioning: ["Execution OS for individual operators"],
+      },
+      strategicWarnings: ["Avoid feature creep", "Distribution is the hardest problem"],
+      competitorWeaknesses: [
+        "Most tools are planners not executors",
+        "No real accountability mechanism",
+      ],
+      blueprintSeedingInstructions:
+        "Build phases around real-world execution milestones. Tasks must be specific operational commands, not generic suggestions.",
+    },
+    missingFields: [],
+    warnings: ["AI reality intelligence unavailable — deterministic fallback used"],
+    forbiddenActionRequested: false,
+  };
+});
+
 function getMissingGoalFields(ctx: Record<string, unknown>): string[] {
   const missing: string[] = [];
   const raw = ctx["rawGoal"] as string | undefined;

@@ -26,6 +26,7 @@ import type { BlueprintDraftInput, BlueprintPosition, BlueprintStateView } from 
 import { CONDITIONS } from "../../constants/conditions.js";
 import { pauseBlueprint } from "../lifecycle/PauseEngine.js";
 import { resumeBlueprint } from "../lifecycle/ResumeEngine.js";
+import { RealityIntelligenceEngine } from "../intelligence/RealityIntelligenceEngine.js";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -253,6 +254,14 @@ export class BlueprintEngine {
 
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 
+    const intelligence = await RealityIntelligenceEngine.analyze({
+      goal:    existing.goal,
+      domain:  String(existing.current_domain ?? resolvedDomain),
+      purpose: existing.purpose ?? "",
+      blueprintId,
+      userId,
+    });
+
     await db.transaction(async (tx) => {
       // 1. Update blueprint to active. Initial condition is `nothingness` —
       //    the system is bootstrapping, no signal data exists yet.
@@ -310,6 +319,12 @@ export class BlueprintEngine {
         .set({
           current_plan_id: chain.planId,
           current_phase_id: chain.phaseId,
+          intel_metadata: {
+            realityIntelligence: intelligence,
+            marketMomentum: intelligence.marketMomentum,
+            strongestAngle: intelligence.positioning.strongestAngle,
+            blueprintSeedingInstructions: intelligence.blueprintSeedingInstructions,
+          },
         })
         .where(eq(blueprints.id, blueprintId));
 

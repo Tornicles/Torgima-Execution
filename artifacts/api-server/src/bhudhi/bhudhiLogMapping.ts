@@ -7,6 +7,7 @@ type DbBhudhiTrigger = (typeof bhudhiTriggerTypeEnum.enumValues)[number];
 export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhudhiTrigger {
   const m: Record<BhudhiTriggerType, DbBhudhiTrigger> = {
     GOAL_STRUCTURING:         "goal_structuring",
+    REALITY_INTELLIGENCE:     "goal_structuring",
     TASK_DRAFTING:            "task_generation",
     FEEDBACK_CLASSIFICATION:  "blocker_classification",
     CLARIFICATION_PROMPT:     "feedback_interrogation",

@@ -27,6 +27,7 @@ import StrategyPage from "@/pages/strategy";
 import RecoveryPage from "@/pages/recovery";
 import CharacterPage from "@/pages/character";
 import KnowledgePage from "@/pages/knowledge";
+import IntelligencePage from "@/pages/intelligence";
 
 setBaseUrl(API_BASE_URL || null);
 
@@ -108,6 +109,7 @@ const ProtectedStrategyPage = protect(StrategyPage);
 const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
+const ProtectedIntelligencePage = protect(IntelligencePage);
 
 function withAppLayout(Page: ComponentType) {
   function Wrapped() {
@@ -135,6 +137,7 @@ const StrategyRoute = withAppLayout(ProtectedStrategyPage);
 const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
+const IntelligenceRoute = withAppLayout(ProtectedIntelligencePage);
 
 function AppRoutes() {
   return (
@@ -150,6 +153,7 @@ function AppRoutes() {
       <Route path="/feedback/:orderId" component={FeedbackRoute} />
       <Route path="/feedback" component={FeedbackRoute} />
       <Route path="/signals" component={SignalsRoute} />
+      <Route path="/intelligence" component={IntelligenceRoute} />
       <Route path="/orders" component={OrdersRoute} />
       <Route path="/strategy" component={StrategyRoute} />
       <Route path="/recovery" component={RecoveryRoute} />

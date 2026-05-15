@@ -1,448 +1,246 @@
-import { useParams, Link, useLocation } from "wouter";
-import { ArrowLeft, Play, Check, ShieldAlert, Timer } from "lucide-react";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useParams, useLocation } from "wouter";
+import { ChevronRight, Clock, Zap, Camera } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 
-/** Shape returned by GET `/api/orders/:id` (execution server). */
-export interface ApiOrderDetail {
-  id: string;
-  blueprintId: string;
+type CommandCtx = {
+  where?: string;
+  how?: string;
+  whatItUnlocks?: string;
+  contributesTo?: string;
+};
+
+type OrderVm = {
   title: string;
   instruction: string;
   expectedOutput?: string | null;
   definitionOfDone?: string | null;
   whyItMatters?: string | null;
-  difficulty?: string | null;
-  taskType: string;
   timeEstimateMinutes?: number | null;
   proofRequired?: boolean;
-  proofType?: string | null;
-  proofDescription?: string | null;
-  status: string;
-  domain?: string | null;
+  taskType?: string;
+  difficulty?: string | null;
   priority?: number;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-}
-
-function idempotencyKey(prefix: string): string {
-  try {
-    return `${prefix}:${crypto.randomUUID()}`;
-  } catch {
-    return `${prefix}:${Date.now()}`;
-  }
-}
-
-async function readApiEnvelope<T>(res: Response): Promise<{ ok: boolean; data?: T; error?: { message?: string } }> {
-  const j = (await res.json()) as { ok?: boolean; data?: T; error?: { message?: string } };
-  return { ok: j.ok === true, data: j.data, error: j.error };
-}
+  phaseName?: string | null;
+  projectName?: string | null;
+  actionName?: string | null;
+  commandContext?: CommandCtx;
+  knowledgeObjects?: Array<{ id: string; title: string; content?: string | null }>;
+};
 
 export default function TaskPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
+  const [order, setOrder] = useState<OrderVm | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [started, setStarted] = useState(false);
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
-  const [blockReason, setBlockReason] = useState("");
-  const [isBlockOpen, setIsBlockOpen] = useState(false);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const [actionError, setActionError] = useState("");
+  useEffect(() => {
+    if (!orderId || !API_BASE_URL) return;
+    fetch(`${API_BASE_URL}/api/orders/${orderId}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: OrderVm }) => {
+        if (d.ok && d.data) setOrder(d.data);
+      })
+      .finally(() => setLoading(false));
+  }, [orderId]);
 
-  const [completionRating, setCompletionRating] = useState(5);
-  const [effortRating, setEffortRating] = useState(3);
-  const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (!started) return;
+    const interval = setInterval(() => setTimeElapsed((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [started]);
 
-  const { data: order, isLoading } = useQuery({
-    queryKey: ["order", orderId],
-    enabled: !!orderId && !!API_BASE_URL,
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}`, {
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
-      const body = await readApiEnvelope<ApiOrderDetail>(res);
-      if (!res.ok || !body.ok || !body.data) {
-        throw new Error(body.error?.message ?? "Could not load order");
-      }
-      return body.data;
-    },
-  });
+  async function handleStart() {
+    if (!orderId || !API_BASE_URL) return;
+    await fetch(`${API_BASE_URL}/api/orders/${orderId}/start`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    setStarted(true);
+  }
 
-  const invalidateOrder = () => queryClient.invalidateQueries({ queryKey: ["order", orderId] });
-
-  const startMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/start`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idempotencyKey: idempotencyKey("start") }),
-      });
-      const body = await readApiEnvelope<unknown>(res);
-      if (!res.ok || !body.ok) throw new Error(body.error?.message ?? "Start failed");
-    },
-    onSuccess: () => void invalidateOrder(),
-  });
-
-  const finishMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/finish`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idempotencyKey: idempotencyKey("finish"),
-        }),
-      });
-      const body = await readApiEnvelope<unknown>(res);
-      if (!res.ok || !body.ok) throw new Error(body.error?.message ?? "Could not mark complete");
-    },
-    onSuccess: () => {
-      void invalidateOrder();
-      setIsFeedbackOpen(true);
-      setActionError("");
-    },
-  });
-
-  const blockMutation = useMutation({
-    mutationFn: async () => {
-      const desc = blockReason.trim();
-      if (desc.length < 5) throw new Error("Please describe the blocker (at least 5 characters).");
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/block`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blockerType: "other",
-          blockerDescription: desc,
-          idempotencyKey: idempotencyKey("block"),
-        }),
-      });
-      const body = await readApiEnvelope<unknown>(res);
-      if (!res.ok || !body.ok) throw new Error(body.error?.message ?? "Could not report blocker");
-    },
-    onSuccess: () => {
-      setIsBlockOpen(false);
-      setBlockReason("");
-      void invalidateOrder();
-    },
-  });
-
-  const feedbackMutation = useMutation({
-    mutationFn: async () => {
-      const reflectionBase = notes.trim() || `Completed task (quality ${completionRating}/5).`;
-      const reflection =
-        reflectionBase.length >= 10 ? reflectionBase : `${reflectionBase} — execution note.`.slice(0, 5000);
-      const score = Math.min(10, Math.max(0, Math.round(completionRating * 2)));
-
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/feedback`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          completionStatus: "completed",
-          score,
-          reflection,
-          frictionScore: effortRating,
-          idempotencyKey: idempotencyKey("feedback"),
-        }),
-      });
-      const body = await readApiEnvelope<unknown>(res);
-      if (!res.ok || !body.ok) throw new Error(body.error?.message ?? "Feedback failed");
-    },
-    onSuccess: () => {
-      setIsFeedbackOpen(false);
-      setLocation(`/blueprint/${order!.blueprintId}`);
-    },
-  });
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="p-8 max-w-3xl mx-auto space-y-4 animate-pulse">
-        <div className="h-8 bg-gray-100 rounded w-48" />
-        <div className="h-64 bg-gray-100 rounded-2xl" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center text-gray-600">
-        <p className="mb-4">Order not found.</p>
-        <Link href="/dashboard">
-          <span className="text-green-600 font-medium cursor-pointer hover:underline">Back to dashboard</span>
-        </Link>
+      <div className="p-8 text-center">
+        <p className="text-gray-500">Order not found</p>
+        <button
+          type="button"
+          onClick={() => setLocation("/orders")}
+          className="mt-4 text-green-600 underline text-sm"
+        >
+          Back to orders
+        </button>
       </div>
     );
   }
 
-  const statusLabel = order.status.replace(/_/g, " ");
-  const canStart = order.status === "pending";
-  const canAct = order.status === "active" || order.status === "paused";
-  const needsFollowUp = order.status === "needs_feedback" || order.status === "needs_proof";
-  const isTerminal = ["completed", "failed", "skipped", "cancelled"].includes(order.status);
+  const timeLimit = order.timeEstimateMinutes ?? 45;
+  const timeProgress = Math.min((timeElapsed / (timeLimit * 60)) * 100, 100);
+  const isOverTime = timeElapsed > timeLimit * 60;
 
-  const handleMarkComplete = () => {
-    setActionError("");
-    finishMutation.mutate(undefined, {
-      onError: (e: Error) => setActionError(e.message),
-    });
-  };
-
-  const handleBlock = () => {
-    setActionError("");
-    blockMutation.mutate(undefined, {
-      onError: (e: Error) => setActionError(e.message),
-    });
-  };
-
-  const submitFeedback = () => {
-    setActionError("");
-    feedbackMutation.mutate(undefined, {
-      onError: (e: Error) => setActionError(e.message),
-    });
-  };
+  const commandContext = order.commandContext ?? {};
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6 pb-16">
-      <Link href={`/blueprint/${order.blueprintId}`}>
-        <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 cursor-pointer">
-          <ArrowLeft className="w-4 h-4" /> Back to blueprint
-        </span>
-      </Link>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+        <span>GOAL</span>
+        <ChevronRight className="w-3 h-3" />
+        <span>{order.phaseName ?? "PHASE"}</span>
+        <ChevronRight className="w-3 h-3" />
+        <span>{order.projectName ?? "PROJECT"}</span>
+        <ChevronRight className="w-3 h-3" />
+        <span>{order.actionName ?? "ACTION"}</span>
+        <ChevronRight className="w-3 h-3" />
+        <span className="text-green-600 font-bold">THIS ORDER</span>
+      </div>
 
-      {actionError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div>
-      )}
-
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-              {order.taskType}
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-green-700 bg-green-50 px-2 py-0.5 rounded-md">
-              {statusLabel}
-            </span>
-            {order.timeEstimateMinutes != null && (
-              <span className="ml-auto flex items-center text-xs text-gray-500">
-                <Timer className="w-3.5 h-3.5 mr-1" /> {order.timeEstimateMinutes} min
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{order.title}</h1>
+      <div className="bg-gray-900 text-white rounded-2xl p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">
+            {order.taskType?.toUpperCase() ?? "EXECUTION ORDER"} · {order.difficulty?.toUpperCase() ?? "—"}
+          </span>
+          <span
+            className={`text-xs font-mono px-2 py-1 rounded ${
+              (order.priority ?? 0) > 5 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
+            }`}
+          >
+            {(order.priority ?? 0) > 5 ? `PRIORITY ${order.priority}` : "STANDARD"}
+          </span>
         </div>
-
-        <div className="px-6 py-6 space-y-5 text-sm text-gray-700">
-          <p className="leading-relaxed text-gray-600 whitespace-pre-wrap">{order.instruction}</p>
-
-          {order.definitionOfDone && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Definition of done</h2>
-              <p className="whitespace-pre-wrap leading-relaxed">{order.definitionOfDone}</p>
-            </div>
-          )}
-
-          {order.expectedOutput && (
-            <div className="rounded-xl border border-gray-200 p-4">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Expected output</h2>
-              <p className="whitespace-pre-wrap leading-relaxed">{order.expectedOutput}</p>
-            </div>
-          )}
-
-          {order.whyItMatters && (
-            <div className="rounded-xl border border-green-100 bg-green-50/50 p-4 text-gray-800">
-              <h2 className="text-xs font-bold text-green-800 uppercase tracking-wider mb-2">Why it matters</h2>
-              <p className="whitespace-pre-wrap leading-relaxed">{order.whyItMatters}</p>
-            </div>
-          )}
-
-          {order.status === "blocked" && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 text-sm">
-              <span className="font-semibold block mb-1">Blocked</span>
-              This order is paused for blocker resolution. Unblock from the blueprint or orders view when ready.
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 py-5 border-t border-gray-100 bg-gray-50/60 flex flex-wrap gap-3 justify-between items-center">
-          {canStart && (
-            <button
-              type="button"
-              onClick={() => startMutation.mutate()}
-              disabled={startMutation.isPending}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
-            >
-              <Play className="w-4 h-4" /> Start task
-            </button>
-          )}
-
-          {canAct && (
-            <>
-              <button
-                type="button"
-                onClick={handleMarkComplete}
-                disabled={finishMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
-              >
-                <Check className="w-4 h-4" /> Mark complete
-              </button>
-
-              <Dialog open={isBlockOpen} onOpenChange={setIsBlockOpen}>
-                <DialogTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-red-200 text-red-700 text-sm font-medium hover:bg-red-50"
-                  >
-                    <ShieldAlert className="w-4 h-4" /> Report blocker
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Report a blocker</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-3 space-y-3">
-                    <Textarea
-                      placeholder="What is preventing execution? (min. 5 characters)"
-                      value={blockReason}
-                      onChange={(e) => setBlockReason(e.target.value)}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <button type="button" className="text-sm text-gray-600 px-3 py-2">
-                        Cancel
-                      </button>
-                    </DialogClose>
-                    <button
-                      type="button"
-                      onClick={handleBlock}
-                      disabled={blockMutation.isPending}
-                      className="text-sm font-semibold bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-                    >
-                      Submit
-                    </button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-
-          {needsFollowUp && (
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:items-center sm:justify-between">
-              <p className="text-sm text-gray-600">
-                {order.status === "needs_proof"
-                  ? "Proof is required before feedback."
-                  : "Finish is recorded — submit feedback to close the loop."}
-              </p>
-              {order.status === "needs_feedback" && (
-                <button
-                  type="button"
-                  onClick={() => setIsFeedbackOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
-                >
-                  Submit feedback
-                </button>
-              )}
-            </div>
-          )}
-
-          {isTerminal && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Check className="w-4 h-4 text-green-600" /> Order {statusLabel}
-            </div>
+        <h1 className="text-2xl font-bold">{order.title}</h1>
+        <div className="flex items-center gap-4 text-sm text-gray-400">
+          <span className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            {timeLimit} min guidance
+          </span>
+          {order.proofRequired && (
+            <span className="flex items-center gap-1 text-amber-400">
+              <Camera className="w-4 h-4" />
+              Proof required
+            </span>
           )}
         </div>
       </div>
 
-      <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Task feedback</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-6">
-            <p className="text-xs text-gray-500">
-              Reflection must be at least 10 characters. We will map your ratings to the server score (0–10).
-            </p>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase">Completion quality (1–5)</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setCompletionRating(v)}
-                    className={`w-10 h-10 rounded-lg font-bold border text-sm transition-colors ${
-                      completionRating === v
-                        ? "bg-green-600 text-white border-green-600"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-green-300"
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase">Effort / friction (1–5)</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setEffortRating(v)}
-                    className={`w-10 h-10 rounded-lg font-bold border text-sm transition-colors ${
-                      effortRating === v
-                        ? "bg-green-600 text-white border-green-600"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-green-300"
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase">Notes / reflection</label>
-              <Textarea
-                placeholder="What happened? Any friction or wins? (recommended, helps reach 10+ chars)"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </div>
+      {started && (
+        <div
+          className={`rounded-xl p-4 ${isOverTime ? "bg-red-50 border border-red-200" : "bg-green-50 border border-green-200"}`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold">{isOverTime ? "Over guidance window" : "Time running"}</span>
+            <span className={`font-mono font-bold ${isOverTime ? "text-red-600" : "text-green-600"}`}>
+              {Math.floor(timeElapsed / 60)}:{String(timeElapsed % 60).padStart(2, "0")}
+            </span>
           </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <button type="button" className="text-sm text-gray-600 px-3 py-2">
-                Cancel
-              </button>
-            </DialogClose>
-            <button
-              type="button"
-              onClick={submitFeedback}
-              disabled={feedbackMutation.isPending}
-              className="text-sm font-semibold bg-gray-900 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              Submit & finish
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="bg-white rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all ${isOverTime ? "bg-red-500" : "bg-green-500"}`}
+              style={{ width: `${timeProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">The Order</p>
+          <p className="text-gray-900 leading-relaxed">{order.instruction}</p>
+        </div>
+
+        {commandContext.where && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Where</p>
+            <p className="text-sm text-gray-700">{commandContext.where}</p>
+          </div>
+        )}
+
+        {commandContext.how && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">How</p>
+            <p className="text-sm text-gray-700">{commandContext.how}</p>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Required Output</p>
+          <p className="text-sm text-gray-700">{order.expectedOutput}</p>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4 space-y-1">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Definition of Done</p>
+          <p className="text-sm text-gray-700">{order.definitionOfDone}</p>
+        </div>
+
+        {order.whyItMatters && (
+          <div className="border-l-4 border-green-500 pl-4 space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Why This Matters</p>
+            <p className="text-sm text-gray-700">{order.whyItMatters}</p>
+          </div>
+        )}
+
+        {commandContext.whatItUnlocks && (
+          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl p-3">
+            <Zap className="w-4 h-4 shrink-0" />
+            <span>
+              Completing this unlocks: <strong>{commandContext.whatItUnlocks}</strong>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {order.knowledgeObjects && order.knowledgeObjects.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reference Intelligence</p>
+          {order.knowledgeObjects.slice(0, 3).map((k) => (
+            <div key={k.id} className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+              <p className="font-medium">{k.title}</p>
+              {k.content && (
+                <p className="text-gray-500 text-xs mt-1">{k.content.substring(0, 150)}…</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        {!started ? (
+          <button
+            type="button"
+            onClick={handleStart}
+            className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-gray-800 transition-all text-sm uppercase tracking-wider"
+          >
+            Begin Execution →
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLocation(`/feedback/${orderId}`)}
+            className="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-all text-sm uppercase tracking-wider"
+          >
+            Submit Completion Report →
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => orderId && setLocation(`/feedback/${orderId}`)}
+          className="px-6 py-4 border border-gray-200 rounded-2xl text-sm text-gray-600 hover:bg-gray-50"
+        >
+          Skip
+        </button>
+      </div>
     </div>
   );
 }

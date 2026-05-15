@@ -64,6 +64,58 @@ Return ONLY this JSON:
 }`,
 });
 
+registry.set("REALITY_INTELLIGENCE", {
+  name:         "reality.intelligence.v1",
+  version:      "1.0",
+  triggerType:  "REALITY_INTELLIGENCE",
+  mode:         "STRUCTURE",
+  outputType:   "reality_intelligence",
+  maxTokens:    2500,
+  temperature:  0.35,
+  memoryAllowed: false,
+  fallbackKey:  "fallback.reality_intelligence",
+  systemPrompt: STANDARD_SYSTEM_HEADER,
+  buildUserPrompt: (ctx) => `
+Analyze market and positioning context for this execution goal.
+
+Goal: "${String(ctx["goal"] ?? "")}"
+Domain: "${String(ctx["domain"] ?? "business")}"
+Purpose: "${String(ctx["purpose"] ?? "")}"
+
+Return ONLY JSON with this envelope (no markdown):
+{
+  "outputType": "reality_intelligence",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "marketMomentum": "growing|declining|emerging|oversaturated|behavior_shifting",
+    "similarCompanies": [
+      {"name": "Company X", "reason": "why similar", "outcome": "succeeded|failed|pivoted", "lesson": "what to learn"}
+    ],
+    "positioning": {
+      "strongestAngle": "",
+      "weakestAngle": "",
+      "userMisconception": "",
+      "differentiationOpportunity": ""
+    },
+    "whiteSpace": {
+      "underservedUsers": [],
+      "emotionalGaps": [],
+      "executionGaps": [],
+      "unclaimedPositioning": []
+    },
+    "strategicWarnings": [],
+    "competitorWeaknesses": [],
+    "blueprintSeedingInstructions": ""
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}
+`,
+});
+
 registry.set("TASK_DRAFTING", {
   name:         "task.draft.v1",
   version:      "1.0",

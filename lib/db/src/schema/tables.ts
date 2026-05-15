@@ -197,6 +197,8 @@ export const blueprints = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdateFn(() => new Date()),
+    /** Cached market / positioning intelligence for UI and seeding hints */
+    intel_metadata: jsonb("intel_metadata").notNull().default(sql`'{}'::jsonb`),
   },
   (t) => [
     index("idx_blueprints_user_id").on(t.user_id),
