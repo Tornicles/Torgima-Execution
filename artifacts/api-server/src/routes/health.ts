@@ -4,6 +4,8 @@ import { pool } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
+import { verifyOnboardingSchema } from "../lib/verifySchema.js";
+import { ensureSchemaPatches } from "../lib/ensureSchema.js";
 
 const router: IRouter = Router();
 
@@ -79,6 +81,29 @@ router.get("/health/current", async (req, res) => {
     success(res, health);
   } catch {
     success(res, { systemOperational: true, executionAvailable: true });
+  }
+});
+
+// GET /api/health/schema — onboarding-critical schema (public, for deploy checks)
+router.get("/health/schema", async (_req, res) => {
+  try {
+    const before = await verifyOnboardingSchema();
+    let patchResult: { applied: number; failed: number; verified: boolean } | null = null;
+    if (!before.ok) {
+      patchResult = await ensureSchemaPatches();
+    }
+    const after = await verifyOnboardingSchema();
+    success(res, {
+      ok: after.ok,
+      before,
+      after,
+      patchResult,
+      hint: after.ok
+        ? "Schema ready for /api/onboarding/goal"
+        : "Apply scripts/migrations/*.sql to the DATABASE_URL Postgres instance",
+    }, after.ok ? 200 : 503);
+  } catch (err) {
+    handleError(_req, res, err);
   }
 });
 

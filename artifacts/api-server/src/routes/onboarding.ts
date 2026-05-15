@@ -6,6 +6,8 @@ import { ValidationService } from "../services/ValidationService.js";
 import { db, users, blueprints, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
+import { ensureSchemaPatches } from "../lib/ensureSchema.js";
+import { verifyOnboardingSchema } from "../lib/verifySchema.js";
 
 const router = Router();
 
@@ -77,6 +79,22 @@ router.post("/onboarding/goal", async (req, res) => {
     }
 
     const input = parsed.data;
+
+    let schemaCheck = await verifyOnboardingSchema();
+    if (!schemaCheck.ok) {
+      await ensureSchemaPatches();
+      schemaCheck = await verifyOnboardingSchema();
+    }
+    if (!schemaCheck.ok) {
+      failure(
+        res,
+        "SERVICE_UNAVAILABLE",
+        "Database schema is missing required validation columns. Run scripts/migrations/*.sql on your Postgres database, then redeploy the API.",
+        503,
+        { retryable: true },
+      );
+      return;
+    }
 
     // AI feature flag
     const aiRows = await db
