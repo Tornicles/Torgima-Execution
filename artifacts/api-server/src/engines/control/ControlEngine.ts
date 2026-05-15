@@ -12,6 +12,7 @@ import { incrementStateVersion } from "../../services/StateMutationService.js";
 import type { EnforcementPackage } from "../../types/enforcement.js";
 import type { SignalState } from "../../types/signal.js";
 import type { Blueprint } from "../../types/blueprint.js";
+import { getConditionContract } from "../blueprint/infrastructure/ConditionEnforcementMatrix.js";
 
 // ── BASE RULES PER CONDITION ─────────────────────────────────────────────────
 
@@ -405,7 +406,14 @@ export async function generateEnforcementPackage(params: {
 }
 
 export function getBaseRules(condition: string): BaseConditionRules {
-  return CONDITION_BASE_RULES[condition] ?? CONDITION_BASE_RULES.urgency;
+  const base = CONDITION_BASE_RULES[condition] ?? CONDITION_BASE_RULES.urgency;
+  const contract = getConditionContract(condition);
+  return {
+    ...base,
+    taskMin: contract.taskMin,
+    taskMax: contract.taskMax,
+    scalingAllowed: contract.scalingAllowed,
+  };
 }
 
 export class ControlEngine {

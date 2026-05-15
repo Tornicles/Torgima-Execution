@@ -20,6 +20,7 @@ import {
   type ConditionDetailLite,
   type SignalProjectionLite,
 } from "../lib/operationalDerivation.js";
+import { deriveOperationalState } from "../engines/blueprint/infrastructure/BlueprintFailureStates.js";
 
 const DONE_ORDER_STATUS = ["completed", "skipped", "cancelled"];
 const DONE_PROJECT_STATUS = ["complete", "skipped"];
@@ -220,6 +221,7 @@ export interface ExecutionCommandCenterDTO {
     tier: string | null;
     mode: string | null;
     intelligenceDepth: string | null;
+    operationalState: string;
     allowedSystems: string[];
     lockedSystems: string[];
   };
@@ -805,6 +807,15 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
     tierRules?: { allowedSystems?: string[]; lockedSystems?: string[] };
   };
 
+  const operationalState =
+    (blueprint as { operational_state?: string | null }).operational_state ??
+    deriveOperationalState({
+      blueprintStatus: blueprint.status,
+      condition: currentConditionRow?.condition ?? blueprint.current_condition ?? "nothingness",
+      momentum: snapRow?.momentum ?? 0,
+      completionRate: Number(snapRow?.completion_rate ?? 0),
+    });
+
   return {
     blueprintId,
     blueprintStatus: blueprint.status,
@@ -812,6 +823,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
       tier: blueprint.tier ?? null,
       mode: blueprint.mode ?? null,
       intelligenceDepth: blueprint.intelligence_depth ?? null,
+      operationalState,
       allowedSystems: blueprintConfig.tierRules?.allowedSystems ?? [],
       lockedSystems: blueprintConfig.tierRules?.lockedSystems ?? [],
     },

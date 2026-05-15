@@ -5,9 +5,12 @@
 
 import { TorgimaError } from "../../lib/errors.js";
 
-export type BlueprintTier = "starter" | "growth" | "ultimate";
-export type BlueprintMode = "individual" | "team";
-export type IntelligenceDepth = "guided" | "operational" | "strategic";
+export type { BlueprintTier, BlueprintMode, IntelligenceDepth } from "./infrastructure/blueprint-types.js";
+import type { BlueprintTier, BlueprintMode, IntelligenceDepth } from "./infrastructure/blueprint-types.js";
+import {
+  getBlueprintTypeConfig,
+  isBlueprintSystemAllowed,
+} from "./infrastructure/BlueprintTypeRegistry.js";
 
 export interface TierCapabilities {
   tier: BlueprintTier;
@@ -63,99 +66,31 @@ export interface BlueprintSelectionCatalog {
   }>;
 }
 
-const TIER_RULES: Record<BlueprintTier, TierCapabilities> = {
-  starter: {
-    tier: "starter",
-    intelligenceDepth: "guided",
-    planCount: 1,
-    seasonCount: 1,
-    targetCount: 1,
-    phaseCount: 3,
-    projectsPerActivePhase: 1,
-    actionsPerProject: 2,
-    linearPhases: true,
-    phaseGates: false,
-    adaptivePhases: false,
-    dependencyEnforcement: false,
-    signalComplexity: "minimal",
-    policyEnforcement: "display",
-    validationDepth: "basic",
-    maxDailyOrders: 2,
-    maxFrameworkDecisions: 2,
-    allowedSystems: [
-      "goal", "purpose", "timeframe", "plans", "seasons", "targets", "phases",
-      "projects", "actions", "orders", "habits", "feedback", "signals_basic", "consistency",
-    ],
-    lockedSystems: [
-      "predictive_signals", "advanced_adaptation", "advanced_strategy",
-      "probability_scoring", "optimization_projects", "advanced_dependencies",
-      "active_interrogation", "framework_enforcement", "dynamic_rebalancing",
-    ],
-    uiMode: "starter",
-    aiInterpretationDepth: "minimal",
-  },
-  growth: {
-    tier: "growth",
-    intelligenceDepth: "operational",
-    planCount: 3,
-    seasonCount: 2,
-    targetCount: 3,
-    phaseCount: 3,
-    projectsPerActivePhase: 2,
-    actionsPerProject: 3,
-    linearPhases: false,
-    phaseGates: true,
-    adaptivePhases: false,
-    dependencyEnforcement: true,
-    signalComplexity: "full",
-    policyEnforcement: "applied",
-    validationDepth: "structured",
-    maxDailyOrders: 4,
-    maxFrameworkDecisions: 4,
-    allowedSystems: [
-      "goal", "purpose", "timeframe", "policies", "validation", "plans", "seasons",
-      "targets", "phases", "projects", "actions", "orders", "habits", "knowledge",
-      "feedback", "active_interrogation", "signals", "conditions", "dependencies",
-      "consistency", "character", "strategy", "recovery", "optimization_projects",
-    ],
-    lockedSystems: [
-      "predictive_signals", "probability_scoring", "dynamic_rebalancing",
-      "advanced_memory", "strategic_simulations",
-    ],
-    uiMode: "standard",
-    aiInterpretationDepth: "standard",
-  },
-  ultimate: {
-    tier: "ultimate",
-    intelligenceDepth: "strategic",
-    planCount: 4,
-    seasonCount: 4,
-    targetCount: 5,
-    phaseCount: 3,
-    projectsPerActivePhase: 3,
-    actionsPerProject: 4,
-    linearPhases: false,
-    phaseGates: true,
-    adaptivePhases: true,
-    dependencyEnforcement: true,
-    signalComplexity: "predictive",
-    policyEnforcement: "enforced",
-    validationDepth: "simulation",
-    maxDailyOrders: 6,
-    maxFrameworkDecisions: 999,
-    allowedSystems: [
-      "goal", "purpose", "timeframe", "policies", "validation", "plans", "seasons",
-      "targets", "phases", "projects", "actions", "orders", "habits", "knowledge",
-      "feedback", "active_interrogation", "signals", "conditions", "dependencies",
-      "consistency", "character", "strategy", "recovery", "outcome", "meta_system",
-      "predictive_signals", "advanced_adaptation", "optimization", "probability_scoring",
-      "dynamic_rebalancing", "advanced_memory",
-    ],
-    lockedSystems: [],
-    uiMode: "strategic",
-    aiInterpretationDepth: "advanced",
-  },
-};
+function mapConfigToTierCapabilities(c: ReturnType<typeof getBlueprintTypeConfig>): TierCapabilities {
+  return {
+    tier: c.tier,
+    intelligenceDepth: c.intelligenceDepth,
+    planCount: c.planCount,
+    seasonCount: c.seasonCount,
+    targetCount: c.targetCount,
+    phaseCount: c.phaseCount,
+    projectsPerActivePhase: c.projectsPerActivePhase,
+    actionsPerProject: c.actionsPerProject,
+    linearPhases: c.linearPhases,
+    phaseGates: c.phaseGates,
+    adaptivePhases: c.adaptivePhases,
+    dependencyEnforcement: c.dependencyEnforcement,
+    signalComplexity: c.allowedSignalComplexity,
+    policyEnforcement: c.policyEnforcement,
+    validationDepth: c.validationDepth,
+    maxDailyOrders: c.maxDailyOrders,
+    maxFrameworkDecisions: c.maxFrameworkDecisions,
+    allowedSystems: c.allowedSystems,
+    lockedSystems: c.lockedSystems,
+    uiMode: c.uiMode,
+    aiInterpretationDepth: c.allowedAiInterpretationDepth,
+  };
+}
 
 const MODE_RULES: Record<BlueprintMode, ModeCapabilities> = {
   individual: {
@@ -270,7 +205,7 @@ export function parseMode(value: string | null | undefined): BlueprintMode {
 }
 
 export function getTierRules(tier: BlueprintTier): TierCapabilities {
-  return TIER_RULES[tier];
+  return mapConfigToTierCapabilities(getBlueprintTypeConfig(tier));
 }
 
 export function getModeRules(mode: BlueprintMode): ModeCapabilities {
@@ -278,13 +213,11 @@ export function getModeRules(mode: BlueprintMode): ModeCapabilities {
 }
 
 export function intelligenceDepthForTier(tier: BlueprintTier): IntelligenceDepth {
-  return TIER_RULES[tier].intelligenceDepth;
+  return getBlueprintTypeConfig(tier).intelligenceDepth;
 }
 
 export function isSystemAllowed(tier: BlueprintTier, systemKey: string): boolean {
-  const rules = TIER_RULES[tier];
-  if (rules.lockedSystems.includes(systemKey)) return false;
-  return rules.allowedSystems.includes(systemKey) || systemKey.startsWith("core_");
+  return isBlueprintSystemAllowed(tier, systemKey);
 }
 
 export function assertSelectionComplete(params: {

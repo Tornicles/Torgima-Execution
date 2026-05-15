@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
+import { BlueprintCivilizationStrip } from "@/components/blueprint/BlueprintCivilizationStrip";
 
 /** Mirrors `ExecutionCommandCenterDTO` JSON from the API (camelCase). */
 interface OrderTraceDTO {
@@ -325,6 +326,8 @@ export default function BlueprintPage() {
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 pb-24">
+      <BlueprintCivilizationStrip blueprintId={cc.blueprintId} />
+
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
         <div>
           <Link href="/dashboard">

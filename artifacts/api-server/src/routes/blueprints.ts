@@ -15,6 +15,9 @@ import {
   generatePivotPathOptions,
 } from "../engines/strategy/StrategyEngine.js";
 import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
+import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
+import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
 import {
   createPivotReview,
   resolvePivotReview,
@@ -33,6 +36,18 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 
 const router = Router();
+
+// GET /api/blueprints/features — client-side feature gating manifest
+router.get("/blueprints/features", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const tier = parseTier(String(req.query.tier ?? "starter"));
+    const mode = parseMode(String(req.query.mode ?? "individual"));
+    success(res, getClientFeatureManifest(tier, mode));
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
 
 // GET /api/blueprints/selection-catalog — tier/mode comparison for mandatory selection UI
 router.get("/blueprints/selection-catalog", async (req, res) => {
@@ -114,6 +129,45 @@ router.get("/blueprints/:id", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprint = await BlueprintService.get(req.params.id!, auth.userId);
     success(res, blueprint);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/infrastructure — operational graph, failure state, gating manifest
+router.get("/blueprints/:id/infrastructure", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const view = await BlueprintInfrastructureService.getInfrastructureView(
+      req.params.id!,
+      auth.userId,
+    );
+    if (!view) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+    success(res, view);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/blueprints/:id/migrate-tier
+router.post("/blueprints/:id/migrate-tier", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const schema = z.object({ targetTier: z.enum(["growth", "ultimate"]) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "targetTier required", 422);
+      return;
+    }
+    const result = await BlueprintInfrastructureService.migrateTier(
+      req.params.id!,
+      auth.userId,
+      parsed.data.targetTier,
+    );
+    success(res, result);
   } catch (err) {
     handleError(req, res, err);
   }

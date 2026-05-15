@@ -15,8 +15,8 @@ import {
   DEFAULT_PLAN_NAMES,
   DEFAULT_SEASON_NAMES,
   getModeRules,
-  getTierRules,
 } from "./BlueprintRuleEngine.js";
+import { getBlueprintTypeConfig } from "./infrastructure/BlueprintTypeRegistry.js";
 
 type Tx = Parameters<Parameters<typeof import("@workspace/db").db.transaction>[0]>[0];
 
@@ -61,7 +61,7 @@ export async function buildTierAwareBlueprintChain(
   tx: Tx,
   params: ChainBuildParams,
 ): Promise<ChainBuildResult> {
-  const tierRules = getTierRules(params.tier);
+  const tierRules = getBlueprintTypeConfig(params.tier);
   const modeRules = getModeRules(params.mode);
   const goalShort = params.goal.slice(0, 60);
 

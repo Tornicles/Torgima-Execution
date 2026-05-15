@@ -17,6 +17,8 @@ import {
   commitmentLevelEnum,
   blueprintStatusEnum,
   intelligenceDepthEnum,
+  teamRoleEnum,
+  blueprintOperationalStateEnum,
   validationVerdictEnum,
   selectedPathEnum,
   domainEnum,
@@ -184,6 +186,7 @@ export const blueprints = pgTable(
     intelligence_depth: intelligenceDepthEnum("intelligence_depth"),
     selection_confirmed_at: timestamp("selection_confirmed_at", { withTimezone: true }),
     blueprint_config: jsonb("blueprint_config").notNull().default(sql`'{}'::jsonb`),
+    operational_state: blueprintOperationalStateEnum("operational_state").default("ACTIVE"),
     current_domain: domainEnum("current_domain"),
     status: blueprintStatusEnum("status").notNull().default("draft"),
     active: boolean("active").notNull().default(false),
@@ -209,6 +212,47 @@ export const blueprints = pgTable(
     index("idx_blueprints_user_id").on(t.user_id),
     index("idx_blueprints_status").on(t.status),
   ],
+);
+
+export const blueprintMembers = pgTable(
+  "blueprint_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: teamRoleEnum("role").notNull().default("contributor"),
+    domain: text("domain"),
+    invited_by: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    active: boolean("active").notNull().default(true),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_blueprint_members_blueprint_id").on(t.blueprint_id),
+    index("idx_blueprint_members_user_id").on(t.user_id),
+  ],
+);
+
+export const blueprintTierMigrations = pgTable(
+  "blueprint_tier_migrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    from_tier: userTierEnum("from_tier").notNull(),
+    to_tier: userTierEnum("to_tier").notNull(),
+    unlocked_systems: jsonb("unlocked_systems").notNull().default(sql`'[]'::jsonb`),
+    migration_snapshot: jsonb("migration_snapshot").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_blueprint_tier_migrations_blueprint_id").on(t.blueprint_id)],
 );
 
 export const blueprintPolicies = pgTable(

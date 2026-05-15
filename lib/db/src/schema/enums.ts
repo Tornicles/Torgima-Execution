@@ -21,6 +21,22 @@ export const intelligenceDepthEnum = pgEnum("intelligence_depth", [
   "operational",
   "strategic",
 ]);
+export const teamRoleEnum = pgEnum("team_role", [
+  "owner",
+  "strategist",
+  "operator",
+  "contributor",
+  "reviewer",
+  "observer",
+]);
+export const blueprintOperationalStateEnum = pgEnum("blueprint_operational_state", [
+  "ACTIVE",
+  "STALLED",
+  "DEGRADED",
+  "RECOVERY",
+  "COLLAPSED",
+  "ARCHIVED",
+]);
 export const validationVerdictEnum = pgEnum("validation_verdict", ["proceed", "adjust", "pivot"]);
 export const selectedPathEnum = pgEnum("selected_path", ["current", "adjusted", "alternative"]);
 export const domainEnum = pgEnum("domain", [

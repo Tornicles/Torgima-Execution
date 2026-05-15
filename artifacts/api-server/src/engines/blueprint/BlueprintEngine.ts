@@ -37,6 +37,14 @@ import {
   type BlueprintMode,
   type BlueprintTier,
 } from "./BlueprintRuleEngine.js";
+import { assertFeatureAllowed } from "./infrastructure/FeatureGatingEngine.js";
+import {
+  compileChainInTransaction,
+  validateHierarchyAfterCompile,
+} from "./infrastructure/compileInTransaction.js";
+import { invalidateHydrationCache } from "./infrastructure/StateHydrationService.js";
+import { blueprintMembers } from "@workspace/db";
+import { getClientFeatureManifest } from "./infrastructure/BlueprintTypeRegistry.js";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -113,6 +121,7 @@ export class BlueprintEngine {
         intelligence_depth: depth,
         selection_confirmed_at: now,
         blueprint_config: {
+          featureManifest: getClientFeatureManifest(tier, mode),
           tierRules: {
             allowedSystems: tierRules.allowedSystems,
             lockedSystems: tierRules.lockedSystems,
@@ -152,6 +161,8 @@ export class BlueprintEngine {
     const tier = parseTier(existing.tier);
     const mode = parseMode(existing.mode);
     const tierRules = getTierRules(tier);
+
+    assertFeatureAllowed({ tier, mode, feature: "orders", surface: "generation" });
 
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 
@@ -212,8 +223,8 @@ export class BlueprintEngine {
         }
       }
 
-      // 3. Build tier/mode-aware execution chain (customised by path skeleton if available)
-      const chain = await buildTierAwareBlueprintChain(tx, {
+      // 3. Compile tier/mode-aware execution chain (deterministic, validated)
+      const chain = await compileChainInTransaction(tx, {
         blueprintId,
         userId,
         goal: existing.goal,
@@ -222,6 +233,19 @@ export class BlueprintEngine {
         mode,
         pathSkeleton,
       });
+
+      if (mode === "team") {
+        await tx
+          .insert(blueprintMembers)
+          .values({
+            blueprint_id: blueprintId,
+            user_id: userId,
+            role: "owner",
+            invited_by: userId,
+            active: true,
+          })
+          .onConflictDoNothing();
+      }
 
       // 4. Update blueprint with current plan and phase
       await tx
@@ -394,6 +418,9 @@ export class BlueprintEngine {
         tx,
       );
     });
+
+    await validateHierarchyAfterCompile(blueprintId, tier, mode);
+    invalidateHydrationCache(blueprintId);
 
     logger.info({ blueprintId }, "BlueprintEngine.activateBlueprint — complete");
     return { launched: true, blueprintId };

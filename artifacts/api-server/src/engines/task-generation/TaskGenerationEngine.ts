@@ -29,6 +29,13 @@ import {
   type CommandTraceChain,
 } from "../intelligence/CommandOrderIntelligenceEngine.js";
 import { buildTraceMetadata, getTierRules, parseMode, parseTier } from "../blueprint/BlueprintRuleEngine.js";
+import {
+  applyOrderTemplate,
+  getOrderTemplate,
+  type OrderTemplateKind,
+} from "../blueprint/infrastructure/OrderTemplateSystem.js";
+import { validateAIGeneratedObject } from "../blueprint/infrastructure/AIGenerationContracts.js";
+import { selectKnowledgeLinksForOrder } from "../blueprint/infrastructure/KnowledgeObjectRules.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -1063,6 +1070,39 @@ export async function generate(params: {
     commandContext = {};
   }
 
+  const tier = parseTier(ctx.blueprint.tier);
+  const templateKind = orderTemplateKindForTaskType(taskType);
+  const templated = applyOrderTemplate(tier, templateKind, {
+    title: content.title,
+    instruction: content.instruction,
+  });
+  content = {
+    ...content,
+    title: templated.title,
+    instruction: templated.instruction,
+    proof_required: content.proof_required || templated.proofRequired,
+  };
+  const orderContractCheck = validateAIGeneratedObject("order", {
+    layer: "order",
+    title: content.title,
+    instruction: content.instruction,
+    definitionOfDone: content.definition_of_done,
+    difficulty,
+  });
+  if (!orderContractCheck.valid) {
+    throw new TorgimaError(
+      "VALIDATION_ERROR",
+      `Generated order failed AI contract: ${orderContractCheck.errors.join("; ")}`,
+    );
+  }
+  const orderTemplate = getOrderTemplate(tier, templateKind);
+  commandContext = {
+    ...commandContext,
+    orderTemplateId: templated.templateId,
+    orderTemplateTone: orderTemplate.tone,
+    orderTemplateDepth: orderTemplate.detailDepth,
+  };
+
   const valueScore = calculateValueScore({
     action_type: ctx.action?.type,
     task_type: taskType,
@@ -1118,7 +1158,7 @@ export async function generate(params: {
 
     if (!order) throw new Error("Failed to create order");
 
-    const links = ctx.knowledge_objects.slice(0, 3);
+    const links = selectKnowledgeLinksForOrder(ctx.knowledge_objects, tier);
     for (const k of links) {
       await tx
         .insert(orderKnowledgeLinks)
@@ -1163,6 +1203,14 @@ export async function generate(params: {
   );
 
   return { orders_generated: 1, order_ids: [orderId], used_bhudhi: usedBhudhi, used_fallback: usedFallback };
+}
+
+function orderTemplateKindForTaskType(taskType: string): OrderTemplateKind {
+  if (taskType === "recovery") return "recovery";
+  if (taskType === "blocker_resolution") return "analysis";
+  if (taskType === "phase_checkpoint") return "validation";
+  if (taskType === "weekly_review") return "optimization";
+  return "execution";
 }
 
 /** Legacy class wrapper */
