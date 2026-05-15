@@ -100,6 +100,31 @@ router.get("/validation/run", async (req, res) => {
   }
 });
 
+// GET /api/validation/:id/timeline — live validation stage log (polling)
+router.get("/validation/:id/timeline", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const { getValidationTimeline } = await import(
+      "../engines/validation/ValidationEventLogService.js"
+    );
+    const [row] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.id, req.params.id))
+      .limit(1);
+    if (!row || row.user_id !== auth.userId) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    const events = await getValidationTimeline(req.params.id);
+    success(res, { validationId: req.params.id, status: row.status, events });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // GET /api/validation/:id/status
 router.get("/validation/:id/status", async (req, res) => {
   try {

@@ -4,6 +4,7 @@ import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs, 
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
+import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
 import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
@@ -130,7 +131,7 @@ router.post("/internal/dead-letter/:id/resolve", async (req, res) => {
     await requireAuth(req, "INTERNAL_SERVICE");
     const { id } = req.params;
     const schema = z.object({
-      action: z.enum(["skip", "mark_resolved"]),
+      action: z.enum(["skip", "mark_resolved", "replay", "rebuild", "escalate"]),
       reason: z.string().min(1),
     });
     const result = schema.safeParse(req.body);
@@ -150,12 +151,43 @@ router.post("/internal/dead-letter/:id/resolve", async (req, res) => {
       return;
     }
 
+    if (result.data.action === "replay" && dlEvent.original_event_id) {
+      await db
+        .update(events)
+        .set({ status: "pending", retry_count: 0, process_after: new Date() })
+        .where(eq(events.id, dlEvent.original_event_id));
+      await dispatchPendingEvents();
+    }
+
+    const resolutionStatus =
+      result.data.action === "replay" ? "REPLAYING"
+      : result.data.action === "rebuild" ? "REBUILT"
+      : result.data.action === "escalate" ? "OPEN"
+      : "RESOLVED";
+
     await db
       .update(deadLetterEvents)
-      .set({ resolved: true, reviewed: true, reviewed_at: new Date() })
+      .set({
+        resolved: result.data.action !== "escalate",
+        reviewed: true,
+        reviewed_at: new Date(),
+        resolved_at: new Date(),
+        resolution_status: resolutionStatus,
+      })
       .where(eq(deadLetterEvents.id, id));
 
     success(res, { resolved: true, action: result.data.action, reason: result.data.reason });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/internal/metrics — Prompt 8 monitoring
+router.get("/internal/metrics", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const metrics = await collectProductionMetrics();
+    success(res, metrics);
   } catch (err) {
     handleError(req, res, err);
   }

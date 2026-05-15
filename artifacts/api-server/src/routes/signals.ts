@@ -5,6 +5,8 @@ import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { explainSignal } from "../engines/signal/SignalCalculationEngine.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
+import { parseMode } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { readTeamSignalFromConfig } from "../engines/blueprint/infrastructure/TeamSignalAggregationService.js";
 
 const router = Router();
 
@@ -68,6 +70,9 @@ router.get("/signals/current", async (req, res) => {
 
     const assigned = signal.assigned_condition ?? "nothingness";
 
+    const teamSignal =
+      parseMode(bp.mode) === "team" ? readTeamSignalFromConfig(bp.blueprint_config) : null;
+
     success(res, {
       signal: {
         id: signal.id,
@@ -92,6 +97,8 @@ router.get("/signals/current", async (req, res) => {
             recoveryRequired: condition.recovery_required,
           }
         : null,
+      teamSignal,
+      mode: bp.mode,
     });
   } catch (e) {
     if (isTorgimaError(e)) {

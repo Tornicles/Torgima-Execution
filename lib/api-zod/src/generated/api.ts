@@ -1280,6 +1280,31 @@ export const GetDashboardStateResponse = zod.object({
     )
     .optional(),
   executionIdentityLines: zod.array(zod.string()).optional(),
+  dashboardUiState: zod
+    .enum([
+      "NO_BLUEPRINT",
+      "READY",
+      "IN_PROGRESS",
+      "AWAITING_FEEDBACK",
+      "BLOCKED",
+      "RECOVERY",
+      "LOCKED",
+      "PENDING_SYNC",
+      "ERROR",
+    ])
+    .optional(),
+  pendingSync: zod.boolean().optional(),
+  alerts: zod
+    .array(
+      zod.object({
+        code: zod.string(),
+        severity: zod.enum(["info", "warning", "critical"]),
+        message: zod.string(),
+        actionHref: zod.string().optional(),
+        actionLabel: zod.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 /**

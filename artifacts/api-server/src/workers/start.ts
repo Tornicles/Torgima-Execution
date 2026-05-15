@@ -7,6 +7,7 @@ import "./SignalWorker.js";
 import "./ConditionWorker.js";
 import "./ControlWorker.js";
 import "./TaskGenerationWorker.js";
+import "./TaskGuaranteeWorker.js";
 import "./FeedbackWorker.js";
 import "./IdentityWorker.js";
 import "./RewardWorker.js";
@@ -15,9 +16,12 @@ import "./NotificationWorker.js";
 import "./ProjectionWorker.js";
 import "./BhudhiWorker.js";
 import "./HealthWorker.js";
+import "./ValidationQueueWorker.js";
+import "./PatternScanWorker.js";
+import "./AssumptionCheckWorker.js";
+import "./DeadLetterReviewWorker.js";
 import { startScheduledHealthChecks } from "./HealthWorker.js";
-import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
-import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { startProductionSchedulers } from "../schedulers/ProductionScheduler.js";
 import { db, blueprints } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import {
@@ -27,47 +31,15 @@ import {
 } from "../engines/strategy/StrategyEngine.js";
 import { createPivotReview } from "../engines/lifecycle/PivotEngine.js";
 import { processDeferredNotifications } from "../services/NotificationService.js";
+import { startDailyLoopScheduler } from "../engines/execution-loop/DailyLoopEngine.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
   await workerRegistry.startAll();
 
   startScheduledHealthChecks();
-
-  setInterval(async () => {
-    try {
-      await scanForInactivity();
-    } catch (error) {
-      logger.error(
-        { error: error instanceof Error ? error.message : String(error) },
-        "[InactivityScheduler] Scan failed",
-      );
-    }
-  }, 15 * 60 * 1000);
-  logger.info("[Inactivity] Scheduled scan started (every 15 minutes)");
-
-  setInterval(async () => {
-    try {
-      const activeBlueprints = await db
-        .select({ id: blueprints.id, user_id: blueprints.user_id })
-        .from(blueprints)
-        .where(and(eq(blueprints.active, true), eq(blueprints.status, "active")));
-
-      for (const bp of activeBlueprints) {
-        await scanPatterns({
-          userId:      bp.user_id,
-          blueprintId: bp.id,
-          windowDays:  7,
-        }).catch(() => null);
-      }
-    } catch (error) {
-      logger.error(
-        { error: error instanceof Error ? error.message : String(error) },
-        "[PatternScheduler] Scan failed",
-      );
-    }
-  }, 60 * 60 * 1000);
-  logger.info("[Pattern] Scheduled pattern scans started (every hour)");
+  startDailyLoopScheduler();
+  startProductionSchedulers();
 
   setInterval(async () => {
     try {

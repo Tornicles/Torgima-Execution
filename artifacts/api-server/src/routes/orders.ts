@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import { db, orders, orderKnowledgeLinks, knowledgeObjects, actions, phases, projects } from "@workspace/db";
+import {
+  db,
+  orders,
+  orderKnowledgeLinks,
+  knowledgeObjects,
+  actions,
+  phases,
+  projects,
+  decisionTraces,
+} from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { OrderService } from "../services/OrderService.js";
 import { processFeedback } from "../engines/feedback/FeedbackProcessingEngine.js";
@@ -84,6 +93,21 @@ const blockBodySchema = z.object({
   expectedStateVersion: z.number().optional(),
 });
 
+// GET /api/orders/current — alias for primary active task (Prompt 5)
+router.get("/orders/current", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const task = await OrderService.getPrimaryDashboardTask(auth.userId);
+    if (!task) {
+      success(res, { order: null });
+      return;
+    }
+    success(res, { order: task });
+  } catch (e) {
+    handleRouteError(req, res, e);
+  }
+});
+
 // GET /api/orders/active
 router.get("/orders/active", async (req, res) => {
   try {
@@ -118,6 +142,55 @@ router.get("/orders/active", async (req, res) => {
         knowledgeObjects: task.knowledgeObjects,
         priorityEngine: task.priorityEngine ?? null,
       },
+    });
+  } catch (e) {
+    handleRouteError(req, res, e);
+  }
+});
+
+// GET /api/orders/:id/decision-trace — Prompt 7 transparency ("Why this task?")
+router.get("/orders/:id/decision-trace", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+
+    const [order] = await db
+      .select({ id: orders.id, blueprint_id: orders.blueprint_id })
+      .from(orders)
+      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId)))
+      .limit(1);
+
+    if (!order) {
+      failure(res, "NOT_FOUND", "Order not found", 404);
+      return;
+    }
+
+    const traces = await db
+      .select()
+      .from(decisionTraces)
+      .where(
+        and(
+          eq(decisionTraces.blueprint_id, order.blueprint_id),
+          eq(decisionTraces.entity_id, id),
+        ),
+      )
+      .orderBy(desc(decisionTraces.created_at))
+      .limit(5);
+
+    const primary = traces[0];
+    success(res, {
+      orderId: id,
+      summary: primary?.reasoning ?? "This order was selected from your active blueprint execution chain.",
+      decisionType: primary?.decision_type ?? "task_selection",
+      inputs: primary?.inputs_json ?? {},
+      outputs: primary?.outputs_json ?? {},
+      traces: traces.map((t) => ({
+        id: t.id,
+        decisionType: t.decision_type,
+        reasoning: t.reasoning,
+        engine: t.engine,
+        createdAt: t.created_at,
+      })),
     });
   } catch (e) {
     handleRouteError(req, res, e);

@@ -8,6 +8,7 @@ export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhud
   const m: Record<BhudhiTriggerType, DbBhudhiTrigger> = {
     GOAL_STRUCTURING:         "goal_structuring",
     REALITY_INTELLIGENCE:     "goal_structuring",
+    EIS_INDUSTRY_RESEARCH:    "validation_analysis",
     TASK_DRAFTING:            "task_generation",
     FEEDBACK_CLASSIFICATION:  "blocker_classification",
     CLARIFICATION_PROMPT:     "feedback_interrogation",

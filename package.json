@@ -15,7 +15,9 @@
     "test:integration": "pnpm -F @workspace/api-server exec vitest run src/tests/integration",
     "test:api": "pnpm -F @workspace/api-server exec vitest run src/tests",
     "test:e2e": "pnpm -F @workspace/torgima exec playwright test",
-    "test:all": "pnpm run test:unit && pnpm run test:integration",
+    "test:phase9": "pnpm -F @workspace/scripts test:phase9",
+    "test:system:e2e": "pnpm -F @workspace/scripts test:system:e2e",
+    "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:phase9",
     "verify:system": "pnpm -F @workspace/scripts verify:system"
   },
   "private": true,

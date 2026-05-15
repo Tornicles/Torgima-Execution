@@ -260,8 +260,6 @@ export type BlueprintStatus =
 export const BlueprintStatus = {
   draft: "draft",
   validating: "validating",
-  awaiting_selection: "awaiting_selection",
-  path_selection: "path_selection",
   active: "active",
   paused: "paused",
   complete: "complete",
@@ -552,6 +550,38 @@ export type DashboardStateSignalBlueprintBridgeItem = {
   [key: string]: unknown;
 };
 
+export type DashboardStateDashboardUiState =
+  (typeof DashboardStateDashboardUiState)[keyof typeof DashboardStateDashboardUiState];
+
+export const DashboardStateDashboardUiState = {
+  NO_BLUEPRINT: "NO_BLUEPRINT",
+  READY: "READY",
+  IN_PROGRESS: "IN_PROGRESS",
+  AWAITING_FEEDBACK: "AWAITING_FEEDBACK",
+  BLOCKED: "BLOCKED",
+  RECOVERY: "RECOVERY",
+  LOCKED: "LOCKED",
+  PENDING_SYNC: "PENDING_SYNC",
+  ERROR: "ERROR",
+} as const;
+
+export type DashboardStateAlertsItemSeverity =
+  (typeof DashboardStateAlertsItemSeverity)[keyof typeof DashboardStateAlertsItemSeverity];
+
+export const DashboardStateAlertsItemSeverity = {
+  info: "info",
+  warning: "warning",
+  critical: "critical",
+} as const;
+
+export type DashboardStateAlertsItem = {
+  code: string;
+  severity: DashboardStateAlertsItemSeverity;
+  message: string;
+  actionHref?: string;
+  actionLabel?: string;
+};
+
 export interface DashboardState {
   user: User;
   signals: SignalState;
@@ -585,6 +615,9 @@ export interface DashboardState {
   operationalAwareness?: string[];
   signalBlueprintBridge?: DashboardStateSignalBlueprintBridgeItem[];
   executionIdentityLines?: string[];
+  dashboardUiState?: DashboardStateDashboardUiState;
+  pendingSync?: boolean;
+  alerts?: DashboardStateAlertsItem[];
 }
 
 export interface GoalInput {

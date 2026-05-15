@@ -12,8 +12,6 @@ export type BlueprintStatus =
 export const BlueprintStatus = {
   draft: "draft",
   validating: "validating",
-  awaiting_selection: "awaiting_selection",
-  path_selection: "path_selection",
   active: "active",
   paused: "paused",
   complete: "complete",

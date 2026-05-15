@@ -40,6 +40,8 @@ export default function TaskPage() {
   const [started, setStarted] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [whySummary, setWhySummary] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orderId || !API_BASE_URL) return;
@@ -49,6 +51,13 @@ export default function TaskPage() {
         if (d.ok && d.data) setOrder(d.data);
       })
       .finally(() => setLoading(false));
+
+    fetch(`${API_BASE_URL}/api/orders/${orderId}/decision-trace`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: { summary?: string } }) => {
+        if (d.ok && d.data?.summary) setWhySummary(d.data.summary);
+      })
+      .catch(() => null);
   }, [orderId]);
 
   useEffect(() => {
@@ -164,6 +173,21 @@ export default function TaskPage() {
         </div>
 
         <h1 className="text-2xl font-bold">{order.title}</h1>
+
+        <button
+          type="button"
+          onClick={() => setWhyOpen((v) => !v)}
+          className="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors"
+        >
+          <Brain className="w-3.5 h-3.5" />
+          Why this task?
+        </button>
+        {whyOpen && (
+          <p className="text-sm text-gray-300 leading-relaxed border-l-2 border-green-500 pl-3">
+            {whySummary ??
+              "Selected from your active blueprint chain based on condition, enforcement package, and current phase priority."}
+          </p>
+        )}
 
         <div className="flex items-center gap-4 text-sm text-gray-400">
           <span className="flex items-center gap-1">
@@ -313,10 +337,23 @@ export default function TaskPage() {
         )}
         <button
           type="button"
-          onClick={() => setLocation(`/feedback/${orderId}`)}
-          className="px-5 py-4 border border-gray-200 text-gray-600 rounded-2xl text-sm hover:bg-gray-50 font-mono"
+          onClick={async () => {
+            if (!orderId || !API_BASE_URL) return;
+            await fetch(`${API_BASE_URL}/api/orders/${orderId}/block`, {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                blockerType: "other",
+                blockerDescription: "Execution blocked from task screen — dependency or resource gap.",
+                idempotencyKey: `block-${orderId}-${Date.now()}`,
+              }),
+            });
+            setLocation("/dashboard");
+          }}
+          className="px-5 py-4 border border-orange-200 text-orange-700 rounded-2xl text-sm hover:bg-orange-50 font-mono"
         >
-          Report + skip
+          Report blocked
         </button>
       </div>
     </div>

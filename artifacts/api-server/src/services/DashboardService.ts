@@ -7,13 +7,18 @@ import { SignalService } from "./SignalService.js";
 import {
   db,
   blueprints,
+  orders,
   pivotReviews,
   conditions,
   signalSnapshots,
   systemHealthLogs,
   featureFlags as featureFlagsTable,
+  falseProgressFlags,
+  validations,
 } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { checkAssumptionDrift } from "../engines/validation/AssumptionMonitoringService.js";
+import { buildDashboardAlerts, deriveDashboardUiState } from "./DashboardUiState.js";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   deriveExecutionIdentityLines,
   deriveOperationalAwarenessLines,
@@ -277,6 +282,95 @@ export const DashboardService = {
       }
     }
 
+    let hasAwaitingFeedbackOrder = false;
+    if (blueprintId) {
+      const [awaitingRow] = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.blueprint_id, blueprintId),
+            eq(orders.user_id, userId),
+            inArray(orders.status, ["needs_feedback", "needs_proof"]),
+          ),
+        )
+        .limit(1);
+      hasAwaitingFeedbackOrder = Boolean(awaitingRow);
+    }
+
+    const hasBlockedOrder = activeOrders.some((o) => o.status === "blocked");
+    const hasPendingOrActiveTask = Boolean(primaryTask);
+
+    const condEffective = conditionDetail ?? {
+      condition: signals.condition,
+      durationDays: 0,
+      recoveryRequired: false,
+      escalationLevel: 0,
+      transitionReason: null as string | null,
+      previousCondition: null as string | null,
+    };
+
+    const dashboardUiState = deriveDashboardUiState({
+      hasBlueprint: Boolean(activeBlueprint),
+      blueprintStatus: activeBlueprint?.status ?? null,
+      systemOperational: health.systemOperational,
+      condition: condEffective.condition,
+      recoveryRequired: condEffective.recoveryRequired,
+      currentActionStatus: primaryTask?.status ?? null,
+      currentActionTaskType: primaryTask?.taskType ?? null,
+      hasAwaitingFeedbackOrder,
+      hasBlockedOrder,
+      hasPendingOrActiveTask,
+    });
+
+    let assumptionDrift: Awaited<ReturnType<typeof checkAssumptionDrift>> = [];
+    let openFalseProgressCount = 0;
+    if (blueprintId) {
+      const [fpCount] = await db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(falseProgressFlags)
+        .where(
+          and(
+            eq(falseProgressFlags.blueprint_id, blueprintId),
+            eq(falseProgressFlags.resolved, false),
+          ),
+        );
+      openFalseProgressCount = fpCount?.c ?? 0;
+
+      const [valRow] = await db
+        .select({ created_at: validations.created_at })
+        .from(validations)
+        .where(eq(validations.blueprint_id, blueprintId))
+        .orderBy(desc(validations.created_at))
+        .limit(1);
+
+      const daysSinceValidation = valRow?.created_at
+        ? (Date.now() - valRow.created_at.getTime()) / 86400000
+        : 0;
+
+      assumptionDrift = await checkAssumptionDrift({
+        userId,
+        blueprintId,
+        daysSinceValidation,
+        condition: condEffective.condition,
+        completionRate: signalProjection?.completionRate ?? signals.consistency,
+      }).catch(() => []);
+    }
+
+    const alerts = buildDashboardAlerts({
+      uiState: dashboardUiState,
+      hasBlockedOrder,
+      recoveryRequired: condEffective.recoveryRequired,
+      pivotReviewOpen,
+      healthMessage: health.message,
+      assumptionDrift: assumptionDrift.map((w) => ({
+        assumptionId: w.assumptionId,
+        message: w.message,
+        severity: w.severity,
+      })),
+      openFalseProgressCount,
+    });
+
     return {
       user,
       signals,
@@ -292,14 +386,7 @@ export const DashboardService = {
       pivotReviewOpen,
       pivotReviewId,
       pivotReview,
-      conditionDetail: conditionDetail ?? {
-        condition: signals.condition,
-        durationDays: 0,
-        recoveryRequired: false,
-        escalationLevel: 0,
-        transitionReason: null,
-        previousCondition: null,
-      },
+      conditionDetail: condEffective,
       signalProjection,
       enforcement: enforcementProjection,
       currentAction: primaryTask,
@@ -308,6 +395,9 @@ export const DashboardService = {
       operationalAwareness,
       signalBlueprintBridge,
       executionIdentityLines,
+      dashboardUiState,
+      pendingSync: dashboardUiState === "PENDING_SYNC",
+      alerts,
     };
   },
 };

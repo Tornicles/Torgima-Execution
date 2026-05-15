@@ -18,6 +18,7 @@ import { success, failure } from "../lib/utils.js";
 import { handleRouteError } from "../lib/route-helpers.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { BlueprintEngine } from "../engines/blueprint/BlueprintEngine.js";
+import { answerInterrogation } from "../engines/feedback/InterrogationService.js";
 
 const router = Router();
 const blueprintEngine = new BlueprintEngine();
@@ -279,6 +280,33 @@ router.post("/feedback/task", async (req, res) => {
       blockers ?? [],
     );
     success(res, feedback, 201);
+  } catch (err) {
+    handleRouteError(req, res, err);
+  }
+});
+
+// POST /api/feedback/:id/interrogation — answer interrogation and resume primary loop
+router.post("/feedback/:id/interrogation", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const feedbackId = req.params.id!;
+    const answer = typeof req.body?.answer === "string" ? req.body.answer.trim() : "";
+    const idempotencyKey =
+      typeof req.body?.idempotencyKey === "string" ? req.body.idempotencyKey : `interrogation:${feedbackId}`;
+
+    if (answer.length < 5) {
+      failure(res, "VALIDATION_ERROR", "Answer must be at least 5 characters", 422);
+      return;
+    }
+
+    const result = await answerInterrogation({
+      feedbackId,
+      userId: auth.userId,
+      answer,
+      idempotencyKey,
+    });
+
+    success(res, result);
   } catch (err) {
     handleRouteError(req, res, err);
   }

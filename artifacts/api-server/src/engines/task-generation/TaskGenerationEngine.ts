@@ -36,6 +36,7 @@ import {
 } from "../blueprint/infrastructure/OrderTemplateSystem.js";
 import { validateAIGeneratedObject } from "../blueprint/infrastructure/AIGenerationContracts.js";
 import { selectKnowledgeLinksForOrder } from "../blueprint/infrastructure/KnowledgeObjectRules.js";
+import { getOpenFlags } from "../outcome/OutcomeValidationEngine.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -235,6 +236,9 @@ async function loadContext(params: {
       ? [allowedRaw]
       : [];
 
+  const openFalseProgress = await getOpenFlags(blueprintId);
+  const falseProgressFlag = openFalseProgress[0] ?? null;
+
   return {
     blueprint: {
       id: blueprint.id,
@@ -275,6 +279,7 @@ async function loadContext(params: {
     blocked_open_count: blockedOpenCount ?? 0,
     habit_checkin_due: habitCheckinDue,
     has_active_habits: activeHabitRows.length > 0,
+    false_progress_flag: falseProgressFlag,
   };
 }
 
@@ -331,6 +336,21 @@ function allowedAction(ctx: Awaited<ReturnType<typeof loadContext>>, key: string
 
 function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
   const { enforcement, phase, action, generation_mode } = ctx;
+
+  const fp = ctx.false_progress_flag as {
+    detection_type?: string;
+    evidence_json?: Record<string, unknown>;
+  } | null;
+  if (fp?.detection_type) {
+    const correction =
+      (fp.evidence_json?.correction_task_type as string | undefined) ??
+      fp.detection_type;
+    if (correction.includes("evidence") || correction === "CLAIM_CONTRADICTED") return "clarification";
+    if (correction.includes("refocus") || correction === "WRONG_WORK") return "clarification";
+    if (correction.includes("root_cause") || correction === "ACTIVITY_WITHOUT_OUTCOME") return "review";
+    if (correction.includes("dependency") || correction === "AVOIDANCE_LOOP") return "blocker_resolution";
+    return "recovery";
+  }
 
   if (generation_mode === "recovery" || enforcement.recovery_required) return "recovery";
 

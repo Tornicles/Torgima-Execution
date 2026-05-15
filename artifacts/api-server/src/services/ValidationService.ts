@@ -18,8 +18,12 @@ import type {
 import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
 import type { ValidationIntelligencePayload } from "../engines/validation/intelligence/validation-intelligence-types.js";
 import { parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { recordValidationMemory } from "../engines/validation/ValidationMemoryService.js";
+import { recordStrategicAssumptions } from "../engines/validation/AssumptionMonitoringService.js";
+import { validations as validationsTable } from "@workspace/db";
+import { writeEvent, EVENT_TYPES } from "./EventService.js";
 
-async function getAiEnabled(): Promise<boolean> {
+export async function getAiEnabled(): Promise<boolean> {
   const rows = await db
     .select({ enabled: featureFlags.enabled })
     .from(featureFlags)
@@ -127,8 +131,34 @@ export const ValidationService = {
     tier?: BlueprintTier;
     mode?: string;
   }): Promise<{ sessionId: string; status: string }> {
-    const result = await this.validateGoal(params);
-    return { sessionId: result.validationId, status: "complete" };
+    const [inserted] = await db
+      .insert(validationsTable)
+      .values({
+        blueprint_id: params.blueprintId,
+        user_id: params.userId,
+        status: "queued",
+        tier: params.tier ?? null,
+      })
+      .returning({ id: validationsTable.id });
+
+    if (!inserted) throw new TorgimaError("INTERNAL_ERROR", "Failed to queue validation");
+
+    await writeEvent({
+      eventType: EVENT_TYPES.VALIDATION_START_REQUESTED,
+      entityType: "validation",
+      entityId: inserted.id,
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      payload: {
+        validation_id: inserted.id,
+        input: params.input,
+        tier: params.tier,
+        mode: params.mode,
+      },
+      idempotencyKey: `validation_start:${params.blueprintId}:${inserted.id}`,
+    });
+
+    return { sessionId: inserted.id, status: "queued" };
   },
 
   async getValidationStatus(validationId: string, userId: string) {
@@ -155,7 +185,7 @@ export const ValidationService = {
     confirmAdjusted?: boolean;
   }): Promise<{ selected: boolean; blueprintContract: Record<string, unknown> | null }> {
     const bpRows = await db
-      .select({ id: blueprints.id, status: blueprints.status })
+      .select({ id: blueprints.id, status: blueprints.status, goal: blueprints.goal })
       .from(blueprints)
       .where(eq(blueprints.id, params.blueprintId))
       .limit(1);
@@ -224,6 +254,39 @@ export const ValidationService = {
           : "ready_proceed",
       })
       .where(eq(validations.id, validation.id));
+
+    const goalText = bp.goal ?? "";
+    await recordValidationMemory({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      validationId: validation.id,
+      rawGoal: goalText,
+      verdict: validation.verdict,
+      clarityScore: validation.clarity_score,
+      feasibilityScore: validation.feasibility_score,
+      realismScore: validation.realism_score,
+      industryLabel:
+        (intel?.industryPanel as { industryLabel?: string } | undefined)?.industryLabel ?? null,
+      selectedPath: params.selectedPath,
+      payload: { selected_path: params.selectedPath },
+    }).catch(() => null);
+
+    const assumptions =
+      (intel as { strategic_assumptions?: string[] } | null)?.strategic_assumptions ??
+      (intel?.paths?.current as { strategic_assumptions?: string[] } | undefined)
+        ?.strategic_assumptions ??
+      [];
+
+    if (assumptions.length > 0) {
+      await recordStrategicAssumptions({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        validationId: validation.id,
+        assumptions,
+        industryContext:
+          (intel?.industryPanel as { industryLabel?: string } | undefined)?.industryLabel ?? null,
+      }).catch(() => null);
+    }
 
     logger.info({ blueprintId: params.blueprintId, selectedPath: params.selectedPath }, "[ValidationService] Path selected");
     return { selected: true, blueprintContract };

@@ -12,6 +12,8 @@
 import { describe, it, expect } from "vitest";
 import { EVENT_TYPES } from "../../../services/EventService.js";
 import { enterLoop } from "../../../engines/execution-loop/ExecutionLoopEngine.js";
+import { startDailyLoopScheduler, runDailyLoopsForAllActiveBlueprints } from "../../../engines/execution-loop/DailyLoopEngine.js";
+import { answerInterrogation } from "../../../engines/feedback/InterrogationService.js";
 import { applyMutation, getCurrentStateVersion, incrementStateVersion } from "../../../services/StateMutationService.js";
 import { runIntegrityChecks, processFindings, getUserFacingHealthState } from "../../../services/SystemHealthService.js";
 
@@ -19,16 +21,20 @@ describe("Execution loop — basic chain assertions", () => {
   it("event type constants cover the full chain", () => {
     const chain = [
       EVENT_TYPES.FEEDBACK_SUBMITTED,
+      EVENT_TYPES.INTERROGATION_ANSWERED,
       EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
       EVENT_TYPES.SIGNAL_CALCULATED,
       EVENT_TYPES.CONDITION_EVALUATED,
       EVENT_TYPES.ENFORCEMENT_PACKAGE_CREATED,
       EVENT_TYPES.TASK_GENERATION_REQUESTED,
       EVENT_TYPES.TASK_GENERATION_COMPLETED,
+      EVENT_TYPES.QUEUE_EMPTY_DETECTED,
+      EVENT_TYPES.ORDER_AVAILABLE,
+      EVENT_TYPES.DASHBOARD_REFRESH_REQUESTED,
       EVENT_TYPES.STATE_CHANGED,
       EVENT_TYPES.PROJECTION_REFRESH_REQUESTED,
     ];
-    expect(chain).toHaveLength(9);
+    expect(chain).toHaveLength(13);
     expect(chain[0]).toBe("feedback_submitted");
     expect(chain[chain.length - 1]).toBe("projection_refresh_requested");
   });
@@ -47,6 +53,14 @@ describe("Execution loop — basic chain assertions", () => {
 
   it("ExecutionLoopEngine exposes enterLoop", () => {
     expect(typeof enterLoop).toBe("function");
+  });
+
+  it("Prompt 5 daily loop and interrogation surfaces exist", () => {
+    expect(typeof startDailyLoopScheduler).toBe("function");
+    expect(typeof runDailyLoopsForAllActiveBlueprints).toBe("function");
+    expect(typeof answerInterrogation).toBe("function");
+    expect(EVENT_TYPES.INTERROGATION_ANSWERED).toBe("interrogation_answered");
+    expect(EVENT_TYPES.QUEUE_EMPTY_DETECTED).toBe("queue_empty_detected");
   });
 
   it("mutation result codes cover the documented states", () => {

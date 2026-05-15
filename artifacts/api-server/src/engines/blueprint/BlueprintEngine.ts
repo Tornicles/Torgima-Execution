@@ -11,7 +11,6 @@ import {
   enforcementPackages,
   stateMemory,
   domainHistory,
-  blueprintVersions,
   blueprintMutations,
   signalSnapshots,
   validations,
@@ -28,6 +27,7 @@ import { pauseBlueprint } from "../lifecycle/PauseEngine.js";
 import { resumeBlueprint } from "../lifecycle/ResumeEngine.js";
 import { RealityIntelligenceEngine } from "../intelligence/RealityIntelligenceEngine.js";
 import { buildTierAwareBlueprintChain } from "./BlueprintChainGenerator.js";
+import { recordBlueprintVersion } from "./infrastructure/BlueprintVersioningService.js";
 import {
   assertSelectionComplete,
   getTierRules,
@@ -358,20 +358,20 @@ export class BlueprintEngine {
       });
 
       // 9. Blueprint version record
-      await tx.insert(blueprintVersions).values({
-        blueprint_id: blueprintId,
-        version_number: 1,
-        change_type: "chain_created",
-        affected_layer: "blueprint",
-        before_state: {},
-        after_state: {
+      await recordBlueprintVersion(tx, {
+        blueprintId,
+        versionNumber: 1,
+        changeType: "chain_created",
+        affectedLayer: "blueprint",
+        beforeState: {},
+        afterState: {
           plans: chain.planCount,
           phases: chain.phaseCount,
           targets: chain.targetCount,
           actions: chain.actionCount,
           domain: resolvedDomain,
         },
-        triggered_by: userId,
+        triggeredBy: userId,
       });
 
       // 10. Blueprint mutation record (approved immediately on launch)

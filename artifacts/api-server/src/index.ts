@@ -1,11 +1,16 @@
+import type { Server } from "node:http";
 import app from "./app.js";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger.js";
 import { startWorkers } from "./workers/start.js";
+import { stopBoss } from "./lib/queue.js";
+import { stopProductionSchedulers } from "./schedulers/ProductionScheduler.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
-app.listen(PORT, async () => {
+let server: Server | null = null;
+
+server = app.listen(PORT, async () => {
   console.log(`[SERVER] Running on port ${PORT}`);
   console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
   console.log(`[SERVER] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
@@ -26,3 +31,19 @@ app.listen(PORT, async () => {
     logger.error({ err: workerErr }, "Failed to start workers");
   });
 });
+
+async function shutdown(signal: string): Promise<void> {
+  logger.info({ signal }, "[SERVER] Graceful shutdown");
+  stopProductionSchedulers();
+  await stopBoss().catch(() => null);
+  if (server) {
+    await new Promise<void>((resolve) => {
+      server!.close(() => resolve());
+    });
+  }
+  await pool.end().catch(() => null);
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

@@ -1,7 +1,13 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
+import { db, feedback, orders } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
+import { classifyFailure } from "../engines/failure/FailureClassificationEngine.js";
+import { validateOutcome } from "../engines/outcome/OutcomeValidationEngine.js";
+import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { recordCompulsionLoopStage } from "../engines/intelligence/CompulsionLoopEngine.js";
 import { logger } from "../lib/logger.js";
 
 // FeedbackWorker — bridge from feedback to signal recalculation.
@@ -42,6 +48,73 @@ workerRegistry.register({
           return { success: true };
         }
 
+        const payloadRec = payload as Record<string, unknown> | undefined;
+        const completionStatus = payloadRec?.["completion_status"] as string | undefined;
+        const orderId = payloadRec?.["order_id"] as string | undefined;
+
+        if (feedbackId && orderId && (completionStatus === "failed" || completionStatus === "skipped")) {
+          const classification = await classifyFailure({
+            userId,
+            blueprintId,
+            orderId,
+            feedbackId,
+          }).catch(() => null);
+
+          if (classification) {
+            await writeEvent({
+              eventType: EVENT_TYPES.FAILURE_CLASSIFIED,
+              entityType: "feedback",
+              entityId: feedbackId,
+              userId,
+              blueprintId,
+              payload: {
+                primary_category: classification.primaryCategory,
+                correction_type: classification.correctionType,
+                confidence: classification.confidence,
+              },
+              idempotencyKey: `failure_classified:${feedbackId}`,
+              causationEventId: data.eventId,
+            }).catch(() => null);
+          }
+        }
+
+        if (feedbackId && completionStatus === "completed") {
+          const [fb] = await db
+            .select({ reflection: feedback.reflection, order_id: feedback.order_id })
+            .from(feedback)
+            .where(eq(feedback.id, feedbackId))
+            .limit(1);
+
+          const [order] = fb?.order_id
+            ? await db
+                .select({ linked_target_id: orders.linked_target_id })
+                .from(orders)
+                .where(eq(orders.id, fb.order_id))
+                .limit(1)
+            : [undefined];
+
+          await validateOutcome({
+            userId,
+            blueprintId,
+            targetId: order?.linked_target_id ?? undefined,
+            claimText: fb?.reflection?.slice(0, 500) ?? undefined,
+            evidenceText: fb?.reflection ?? undefined,
+            sourceType: "feedback",
+            sourceId: feedbackId,
+          }).catch(() => null);
+
+          await recordCompulsionLoopStage({
+            blueprintId,
+            userId,
+            stage: "REALITY_EXECUTION_RECORDED",
+            entityType: "feedback",
+            entityId: feedbackId,
+            causationEventId: data.eventId,
+          });
+        }
+
+        await scanPatterns({ userId, blueprintId, windowDays: 7 }).catch(() => null);
+
         await writeEvent({
           eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
           entityType: "blueprint",
@@ -72,6 +145,14 @@ workerRegistry.register({
           payload: { reason: "feedback_submitted", window_days: 14 },
           idempotencyKey: `identity_eval:${blueprintId}:${Math.floor(Date.now() / 86400000)}`,
           causationEventId: data.eventId,
+        }).catch(() => null);
+
+        await recordCompulsionLoopStage({
+          blueprintId,
+          userId,
+          stage: "PROOF_FEEDBACK_INGESTED",
+          causationEventId: data.eventId,
+          correlation: { feedback_id: feedbackId },
         }).catch(() => null);
 
         await writeEvent({

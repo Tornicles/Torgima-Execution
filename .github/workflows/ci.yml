@@ -38,3 +38,90 @@ jobs:
 
       - name: Build workspaces
         run: pnpm run build
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: API unit + phase9 logic tests
+        run: pnpm -F @workspace/api-server exec vitest run src/tests/unit src/tests/e2e/phase9/error-taxonomy.test.ts src/tests/e2e/phase9/edge-cases.test.ts
+        env:
+          TORGIMA_INTEGRATION: "false"
+
+  phase9-integration:
+    name: Phase 9 E2E (Postgres)
+    runs-on: ubuntu-latest
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: torgima
+          POSTGRES_PASSWORD: torgima
+          POSTGRES_DB: torgima_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U torgima -d torgima_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://torgima:torgima@localhost:5432/torgima_test
+      TORGIMA_INTEGRATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: |
+          for f in scripts/migrations/*.sql; do
+            psql "$DATABASE_URL" -f "$f" || true
+          done
+      - name: Phase 9 scenario suite
+        run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts
+
+  playwright:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright Chromium
+        run: pnpm -F @workspace/torgima exec playwright install chromium --with-deps
+      - name: Build frontend
+        run: pnpm -F @workspace/torgima run build
+      - name: Run Playwright against preview
+        run: |
+          pnpm -F @workspace/torgima exec vite preview --port 4173 --host 127.0.0.1 &
+          sleep 4
+          pnpm -F @workspace/torgima exec playwright test tests/e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173

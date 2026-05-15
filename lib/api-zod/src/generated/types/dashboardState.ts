@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Blueprint } from "./blueprint";
+import type { DashboardStateAlertsItem } from "./dashboardStateAlertsItem";
 import type { DashboardStateConditionDetail } from "./dashboardStateConditionDetail";
 import type { DashboardStateCurrentAction } from "./dashboardStateCurrentAction";
+import type { DashboardStateDashboardUiState } from "./dashboardStateDashboardUiState";
 import type { DashboardStateEnforcement } from "./dashboardStateEnforcement";
 import type { DashboardStateFeatureFlags } from "./dashboardStateFeatureFlags";
 import type { DashboardStateHealth } from "./dashboardStateHealth";
@@ -52,4 +54,7 @@ export interface DashboardState {
   operationalAwareness?: string[];
   signalBlueprintBridge?: DashboardStateSignalBlueprintBridgeItem[];
   executionIdentityLines?: string[];
+  dashboardUiState?: DashboardStateDashboardUiState;
+  pendingSync?: boolean;
+  alerts?: DashboardStateAlertsItem[];
 }

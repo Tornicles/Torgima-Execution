@@ -13,6 +13,7 @@ import type { EnforcementPackage } from "../../types/enforcement.js";
 import type { SignalState } from "../../types/signal.js";
 import type { Blueprint } from "../../types/blueprint.js";
 import { getConditionContract } from "../blueprint/infrastructure/ConditionEnforcementMatrix.js";
+import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
 
 // ── BASE RULES PER CONDITION ─────────────────────────────────────────────────
 
@@ -217,6 +218,38 @@ function applyCapabilityModifier(base: BaseConditionRules, capabilityLevel: stri
   return result;
 }
 
+/** Pattern evidence influences pacing — never overrides condition authority. */
+async function applyPatternEvidenceModifier(
+  base: BaseConditionRules,
+  blueprintId: string,
+  userId: string,
+): Promise<BaseConditionRules> {
+  const result = { ...base };
+  const patterns = await getActivePatterns(userId, blueprintId).catch(() => []);
+
+  for (const p of patterns) {
+    const evidence =
+      p.evidence_json && typeof p.evidence_json === "object" && !Array.isArray(p.evidence_json)
+        ? (p.evidence_json as Record<string, unknown>)
+        : {};
+    const spec = String(evidence.spec_label ?? "");
+    const fatigue = String(evidence.fatigue_risk_band ?? p.severity ?? "").toUpperCase();
+
+    if (spec === "FATIGUE_RISK" && (fatigue === "HIGH" || fatigue === "CRITICAL")) {
+      result.taskMax = Math.max(result.taskMin, result.taskMax - 1);
+      const capIdx = DIFFICULTY_LEVELS.indexOf(result.difficultyCap);
+      if (capIdx > 0) result.difficultyCap = DIFFICULTY_LEVELS[Math.max(0, capIdx - 1)];
+      result.recoveryRequired = true;
+    }
+
+    if (spec === "ABANDONMENT_RISK") {
+      result.taskMax = Math.max(1, Math.min(result.taskMax, 2));
+    }
+  }
+
+  return result;
+}
+
 async function applyCognitiveLoadModifier(
   base: BaseConditionRules,
   blueprintId: string,
@@ -333,6 +366,8 @@ export async function generateEnforcementPackage(params: {
     params.userId,
   );
   rules = rulesLoaded;
+
+  rules = await applyPatternEvidenceModifier(rules, params.blueprintId, params.userId);
 
   const featurePermissions = buildFeaturePermissions(params.condition, tier, rules.allowedActions);
 

@@ -2,6 +2,7 @@ import { db, feedback, targets, outcomeValidations, falseProgressFlags } from "@
 import { and, desc, eq, gte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { detectFalseProgress } from "../intelligence/FalseProgressDetectionEngine.js";
 
 export type ValidationStatus =
   | "VALIDATED"
@@ -84,22 +85,28 @@ export async function validateOutcome(params: {
     status = "VALIDATED";
   } else if (evidenceScore >= 40 && outcomeMovementScore >= 40) {
     status = "PARTIALLY_VALIDATED";
-  } else if (
-    evidenceScore < 20 &&
-    outcomeMovementScore < 20 &&
-    completionCount >= 5
-  ) {
-    status = "FALSE_PROGRESS";
-    await createFalseProgressFlag({
-      userId:       params.userId,
-      blueprintId:  params.blueprintId,
-      targetId:     params.targetId,
-      flagType:     "ACTIVITY_WITHOUT_OUTCOME",
-    });
-  } else if (evidenceScore < 20) {
-    status = "NEEDS_MORE_EVIDENCE";
   } else {
-    status = "UNVALIDATED";
+    const fp = detectFalseProgress({
+      completionCount,
+      evidenceScore,
+      outcomeMovementScore,
+      hasProof,
+      avgScore,
+    });
+    if (fp.detected && fp.pattern) {
+      status = "FALSE_PROGRESS";
+      await createFalseProgressFlag({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        targetId: params.targetId,
+        flagType: fp.pattern,
+        correctionTaskType: fp.correctionTaskType,
+      });
+    } else if (evidenceScore < 20) {
+      status = "NEEDS_MORE_EVIDENCE";
+    } else {
+      status = "UNVALIDATED";
+    }
   }
 
   const missing =
@@ -137,10 +144,11 @@ export async function validateOutcome(params: {
 }
 
 async function createFalseProgressFlag(params: {
-  userId:      string;
-  blueprintId: string;
-  targetId?:   string;
-  flagType:    string;
+  userId:             string;
+  blueprintId:        string;
+  targetId?:          string;
+  flagType:           string;
+  correctionTaskType?: string;
 }): Promise<void> {
   const [existing] = await db
     .select()
@@ -165,6 +173,7 @@ async function createFalseProgressFlag(params: {
     evidence_json: {
       target_id: params.targetId,
       created_from: "outcome_validation",
+      correction_task_type: params.correctionTaskType ?? "clarification_task",
     },
   });
 

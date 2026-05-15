@@ -19,18 +19,15 @@ import {
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 import { useTheme } from "@/components/theme-provider";
+import { useBlueprintStore } from "@/store/blueprintStore";
+import { ConditionBadge } from "@/components/ConditionBadge";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/orders", label: "Tasks", icon: ClipboardList },
   { href: "/blueprint", label: "Blueprint", icon: Map },
-  { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/signals", label: "Signals", icon: Activity },
-  { href: "/intelligence", label: "Intelligence", icon: Brain },
-  { href: "/strategy", label: "Strategy", icon: Compass },
-  { href: "/recovery", label: "Recovery", icon: RefreshCw },
-  { href: "/character", label: "Character", icon: User },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/knowledge", label: "Academy", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -50,6 +47,12 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
 
   const displayName = user?.displayName ?? user?.email?.split("@")[0] ?? "Builder";
   const tier = user?.tier ?? "Starter";
+  const dash = useBlueprintStore((s) => s.dashboardProjection);
+  const conditionKey = (
+    (dash?.conditionDetail as { condition?: string } | undefined)?.condition ??
+    (dash?.signals as { condition?: string } | undefined)?.condition ??
+    "nothingness"
+  ).toLowerCase();
 
   function toggleAppearance() {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -124,6 +127,9 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
             {pageSubtitle && <p className="text-sm text-gray-500 mt-0.5">{pageSubtitle}</p>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {(location === "/dashboard" || location.startsWith("/tasks")) && (
+              <ConditionBadge condition={conditionKey} className="hidden sm:inline-flex" />
+            )}
             {headerRight}
             <button
               type="button"

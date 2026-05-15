@@ -731,12 +731,15 @@ export const deadLetterEvents = pgTable(
     user_id: uuid("user_id"),
     payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
     failure_reason: text("failure_reason").notNull(),
+    failure_class: text("failure_class").notNull().default("transient"),
     retry_count: integer("retry_count").notNull(),
     last_error: text("last_error"),
+    resolution_status: text("resolution_status").notNull().default("OPEN"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     reviewed: boolean("reviewed").notNull().default(false),
     reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
     resolved: boolean("resolved").notNull().default(false),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
   },
   (t) => [
     index("idx_dead_letter_event_type").on(t.event_type),
@@ -1554,6 +1557,149 @@ export const notificationLogs = pgTable(
     index("idx_notification_logs_user_id").on(t.user_id),
     index("idx_notification_logs_status").on(t.status),
     index("idx_notification_logs_type").on(t.notification_type),
+  ],
+);
+
+export const validationMemory = pgTable(
+  "validation_memory",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    validation_id: uuid("validation_id").references(() => validations.id),
+    goal_hash: text("goal_hash").notNull(),
+    raw_goal_snapshot: text("raw_goal_snapshot"),
+    verdict: text("verdict"),
+    clarity_score: doublePrecision("clarity_score"),
+    feasibility_score: doublePrecision("feasibility_score"),
+    realism_score: doublePrecision("realism_score"),
+    industry_label: text("industry_label"),
+    selected_path: text("selected_path"),
+    payload_json: jsonb("payload_json").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_validation_memory_user_id").on(t.user_id),
+    index("idx_validation_memory_goal_hash").on(t.goal_hash),
+    index("idx_validation_memory_blueprint_id").on(t.blueprint_id),
+  ],
+);
+
+export const validationEventLogs = pgTable(
+  "validation_event_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    validation_id: uuid("validation_id")
+      .notNull()
+      .references(() => validations.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stage: text("stage").notNull(),
+    status: text("status").notNull(),
+    message: text("message"),
+    confidence: integer("confidence"),
+    retry_count: integer("retry_count").notNull().default(0),
+    payload_json: jsonb("payload_json").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_validation_event_logs_validation_id").on(t.validation_id),
+    index("idx_validation_event_logs_created_at").on(t.created_at),
+  ],
+);
+
+export const verdictEvolution = pgTable(
+  "verdict_evolution",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    validation_id: uuid("validation_id")
+      .notNull()
+      .references(() => validations.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    previous_verdict: text("previous_verdict"),
+    new_verdict: text("new_verdict").notNull(),
+    change_summary: text("change_summary"),
+    improved: boolean("improved"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_verdict_evolution_blueprint_id").on(t.blueprint_id)],
+);
+
+export const eisRateLimits = pgTable(
+  "eis_rate_limits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    industry: text("industry").notNull(),
+    niche: text("niche").notNull(),
+    last_call_at: timestamp("last_call_at", { withTimezone: true }).notNull().defaultNow(),
+    cached_payload: jsonb("cached_payload"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_eis_rate_limits_user_industry").on(t.user_id, t.industry, t.niche),
+  ],
+);
+
+export const eisCallLogs = pgTable(
+  "eis_call_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id),
+    validation_id: uuid("validation_id").references(() => validations.id),
+    industry: text("industry"),
+    niche: text("niche"),
+    tokens_used: integer("tokens_used"),
+    estimated_cost_usd: doublePrecision("estimated_cost_usd"),
+    model_used: text("model_used"),
+    cache_hit: boolean("cache_hit").notNull().default(false),
+    low_confidence: boolean("low_confidence").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_eis_call_logs_user_id").on(t.user_id),
+    index("idx_eis_call_logs_created_at").on(t.created_at),
+  ],
+);
+
+export const strategicAssumptions = pgTable(
+  "strategic_assumptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    validation_id: uuid("validation_id").references(() => validations.id),
+    assumption_text: text("assumption_text").notNull(),
+    industry_context: text("industry_context"),
+    monitoring_status: text("monitoring_status").notNull().default("active"),
+    last_reviewed_at: timestamp("last_reviewed_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_strategic_assumptions_blueprint_id").on(t.blueprint_id),
+    index("idx_strategic_assumptions_status").on(t.monitoring_status),
   ],
 );
 

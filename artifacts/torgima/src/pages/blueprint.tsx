@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { BlueprintCivilizationStrip } from "@/components/blueprint/BlueprintCivilizationStrip";
+import { BlueprintExecutionContext } from "@/components/blueprint/BlueprintExecutionContext";
 
 /** Mirrors `ExecutionCommandCenterDTO` JSON from the API (camelCase). */
 interface OrderTraceDTO {
@@ -327,6 +328,25 @@ export default function BlueprintPage() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 pb-24">
       <BlueprintCivilizationStrip blueprintId={cc.blueprintId} />
+
+      <BlueprintExecutionContext
+        domain={cc.mission.domain}
+        condition={cc.mission.currentCondition}
+        progressPct={
+          cc.hierarchy.length > 0 ?
+            Math.round(
+              cc.hierarchy.reduce((s, p) => s + p.completionPct, 0) / cc.hierarchy.length,
+            )
+          : 0
+        }
+        missionSummary={cc.mission.strategicIntentSummary ?? cc.mission.rawGoal}
+        hierarchy={cc.hierarchy.map((p) => ({
+          id: p.id,
+          name: p.name,
+          completionPct: p.completionPct,
+          phases: p.phases.map((ph) => ({ id: ph.id, name: ph.name, status: ph.status })),
+        }))}
+      />
 
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
         <div>

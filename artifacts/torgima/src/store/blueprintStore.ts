@@ -7,6 +7,8 @@ interface BlueprintStore {
   /** Last synced `/api/state/dashboard` payload (polling hook keeps this warm). */
   dashboardProjection: DashboardState | null;
   setDashboardProjection: (projection: DashboardState | null) => void;
+  lastStateVersion: number;
+  setLastStateVersion: (v: number) => void;
 }
 
 export const useBlueprintStore = create<BlueprintStore>((set) => ({
@@ -14,4 +16,6 @@ export const useBlueprintStore = create<BlueprintStore>((set) => ({
   setActiveBlueprintId: (id) => set({ activeBlueprintId: id }),
   dashboardProjection: null,
   setDashboardProjection: (dashboardProjection) => set({ dashboardProjection }),
+  lastStateVersion: 0,
+  setLastStateVersion: (lastStateVersion) => set({ lastStateVersion }),
 }));

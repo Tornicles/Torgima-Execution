@@ -80,10 +80,8 @@ export async function enterLoop(params: LoopEntryParams): Promise<void> {
 
   switch (trigger) {
     case "blueprint_launched":
-    case "daily_cycle":
     case "manual_regeneration":
     case "resume":
-      // Skip signal/condition recalculation — go straight to task generation
       await emitTaskGenerationRequest(
         blueprintId,
         userId,
@@ -91,6 +89,10 @@ export async function enterLoop(params: LoopEntryParams): Promise<void> {
         mode,
         params.causationEventId,
       );
+      break;
+
+    case "daily_cycle":
+      await emitSignalRecalculation(blueprintId, userId, params.causationEventId);
       break;
 
     case "feedback_submitted":

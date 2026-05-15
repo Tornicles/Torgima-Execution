@@ -7,12 +7,15 @@ import { logger } from "../lib/logger.js";
 // Queue names mapped from event types
 const EVENT_QUEUE_MAP: Record<string, string> = {
   "feedback_submitted":             "feedback_processing_requested",
+  "interrogation_answered":         "signal_recalculation_requested",
   "signal_recalculation_requested": "signal_recalculation_requested",
   "signal_calculated":              "condition_evaluation_requested",
   "condition_evaluated":            "enforcement_package_requested",
   "enforcement_package_created":    "task_generation_requested",
   "task_generation_requested":      "task_generation_requested",
-  // task_generation_completed is a terminal/audit signal — no consumer queue.
+  "task_generation_completed":    "task_guarantee_check",
+  "queue_empty_detected":           "task_generation_requested",
+  "dashboard_refresh_requested":  "projection_refresh_requested",
   "inactivity_scan_requested":      "inactivity_scan_requested",
   "inactivity_detected":            "task_generation_requested",
   "reminder_requested":             "reminder_requested",
@@ -25,12 +28,17 @@ const EVENT_QUEUE_MAP: Record<string, string> = {
   "pivot_review_requested":         "task_generation_requested",
   "reward_evaluation_requested":   "reward_evaluation_requested",
   "identity_evaluation_requested": "identity_evaluation_requested",
+  "validation_start_requested":      "validation_start_requested",
+  "pattern_scan_requested":          "pattern_scan_requested",
+  "assumption_check_requested":      "assumption_check_requested",
+  "system_health_scan_requested":    "system_health_event",
+  "dead_letter_review_requested":    "dead_letter_review_requested",
 };
 
 // Events that record state transitions but never need to be re-dispatched.
 // They are persisted for audit/projection but have no consumer queue.
 const TERMINAL_EVENT_TYPES = new Set<string>([
-  "task_generation_completed",
+  "order_available",
   "system_health_restored",
   // Intelligence / adaptation — audit-only, no queue consumer
   "burnout_risk_detected",
@@ -39,6 +47,7 @@ const TERMINAL_EVENT_TYPES = new Set<string>([
   "external_signal_received",
   "ORCHESTRATION_LOCK",
   "false_progress_detected",
+  "failure_classified",
   "operating_loop_stage",
 ]);
 

@@ -9,6 +9,7 @@ import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { aggregateAndPersistTeamSignal } from "../engines/blueprint/infrastructure/TeamSignalAggregationService.js";
 
 export const SIGNAL_QUEUE = "signal_recalculation_requested";
 
@@ -106,6 +107,8 @@ workerRegistry.register({
             assigned_condition: result.condition,
           },
         }).catch(() => null);
+
+        await aggregateAndPersistTeamSignal(blueprintId).catch(() => null);
 
         logger.info(
           { blueprintId, condition: result.condition, snapshotId: result.snapshotId },

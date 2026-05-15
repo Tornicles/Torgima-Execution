@@ -23,9 +23,26 @@ function spectrumIndex(raw: string): number {
   return 2;
 }
 
+interface ConditionPayload {
+  condition?: string;
+  durationDays?: number;
+  escalationLevel?: number;
+  recoveryRequired?: boolean;
+  transitionReason?: string | null;
+}
+
+interface EnforcementPayload {
+  phasePermission?: string;
+  difficultyCap?: string;
+  proofRequired?: boolean;
+  maxTasksPerDay?: number;
+}
+
 export default function SignalsPage() {
   const [signals, setSignals] = useState<Record<string, unknown> | null>(null);
   const [history, setHistory] = useState<unknown[]>([]);
+  const [conditionRow, setConditionRow] = useState<ConditionPayload | null>(null);
+  const [enforcement, setEnforcement] = useState<EnforcementPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const dash = useBlueprintStore((s) => s.dashboardProjection);
 
@@ -37,12 +54,18 @@ export default function SignalsPage() {
     Promise.all([
       fetch(`${API_BASE_URL}/api/signals/current`, { credentials: "include" }).then((r) => r.json()),
       fetch(`${API_BASE_URL}/api/signals/history`, { credentials: "include" }).then((r) => r.json()),
+      fetch(`${API_BASE_URL}/api/condition/current`, { credentials: "include" }).then((r) => r.json()),
     ])
-      .then(([cur, hist]) => {
+      .then(([cur, hist, cond]) => {
         if (cur.ok) setSignals(cur.data as Record<string, unknown>);
         if (hist.ok) {
           const snaps = (hist.data as { snapshots?: unknown[] })?.snapshots ?? [];
-          setHistory(snaps);
+          setHistory(snaps.slice(-14));
+        }
+        if (cond.ok) {
+          const payload = cond.data as { condition?: ConditionPayload; enforcement?: EnforcementPayload };
+          setConditionRow(payload.condition ?? null);
+          setEnforcement(payload.enforcement ?? null);
         }
       })
       .catch(() => null)
@@ -65,6 +88,7 @@ export default function SignalsPage() {
   const sig = signals?.signal as Record<string, unknown> | undefined;
   const condObj = signals?.condition as Record<string, unknown> | undefined;
   const conditionRaw = (
+    conditionRow?.condition ??
     (sig?.assignedCondition as string) ??
     (condObj?.condition as string) ??
     (sig?.condition as string) ??
@@ -125,7 +149,7 @@ export default function SignalsPage() {
           <p className="text-gray-500 text-sm mt-0.5">Telemetry surfaced for blueprint conditioning — narration only.</p>
         </div>
         <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
-          <span>Last 7 days</span>
+          <span>Last 14 days</span>
           {history.length > 0 && (
             <span className="text-gray-400 border-l border-gray-200 pl-2 ml-1">{history.length} snapshots</span>
           )}
@@ -156,6 +180,12 @@ export default function SignalsPage() {
               />
             </div>
             <p className="text-sm text-gray-500">{cfg.desc}</p>
+            {conditionRow?.recoveryRequired && (
+              <p className="text-xs text-orange-700 mt-2 font-medium">Recovery cycle active — complete proof-backed feedback to restore capacity.</p>
+            )}
+            {conditionRow?.transitionReason && (
+              <p className="text-xs text-gray-500 mt-1">Transition: {conditionRow.transitionReason}</p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 xl:gap-6">
@@ -203,6 +233,18 @@ export default function SignalsPage() {
           </div>
         </div>
       </div>
+
+      {enforcement && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Enforcement (plain language)</p>
+          <ul className="text-sm text-gray-700 space-y-1 list-disc pl-5">
+            {enforcement.phasePermission && <li>Phase permission: {enforcement.phasePermission.replace(/_/g, " ")}</li>}
+            {enforcement.difficultyCap && <li>Difficulty cap: {enforcement.difficultyCap}</li>}
+            {enforcement.maxTasksPerDay != null && <li>Up to {enforcement.maxTasksPerDay} tasks per day</li>}
+            {enforcement.proofRequired && <li>Proof required on completion reports</li>}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
@@ -261,7 +303,7 @@ export default function SignalsPage() {
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-gray-900">7-Day Trend</h3>
+              <h3 className="font-bold text-gray-900">14-Day Trend</h3>
               <Info className="w-4 h-4 text-gray-400" />
             </div>
             <select

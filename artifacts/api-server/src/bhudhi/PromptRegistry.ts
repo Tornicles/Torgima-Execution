@@ -137,6 +137,26 @@ Envelope:
 `,
 });
 
+registry.set("EIS_INDUSTRY_RESEARCH", {
+  name:         "EIS_INDUSTRY_RESEARCH",
+  version:      "1.0",
+  triggerType:  "EIS_INDUSTRY_RESEARCH",
+  mode:         "STRUCTURE",
+  outputType:   "reality_intelligence",
+  maxTokens:    2400,
+  temperature:  0.28,
+  memoryAllowed: true,
+  fallbackKey:  "reality_intelligence_deterministic",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nYou produce industry and market intelligence for validation (EIS).` +
+    ` Ground analysis ONLY in supplied inputs — no claimed live scraping.`,
+  buildUserPrompt: (ctx) => {
+    const base = registry.get("REALITY_INTELLIGENCE");
+    return base?.buildUserPrompt(ctx) ?? "";
+  },
+});
+
 registry.set("TASK_DRAFTING", {
   name:         "task.draft.command.v2",
   version:      "2.0",
@@ -230,6 +250,40 @@ Improve this order copy for the user. Return ONLY this JSON:
 });
 
 registry.set("FEEDBACK_CLASSIFICATION", {
+  name:         "feedback.blocker.v1",
+  version:      "1.0",
+  triggerType:  "FEEDBACK_CLASSIFICATION",
+  mode:         "INTERPRET",
+  outputType:   "blocker_classification",
+  maxTokens:    400,
+  temperature:  0.15,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.blocker_classification",
+  systemPrompt: STANDARD_SYSTEM_HEADER,
+  buildUserPrompt: (ctx) => `
+Classify execution blocker from user feedback. Return ONLY JSON:
+{
+  "outputType": "blocker_classification",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "blockerCategory": "DEPENDENCY|SKILL|MOTIVATION|CLARITY|RESOURCE|OTHER",
+    "severity": "LOW|MEDIUM|HIGH",
+    "needsDependencyResolution": false,
+    "needsRecoveryTask": false,
+    "summary": "short classification summary"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}
+Feedback: "${String(ctx["feedbackText"] ?? ctx["summary"] ?? "")}"
+Task: "${String(ctx["taskTitle"] ?? "")}"
+`,
+});
+
+registry.set("CLARIFICATION_PROMPT", {
   name:         "task.clarification.v1",
   version:      "1.0",
   triggerType:  "CLARIFICATION_PROMPT",

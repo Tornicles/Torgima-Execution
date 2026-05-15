@@ -9,6 +9,7 @@ import {
 } from "@/components/blueprint/BlueprintSelectionPanel";
 import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
 import type { PathKey } from "@/components/validation/PathPanels";
+import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL_STEPS = 7;
@@ -73,6 +74,7 @@ export default function OnboardingPage() {
   const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
   const [selectedTier, setSelectedTier] = useState<TierId | null>(null);
   const [selectedMode, setSelectedMode] = useState<ModeId | null>(null);
+  const [goalStructured, setGoalStructured] = useState(false);
   const [, setLocation] = useLocation();
 
   const [form, setForm] = useState<FormData>({
@@ -102,7 +104,7 @@ export default function OnboardingPage() {
     if (step === 2) return !!form.purpose.trim();
     if (step === 3) return !!form.timeframe.trim();
     if (step === 4) return !!form.commitmentLevel;
-    if (step === 6) return !!selectedTier && !!selectedMode;
+    if (step === 6) return goalStructured && !!selectedTier && !!selectedMode;
     return true;
   }
 
@@ -135,6 +137,59 @@ export default function OnboardingPage() {
       setStep(7);
       await handleValidate();
     }
+  }
+
+  function applyTimelineProgress(
+    events: Array<{ stage?: string; status?: string }>,
+  ): void {
+    const map: Record<string, "pending" | "running" | "complete"> = {};
+    for (const ev of events) {
+      if (!ev.stage || ev.stage === "COMPLETE") continue;
+      map[ev.stage] =
+        ev.status === "COMPLETED" ? "complete"
+        : ev.status === "RUNNING" ? "running"
+        : "pending";
+    }
+    if (Object.keys(map).length === 0) return;
+    setValidation((prev) =>
+      prev
+        ? { ...prev, systemsProgress: { ...prev.systemsProgress, ...map } }
+        : { systemsProgress: map },
+    );
+  }
+
+  async function pollValidationUntilReady(validationId: string): Promise<ValidationPayload | null> {
+    if (!API_BASE_URL) return null;
+    const maxAttempts = 60;
+    for (let i = 0; i < maxAttempts; i++) {
+      const [statusRes, timelineRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/validation/${validationId}/status`, { credentials: "include" }),
+        fetch(`${API_BASE_URL}/api/validation/${validationId}/timeline`, { credentials: "include" }),
+      ]);
+      const timelineJson = (await timelineRes.json()) as {
+        ok?: boolean;
+        data?: { events?: Array<{ stage?: string; status?: string }> };
+      };
+      if (timelineJson.ok && timelineJson.data?.events) {
+        applyTimelineProgress(timelineJson.data.events);
+      }
+      const statusJson = (await statusRes.json()) as {
+        ok?: boolean;
+        data?: { status?: string; verdict?: string };
+      };
+      const sessionStatus = statusJson.data?.status;
+      if (sessionStatus === "complete" || sessionStatus === "validated") {
+        const resultRes = await fetch(`${API_BASE_URL}/api/validation/${validationId}/result`, {
+          credentials: "include",
+        });
+        const resultJson = (await resultRes.json()) as { ok?: boolean; data?: ValidationPayload };
+        if (resultJson.ok && resultJson.data) return resultJson.data;
+        return null;
+      }
+      if (sessionStatus === "failed" || sessionStatus === "invalid") return null;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return null;
   }
 
   async function handleValidate() {
@@ -175,11 +230,21 @@ export default function OnboardingPage() {
         setError("Unexpected response from server.");
         return;
       }
-      if (d.status === "validated" && d.blueprintId) {
-        const saved = await saveBlueprintSelection(d.blueprintId);
+      let payload: ValidationPayload | null = d;
+      if (d.validationId && d.status !== "validated" && !d.blueprintId) {
+        const polled = await pollValidationUntilReady(d.validationId);
+        if (polled) payload = polled;
+        else {
+          setError("Validation is taking longer than expected. Try again in a moment.");
+          return;
+        }
+      }
+
+      if (payload?.status === "validated" && payload.blueprintId) {
+        const saved = await saveBlueprintSelection(payload.blueprintId);
         if (!saved) return;
-        setValidation(d);
-      } else if (d.status === "needs_clarification") {
+        setValidation(payload);
+      } else if (payload?.status === "needs_clarification") {
         setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
       } else if (d.status === "invalid") {
         setError("Your goal could not be validated. Refine it on earlier steps and try again.");
@@ -311,7 +376,8 @@ export default function OnboardingPage() {
   };
 
   const sideInfo = WHY_THIS_MATTERS[step] ?? WHY_THIS_MATTERS[1];
-  const showStepNav = !(step === 7 && !loading && validation && !error);
+  const showStepNav =
+    !(step === 7 && !loading && validation && !error) && !(step === 6 && !goalStructured);
   const validated = validation?.status === "validated" && validation.blueprintId;
 
   return (
@@ -382,6 +448,14 @@ export default function OnboardingPage() {
           <div className="flex-1 space-y-7 min-w-0">
             {step === 1 && (
               <>
+                <div className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-6 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-green-700">Welcome to TORGIMA</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Turn your ambition into daily execution</h2>
+                  <p className="text-sm text-gray-600 max-w-xl">
+                    In the next few minutes you will define your goal, calibrate commitment, and receive a validated blueprint with
+                    daily orders — not another planner.
+                  </p>
+                </div>
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900">What are your goals?</h2>
                   <p className="text-gray-500 mt-1">Define what you want to achieve so TORGIMA can build your personalized blueprint.</p>
@@ -671,7 +745,22 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {step === 6 && (
+            {step === 6 && !goalStructured && (
+              <OnboardingStructureStep
+                goal={form.primaryGoal}
+                purpose={form.purpose}
+                timeframe={form.timeframe}
+                commitmentLevel={form.commitmentLevel}
+                domain={form.domain}
+                onStructured={(refined) => {
+                  setField("primaryGoal", refined);
+                  setGoalStructured(true);
+                }}
+                onBack={() => setStep(5)}
+              />
+            )}
+
+            {step === 6 && goalStructured && (
               <BlueprintSelectionPanel
                 selectedTier={selectedTier}
                 selectedMode={selectedMode}

@@ -1378,6 +1378,37 @@ components:
           type: array
           items:
             type: string
+        dashboardUiState:
+          type: string
+          enum:
+            - NO_BLUEPRINT
+            - READY
+            - IN_PROGRESS
+            - AWAITING_FEEDBACK
+            - BLOCKED
+            - RECOVERY
+            - LOCKED
+            - PENDING_SYNC
+            - ERROR
+        pendingSync:
+          type: boolean
+        alerts:
+          type: array
+          items:
+            type: object
+            required: [code, severity, message]
+            properties:
+              code:
+                type: string
+              severity:
+                type: string
+                enum: [info, warning, critical]
+              message:
+                type: string
+              actionHref:
+                type: string
+              actionLabel:
+                type: string
 
     GoalInput:
       type: object

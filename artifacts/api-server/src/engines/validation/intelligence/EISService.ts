@@ -22,15 +22,65 @@ export async function fetchEISIntelligence(params: {
   blueprintId: string;
   aiEnabled: boolean;
 }): Promise<EISIntelligence> {
+  const { checkEISAccess, recordEISCall } = await import("../EISRateLimitService.js");
+
+  if (params.aiEnabled) {
+    const access = await checkEISAccess({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      industry: params.classification.industry,
+      niche: params.classification.niche,
+    });
+
+    if (access.mode === "cached" || access.mode === "budget_exceeded") {
+      await recordEISCall({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        industry: params.classification.industry,
+        niche: params.classification.niche,
+        payload: access.payload,
+        cacheHit: true,
+        lowConfidence: access.lowConfidence,
+      });
+      return access.payload;
+    }
+  }
+
+  let result: EISIntelligence;
   if (params.aiEnabled) {
     try {
       const enriched = await fetchEISViaBhudhi(params);
-      if (enriched) return enriched;
+      if (enriched) {
+        result = enriched;
+        await recordEISCall({
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+          industry: params.classification.industry,
+          niche: params.classification.niche,
+          payload: result,
+          tokensUsed: 1200,
+          estimatedCostUsd: 0.03,
+        });
+        return result;
+      }
     } catch {
       /* fallback */
     }
   }
-  return buildDeterministicEIS(params);
+  result = buildDeterministicEIS(params);
+  if (params.aiEnabled) {
+    await recordEISCall({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      industry: params.classification.industry,
+      niche: params.classification.niche,
+      payload: result,
+      cacheHit: false,
+      lowConfidence: true,
+      estimatedCostUsd: 0,
+    });
+  }
+  return result;
 }
 
 async function fetchEISViaBhudhi(params: {
@@ -50,7 +100,7 @@ async function fetchEISViaBhudhi(params: {
 
   const result = await trigger({
     sourceEngine: "validation_eis",
-    triggerType: "REALITY_INTELLIGENCE",
+    triggerType: "EIS_INDUSTRY_RESEARCH",
     userId: params.userId,
     blueprintId: params.blueprintId,
     stateVersion: bp?.state_version ?? 0,

@@ -177,6 +177,12 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
         gaming_flag: flagged,
         gaming_reason: gamingReason ?? null,
         validity: flagged ? "flagged" : "valid",
+        interrogation_json: requiresInterrogation
+          ? {
+              requires_interrogation: true,
+              question: interrogationQuestion ?? null,
+            }
+          : null,
       })
       .returning({ id: feedback.id });
 

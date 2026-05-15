@@ -7,11 +7,13 @@ function Block({
   source,
   data,
   defaultOpen = true,
+  lowConfidence,
 }: {
   title: string;
   source?: string;
   data: BlockData;
   defaultOpen?: boolean;
+  lowConfidence?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -24,6 +26,9 @@ function Block({
         <div>
           <p className="font-semibold text-sm text-gray-900">{title}</p>
           {source && <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">{source}</p>}
+          {lowConfidence && (
+            <p className="text-[10px] font-medium text-amber-700 mt-0.5">Low confidence — verify before launch</p>
+          )}
         </div>
         <span className="text-gray-400 text-xs">{open ? "−" : "+"}</span>
       </button>
@@ -68,6 +73,12 @@ export function IndustryIntelligencePanel({
     verdictContext?: BlockData;
   };
 
+  const isLowConfidence = (block?: BlockData) => {
+    if (!block) return false;
+    const c = String(block.confidence ?? block.confidenceLevel ?? "").toLowerCase();
+    return c === "low";
+  };
+
   const levelColor = (level: string) =>
     level === "critical" ? "text-red-700 bg-red-50"
     : level === "high" ? "text-orange-700 bg-orange-50"
@@ -80,10 +91,18 @@ export function IndustryIntelligencePanel({
         <h3 className="text-lg font-bold text-gray-900">Industry Intelligence</h3>
         <span className="text-xs text-gray-500 capitalize">{tier ?? "starter"} depth</span>
       </div>
-      {p.industryOverview && <Block title="Industry Overview" source="EIS" data={p.industryOverview} />}
-      {p.demandIntelligence && <Block title="Demand Intelligence" source="EIS" data={p.demandIntelligence} />}
-      {p.competitiveLandscape && <Block title="Competitive Landscape" source="EIS + SIS" data={p.competitiveLandscape} />}
-      {p.executionReality && <Block title="Execution Reality" source="SIS" data={p.executionReality} defaultOpen={tier !== "starter"} />}
+      {p.industryOverview && (
+        <Block title="Industry Overview" source="EIS" data={p.industryOverview} lowConfidence={isLowConfidence(p.industryOverview)} />
+      )}
+      {p.demandIntelligence && (
+        <Block title="Demand Intelligence" source="EIS" data={p.demandIntelligence} lowConfidence={isLowConfidence(p.demandIntelligence)} />
+      )}
+      {p.competitiveLandscape && (
+        <Block title="Competitive Landscape" source="EIS + SIS" data={p.competitiveLandscape} lowConfidence={isLowConfidence(p.competitiveLandscape)} />
+      )}
+      {p.executionReality && (
+        <Block title="Execution Reality" source="SIS" data={p.executionReality} defaultOpen={tier !== "starter"} lowConfidence={isLowConfidence(p.executionReality)} />
+      )}
       {p.riskMap && p.riskMap.length > 0 && (
         <div className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
           <p className="font-semibold text-sm">Risk Map</p>

@@ -1,5 +1,6 @@
 import { db } from "@workspace/db";
 import { events } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import type { InferInsertModel } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 
@@ -9,6 +10,7 @@ export const EVENT_TYPES = {
   // Feedback chain
   FEEDBACK_SUBMITTED:             "feedback_submitted",
   FEEDBACK_REJECTED:              "feedback_rejected",
+  INTERROGATION_ANSWERED:         "interrogation_answered",
   // Signal chain
   SIGNAL_RECALCULATION_REQUESTED: "signal_recalculation_requested",
   SIGNAL_CALCULATED:              "signal_calculated",
@@ -21,6 +23,8 @@ export const EVENT_TYPES = {
   TASK_GENERATION_COMPLETED:      "task_generation_completed",
   TASK_GENERATION_FAILED:         "task_generation_failed",
   ORDER_AVAILABLE:                "order_available",
+  QUEUE_EMPTY_DETECTED:           "queue_empty_detected",
+  DASHBOARD_REFRESH_REQUESTED:    "dashboard_refresh_requested",
   // Inactivity
   INACTIVITY_SCAN_REQUESTED:      "inactivity_scan_requested",
   INACTIVITY_DETECTED:            "inactivity_detected",
@@ -61,6 +65,13 @@ export const EVENT_TYPES = {
   FALSE_PROGRESS_DETECTED:         "false_progress_detected",
   IDENTITY_EVALUATION_REQUESTED:   "identity_evaluation_requested",
   REWARD_EVALUATION_REQUESTED:     "reward_evaluation_requested",
+  FAILURE_CLASSIFIED:              "failure_classified",
+  PATTERN_SCAN_REQUESTED:          "pattern_scan_requested",
+  VALIDATION_START_REQUESTED:      "validation_start_requested",
+  ASSUMPTION_CHECK_REQUESTED:      "assumption_check_requested",
+  EIS_REFRESH_REQUESTED:           "eis_refresh_requested",
+  SYSTEM_HEALTH_SCAN_REQUESTED:    "system_health_scan_requested",
+  DEAD_LETTER_REVIEW_REQUESTED:    "dead_letter_review_requested",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
@@ -115,6 +126,40 @@ export async function writeEvent(
   );
 
   return inserted.id;
+}
+
+/** Idempotent event emit — duplicate idempotency_key returns existing event id. */
+export async function emitEvent(
+  params: CreateEventInput & { idempotencyKey: string },
+  tx?: Parameters<Parameters<typeof db.transaction>[0]>[0],
+): Promise<string> {
+  const client = tx ?? db;
+  const [inserted] = await (client as typeof db)
+    .insert(events)
+    .values({
+      event_type: params.eventType,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      user_id: params.userId,
+      blueprint_id: params.blueprintId,
+      payload: params.payload ?? {},
+      idempotency_key: params.idempotencyKey,
+      process_after: params.processAfter ?? new Date(),
+      status: "pending",
+    })
+    .onConflictDoNothing({ target: events.idempotency_key })
+    .returning({ id: events.id });
+
+  if (inserted?.id) return inserted.id;
+
+  const [existing] = await client
+    .select({ id: events.id })
+    .from(events)
+    .where(eq(events.idempotency_key, params.idempotencyKey))
+    .limit(1);
+
+  if (!existing) throw new Error("Failed to emit event");
+  return existing.id;
 }
 
 export async function writeEventInTx(

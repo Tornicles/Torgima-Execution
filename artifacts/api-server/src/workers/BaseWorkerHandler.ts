@@ -115,6 +115,8 @@ async function handleFailure(
         ...(data.userId ? { user_id: data.userId } : {}),
         payload: (event.payload as Record<string, unknown>) ?? {},
         failure_reason: result.reason ?? "Unknown failure",
+        failure_class: result.retryable === false ? "permanent" : "transient",
+        resolution_status: "OPEN",
         retry_count: nextRetryCount,
         last_error: result.reason,
       })
@@ -126,10 +128,15 @@ async function handleFailure(
       `[${workerName}] Dead-lettered`,
     );
   } else {
-    // Retry
+    const backoffMs = Math.min(300_000, 1000 * 2 ** nextRetryCount);
+    const processAfter = new Date(Date.now() + backoffMs);
     await db
       .update(events)
-      .set({ status: "retry_pending", retry_count: nextRetryCount })
+      .set({
+        status: "retry_pending",
+        retry_count: nextRetryCount,
+        process_after: processAfter,
+      })
       .where(eq(events.id, data.eventId))
       .catch(() => null);
     await writeEventLog(data.eventId, workerName, "retry", startedAt, result.reason);

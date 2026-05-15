@@ -1,5 +1,9 @@
 import { DomainResolutionEngine } from "../../domain/DomainResolutionEngine.js";
 import type { DomainType, IndustryClassification } from "./validation-intelligence-types.js";
+import {
+  getCachedIndustryClassification,
+  setCachedIndustryClassification,
+} from "./ValidationCache.js";
 
 const domainEngine = new DomainResolutionEngine();
 
@@ -19,22 +23,29 @@ export function classifyIndustry(input: {
   purpose?: string;
   domainHint?: string | null;
 }): IndustryClassification {
+  const cached = getCachedIndustryClassification(input.goal, input.purpose, input.domainHint);
+  if (cached) return cached;
+
   const resolved = domainEngine.resolve(input.goal, input.domainHint ?? null) as DomainType;
   const text = `${input.goal} ${input.purpose ?? ""}`.toLowerCase();
   const keywords = [...new Set(text.split(/\W+/).filter((w) => w.length > 4))].slice(0, 12);
 
   for (const p of INDUSTRY_PATTERNS) {
     if (p.re.test(text)) {
-      return { industry: p.industry, niche: p.niche, category: p.category, domain: resolved, keywords };
+      const result = { industry: p.industry, niche: p.niche, category: p.category, domain: resolved, keywords };
+      setCachedIndustryClassification(input.goal, input.purpose, input.domainHint, result);
+      return result;
     }
   }
 
   const hint = (input.domainHint ?? "").replace(/_/g, " ");
-  return {
+  const result = {
     industry: hint ? `${hint.charAt(0).toUpperCase()}${hint.slice(1)} Ventures` : "General Execution",
     niche: "Goal-driven execution",
     category: "general",
     domain: resolved,
     keywords,
   };
+  setCachedIndustryClassification(input.goal, input.purpose, input.domainHint, result);
+  return result;
 }
