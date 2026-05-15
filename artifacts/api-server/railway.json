@@ -1,5 +1,8 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "buildCommand": "pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/api-server build"
+  },
   "deploy": {
     "startCommand": "pnpm --filter @workspace/api-server start",
     "restartPolicyType": "ON_FAILURE",

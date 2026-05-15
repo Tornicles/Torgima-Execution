@@ -1,5 +1,5 @@
 import express, { type Express } from "express";
-import cors, { type CorsOptions } from "cors";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
@@ -8,51 +8,19 @@ import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 
-const defaultFrontendOrigins = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"];
+const rawFrontend = process.env.FRONTEND_URL ?? "";
+const explicitOrigins = rawFrontend
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const ALLOWED_ORIGINS = [
-  ...defaultFrontendOrigins,
-  ...(process.env.FRONTEND_URL ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
+  ...explicitOrigins,
   "https://torgima-execution.vercel.app",
-  "https://torgima-execution-git-main-tornicles-projects.vercel.app",
+  "https://torgima.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
 ];
-
-function corsOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return true;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-  try {
-    const { hostname } = new URL(origin);
-    if (hostname.endsWith(".vercel.app")) return true;
-  } catch {
-    return false;
-  }
-  return false;
-}
-
-const corsOptions: CorsOptions = {
-  origin(origin, callback) {
-    if (corsOriginAllowed(origin ?? undefined)) {
-      callback(null, true);
-    } else {
-      logger.warn({ origin }, "[cors] blocked origin");
-      callback(null, false);
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "x-internal-auth",
-    "x-expected-state-version",
-    "idempotency-key",
-    "Cookie",
-  ],
-  exposedHeaders: ["Set-Cookie"],
-};
 
 const app: Express = express();
 
@@ -75,9 +43,32 @@ app.use(
     },
   }),
 );
-app.use(cors(corsOptions));
-// Express 5 / path-to-regexp@8 rejects bare "*"; use a named splat for OPTIONS preflight.
-app.options("/{*splat}", cors(corsOptions));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      if (origin.endsWith(".vercel.app")) return callback(null, true);
+      if (origin.includes("localhost")) return callback(null, true);
+      console.warn("[CORS] Blocked origin:", origin);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-internal-auth",
+      "x-expected-state-version",
+      "idempotency-key",
+      "Cookie",
+    ],
+    exposedHeaders: ["Set-Cookie"],
+  }),
+);
+
+app.options("/{*splat}", cors());
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 

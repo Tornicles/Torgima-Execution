@@ -12,6 +12,16 @@ const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 const MAGIC_PREFIX = "magic:";
 
+function getAppUrl(): string {
+  const url =
+    process.env["APP_URL"] ||
+    process.env["PUBLIC_APP_URL"] ||
+    process.env["NEXT_PUBLIC_APP_URL"] ||
+    process.env["FRONTEND_URL"]?.split(",")[0]?.trim() ||
+    "http://localhost:5173";
+  return url.replace(/\/$/, "");
+}
+
 // ── MAGIC LINK ────────────────────────────────────────────────────────────────
 
 export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
@@ -44,11 +54,7 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
     expires_at: expiresAt,
   });
 
-  const appUrl =
-    process.env["APP_URL"] ??
-    process.env["FRONTEND_URL"]?.split(",")[0]?.trim() ??
-    `https://${process.env["REPLIT_DOMAINS"]?.split(",")[0]}`;
-  const verifyUrl = `${appUrl}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+  const verifyUrl = `${getAppUrl()}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
   // Always log a dev-friendly trail so the link is recoverable when no
   // email provider is configured. In production we additionally try Resend.

@@ -6,10 +6,19 @@ const globalForBoss = globalThis as unknown as {
 };
 
 export function createBoss(): PgBoss {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("[Queue] DATABASE_URL is not set");
+  }
+
   return new PgBoss({
-    connectionString: process.env.DATABASE_URL!,
-    max: 10,
-    monitorIntervalSeconds: 30,
+    connectionString,
+    ssl: connectionString.includes("supabase.com")
+      ? { rejectUnauthorized: false }
+      : false,
+    max: 5,
+    deleteAfterDays: 7,
+    monitorStateIntervalSeconds: 30,
   });
 }
 
@@ -17,6 +26,7 @@ export async function getBoss(): Promise<PgBoss> {
   if (!globalForBoss.boss) {
     globalForBoss.boss = createBoss();
     globalForBoss.boss.on("error", (error: Error) => {
+      console.error("[Queue] pg-boss error:", error.message);
       logger.error({ err: error }, "pg-boss error");
     });
     await globalForBoss.boss.start();

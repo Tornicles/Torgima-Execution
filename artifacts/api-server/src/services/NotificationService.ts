@@ -21,11 +21,12 @@ import {
   type EmailContent,
 } from "./notification/EmailTemplates.js";
 
-const APP_URL =
-  process.env["PUBLIC_APP_URL"] ??
-  process.env["NEXT_PUBLIC_APP_URL"] ??
-  process.env["APP_URL"] ??
-  "http://localhost:3000";
+const appUrl = (
+  process.env["APP_URL"] ||
+  process.env["PUBLIC_APP_URL"] ||
+  process.env["FRONTEND_URL"]?.split(",")[0]?.trim() ||
+  "http://localhost:5173"
+).replace(/\/$/, "");
 
 const UNSUBSCRIBE_SECRET = process.env["NOTIFICATION_UNSUBSCRIBE_SECRET"] ?? "dev-secret";
 
@@ -102,9 +103,9 @@ function buildUnsubscribeUrls(userId: string, notificationType: string) {
   const token = buildUnsubscribeToken(userId, notificationType);
   const globalToken = buildUnsubscribeToken(userId, "all");
   return {
-    unsubscribeUrl: `${APP_URL}/api/notifications/unsubscribe?token=${encodeURIComponent(token)}`,
-    preferencesUrl: `${APP_URL}/settings`,
-    unsubscribeAllUrl: `${APP_URL}/api/notifications/unsubscribe?token=${encodeURIComponent(globalToken)}`,
+    unsubscribeUrl: `${appUrl}/api/notifications/unsubscribe?token=${encodeURIComponent(token)}`,
+    preferencesUrl: `${appUrl}/settings`,
+    unsubscribeAllUrl: `${appUrl}/api/notifications/unsubscribe?token=${encodeURIComponent(globalToken)}`,
   };
 }
 

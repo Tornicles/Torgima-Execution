@@ -1,27 +1,27 @@
 import app from "./app.js";
+import { pool } from "@workspace/db";
 import { logger } from "./lib/logger.js";
 import { startWorkers } from "./workers/start.js";
 
-const rawPort = process.env["PORT"];
+const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
-if (!rawPort) {
-  throw new Error("PORT environment variable is required but was not provided.");
-}
+app.listen(PORT, async () => {
+  console.log(`[SERVER] Running on port ${PORT}`);
+  console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`[SERVER] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
+  console.log(`[SERVER] DATABASE_URL prefix: ${process.env.DATABASE_URL?.substring(0, 50)}`);
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+  try {
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+    console.log("[SERVER] Database connection: OK");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[SERVER] Database connection FAILED:", msg);
+    console.error("[SERVER] Fix DATABASE_URL on Railway and redeploy");
   }
-  logger.info({ port }, "Server listening");
 
-  // Start workers and event dispatcher after server is up
   startWorkers().catch((workerErr) => {
     logger.error({ err: workerErr }, "Failed to start workers");
   });
