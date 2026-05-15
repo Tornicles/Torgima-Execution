@@ -45,6 +45,8 @@ import {
 import { invalidateHydrationCache } from "./infrastructure/StateHydrationService.js";
 import { blueprintMembers } from "@workspace/db";
 import { getClientFeatureManifest } from "./infrastructure/BlueprintTypeRegistry.js";
+import { ValidationService } from "../../services/ValidationService.js";
+import type { ValidationToBlueprintContract } from "../validation/intelligence/validation-intelligence-types.js";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -164,6 +166,8 @@ export class BlueprintEngine {
 
     assertFeatureAllowed({ tier, mode, feature: "orders", surface: "generation" });
 
+    await ValidationService.assertLaunchAllowed(blueprintId, userId);
+
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 
     const intelligence = await RealityIntelligenceEngine.analyze({
@@ -192,10 +196,11 @@ export class BlueprintEngine {
       // 2. Read validation path selection (if any) to customise chain
       const validationRows = await tx
         .select({
-          selected_path:   validations.selected_path,
-          path_current:    validations.path_current,
-          path_adjusted:   validations.path_adjusted,
+          selected_path: validations.selected_path,
+          path_current: validations.path_current,
+          path_adjusted: validations.path_adjusted,
           path_alternative: validations.path_alternative,
+          blueprint_contract: validations.blueprint_contract,
         })
         .from(validations)
         .where(eq(validations.blueprint_id, blueprintId))
@@ -206,11 +211,17 @@ export class BlueprintEngine {
         | { plans: Array<{ name: string; description: string }>; targets: Array<{ name: string; type: string }> }
         | undefined;
 
+      let validationContract: ValidationToBlueprintContract | null = null;
+
       const valRow = validationRows[0];
+      if (valRow?.blueprint_contract) {
+        validationContract = valRow.blueprint_contract as ValidationToBlueprintContract;
+        pathSkeleton = validationContract.plan_skeleton;
+      }
       if (valRow?.selected_path) {
         const pathData = {
-          current:     valRow.path_current,
-          adjusted:    valRow.path_adjusted,
+          current: valRow.path_current,
+          adjusted: valRow.path_adjusted,
           alternative: valRow.path_alternative,
         }[valRow.selected_path] as { planSkeleton?: typeof pathSkeleton } | null;
 
@@ -223,15 +234,18 @@ export class BlueprintEngine {
         }
       }
 
+      const chainGoal = validationContract?.refined_goal ?? existing.goal;
+
       // 3. Compile tier/mode-aware execution chain (deterministic, validated)
       const chain = await compileChainInTransaction(tx, {
         blueprintId,
         userId,
-        goal: existing.goal,
+        goal: chainGoal,
         purpose: existing.purpose,
         tier,
         mode,
         pathSkeleton,
+        validationContract,
       });
 
       if (mode === "team") {

@@ -9,11 +9,15 @@ import {
   structureGoalDeterministic,
   scoreToVerdict,
 } from "../engines/validation/ValidationEngine.js";
+import { buildValidationToBlueprintContract } from "../engines/validation/intelligence/ValidationToBlueprintBridge.js";
 import type {
   ValidationResult,
   OnboardingGoalInput,
   StructuredGoalDraft,
 } from "../types/validation.js";
+import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
+import type { ValidationIntelligencePayload } from "../engines/validation/intelligence/validation-intelligence-types.js";
+import { parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
 
 async function getAiEnabled(): Promise<boolean> {
   const rows = await db
@@ -24,12 +28,46 @@ async function getAiEnabled(): Promise<boolean> {
   return rows[0]?.enabled ?? false;
 }
 
-export const ValidationService = {
-  // ── STRUCTURE GOAL ───────────────────────────────────────────────────────
+function rowToResult(row: typeof validations.$inferSelect, blueprintId: string): ValidationResult {
+  const c = row.clarity_score ?? 0;
+  const f = row.feasibility_score ?? 0;
+  const r = row.realism_score ?? 0;
+  const overall = Math.round((c + f + r) / 3);
+  const intel = row.intelligence_payload as ValidationIntelligencePayload | null;
 
+  return {
+    validationId: row.id,
+    blueprintId,
+    verdict: (row.verdict ?? "adjust") as ValidationResult["verdict"],
+    scores: {
+      clarity: { score: c, verdict: scoreToVerdict(c), finding: "" },
+      feasibility: { score: f, verdict: scoreToVerdict(f), finding: "" },
+      realism: { score: r, verdict: scoreToVerdict(r), finding: "" },
+      usefulness: { score: 0, verdict: "acceptable", finding: "" },
+      overall,
+    },
+    paths: {
+      current: (row.path_current as ValidationResult["paths"]["current"]) ?? null!,
+      adjusted: (row.path_adjusted as ValidationResult["paths"]["adjusted"]) ?? null!,
+      alternative: (row.path_alternative as ValidationResult["paths"]["alternative"]) ?? null!,
+    },
+    usedFallback: false,
+    aiSummary: row.ai_summary ?? undefined,
+    createdAt: row.created_at,
+    launchBlocked: row.launch_blocked ?? false,
+    readiness: row.readiness ?? intel?.readiness,
+    intelligence: intel as unknown as Record<string, unknown>,
+    industryPanel: intel?.industryPanel as unknown as Record<string, unknown>,
+    tabs: intel?.tabs as unknown as Record<string, unknown>,
+    blueprintContract: row.blueprint_contract as Record<string, unknown> | null,
+    systemsProgress: intel?.systemsProgress,
+  };
+}
+
+export const ValidationService = {
   async structureGoal(params: {
-    userId:    string;
-    input:     OnboardingGoalInput;
+    userId: string;
+    input: OnboardingGoalInput;
     aiEnabled?: boolean;
   }): Promise<StructuredGoalDraft> {
     const aiEnabled = params.aiEnabled ?? (await getAiEnabled());
@@ -39,19 +77,20 @@ export const ValidationService = {
     return structureGoalDeterministic(params.input);
   },
 
-  // ── VALIDATE GOAL ────────────────────────────────────────────────────────
-
   async validateGoal(params: {
     blueprintId: string;
-    userId:      string;
+    userId: string;
+    tier?: BlueprintTier;
+    mode?: string;
     input: {
-      goal:             string;
-      purpose?:         string;
-      timeframe?:       string;
+      goal: string;
+      purpose?: string;
+      timeframe?: string;
       commitmentLevel?: string;
-      currentContext?:  string;
-      successSignal?:   string;
-      knownBlockers?:   string;
+      currentContext?: string;
+      successSignal?: string;
+      knownBlockers?: string;
+      domainHint?: string | null;
     };
   }): Promise<ValidationResult> {
     const bpRows = await db
@@ -62,22 +101,59 @@ export const ValidationService = {
     if (!bpRows[0]) throw new TorgimaError("NOT_FOUND", "Blueprint not found");
 
     const aiEnabled = await getAiEnabled();
-
     return runValidation({
       blueprintId: params.blueprintId,
-      userId:      params.userId,
-      input:       params.input,
+      userId: params.userId,
+      input: params.input,
       aiEnabled,
+      tier: params.tier,
+      mode: params.mode,
     });
   },
 
-  // ── SELECT VALIDATION PATH ───────────────────────────────────────────────
+  async startValidation(params: {
+    blueprintId: string;
+    userId: string;
+    input: {
+      goal: string;
+      purpose?: string;
+      timeframe?: string;
+      commitmentLevel?: string;
+      currentContext?: string;
+      successSignal?: string;
+      knownBlockers?: string;
+      domainHint?: string | null;
+    };
+    tier?: BlueprintTier;
+    mode?: string;
+  }): Promise<{ sessionId: string; status: string }> {
+    const result = await this.validateGoal(params);
+    return { sessionId: result.validationId, status: "complete" };
+  },
+
+  async getValidationStatus(validationId: string, userId: string) {
+    const [row] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.id, validationId))
+      .limit(1);
+    if (!row || row.user_id !== userId) throw new TorgimaError("NOT_FOUND", "Validation session not found");
+    const intel = row.intelligence_payload as ValidationIntelligencePayload | null;
+    return {
+      validationId: row.id,
+      status: row.status,
+      systemsProgress: intel?.systemsProgress ?? {},
+      readiness: row.readiness,
+      verdict: row.verdict,
+    };
+  },
 
   async selectValidationPath(params: {
-    blueprintId:  string;
-    userId:       string;
+    blueprintId: string;
+    userId: string;
     selectedPath: "current" | "adjusted" | "alternative";
-  }): Promise<{ selected: boolean }> {
+    confirmAdjusted?: boolean;
+  }): Promise<{ selected: boolean; blueprintContract: Record<string, unknown> | null }> {
     const bpRows = await db
       .select({ id: blueprints.id, status: blueprints.status })
       .from(blueprints)
@@ -87,20 +163,16 @@ export const ValidationService = {
     const bp = bpRows[0];
     if (!bp) throw new TorgimaError("NOT_FOUND", "Blueprint not found");
 
-    // Accept path_selection OR draft (if validation ran but status not updated yet)
     if (
       bp.status !== "path_selection" &&
       bp.status !== "awaiting_selection" &&
       bp.status !== "draft"
     ) {
-      throw new TorgimaError(
-        "STALE_STATE",
-        `Blueprint is not in path selection state (current: ${bp.status})`,
-      );
+      throw new TorgimaError("STALE_STATE", `Blueprint is not in path selection state (current: ${bp.status})`);
     }
 
     const validationRows = await db
-      .select({ id: validations.id })
+      .select()
       .from(validations)
       .where(eq(validations.blueprint_id, params.blueprintId))
       .orderBy(desc(validations.created_at))
@@ -111,27 +183,55 @@ export const ValidationService = {
       throw new TorgimaError("NOT_FOUND", "Validation record not found. Run validation first.");
     }
 
+    if (validation.launch_blocked || validation.verdict === "pivot") {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Cannot select a path while verdict is Pivot Required. Edit inputs and re-validate.",
+      );
+    }
+
+    if (validation.verdict === "adjust" && params.selectedPath === "current" && !params.confirmAdjusted) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Verdict is Adjust — confirm the adjusted path or select adjusted explicitly.",
+      );
+    }
+
+    const intel = validation.intelligence_payload as ValidationIntelligencePayload | null;
+    let blueprintContract = validation.blueprint_contract as Record<string, unknown> | null;
+
+    if (intel) {
+      const contract = buildValidationToBlueprintContract({
+        intelligence: intel,
+        selectedPath: params.selectedPath,
+        paths: intel.paths,
+        tier: parseTier(validation.tier ?? intel.tier),
+      });
+      blueprintContract = contract as unknown as Record<string, unknown>;
+    }
+
     await db
       .update(validations)
       .set({
-        selected_path: params.selectedPath as "current" | "adjusted" | "alternative",
-        selected_at:   new Date(),
+        selected_path: params.selectedPath,
+        selected_at: new Date(),
+        blueprint_contract: blueprintContract,
+        adjusted_path_confirmed:
+          params.selectedPath === "adjusted" || Boolean(params.confirmAdjusted),
+        readiness:
+          validation.verdict === "adjust" && params.selectedPath !== "adjusted" ?
+            "ready_with_adjustment"
+          : "ready_proceed",
       })
       .where(eq(validations.id, validation.id));
 
-    logger.info(
-      { blueprintId: params.blueprintId, selectedPath: params.selectedPath },
-      "[ValidationService] Path selected",
-    );
-
-    return { selected: true };
+    logger.info({ blueprintId: params.blueprintId, selectedPath: params.selectedPath }, "[ValidationService] Path selected");
+    return { selected: true, blueprintContract };
   },
-
-  // ── GET VALIDATION RESULT ────────────────────────────────────────────────
 
   async getValidationResult(params: {
     blueprintId: string;
-    userId:      string;
+    userId: string;
   }): Promise<ValidationResult | null> {
     const bpRows = await db
       .select({ id: blueprints.id })
@@ -149,50 +249,69 @@ export const ValidationService = {
 
     const row = valRows[0];
     if (!row) return null;
-
-    const c = row.clarity_score ?? 0;
-    const f = row.feasibility_score ?? 0;
-    const r = row.realism_score ?? 0;
-    const overall = Math.round((c + f + r) / 3);
-
-    return {
-      validationId: row.id,
-      blueprintId:  params.blueprintId,
-      verdict:      (row.verdict ?? "adjust") as "proceed" | "adjust" | "pivot",
-      scores: {
-        clarity:     { score: c, verdict: scoreToVerdict(c), finding: "" },
-        feasibility: { score: f, verdict: scoreToVerdict(f), finding: "" },
-        realism:     { score: r, verdict: scoreToVerdict(r), finding: "" },
-        usefulness:  { score: 0, verdict: "acceptable", finding: "" },
-        overall,
-      },
-      paths: {
-        current:     (row.path_current     as unknown as import("../types/validation.js").ValidationPath) ?? null!,
-        adjusted:    (row.path_adjusted    as unknown as import("../types/validation.js").ValidationPath) ?? null!,
-        alternative: (row.path_alternative as unknown as import("../types/validation.js").ValidationPath) ?? null!,
-      },
-      usedFallback: false,
-      aiSummary:    row.ai_summary ?? undefined,
-      createdAt:    row.created_at,
-    };
+    return rowToResult(row, params.blueprintId);
   },
 
-  // ── LEGACY COMPAT — used by old route ────────────────────────────────────
+  async getIndustryIntelligence(blueprintId: string, userId: string) {
+    const result = await this.getValidationResult({ blueprintId, userId });
+    if (!result?.industryPanel) throw new TorgimaError("NOT_FOUND", "Industry intelligence not available");
+    return { panel: result.industryPanel, eis: (result.intelligence as { eis?: unknown })?.eis };
+  },
+
+  async assertLaunchAllowed(blueprintId: string, userId: string): Promise<void> {
+    const [row] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.blueprint_id, blueprintId))
+      .orderBy(desc(validations.created_at))
+      .limit(1);
+
+    if (!row) {
+      throw new TorgimaError("VALIDATION_ERROR", "Validation must complete before blueprint launch.");
+    }
+    if (row.user_id !== userId) throw new TorgimaError("FORBIDDEN", "Not your validation");
+
+    if (row.launch_blocked || row.verdict === "pivot") {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Blueprint launch blocked: Pivot Required. Address critical issues and re-validate.",
+      );
+    }
+
+    if (!row.selected_path) {
+      throw new TorgimaError("VALIDATION_ERROR", "Select a validation path before launching.");
+    }
+
+    if (row.verdict === "adjust" && row.selected_path === "current" && !row.adjusted_path_confirmed) {
+      throw new TorgimaError("VALIDATION_ERROR", "Confirm adjusted path before launch.");
+    }
+
+    const critical = ((row.intelligence_payload as ValidationIntelligencePayload | null)?.pis?.risk_flags ?? []).filter(
+      (r) => r.level === "critical" && !r.resolvable,
+    );
+    if (critical.length > 0) {
+      throw new TorgimaError("VALIDATION_ERROR", "Critical unresolved risk blocks launch.");
+    }
+  },
 
   async validate(rawGoal: string, domain: string | null): Promise<{
-    valid: boolean; score: number; feedback: string;
-    suggestedDomain: string | null; refinedGoal: string | null; issues: string[];
+    valid: boolean;
+    score: number;
+    feedback: string;
+    suggestedDomain: string | null;
+    refinedGoal: string | null;
+    issues: string[];
   }> {
     const { scoreGoal, determineVerdict } = await import("../engines/validation/ValidationEngine.js");
-    const scores  = scoreGoal({ goal: rawGoal });
+    const scores = scoreGoal({ goal: rawGoal });
     const verdict = determineVerdict(scores);
     return {
-      valid:           verdict !== "pivot",
-      score:           scores.overall,
-      feedback:        scores.clarity.finding,
+      valid: verdict !== "pivot",
+      score: scores.overall,
+      feedback: scores.clarity.finding,
       suggestedDomain: domain,
-      refinedGoal:     null,
-      issues:          [
+      refinedGoal: null,
+      issues: [
         ...(scores.clarity.suggestion ? [scores.clarity.suggestion] : []),
         ...(scores.feasibility.suggestion ? [scores.feasibility.suggestion] : []),
       ],

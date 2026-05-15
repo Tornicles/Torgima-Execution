@@ -39,6 +39,13 @@ export const blueprintOperationalStateEnum = pgEnum("blueprint_operational_state
 ]);
 export const validationVerdictEnum = pgEnum("validation_verdict", ["proceed", "adjust", "pivot"]);
 export const selectedPathEnum = pgEnum("selected_path", ["current", "adjusted", "alternative"]);
+export const validationReadinessEnum = pgEnum("validation_readiness", [
+  "not_ready",
+  "partial",
+  "ready_proceed",
+  "ready_with_adjustment",
+  "blocked_pivot",
+]);
 export const domainEnum = pgEnum("domain", [
   "genesis", "market", "delivery", "operations", "people", "growth", "continuity",
 ]);

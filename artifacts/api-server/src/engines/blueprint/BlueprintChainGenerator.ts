@@ -17,6 +17,8 @@ import {
   getModeRules,
 } from "./BlueprintRuleEngine.js";
 import { getBlueprintTypeConfig } from "./infrastructure/BlueprintTypeRegistry.js";
+import type { ValidationToBlueprintContract } from "../validation/intelligence/validation-intelligence-types.js";
+import { applyContractToChainSkeleton } from "../validation/intelligence/ValidationToBlueprintBridge.js";
 
 type Tx = Parameters<Parameters<typeof import("@workspace/db").db.transaction>[0]>[0];
 
@@ -31,6 +33,7 @@ export interface ChainBuildParams {
     plans: Array<{ name: string; description: string }>;
     targets: Array<{ name: string; type: string }>;
   };
+  validationContract?: ValidationToBlueprintContract | null;
 }
 
 export interface ChainBuildResult {
@@ -65,9 +68,14 @@ export async function buildTierAwareBlueprintChain(
   const modeRules = getModeRules(params.mode);
   const goalShort = params.goal.slice(0, 60);
 
+  const contractedSkeleton =
+    params.validationContract ?
+      applyContractToChainSkeleton(params.validationContract, params.pathSkeleton)
+    : params.pathSkeleton;
+
   const planDefs =
-    params.pathSkeleton?.plans?.length ?
-      params.pathSkeleton.plans.slice(0, tierRules.planCount)
+    contractedSkeleton?.plans?.length ?
+      contractedSkeleton.plans.slice(0, tierRules.planCount)
     : DEFAULT_PLAN_NAMES.slice(0, tierRules.planCount).map((name, i) => ({
         name,
         description:
@@ -117,8 +125,8 @@ export async function buildTierAwareBlueprintChain(
   }
 
   const targetDefs =
-    params.pathSkeleton?.targets?.length ?
-      params.pathSkeleton.targets.slice(0, tierRules.targetCount)
+    contractedSkeleton?.targets?.length ?
+      contractedSkeleton.targets.slice(0, tierRules.targetCount)
     : Array.from({ length: tierRules.targetCount }, (_, i) => ({
         name:
           i === 0 ?

@@ -66,6 +66,8 @@ router.post("/onboarding/goal", async (req, res) => {
       knownBlockers:   z.string().max(500).optional(),
       domainHints:     z.array(z.string()).optional(),
       idempotencyKey:  z.string().min(1),
+      tier:            z.enum(["starter", "growth", "ultimate"]).optional(),
+      mode:            z.enum(["individual", "team"]).optional(),
     });
 
     const parsed = schema.safeParse(req.body);
@@ -145,10 +147,19 @@ router.post("/onboarding/goal", async (req, res) => {
       return;
     }
 
-    // Run full validation
+    if (input.tier && input.mode) {
+      await db
+        .update(blueprints)
+        .set({ tier: input.tier, mode: input.mode })
+        .where(eq(blueprints.id, blueprintId));
+    }
+
+    // Run full validation (5 intelligence systems)
     const validationResult = await ValidationService.validateGoal({
       blueprintId,
       userId: auth.userId,
+      tier: input.tier,
+      mode: input.mode,
       input: {
         goal:            structured.cleanedGoal,
         purpose:         structured.purpose,
@@ -157,6 +168,7 @@ router.post("/onboarding/goal", async (req, res) => {
         currentContext:  structured.currentContext,
         successSignal:   structured.successSignals[0],
         knownBlockers:   structured.blockers[0],
+        domainHint:      input.domainHints?.[0] ?? null,
       },
     });
 
@@ -176,7 +188,13 @@ router.post("/onboarding/goal", async (req, res) => {
       scores:       validationResult.scores,
       paths:        validationResult.paths,
       structured,
-      canProceed:   validationResult.verdict !== "pivot",
+      canProceed:   !validationResult.launchBlocked && validationResult.verdict !== "pivot",
+      launchBlocked: validationResult.launchBlocked,
+      readiness: validationResult.readiness,
+      industryPanel: validationResult.industryPanel,
+      tabs: validationResult.tabs,
+      intelligence: validationResult.intelligence,
+      systemsProgress: validationResult.systemsProgress,
     });
   } catch (err) {
     handleError(req, res, err);

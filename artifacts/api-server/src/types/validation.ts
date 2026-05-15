@@ -39,6 +39,13 @@ export interface ValidationResult {
   usedFallback:  boolean;
   aiSummary?:    string;
   createdAt:     Date;
+  launchBlocked?: boolean;
+  readiness?: string;
+  intelligence?: Record<string, unknown>;
+  industryPanel?: Record<string, unknown>;
+  tabs?: Record<string, unknown>;
+  blueprintContract?: Record<string, unknown> | null;
+  systemsProgress?: Record<string, string>;
 }
 
 export interface StructuredGoalDraft {

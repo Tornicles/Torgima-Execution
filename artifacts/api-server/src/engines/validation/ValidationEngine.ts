@@ -112,115 +112,38 @@ export async function runValidation(params: {
     currentContext?:  string;
     successSignal?:   string;
     knownBlockers?:   string;
+    domainHint?:      string | null;
   };
   aiEnabled: boolean;
+  tier?: import("../blueprint/infrastructure/blueprint-types.js").BlueprintTier;
+  mode?: string;
 }): Promise<ValidationResult> {
-  const scores  = scoreGoal(params.input);
-  const verdict = determineVerdict(scores);
-
-  const paths = await generatePaths({
-    goal:            params.input.goal,
-    purpose:         params.input.purpose,
-    timeframe:       params.input.timeframe,
-    commitmentLevel: params.input.commitmentLevel,
-    scores,
-    verdict,
-    blueprintId:     params.blueprintId,
-    userId:          params.userId,
-    useBhudhi:       params.aiEnabled,
+  const { runFullValidation } = await import("./intelligence/ValidationOrchestrator.js");
+  const full = await runFullValidation({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    input: params.input,
+    aiEnabled: params.aiEnabled,
+    tier: params.tier,
+    mode: params.mode,
   });
 
-  const aiSummary   = buildAiSummary(scores, verdict);
-  const usedFallback = !params.aiEnabled;
-
-  // Upsert validation record — idempotent by blueprint_id
-  const existing = await db
-    .select({ id: validations.id })
-    .from(validations)
-    .where(eq(validations.blueprint_id, params.blueprintId))
-    .limit(1);
-
-  let validationId: string;
-
-  if (existing[0]) {
-    validationId = existing[0].id;
-    await db
-      .update(validations)
-      .set({
-        verdict:           verdict as "proceed" | "adjust" | "pivot",
-        feasibility_score: scores.feasibility.score,
-        clarity_score:     scores.clarity.score,
-        realism_score:     scores.realism.score,
-        ai_summary:        aiSummary,
-        path_current:      paths.current as unknown as Record<string, unknown>,
-        path_adjusted:     paths.adjusted as unknown as Record<string, unknown>,
-        path_alternative:  paths.alternative as unknown as Record<string, unknown>,
-        status:            "complete",
-      })
-      .where(eq(validations.id, validationId));
-  } else {
-    const [inserted] = await db
-      .insert(validations)
-      .values({
-        blueprint_id:      params.blueprintId,
-        user_id:           params.userId,
-        verdict:           verdict as "proceed" | "adjust" | "pivot",
-        feasibility_score: scores.feasibility.score,
-        clarity_score:     scores.clarity.score,
-        realism_score:     scores.realism.score,
-        ai_summary:        aiSummary,
-        path_current:      paths.current as unknown as Record<string, unknown>,
-        path_adjusted:     paths.adjusted as unknown as Record<string, unknown>,
-        path_alternative:  paths.alternative as unknown as Record<string, unknown>,
-        status:            "complete",
-      })
-      .returning({ id: validations.id, created_at: validations.created_at });
-
-    if (!inserted) throw new TorgimaError("INTERNAL_ERROR", "Failed to create validation record");
-    validationId = inserted.id;
-  }
-
-  // Link validation to blueprint and advance status
-  const [bpRow] = await db
-    .select({
-      selection_confirmed_at: blueprints.selection_confirmed_at,
-      tier: blueprints.tier,
-    })
-    .from(blueprints)
-    .where(eq(blueprints.id, params.blueprintId))
-    .limit(1);
-
-  const nextStatus =
-    bpRow?.selection_confirmed_at && bpRow?.tier ? "path_selection" : "awaiting_selection";
-
-  await db
-    .update(blueprints)
-    .set({
-      validation_id: validationId,
-      status:        nextStatus,
-    })
-    .where(eq(blueprints.id, params.blueprintId));
-
-  logger.info(
-    { blueprintId: params.blueprintId, verdict, overall: scores.overall, usedFallback },
-    "[ValidationEngine] Validation complete",
-  );
-
-  const rowsAfter = await db
-    .select({ created_at: validations.created_at })
-    .from(validations)
-    .where(eq(validations.id, validationId))
-    .limit(1);
-
   return {
-    validationId,
-    blueprintId: params.blueprintId,
-    verdict,
-    scores,
-    paths,
-    usedFallback,
-    aiSummary,
-    createdAt: rowsAfter[0]?.created_at ?? new Date(),
+    validationId: full.validationId,
+    blueprintId: full.blueprintId,
+    verdict: full.verdict,
+    scores: full.scores,
+    paths: full.paths,
+    usedFallback: full.usedFallback,
+    aiSummary: full.aiSummary,
+    createdAt: full.createdAt,
+    launchBlocked: full.launchBlocked,
+    readiness: full.readiness,
+    intelligence: full.intelligence as unknown as Record<string, unknown>,
+    industryPanel: full.intelligence.industryPanel as unknown as Record<string, unknown>,
+    tabs: full.intelligence.tabs as unknown as Record<string, unknown>,
+    blueprintContract: full.blueprintContract as unknown as Record<string, unknown> | null,
+    systemsProgress: full.intelligence.systemsProgress,
   };
 }
 

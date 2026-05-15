@@ -7,6 +7,8 @@ import {
   type ModeId,
   type TierId,
 } from "@/components/blueprint/BlueprintSelectionPanel";
+import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
+import type { PathKey } from "@/components/validation/PathPanels";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL_STEPS = 7;
@@ -57,11 +59,10 @@ const STEPS = [
   { number: 7, label: "Review", sub: "Validate path and launch" },
 ];
 
-type ValidationPayload = {
+type ValidationPayload = ValidationScreenData & {
   status?: string;
-  blueprintId?: string;
-  scores?: Record<string, { score?: number }>;
-  paths?: Record<string, { summary?: string; benefits?: string[] }>;
+  validationId?: string;
+  canProceed?: boolean;
 };
 
 export default function OnboardingPage() {
@@ -160,6 +161,8 @@ export default function OnboardingPage() {
           knownBlockers: form.knownBlockers,
           domainHints: form.domain ? [form.domain] : undefined,
           idempotencyKey: `onboarding-${Date.now()}`,
+          tier: selectedTier ?? undefined,
+          mode: selectedMode ?? undefined,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; data?: ValidationPayload; error?: { message?: string } };
@@ -192,12 +195,30 @@ export default function OnboardingPage() {
 
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
+    if (validation.launchBlocked || validation.verdict === "pivot") return;
     if (!API_BASE_URL) return;
     setLoading(true);
     setError("");
     try {
       const saved = await saveBlueprintSelection(validation.blueprintId);
       if (!saved) return;
+
+      if (validation.validationId) {
+        const pathRes = await fetch(`${API_BASE_URL}/api/validation/${validation.validationId}/select-path`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            selectedPath,
+            confirmAdjusted: validation.verdict === "adjust" && selectedPath === "adjusted",
+          }),
+        });
+        const pathData = (await pathRes.json()) as { ok?: boolean; error?: { message?: string } };
+        if (!pathData.ok) {
+          setError(pathData.error?.message ?? "Could not confirm path selection.");
+          return;
+        }
+      }
 
       const res = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
         method: "POST",
@@ -689,101 +710,19 @@ export default function OnboardingPage() {
 
                 {!loading && validated && validation && (
                   <>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Validation Results</h2>
-                        <p className="text-gray-500 text-sm">
-                          Your blueprint foundation is ready. Review your results and choose your path forward.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">📋</span>
-                        <h3 className="font-bold text-gray-900">Reality Check Summary</h3>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Based on your inputs, here&apos;s an honest assessment of your current reality and what it will take to achieve your goal.
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {Object.entries(validation.scores ?? {})
-                          .filter(([k]) => k !== "overall")
-                          .slice(0, 4)
-                          .map(([key, s]) => {
-                            const score = (s as { score?: number }).score ?? 0;
-                            const color = score >= 7 ? "text-green-600" : score >= 5 ? "text-yellow-500" : "text-orange-500";
-                            const barCol = score >= 7 ? "bg-green-500" : score >= 5 ? "bg-yellow-400" : "bg-orange-400";
-                            const label = score >= 7 ? "Clear" : score >= 5 ? "Moderate" : "Needs Work";
-                            return (
-                              <div key={key} className="bg-gray-50 rounded-xl p-3 text-center space-y-2">
-                                <p className="text-xs text-gray-500 capitalize">{key.replace(/_/g, " ")}</p>
-                                <p className={`text-2xl font-bold ${color}`}>
-                                  {score} <span className="text-sm text-gray-400 font-normal">/ 10</span>
-                                </p>
-                                <p className={`text-xs font-semibold ${color}`}>{label}</p>
-                                <div className="bg-gray-200 rounded-full h-1.5 mx-2">
-                                  <div className={`${barCol} h-1.5 rounded-full`} style={{ width: `${score * 10}%` }} />
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">💡</span>
-                        <h3 className="font-bold text-gray-900">Key Insights</h3>
-                      </div>
-                      {[
-                        "You have a clear vision and strong motivation.",
-                        "Your timeline is ambitious but achievable with focused execution.",
-                        "Consistency will be the biggest factor in your success.",
-                      ].map((insight, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-700">{insight}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">📄</span>
-                        <h3 className="font-bold text-gray-900">
-                          Your Inputs <span className="text-gray-400 font-normal text-sm">(Summary)</span>
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                        {[
-                          ["Primary Goal", form.primaryGoal],
-                          ["Domain", form.domain],
-                          ["Timeframe", form.timeframe],
-                          ["Commitment", form.commitmentLevel],
-                          ["Experience", form.experience || "Not specified"],
-                          ["Budget", form.budget || "Not specified"],
-                        ].map(([label, value]) => (
-                          <div key={String(label)} className="flex justify-between border-b border-gray-50 pb-1.5 gap-2">
-                            <span className="text-gray-500 shrink-0">{label}</span>
-                            <span className="text-gray-900 font-medium text-right max-w-[60%] truncate capitalize">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Target className="w-4 h-4 text-gray-500" />
-                        <p className="text-sm font-semibold text-gray-700">Next Step</p>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Choose the path that best aligns with your current reality and desired outcome.
-                      </p>
-                    </div>
+                    <ValidationScreen
+                      data={validation}
+                      tier={selectedTier}
+                      selectedPath={selectedPath}
+                      onSelectPath={(p: PathKey) => setSelectedPath(p)}
+                      onLaunch={() => void handleLaunch()}
+                      launching={loading}
+                      goalSummary={{
+                        goal: form.primaryGoal,
+                        purpose: form.purpose,
+                        timeframe: form.timeframe,
+                      }}
+                    />
 
                     {error && <p className="text-red-500 text-sm">{error}</p>}
                   </>
@@ -893,9 +832,9 @@ export default function OnboardingPage() {
                             </div>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-500 leading-relaxed">{path.summary}</p>
+                        <p className="text-xs text-gray-500 leading-relaxed">{String((path as { summary?: string }).summary ?? "")}</p>
                         <div className="mt-2 space-y-1">
-                          {(path.benefits ?? ["Best fit for current reality", "Balanced risk and reward"]).slice(0, 2).map((b, i) => (
+                          {((path as { strengths?: string[] }).strengths ?? ["Aligned with validation"]).slice(0, 2).map((b: string, i: number) => (
                             <div key={i} className="flex items-center gap-1.5">
                               <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
                               <p className="text-xs text-gray-600">{b}</p>
@@ -910,14 +849,16 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => void handleLaunch()}
-                  disabled={loading}
+                  disabled={loading || validation.launchBlocked || validation.verdict === "pivot"}
                   className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-all text-sm flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
                       <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" /> Building...
                     </>
-                  ) : (
+                  ) : validation.launchBlocked || validation.verdict === "pivot" ?
+                    <>Launch Blocked</>
+                  : (
                     <>
                       <span>🚀</span> Launch Blueprint
                     </>
