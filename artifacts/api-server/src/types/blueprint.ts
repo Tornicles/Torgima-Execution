@@ -120,6 +120,9 @@ export interface BlueprintStateView {
     blockedActions: string[];
     aiMode: string | null;
     uiMode: string | null;
+    phasePermission: string | null;
+    targetAdjustment: string | null;
+    riskLevel: string | null;
   } | null;
   pausedAt: string | null;
   pauseReason: string | null;

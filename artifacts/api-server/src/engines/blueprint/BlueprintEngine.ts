@@ -727,6 +727,9 @@ export class BlueprintEngine {
             blockedActions: enfRow.blocked_actions ?? [],
             aiMode: enfRow.ai_mode ?? null,
             uiMode: enfRow.ui_mode ?? null,
+            phasePermission: enfRow.phase_permission ?? null,
+            targetAdjustment: enfRow.target_adjustment ?? null,
+            riskLevel: enfRow.risk_level ?? null,
           }
         : null,
       pausedAt: bp.paused_at?.toISOString() ?? null,

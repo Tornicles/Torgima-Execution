@@ -2,6 +2,7 @@ import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { generateEnforcementPackage } from "../engines/control/ControlEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
 
 export const CONTROL_QUEUE = "enforcement_package_requested";
@@ -57,6 +58,18 @@ workerRegistry.register({
           idempotencyKey: `task_gen:${blueprintId}:${result.packageId}`,
           causationEventId: data.eventId,
         });
+
+        await recordOperatingLoopStage({
+          blueprintId,
+          userId,
+          stage: "ENFORCEMENT_BOUND",
+          description: `Enforcement package ${result.packageId} bound (${condition}, mode=${generationMode}).`,
+          causationEventId: data.eventId,
+          triggerEventType: EVENT_TYPES.CONDITION_EVALUATED,
+          entityType: "enforcement_package",
+          entityId: result.packageId,
+          correlation: { enforcement_package_id: result.packageId, recovery_required: recoveryRequired },
+        }).catch(() => null);
 
         logger.info(
           { blueprintId, packageId: result.packageId, condition },

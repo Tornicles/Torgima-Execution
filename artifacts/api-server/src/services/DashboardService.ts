@@ -14,6 +14,11 @@ import {
   featureFlags as featureFlagsTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
+import {
+  deriveExecutionIdentityLines,
+  deriveOperationalAwarenessLines,
+  deriveSignalBlueprintBridgeLines,
+} from "../lib/operationalDerivation.js";
 
 export const DashboardService = {
   async getDashboardState(userId: string) {
@@ -75,6 +80,8 @@ export const DashboardService = {
       durationDays: number;
       recoveryRequired: boolean;
       escalationLevel: number;
+      transitionReason?: string | null;
+      previousCondition?: string | null;
     } | null = null;
 
     let signalProjection: {
@@ -87,6 +94,9 @@ export const DashboardService = {
       skipRatio: number | null;
     } | null = null;
 
+    let operationalAwareness: string[] = [];
+    let signalBlueprintBridge: Array<{ headline: string; cite: string }> = [];
+    let executionIdentityLines: string[] = [];
     let enforcementProjection: Record<string, unknown> | null = null;
     let health: { systemOperational: boolean; message?: string } = { systemOperational: true };
     const featureFlagMap: Record<string, boolean> = {};
@@ -166,6 +176,8 @@ export const DashboardService = {
           durationDays: conditionRow.duration_days,
           recoveryRequired: conditionRow.recovery_required,
           escalationLevel: conditionRow.escalation_level,
+          transitionReason: conditionRow.transition_reason,
+          previousCondition: conditionRow.previous_condition,
         };
       }
 
@@ -198,6 +210,66 @@ export const DashboardService = {
       for (const row of ffRows) {
         featureFlagMap[row.feature_name] = row.enabled;
       }
+
+      const enforcementPerm =
+        enforcementProjection && typeof enforcementProjection.phasePermission === "string" ?
+          enforcementProjection.phasePermission
+        : null;
+      const diffCap =
+        enforcementProjection && typeof enforcementProjection.difficultyCap === "string" ?
+          enforcementProjection.difficultyCap
+        : null;
+
+      const condEffective = conditionDetail ?? {
+        condition: signals.condition,
+        durationDays: 0,
+        recoveryRequired: false,
+        escalationLevel: 0,
+        transitionReason: null as string | null,
+        previousCondition: null as string | null,
+      };
+
+      signalBlueprintBridge = deriveSignalBlueprintBridgeLines({
+        condition: {
+          condition: condEffective.condition,
+          durationDays: condEffective.durationDays,
+          recoveryRequired: condEffective.recoveryRequired,
+          escalationLevel: condEffective.escalationLevel,
+          transitionReason:
+            typeof condEffective.transitionReason === "string" ? condEffective.transitionReason : null,
+          previousCondition:
+            typeof condEffective.previousCondition === "string" ? condEffective.previousCondition : null,
+        },
+        signalProjection,
+        enforcementPhasePermission: enforcementPerm,
+        difficultyCap: diffCap,
+        pivotReviewOpen,
+      });
+
+      operationalAwareness = deriveOperationalAwarenessLines({
+        condition: {
+          condition: condEffective.condition,
+          durationDays: condEffective.durationDays,
+          recoveryRequired: condEffective.recoveryRequired,
+          escalationLevel: condEffective.escalationLevel,
+          transitionReason:
+            typeof condEffective.transitionReason === "string" ? condEffective.transitionReason : null,
+          previousCondition:
+            typeof condEffective.previousCondition === "string" ? condEffective.previousCondition : null,
+        },
+        signalProjection,
+        enforcementPhasePermission: enforcementPerm,
+        pivotReviewOpen,
+        hasBlockedOrders: activeOrders.some((o) => o.status === "blocked"),
+        lockedPhaseCount: 0,
+      });
+
+      executionIdentityLines = deriveExecutionIdentityLines({
+        momentumStreakDays: signals.streak,
+        feedbackCyclesThisWeek: completedThisWeek,
+        completedOrdersAllTime: 0,
+        operatingPattern: null,
+      });
     } else {
       const ffRows = await db.select().from(featureFlagsTable);
       for (const row of ffRows) {
@@ -220,12 +292,22 @@ export const DashboardService = {
       pivotReviewOpen,
       pivotReviewId,
       pivotReview,
-      conditionDetail: conditionDetail ?? { condition: signals.condition, durationDays: 0, recoveryRequired: false, escalationLevel: 0 },
+      conditionDetail: conditionDetail ?? {
+        condition: signals.condition,
+        durationDays: 0,
+        recoveryRequired: false,
+        escalationLevel: 0,
+        transitionReason: null,
+        previousCondition: null,
+      },
       signalProjection,
       enforcement: enforcementProjection,
       currentAction: primaryTask,
       health,
       featureFlags: featureFlagMap,
+      operationalAwareness,
+      signalBlueprintBridge,
+      executionIdentityLines,
     };
   },
 };

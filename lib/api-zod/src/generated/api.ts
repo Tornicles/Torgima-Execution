@@ -20,12 +20,15 @@ export const HealthCheckResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
-  displayName: zod.string().nullish(),
+  displayName: zod
+    .string()
+    .nullish()
+    .describe("User-chosen display name (from `display_name`)."),
   mode: zod.string(),
   tier: zod.string(),
   onboardingComplete: zod.boolean(),
   timezone: zod.string(),
-  notificationPreferences: zod.record(zod.string(), zod.unknown()),
+  notificationPreferences: zod.record(zod.string(), zod.unknown()).optional(),
 });
 
 /**
@@ -39,12 +42,15 @@ export const UpdateMeBody = zod.object({
 export const UpdateMeResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
-  displayName: zod.string().nullish(),
+  displayName: zod
+    .string()
+    .nullish()
+    .describe("User-chosen display name (from `display_name`)."),
   mode: zod.string(),
   tier: zod.string(),
   onboardingComplete: zod.boolean(),
   timezone: zod.string(),
-  notificationPreferences: zod.record(zod.string(), zod.unknown()),
+  notificationPreferences: zod.record(zod.string(), zod.unknown()).optional(),
 });
 
 /**
@@ -427,11 +433,13 @@ export const GetBlueprintStateResponse = zod.object({
     consistency: zod.number(),
     velocity: zod.number(),
     condition: zod.enum([
-      "optimal",
-      "building",
-      "recovering",
-      "critical",
-      "blocked",
+      "nothingness",
+      "danger",
+      "urgency",
+      "stability",
+      "power",
+      "affluence",
+      "power_change",
     ]),
     streak: zod.number().optional(),
     computedAt: zod.string(),
@@ -439,6 +447,53 @@ export const GetBlueprintStateResponse = zod.object({
   condition: zod.string(),
   phaseProgress: zod.number().optional(),
 });
+
+/**
+ * @summary Full blueprint execution command center (hierarchy, locks, signals, policies)
+ */
+export const GetBlueprintCommandCenterParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetBlueprintCommandCenterResponse = zod
+  .record(zod.string(), zod.unknown())
+  .describe(
+    "Aggregated execution command center — mission, policies, full hierarchy with locks, dependency edges, targets, signal explanations, operational awareness. Server-owned shape.",
+  );
+
+/**
+ * @summary Operational event stream / execution loop timeline for a blueprint
+ */
+export const GetBlueprintExecutionFeedParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const getBlueprintExecutionFeedQueryLimitDefault = 80;
+export const getBlueprintExecutionFeedQueryLimitMax = 150;
+
+export const GetBlueprintExecutionFeedQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .max(getBlueprintExecutionFeedQueryLimitMax)
+    .default(getBlueprintExecutionFeedQueryLimitDefault),
+});
+
+export const GetBlueprintExecutionFeedResponse = zod
+  .object({
+    ok: zod.boolean().optional(),
+    data: zod
+      .object({
+        blueprintId: zod.string().uuid(),
+        events: zod.array(zod.record(zod.string(), zod.unknown())),
+      })
+      .optional(),
+    meta: zod
+      .object({
+        timestamp: zod.coerce.date().optional(),
+      })
+      .optional(),
+  })
+  .describe("Wrapped API response");
 
 /**
  * @summary Pause an active blueprint
@@ -1063,12 +1118,15 @@ export const GetDashboardStateResponse = zod.object({
   user: zod.object({
     id: zod.string(),
     email: zod.string(),
-    displayName: zod.string().nullish(),
+    displayName: zod
+      .string()
+      .nullish()
+      .describe("User-chosen display name (from `display_name`)."),
     mode: zod.string(),
     tier: zod.string(),
     onboardingComplete: zod.boolean(),
     timezone: zod.string(),
-    notificationPreferences: zod.record(zod.string(), zod.unknown()),
+    notificationPreferences: zod.record(zod.string(), zod.unknown()).optional(),
   }),
   signals: zod.object({
     userId: zod.string(),
@@ -1087,8 +1145,57 @@ export const GetDashboardStateResponse = zod.object({
     streak: zod.number().optional(),
     computedAt: zod.string(),
   }),
-  activeBlueprint: ListBlueprintsResponseItem.nullable(),
-  recentCompletionBlueprint: ListBlueprintsResponseItem.nullish(),
+  activeBlueprint: zod
+    .object({
+      id: zod.string(),
+      userId: zod.string(),
+      title: zod.string(),
+      rawGoal: zod.string().optional(),
+      domain: zod.string(),
+      status: zod.enum([
+        "draft",
+        "validating",
+        "active",
+        "paused",
+        "complete",
+        "abandoned",
+      ]),
+      phase: zod.number(),
+      totalPhases: zod.number().optional(),
+      currentCondition: zod.string().nullish(),
+      pausedReason: zod.string().nullish(),
+      activatedAt: zod.string().nullish(),
+      completedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .nullable(),
+  recentCompletionBlueprint: zod
+    .object({
+      id: zod.string(),
+      userId: zod.string(),
+      title: zod.string(),
+      rawGoal: zod.string().optional(),
+      domain: zod.string(),
+      status: zod.enum([
+        "draft",
+        "validating",
+        "active",
+        "paused",
+        "complete",
+        "abandoned",
+      ]),
+      phase: zod.number(),
+      totalPhases: zod.number().optional(),
+      currentCondition: zod.string().nullish(),
+      pausedReason: zod.string().nullish(),
+      activatedAt: zod.string().nullish(),
+      completedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+    })
+    .nullish()
+    .describe(
+      "Most recently completed blueprint within 72 hours when none are active — drives the completion surface after finish.",
+    ),
   activeOrders: zod.array(
     zod.object({
       id: zod.string(),
@@ -1138,6 +1245,41 @@ export const GetDashboardStateResponse = zod.object({
   streakDays: zod.number().optional(),
   tasksCompletedToday: zod.number().optional(),
   tasksCompletedThisWeek: zod.number().optional(),
+  stateVersion: zod
+    .number()
+    .optional()
+    .describe(
+      "Active blueprint concurrency version — send as x-expected-state-version on mutations",
+    ),
+  pivotReviewOpen: zod.boolean().optional(),
+  pivotReviewId: zod.string().nullish(),
+  pivotReview: zod.record(zod.string(), zod.unknown()).nullish(),
+  conditionDetail: zod.record(zod.string(), zod.unknown()).optional(),
+  signalProjection: zod.record(zod.string(), zod.unknown()).nullish(),
+  enforcement: zod.record(zod.string(), zod.unknown()).nullish(),
+  currentAction: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe(
+      "Highest-priority active\/pending execution order (six content fields when present)",
+    ),
+  health: zod
+    .object({
+      systemOperational: zod.boolean(),
+      message: zod.string().optional(),
+    })
+    .optional(),
+  featureFlags: zod.record(zod.string(), zod.boolean()).optional(),
+  operationalAwareness: zod.array(zod.string()).optional(),
+  signalBlueprintBridge: zod
+    .array(
+      zod.object({
+        headline: zod.string().optional(),
+        cite: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  executionIdentityLines: zod.array(zod.string()).optional(),
 });
 
 /**

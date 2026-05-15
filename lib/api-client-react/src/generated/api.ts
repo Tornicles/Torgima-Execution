@@ -25,8 +25,11 @@ import type {
   BlueprintInput,
   BlueprintState,
   DashboardState,
+  ExecutionCommandCenter,
   ExplainStateInput,
   Feedback,
+  GetBlueprintExecutionFeed200,
+  GetBlueprintExecutionFeedParams,
   GetValidationResultParams,
   GoalInput,
   HealthStatus,
@@ -1095,6 +1098,218 @@ export function useGetBlueprintState<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetBlueprintStateQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Full blueprint execution command center (hierarchy, locks, signals, policies)
+ */
+export const getGetBlueprintCommandCenterUrl = (id: string) => {
+  return `/api/blueprints/${id}/command-center`;
+};
+
+export const getBlueprintCommandCenter = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ExecutionCommandCenter> => {
+  return customFetch<ExecutionCommandCenter>(
+    getGetBlueprintCommandCenterUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetBlueprintCommandCenterQueryKey = (id: string) => {
+  return [`/api/blueprints/${id}/command-center`] as const;
+};
+
+export const getGetBlueprintCommandCenterQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBlueprintCommandCenter>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintCommandCenter>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBlueprintCommandCenterQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBlueprintCommandCenter>>
+  > = ({ signal }) =>
+    getBlueprintCommandCenter(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintCommandCenter>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBlueprintCommandCenterQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBlueprintCommandCenter>>
+>;
+export type GetBlueprintCommandCenterQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Full blueprint execution command center (hierarchy, locks, signals, policies)
+ */
+
+export function useGetBlueprintCommandCenter<
+  TData = Awaited<ReturnType<typeof getBlueprintCommandCenter>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintCommandCenter>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBlueprintCommandCenterQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Operational event stream / execution loop timeline for a blueprint
+ */
+export const getGetBlueprintExecutionFeedUrl = (
+  id: string,
+  params?: GetBlueprintExecutionFeedParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/blueprints/${id}/execution-feed?${stringifiedParams}`
+    : `/api/blueprints/${id}/execution-feed`;
+};
+
+export const getBlueprintExecutionFeed = async (
+  id: string,
+  params?: GetBlueprintExecutionFeedParams,
+  options?: RequestInit,
+): Promise<GetBlueprintExecutionFeed200> => {
+  return customFetch<GetBlueprintExecutionFeed200>(
+    getGetBlueprintExecutionFeedUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetBlueprintExecutionFeedQueryKey = (
+  id: string,
+  params?: GetBlueprintExecutionFeedParams,
+) => {
+  return [
+    `/api/blueprints/${id}/execution-feed`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetBlueprintExecutionFeedQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBlueprintExecutionFeed>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetBlueprintExecutionFeedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintExecutionFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBlueprintExecutionFeedQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBlueprintExecutionFeed>>
+  > = ({ signal }) =>
+    getBlueprintExecutionFeed(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintExecutionFeed>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBlueprintExecutionFeedQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBlueprintExecutionFeed>>
+>;
+export type GetBlueprintExecutionFeedQueryError = ErrorType<void>;
+
+/**
+ * @summary Operational event stream / execution loop timeline for a blueprint
+ */
+
+export function useGetBlueprintExecutionFeed<
+  TData = Awaited<ReturnType<typeof getBlueprintExecutionFeed>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  params?: GetBlueprintExecutionFeedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintExecutionFeed>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBlueprintExecutionFeedQueryOptions(
+    id,
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

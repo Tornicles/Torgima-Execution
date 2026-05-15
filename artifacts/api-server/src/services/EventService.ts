@@ -42,6 +42,8 @@ export const EVENT_TYPES = {
   NOTIFICATION_SEND_REQUESTED:    "notification_send_requested",
   // State
   STATE_CHANGED:                  "state_changed",
+  /** Audit-only deterministic operating-loop timeline (never dispatches queues). */
+  OPERATING_LOOP_STAGE:           "operating_loop_stage",
   PROJECTION_REFRESH_REQUESTED:   "projection_refresh_requested",
   // AI
   BHUDHI_TRIGGER_REQUESTED:       "bhudhi_trigger_requested",
@@ -82,13 +84,19 @@ export async function writeEvent(
 ): Promise<string> {
   const client = tx ?? db;
 
+  const basePayload = (input.payload ?? {}) as Record<string, unknown>;
+  const payloadMerged: Record<string, unknown> = {
+    ...basePayload,
+    ...(input.causationEventId ? { causation_event_id: input.causationEventId } : {}),
+  };
+
   const row: InferInsertModel<typeof events> = {
     event_type: input.eventType,
     entity_type: input.entityType,
     entity_id: input.entityId,
     user_id: input.userId,
     blueprint_id: input.blueprintId,
-    payload: (input.payload ?? {}) as Record<string, unknown>,
+    payload: payloadMerged,
     idempotency_key: input.idempotencyKey,
     process_after: input.processAfter ?? new Date(),
     status: "pending",
@@ -113,6 +121,12 @@ export async function writeEventInTx(
   input: CreateEventInput,
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
 ): Promise<string> {
+  const basePayload = (input.payload ?? {}) as Record<string, unknown>;
+  const payloadMerged: Record<string, unknown> = {
+    ...basePayload,
+    ...(input.causationEventId ? { causation_event_id: input.causationEventId } : {}),
+  };
+
   const [inserted] = await tx
     .insert(events)
     .values({
@@ -121,7 +135,7 @@ export async function writeEventInTx(
       entity_id: input.entityId,
       user_id: input.userId,
       blueprint_id: input.blueprintId,
-      payload: (input.payload ?? {}) as Record<string, unknown>,
+      payload: payloadMerged,
       idempotency_key: input.idempotencyKey,
       process_after: input.processAfter ?? new Date(),
       status: "pending",

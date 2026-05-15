@@ -596,6 +596,8 @@ export const signalSnapshots = pgTable(
     confidence: signalConfidenceEnum("confidence").notNull().default("insufficient_data"),
     blocker_ratio: doublePrecision("blocker_ratio").notNull().default(0),
     skip_ratio: doublePrecision("skip_ratio").notNull().default(0),
+    /** Deterministic operational mathematics (10+ scores, formulas, thresholds) — Prompt / Phase 2 core. */
+    operational_mathematics_json: jsonb("operational_mathematics_json").notNull().default(sql`'{}'::jsonb`),
     assigned_condition: conditionEnum("assigned_condition"),
     is_current: boolean("is_current").notNull().default(true),
     causation_event_id: uuid("causation_event_id").references(() => events.id),

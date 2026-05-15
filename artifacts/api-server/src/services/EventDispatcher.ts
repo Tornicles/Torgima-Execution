@@ -39,6 +39,7 @@ const TERMINAL_EVENT_TYPES = new Set<string>([
   "external_signal_received",
   "ORCHESTRATION_LOCK",
   "false_progress_detected",
+  "operating_loop_stage",
 ]);
 
 const DISPATCH_BATCH_SIZE = 50;

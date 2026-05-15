@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Calendar, TrendingUp, Zap, ChevronRight, CheckCircle2, Circle, MessageSquare } from "lucide-react";
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
+import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 type DashboardState = Record<string, any>;
 type Order = Record<string, any>;
 
@@ -157,6 +158,13 @@ export default function Dashboard() {
         </div>
       ) : null}
 
+      <OperationalAwarenessStrip
+        className="mt-6"
+        awareness={state.operationalAwareness as string[] | undefined}
+        signalBridge={state.signalBlueprintBridge as Array<{ headline?: string; cite?: string }> | undefined}
+        executionIdentity={state.executionIdentityLines as string[] | undefined}
+      />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`rounded-2xl border border-gray-200 p-5 ${conditionCfg.bg}`}>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Condition</p>
@@ -186,7 +194,7 @@ export default function Dashboard() {
             <TrendingUp className="w-6 h-6 text-green-500" />
             <span className="text-3xl font-bold text-gray-900">{weekRate}%</span>
           </div>
-          <p className="text-xs text-green-600 mt-2">↑ vs last week</p>
+          <p className="text-xs text-slate-500 mt-2">From signal projection</p>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
@@ -195,7 +203,7 @@ export default function Dashboard() {
             <Zap className="w-6 h-6 text-amber-500" />
             <span className="text-3xl font-bold text-gray-900">+{momentum}%</span>
           </div>
-          <p className="text-xs text-green-600 mt-2">↑ Improving</p>
+          <p className="text-xs text-slate-500 mt-2">Snapshot-derived momentum field</p>
         </div>
       </div>
 
@@ -204,7 +212,7 @@ export default function Dashboard() {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h2 className="font-bold text-gray-900">TODAY&apos;S ORDERS</h2>
+                <h2 className="font-bold text-gray-900">Today&apos;s execution orders</h2>
                 <p className="text-xs text-gray-500">
                   {todayCompleted} / {orders.length} completed
                 </p>

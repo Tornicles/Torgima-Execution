@@ -5,15 +5,19 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserNotificationPreferences } from "./userNotificationPreferences";
 
 export interface User {
   id: string;
   email: string;
-  /** @nullable */
+  /**
+   * User-chosen display name (from `display_name`).
+   * @nullable
+   */
   displayName?: string | null;
   mode: string;
   tier: string;
   onboardingComplete: boolean;
   timezone: string;
-  notificationPreferences: Record<string, unknown>;
+  notificationPreferences?: UserNotificationPreferences;
 }

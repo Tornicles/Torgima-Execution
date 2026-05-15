@@ -2,6 +2,7 @@ import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
 
@@ -61,6 +62,19 @@ workerRegistry.register({
           { blueprintId, state: guaranteeResult.state, orderId: guaranteeResult.orderId },
           "[TaskGenerationWorker] Complete",
         );
+
+        await recordOperatingLoopStage({
+          blueprintId,
+          userId,
+          stage: "TASK_GENERATION_COMPLETED",
+          description: `Task generation finished; guarantee state=${guaranteeResult.state}, order=${guaranteeResult.orderId ?? "none"}.`,
+          causationEventId: data.eventId,
+          triggerEventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+          correlation: {
+            order_id: guaranteeResult.orderId,
+            guarantee_state: guaranteeResult.state,
+          },
+        }).catch(() => null);
         return { success: true };
       });
     }

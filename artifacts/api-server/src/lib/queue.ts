@@ -16,8 +16,7 @@ export function createBoss(): PgBoss {
     connectionString,
     ssl: resolvePgSsl(connectionString),
     max: 5,
-    deleteAfterDays: 7,
-    monitorStateIntervalSeconds: 30,
+    monitorIntervalSeconds: 30,
   });
 }
 

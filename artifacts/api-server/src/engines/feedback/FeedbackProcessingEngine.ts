@@ -10,6 +10,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
+import { recordOperatingLoopStage } from "../../services/OperatingLoopRecorder.js";
+import { scoreProofForOrder } from "./ProofScoringEngine.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -121,6 +123,12 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
   if (input.score === 10 && ref.length < 100) weight -= 0.2;
   if (input.completionStatus === "completed" && input.score <= 2) weight -= 0.2;
 
+  const proof = (input.proofJson ?? {}) as Record<string, unknown>;
+  const proofScore = scoreProofForOrder(order, proof);
+  if (order.proof_required) {
+    weight *= Math.max(0.35, 0.45 + 0.55 * proofScore.normalized);
+  }
+
   weight = Math.max(0.3, weight);
   const weightedScoreBase = input.score * weight;
 
@@ -200,11 +208,30 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
           requires_interrogation: requiresInterrogation,
           completion_status: input.completionStatus,
           idempotency_key_input: input.idempotencyKey,
+          proof_score_normalized: proofScore.normalized,
+          proof_score_formula: proofScore.formula,
         },
       },
       tx,
     );
   });
+
+  await recordOperatingLoopStage({
+    blueprintId: input.blueprintId,
+    userId: input.userId,
+    stage: "REALITY_EXECUTION_RECORDED",
+    description: `Feedback recorded for order ${input.orderId}; proof quality ${proofScore.normalized.toFixed(2)}.`,
+    causationEventId: eventId,
+    triggerEventType: EVENT_TYPES.FEEDBACK_SUBMITTED,
+    entityType: "feedback",
+    entityId: feedbackIdOut,
+    correlation: {
+      order_id: input.orderId,
+      feedback_id: feedbackIdOut,
+      proof_formula: proofScore.formula,
+      proof_rationale: proofScore.rationale,
+    },
+  }).catch(() => null);
 
   await updateCapabilityFromFeedback({
     userId: input.userId,

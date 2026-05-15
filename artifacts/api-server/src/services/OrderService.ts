@@ -8,8 +8,11 @@ import {
   blueprints as blueprintsTable,
   orderKnowledgeLinks,
   knowledgeObjects,
+  orderDependencies,
+  signalSnapshots,
 } from "@workspace/db";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, count } from "drizzle-orm";
+import { computeOrderPriorityDimensions } from "../engines/order/OrderPrioritizationEngine.js";
 
 const store = new Map<string, Order>();
 
@@ -78,6 +81,18 @@ export interface DashboardPrimaryTask {
   status: string;
   domain: string | null;
   priority: number;
+  /** Deterministic composite prioritization (dashboard primary selection). */
+  priorityEngine?: {
+    priorityScore: number;
+    breakdown: {
+      urgencyScore: number;
+      leverageScore: number;
+      dependencyRiskScore: number;
+      timingSensitivityScore: number;
+      strategicWeight: number;
+    };
+    formulaSummary: string;
+  };
   knowledgeObjects: Array<{
     id: string;
     title: string | null;
@@ -100,7 +115,7 @@ export const OrderService = {
 
     if (!bp) return null;
 
-    const [order] = await db
+    const candidates = await db
       .select()
       .from(ordersTable)
       .where(
@@ -110,10 +125,51 @@ export const OrderService = {
           inArray(ordersTable.status, ["pending", "active"]),
         ),
       )
-      .orderBy(desc(ordersTable.priority))
+      .limit(40);
+
+    if (candidates.length === 0) return null;
+
+    const [sigRow] = await db
+      .select({ assigned_condition: signalSnapshots.assigned_condition })
+      .from(signalSnapshots)
+      .where(and(eq(signalSnapshots.blueprint_id, bp.id), eq(signalSnapshots.is_current, true)))
       .limit(1);
 
-    if (!order) return null;
+    const ids = candidates.map((o) => o.id);
+    const blockerRows = await db
+      .select({
+        blockingId: orderDependencies.blocking_order_id,
+        downstream: count(orderDependencies.blocked_order_id),
+      })
+      .from(orderDependencies)
+      .where(and(eq(orderDependencies.blueprint_id, bp.id), inArray(orderDependencies.blocking_order_id, ids)))
+      .groupBy(orderDependencies.blocking_order_id);
+
+    const impact = new Map<string, number>();
+    for (const row of blockerRows) {
+      impact.set(row.blockingId, Number(row.downstream));
+    }
+
+    let bestOrder = candidates[0]!;
+    let bestDiag = computeOrderPriorityDimensions(bestOrder, {
+      downstreamBlockedCount: impact.get(bestOrder.id) ?? 0,
+      blueprintCondition: sigRow?.assigned_condition,
+    });
+    let bestPri = bestDiag.priorityScore;
+    for (let i = 1; i < candidates.length; i++) {
+      const o = candidates[i]!;
+      const d = computeOrderPriorityDimensions(o, {
+        downstreamBlockedCount: impact.get(o.id) ?? 0,
+        blueprintCondition: sigRow?.assigned_condition,
+      });
+      if (d.priorityScore > bestPri) {
+        bestPri = d.priorityScore;
+        bestOrder = o;
+        bestDiag = d;
+      }
+    }
+
+    const order = bestOrder;
 
     const linkRows = await db
       .select({
@@ -146,6 +202,17 @@ export const OrderService = {
       status: order.status,
       domain: order.domain,
       priority: order.priority,
+      priorityEngine: {
+        priorityScore: bestDiag.priorityScore,
+        breakdown: {
+          urgencyScore: bestDiag.urgencyScore,
+          leverageScore: bestDiag.leverageScore,
+          dependencyRiskScore: bestDiag.dependencyRiskScore,
+          timingSensitivityScore: bestDiag.timingSensitivityScore,
+          strategicWeight: bestDiag.strategicWeight,
+        },
+        formulaSummary: bestDiag.formulaSummary,
+      },
       knowledgeObjects: linkRows.map((k) => ({
         id: k.kid,
         title: k.title,

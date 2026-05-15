@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
+import { getExecutionCommandCenter } from "../services/ExecutionCommandCenterService.js";
 import { ValidationService } from "../services/ValidationService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import {
@@ -26,6 +27,7 @@ import {
   frameworkActivations,
   frameworkDecisions,
   behaviorPatterns,
+  events,
 } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -139,6 +141,58 @@ router.get("/blueprints/:id/state", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const state = await BlueprintService.getBlueprintState(req.params.id!, auth.userId);
     success(res, state);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/command-center — full hierarchy, locks, signals, policies
+router.get("/blueprints/:id/command-center", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const payload = await getExecutionCommandCenter(req.params.id!, auth.userId);
+    success(res, payload);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/blueprints/:id/execution-feed — operational event stream / loop timeline
+router.get("/blueprints/:id/execution-feed", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const id = req.params.id!;
+
+    const [bp] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const limitRaw = parseInt(String(req.query.limit ?? "80"), 10);
+    const limit = Math.min(Number.isFinite(limitRaw) ? limitRaw : 80, 150);
+
+    const feed = await db
+      .select({
+        id: events.id,
+        eventType: events.event_type,
+        entityType: events.entity_type,
+        entityId: events.entity_id,
+        payload: events.payload,
+        status: events.status,
+        createdAt: events.created_at,
+      })
+      .from(events)
+      .where(eq(events.blueprint_id, id))
+      .orderBy(desc(events.created_at))
+      .limit(limit);
+
+    success(res, { blueprintId: id, events: feed });
   } catch (err) {
     handleError(req, res, err);
   }

@@ -5,7 +5,7 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
-import type { SignalStateCondition } from "./signalStateCondition";
+import type { SignalSnapshotCondition } from "./signalSnapshotCondition";
 
 export interface SignalSnapshot {
   id: string;
@@ -13,6 +13,6 @@ export interface SignalSnapshot {
   momentum: number;
   consistency: number;
   velocity: number;
-  condition: SignalStateCondition;
+  condition: SignalSnapshotCondition;
   snapshotDate: string;
 }

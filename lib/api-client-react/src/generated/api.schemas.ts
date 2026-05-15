@@ -9,16 +9,21 @@ export interface HealthStatus {
   status: string;
 }
 
+export type UserNotificationPreferences = { [key: string]: unknown };
+
 export interface User {
   id: string;
   email: string;
-  /** @nullable */
+  /**
+   * User-chosen display name (from `display_name`).
+   * @nullable
+   */
   displayName?: string | null;
   mode: string;
   tier: string;
   onboardingComplete: boolean;
   timezone: string;
-  notificationPreferences: Record<string, unknown>;
+  notificationPreferences?: UserNotificationPreferences;
 }
 
 export interface UserUpdate {
@@ -305,6 +310,13 @@ export interface BlueprintActivateResult {
   blueprintId: string;
 }
 
+/**
+ * Aggregated execution command center — mission, policies, full hierarchy with locks, dependency edges, targets, signal explanations, operational awareness. Server-owned shape.
+ */
+export interface ExecutionCommandCenter {
+  [key: string]: unknown;
+}
+
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 
 export const OrderStatus = {
@@ -479,53 +491,98 @@ export interface Interrogation {
   context?: string | null;
 }
 
+export type SignalSnapshotCondition =
+  (typeof SignalSnapshotCondition)[keyof typeof SignalSnapshotCondition];
+
+export const SignalSnapshotCondition = {
+  nothingness: "nothingness",
+  danger: "danger",
+  urgency: "urgency",
+  stability: "stability",
+  power: "power",
+  affluence: "affluence",
+  power_change: "power_change",
+} as const;
+
 export interface SignalSnapshot {
   id: string;
   userId: string;
   momentum: number;
   consistency: number;
   velocity: number;
-  condition: SignalStateCondition;
+  condition: SignalSnapshotCondition;
   snapshotDate: string;
 }
 
 /**
  * @nullable
  */
-export type DashboardStateActiveBlueprint = Blueprint | null;
+export type DashboardStatePivotReview = { [key: string]: unknown } | null;
+
+export type DashboardStateConditionDetail = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type DashboardStateSignalProjection = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type DashboardStateEnforcement = { [key: string]: unknown } | null;
+
+/**
+ * Highest-priority active/pending execution order (six content fields when present)
+ * @nullable
+ */
+export type DashboardStateCurrentAction = { [key: string]: unknown } | null;
+
+export type DashboardStateHealth = {
+  systemOperational: boolean;
+  message?: string;
+};
+
+export type DashboardStateFeatureFlags = { [key: string]: boolean };
+
+export type DashboardStateSignalBlueprintBridgeItem = {
+  headline?: string;
+  cite?: string;
+  [key: string]: unknown;
+};
 
 export interface DashboardState {
   user: User;
   signals: SignalState;
-  /** @nullable */
-  activeBlueprint: DashboardStateActiveBlueprint;
-  /** Completed blueprint spotlight when user has no active blueprint (see server 72h window). */
+  activeBlueprint: Blueprint | null;
+  /** Most recently completed blueprint within 72 hours when none are active — drives the completion surface after finish. */
   recentCompletionBlueprint?: Blueprint | null;
   activeOrders: Order[];
   recentFeedback: Feedback[];
   streakDays?: number;
   tasksCompletedToday?: number;
   tasksCompletedThisWeek?: number;
-  /** Prompt 15 — optimistic concurrency for mutations */
+  /** Active blueprint concurrency version — send as x-expected-state-version on mutations */
   stateVersion?: number;
   pivotReviewOpen?: boolean;
   /** @nullable */
   pivotReviewId?: string | null;
   /** @nullable */
-  pivotReview?: Record<string, unknown> | null;
-  conditionDetail?: Record<string, unknown>;
+  pivotReview?: DashboardStatePivotReview;
+  conditionDetail?: DashboardStateConditionDetail;
   /** @nullable */
-  signalProjection?: Record<string, unknown> | null;
+  signalProjection?: DashboardStateSignalProjection;
   /** @nullable */
-  enforcement?: Record<string, unknown> | null;
-  /** @nullable */
-  currentAction?: Record<string, unknown> | null;
-  health?: {
-    systemOperational: boolean;
-    /** @nullable */
-    message?: string | null;
-  };
-  featureFlags?: Record<string, boolean>;
+  enforcement?: DashboardStateEnforcement;
+  /**
+   * Highest-priority active/pending execution order (six content fields when present)
+   * @nullable
+   */
+  currentAction?: DashboardStateCurrentAction;
+  health?: DashboardStateHealth;
+  featureFlags?: DashboardStateFeatureFlags;
+  operationalAwareness?: string[];
+  signalBlueprintBridge?: DashboardStateSignalBlueprintBridgeItem[];
+  executionIdentityLines?: string[];
 }
 
 export interface GoalInput {
@@ -576,6 +633,35 @@ export interface Notification {
   readAt: string | null;
   createdAt: string;
 }
+
+export type GetBlueprintExecutionFeedParams = {
+  /**
+   * @maximum 150
+   */
+  limit?: number;
+};
+
+export type GetBlueprintExecutionFeed200DataEventsItem = {
+  [key: string]: unknown;
+};
+
+export type GetBlueprintExecutionFeed200Data = {
+  blueprintId: string;
+  events: GetBlueprintExecutionFeed200DataEventsItem[];
+};
+
+export type GetBlueprintExecutionFeed200Meta = {
+  timestamp?: string;
+};
+
+/**
+ * Wrapped API response
+ */
+export type GetBlueprintExecutionFeed200 = {
+  ok?: boolean;
+  data?: GetBlueprintExecutionFeed200Data;
+  meta?: GetBlueprintExecutionFeed200Meta;
+};
 
 export type GetValidationResultParams = {
   blueprintId: string;

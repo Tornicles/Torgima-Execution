@@ -1,7 +1,9 @@
-import { db, feedback, signalSnapshots } from "@workspace/db";
+import { db, feedback, signalSnapshots, orders, targets, blueprints } from "@workspace/db";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import type { SignalMetrics as ExportedSignalMetrics } from "./SignalCalculationEngine.types.js";
+import type { OperationalMathematicsDocument } from "./SignalOperationalMathematicsEngine.js";
+import { computeOperationalMathematics } from "./SignalOperationalMathematicsEngine.js";
 
 export type SignalMetrics = ExportedSignalMetrics;
 
@@ -57,7 +59,12 @@ export async function calculate(params: {
   blueprintId: string;
   userId: string;
   causationEventId?: string;
-}): Promise<{ snapshotId: string; condition: string; metrics: SignalMetrics }> {
+}): Promise<{
+  snapshotId: string;
+  condition: string;
+  metrics: SignalMetrics;
+  operationalMathematics: OperationalMathematicsDocument;
+}> {
   const now = new Date();
   const windowEnd = now;
   const windowStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -99,6 +106,38 @@ export async function calculate(params: {
     )
     .limit(1);
 
+  const [bpRow] = await db
+    .select({ current_domain: blueprints.current_domain })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+
+  const [orderList, targetList] = await Promise.all([
+    db.select().from(orders).where(and(eq(orders.blueprint_id, params.blueprintId), eq(orders.user_id, params.userId))),
+    db.select().from(targets).where(eq(targets.blueprint_id, params.blueprintId)),
+  ]);
+
+  const operationalMathematics = computeOperationalMathematics({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    windowStart,
+    windowEnd,
+    feedbackRows: feedbackInWindow,
+    orders: orderList,
+    targets: targetList,
+    previousSnapshot: prevSnapshot ?? null,
+    signalMetrics: {
+      completion_rate: metrics.completion_rate,
+      weighted_score: metrics.weighted_score,
+      momentum: metrics.momentum,
+      trend: metrics.trend,
+      confidence: metrics.confidence,
+      blocker_ratio: metrics.blocker_ratio,
+      skip_ratio: metrics.skip_ratio,
+    },
+    blueprintDomain: bpRow?.current_domain ?? null,
+  });
+
   const prevCondition = prevSnapshot?.assigned_condition ?? "nothingness";
 
   const assignedCondition = assignCondition(metrics, prevCondition ?? "nothingness");
@@ -127,6 +166,7 @@ export async function calculate(params: {
         confidence: sanitized.confidence,
         blocker_ratio: sanitized.blocker_ratio,
         skip_ratio: sanitized.skip_ratio,
+        operational_mathematics_json: operationalMathematics as unknown as Record<string, unknown>,
         assigned_condition: assignedCondition as typeof signalSnapshots.$inferInsert["assigned_condition"],
         is_current: true,
         ...(params.causationEventId ? { causation_event_id: params.causationEventId } : {}),
@@ -149,7 +189,7 @@ export async function calculate(params: {
     "[SignalEngine] Snapshot created",
   );
 
-  return { snapshotId, condition: assignedCondition, metrics };
+  return { snapshotId, condition: assignedCondition, metrics, operationalMathematics };
 }
 
 // ── METRIC CALCULATIONS ───────────────────────────────────────────────────────

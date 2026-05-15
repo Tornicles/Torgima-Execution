@@ -116,6 +116,7 @@ router.get("/orders/active", async (req, res) => {
         domain: task.domain,
         priority: task.priority,
         knowledgeObjects: task.knowledgeObjects,
+        priorityEngine: task.priorityEngine ?? null,
       },
     });
   } catch (e) {
@@ -271,8 +272,8 @@ router.post("/orders/:id/feedback", async (req, res) => {
       completionStatus: body.completionStatus,
       score: body.score,
       reflection: body.reflection,
-      proofJson: body.proofJson,
-      blockerJson: body.blockerJson,
+      proofJson: body.proofJson ?? undefined,
+      blockerJson: body.blockerJson ?? undefined,
       durationMinutes: body.durationMinutes,
       frictionScore: body.frictionScore,
       confidenceScore: body.confidenceScore,

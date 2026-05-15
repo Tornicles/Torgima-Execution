@@ -2,6 +2,7 @@ import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { evaluate } from "../engines/condition/ConditionEvaluationEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
 
 export const CONDITION_QUEUE = "condition_evaluation_requested";
@@ -50,6 +51,22 @@ workerRegistry.register({
           idempotencyKey: `enforcement:${blueprintId}:${result.conditionId}:${signalSnapshotId}`,
           causationEventId: data.eventId,
         });
+
+        await recordOperatingLoopStage({
+          blueprintId,
+          userId,
+          stage: "CONDITION_COMMITTED",
+          description: `Condition ${result.condition} committed (recovery=${result.recoveryRequired}).`,
+          causationEventId: data.eventId,
+          triggerEventType: EVENT_TYPES.SIGNAL_CALCULATED,
+          entityType: "condition",
+          entityId: result.conditionId,
+          correlation: {
+            condition: result.condition,
+            signal_snapshot_id: signalSnapshotId,
+            changed: result.conditionChanged,
+          },
+        }).catch(() => null);
 
         logger.info(
           {

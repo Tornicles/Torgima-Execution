@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
 import { useGetActiveOrders } from "@workspace/api-client-react";
+import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
+import { useBlueprintStore } from "@/store/blueprintStore";
 
 /** Server returns `{ order: Task | null }`; OpenAPI may still type this as `Order[]`. */
 function normalizeActiveOrders(raw: unknown): { id: string; title: string; status: string }[] {
@@ -19,13 +21,20 @@ function normalizeActiveOrders(raw: unknown): { id: string; title: string; statu
 export default function OrdersPage() {
   const { data: rawOrders, isLoading, isError } = useGetActiveOrders();
   const orders = useMemo(() => normalizeActiveOrders(rawOrders as unknown), [rawOrders]);
+  const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Execution orders</h1>
         <p className="text-sm text-gray-500 mt-1">Active execution orders from your blueprint.</p>
       </div>
+
+      <OperationalAwarenessStrip
+        awareness={dash?.operationalAwareness as string[] | undefined}
+        signalBridge={dash?.signalBlueprintBridge as Array<{ headline?: string; cite?: string }> | undefined}
+        executionIdentity={dash?.executionIdentityLines as string[] | undefined}
+      />
 
       {isLoading && <div className="h-32 bg-gray-100 rounded-2xl animate-pulse" />}
       {isError && <p className="text-sm text-red-600">Could not load orders.</p>}

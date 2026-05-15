@@ -82,6 +82,7 @@ router.get("/signals/current", async (req, res) => {
         windowStart: signal.window_start,
         windowEnd: signal.window_end,
         explanation: explainSignal(metrics, assigned),
+        operationalMathematics: signal.operational_mathematics_json,
       },
       condition: condition
         ? {

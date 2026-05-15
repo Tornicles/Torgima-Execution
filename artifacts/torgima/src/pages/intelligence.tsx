@@ -12,6 +12,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
+import { useBlueprintStore } from "@/store/blueprintStore";
 
 interface RealityIntelligence {
   marketMomentum: string;
@@ -55,6 +57,7 @@ export default function IntelligencePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [blueprintId, setBlueprintId] = useState<string | null>(null);
+  const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   useEffect(() => {
     if (!API_BASE_URL) {
@@ -166,9 +169,15 @@ export default function IntelligencePage() {
           className="flex items-center gap-2 text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Regenerate
+          Regenerate framing
         </button>
       </div>
+
+      <OperationalAwarenessStrip
+        awareness={dash?.operationalAwareness as string[] | undefined}
+        signalBridge={dash?.signalBlueprintBridge as Array<{ headline?: string; cite?: string }> | undefined}
+        executionIdentity={dash?.executionIdentityLines as string[] | undefined}
+      />
 
       {intel.executionImplication ? (
         <div className="bg-gray-900 text-white rounded-2xl p-6 space-y-2">

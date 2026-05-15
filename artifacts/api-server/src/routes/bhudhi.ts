@@ -57,6 +57,32 @@ router.post("/bhudhi/structure-goal", async (req, res) => {
   }
 });
 
+function operationalMathExcerptForBhudhi(raw: unknown): Record<string, unknown> | null {
+  if (raw === null || typeof raw !== "object") return null;
+  const doc = raw as Record<string, unknown>;
+  const scores = doc["scores"];
+  if (scores === null || typeof scores !== "object") return null;
+  const slim: Record<string, { normalized?: number; formula?: string }> = {};
+  for (const [k, v] of Object.entries(scores as Record<string, Record<string, unknown>>)) {
+    if (v && typeof v === "object") {
+      slim[k] = {
+        normalized: typeof v["normalized"] === "number" ? v["normalized"] : undefined,
+        formula: typeof v["formula"] === "string" ? v["formula"] : undefined,
+      };
+    }
+  }
+  const hints = doc["strategicMemoryHints"];
+  return {
+    schemaVersion: doc["schemaVersion"],
+    adaptationExplanation:
+      typeof doc["adaptationExplanation"] === "string"
+        ? (doc["adaptationExplanation"] as string).slice(0, 420)
+        : undefined,
+    scores: slim,
+    strategicMemoryHints: Array.isArray(hints) ? hints.slice(0, 12) : undefined,
+  };
+}
+
 // POST /api/bhudhi/explain-state
 router.post("/bhudhi/explain-state", async (req, res) => {
   try {
@@ -111,6 +137,8 @@ router.post("/bhudhi/explain-state", async (req, res) => {
       goal:              blueprint.goal,
       currentTaskTitle:  currentOrder?.title,
       conditionDuration: condition?.duration_days ?? 0,
+      operationalMathematicsExcerpt:
+        operationalMathExcerptForBhudhi(signal?.operational_mathematics_json ?? null),
     });
 
     success(res, {

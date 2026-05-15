@@ -6,7 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Blueprint } from "./blueprint";
-import type { DashboardStateActiveBlueprint } from "./dashboardStateActiveBlueprint";
+import type { DashboardStateConditionDetail } from "./dashboardStateConditionDetail";
+import type { DashboardStateCurrentAction } from "./dashboardStateCurrentAction";
+import type { DashboardStateEnforcement } from "./dashboardStateEnforcement";
+import type { DashboardStateFeatureFlags } from "./dashboardStateFeatureFlags";
+import type { DashboardStateHealth } from "./dashboardStateHealth";
+import type { DashboardStatePivotReview } from "./dashboardStatePivotReview";
+import type { DashboardStateSignalBlueprintBridgeItem } from "./dashboardStateSignalBlueprintBridgeItem";
+import type { DashboardStateSignalProjection } from "./dashboardStateSignalProjection";
 import type { Feedback } from "./feedback";
 import type { Order } from "./order";
 import type { SignalState } from "./signalState";
@@ -15,26 +22,34 @@ import type { User } from "./user";
 export interface DashboardState {
   user: User;
   signals: SignalState;
-  /** @nullable */
-  activeBlueprint: DashboardStateActiveBlueprint;
-  /** @nullable */
+  activeBlueprint: Blueprint | null;
+  /** Most recently completed blueprint within 72 hours when none are active — drives the completion surface after finish. */
   recentCompletionBlueprint?: Blueprint | null;
   activeOrders: Order[];
   recentFeedback: Feedback[];
   streakDays?: number;
   tasksCompletedToday?: number;
   tasksCompletedThisWeek?: number;
+  /** Active blueprint concurrency version — send as x-expected-state-version on mutations */
   stateVersion?: number;
   pivotReviewOpen?: boolean;
+  /** @nullable */
   pivotReviewId?: string | null;
-  pivotReview?: Record<string, unknown> | null;
-  conditionDetail?: Record<string, unknown>;
-  signalProjection?: Record<string, unknown> | null;
-  enforcement?: Record<string, unknown> | null;
-  currentAction?: Record<string, unknown> | null;
-  health?: {
-    systemOperational: boolean;
-    message?: string | null;
-  };
-  featureFlags?: Record<string, boolean>;
+  /** @nullable */
+  pivotReview?: DashboardStatePivotReview;
+  conditionDetail?: DashboardStateConditionDetail;
+  /** @nullable */
+  signalProjection?: DashboardStateSignalProjection;
+  /** @nullable */
+  enforcement?: DashboardStateEnforcement;
+  /**
+   * Highest-priority active/pending execution order (six content fields when present)
+   * @nullable
+   */
+  currentAction?: DashboardStateCurrentAction;
+  health?: DashboardStateHealth;
+  featureFlags?: DashboardStateFeatureFlags;
+  operationalAwareness?: string[];
+  signalBlueprintBridge?: DashboardStateSignalBlueprintBridgeItem[];
+  executionIdentityLines?: string[];
 }

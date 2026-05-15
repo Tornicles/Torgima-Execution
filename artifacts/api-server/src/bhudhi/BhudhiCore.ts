@@ -231,7 +231,7 @@ export async function trigger<T = unknown>(
 
 export async function explainState(params: {
   userId:               string;
-  blueprintId?:         string;
+  blueprintId?:        string;
   stateVersion:         number;
   condition:            string;
   completionRate:       number;
@@ -241,6 +241,8 @@ export async function explainState(params: {
   goal:                 string;
   currentTaskTitle?:    string;
   conditionDuration?:   number;
+  /** Grounding slice of persisted operational math — interpretation only. */
+  operationalMathematicsExcerpt?: Record<string, unknown> | null;
 }): Promise<BhudhiTriggerResult> {
   return trigger({
     sourceEngine:   "dashboard",
@@ -258,6 +260,14 @@ export async function explainState(params: {
       trend:             params.trend,
       goal:              params.goal,
       currentTaskTitle:  params.currentTaskTitle,
+      governance:
+        "Bhudhi interprets ONLY from facts below; MUST NOT change condition, locks, dependencies, or invent signal values.",
+      operationalMathExcerpt:
+        params.operationalMathematicsExcerpt ??
+        ({
+          absent: true,
+          note:   "No operational mathematics payload on signal snapshot — stay qualitative.",
+        } as Record<string, unknown>),
     },
   });
 }

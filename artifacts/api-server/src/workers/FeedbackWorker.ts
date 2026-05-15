@@ -1,6 +1,7 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
 
 // FeedbackWorker — bridge from feedback to signal recalculation.
@@ -51,6 +52,16 @@ workerRegistry.register({
           idempotencyKey: `signal_recalc:${blueprintId}:feedback:${feedbackId ?? Date.now()}`,
           causationEventId: data.eventId,
         });
+
+        await recordOperatingLoopStage({
+          blueprintId,
+          userId,
+          stage: "SIGNAL_RECALCULATION_ENQUEUED",
+          description: `Signal recalculation requested after feedback ${feedbackId ?? "unknown"}.`,
+          causationEventId: data.eventId,
+          triggerEventType: "feedback_processing_requested",
+          correlation: { feedback_id: feedbackId },
+        }).catch(() => null);
 
         await writeEvent({
           eventType: EVENT_TYPES.IDENTITY_EVALUATION_REQUESTED,

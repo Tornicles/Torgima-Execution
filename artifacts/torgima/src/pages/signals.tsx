@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Info, TrendingUp } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
+import { useBlueprintStore } from "@/store/blueprintStore";
 
 const CONDITIONS = ["Nothingness", "Danger", "Stability", "Power", "Affluence"];
 
@@ -25,6 +27,7 @@ export default function SignalsPage() {
   const [signals, setSignals] = useState<Record<string, unknown> | null>(null);
   const [history, setHistory] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
+  const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   useEffect(() => {
     if (!API_BASE_URL) {
@@ -80,45 +83,46 @@ export default function SignalsPage() {
   const clamp10 = (n: number) => Math.min(10, Math.max(0, Number(n.toFixed(1))));
 
   const CHARACTER_TRAITS = [
-    { label: "Consistency", score: clamp10(completionRate / 10) },
-    { label: "Discipline", score: clamp10(weightedNum) },
-    { label: "Grit", score: clamp10(momentum / 1.5) },
+    { label: "Completion signal", score: clamp10(completionRate / 10) },
+    { label: "Weighted execution score", score: clamp10(weightedNum) },
+    { label: "Momentum integer", score: clamp10(momentum / 1.5) },
     {
-      label: "Execution Intelligence",
+      label: "Composite signal read",
       score: clamp10((completionRate / 10 + weightedNum) / 2),
     },
     {
-      label: "Adaptability",
+      label: "Confidence band (reported)",
       score: confidence === "high" ? 8.5 : confidence === "medium" ? 6.5 : 4.0,
     },
   ];
 
   const CONDITION_CONFIG: Record<string, { textColor: string; desc: string }> = {
-    stability: { textColor: "text-green-600", desc: "You're in a productive state. Keep building consistency to reach Power." },
-    power: { textColor: "text-blue-600", desc: "Peak execution state. Scale your efforts and push further." },
-    affluence: { textColor: "text-purple-600", desc: "Maximum execution. Leverage this state to accelerate." },
-    urgency: { textColor: "text-orange-600", desc: "Execution needed. Build momentum through consistency." },
-    danger: { textColor: "text-red-600", desc: "Recovery required. Focus on small, consistent wins." },
-    nothingness: { textColor: "text-gray-600", desc: "Getting started. Your first task will begin the journey." },
-    power_change: { textColor: "text-amber-600", desc: "Condition shifting. Stay consistent." },
+    stability: {
+      textColor: "text-green-600",
+      desc: "Condition stable — enforcement and proofs follow current blueprint package.",
+    },
+    power: { textColor: "text-blue-600", desc: "Elevated conditioning window — expect expanded phase permission if enforcement allows." },
+    affluence: {
+      textColor: "text-purple-600",
+      desc: "High-capacity stance — blueprint may emit denser execution orders.",
+    },
+    urgency: {
+      textColor: "text-orange-600",
+      desc: "Tight continuity — completion signal below midline triggers protective conditioning.",
+    },
+    danger: { textColor: "text-red-600", desc: "Recovery-oriented enforcement — proofs and safeguards tighten." },
+    nothingness: { textColor: "text-gray-600", desc: "Baseline — first proof cycles hydrate the ledger." },
+    power_change: { textColor: "text-amber-600", desc: "Transition recorded — follow enforcement deltas in the blueprint command center." },
   };
 
   const cfg = CONDITION_CONFIG[conditionRaw] ?? CONDITION_CONFIG.stability;
-
-  const SYSTEM_TRUTHS = [
-    "Your actions today shape your tomorrow. Consistency is your leverage.",
-    "Truth drives growth. Signals show you reality.",
-    "Small consistent actions compound into massive results.",
-    "Execution builds identity. Identity drives execution.",
-  ];
-  const truthIdx = Math.floor(Date.now() / 86400000) % SYSTEM_TRUTHS.length;
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Signals Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Your reality. Measured. Interpreted. Actionable.</p>
+          <p className="text-gray-500 text-sm mt-0.5">Telemetry surfaced for blueprint conditioning — narration only.</p>
         </div>
         <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
           <span>Last 7 days</span>
@@ -127,6 +131,12 @@ export default function SignalsPage() {
           )}
         </div>
       </div>
+
+      <OperationalAwarenessStrip
+        awareness={dash?.operationalAwareness as string[] | undefined}
+        signalBridge={dash?.signalBlueprintBridge as Array<{ headline?: string; cite?: string }> | undefined}
+        executionIdentity={dash?.executionIdentityLines as string[] | undefined}
+      />
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-8">
@@ -184,10 +194,12 @@ export default function SignalsPage() {
             })}
           </div>
 
-          <div className="xl:ml-4 max-w-[220px] w-full bg-gray-50 rounded-xl p-4 border border-gray-100 shrink-0">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">System Truth</p>
-            <p className="text-sm text-gray-700 italic leading-relaxed">&ldquo;{SYSTEM_TRUTHS[truthIdx]}&rdquo;</p>
-            <p className="text-xs text-gray-400 mt-2">— The Torgima System</p>
+          <div className="xl:ml-4 max-w-[220px] w-full bg-slate-50 rounded-xl p-4 border border-slate-100 shrink-0">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Authority boundary</p>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              This view summarizes persisted signal telemetry. Interpretation cannot assign conditions or unlock blueprint phases —
+              control systems own that authority.
+            </p>
           </div>
         </div>
       </div>
@@ -197,22 +209,22 @@ export default function SignalsPage() {
           {
             label: "Completion Rate",
             value: `${completionRate}%`,
-            sub: "↑ vs last 7 days",
+            sub: "Current signal window aggregate",
             color: "text-green-600",
             chartColor: "stroke-green-500",
           },
           {
             label: "Daily Score",
             value: `${weightedScore}/10`,
-            sub: "↑ vs last 7 days",
+            sub: "Current signal window aggregate",
             color: "text-purple-600",
             chartColor: "stroke-purple-500",
           },
-          { label: "Momentum", value: `+${momentum}%`, sub: "↑ Improving", color: "text-green-600", chartColor: "stroke-green-500" },
+          { label: "Momentum field", value: `${momentum}`, sub: "From snapshot normalization", color: "text-green-600", chartColor: "stroke-green-500" },
           {
-            label: "Current Streak",
-            value: `${streak} days`,
-            sub: `Best: ${streak + 4} days`,
+            label: "Streak counter",
+            value: `${streak}`,
+            sub: "Snapshot momentum streak",
             color: "text-orange-500",
             chartColor: "stroke-orange-500",
           },
