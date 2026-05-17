@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
-import { resolvePgSsl } from "./pg-ssl";
+import { resolvePgSsl, stripSslModeFromConnectionString } from "./pg-ssl";
 
 const { Pool } = pg;
 
@@ -11,10 +11,12 @@ if (!connectionString) {
   throw new Error("[DB] DATABASE_URL is not set. Cannot start.");
 }
 
-export { resolvePgSsl };
+export { resolvePgSsl, stripSslModeFromConnectionString };
+
+const poolConnectionString = stripSslModeFromConnectionString(connectionString);
 
 export const pool = new Pool({
-  connectionString,
+  connectionString: poolConnectionString,
   ssl: resolvePgSsl(connectionString),
   max: 10,
   idleTimeoutMillis: 30000,

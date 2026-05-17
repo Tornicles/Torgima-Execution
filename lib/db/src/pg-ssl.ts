@@ -1,4 +1,23 @@
 /**
+ * Remove sslmode from the URL so node-postgres/pg does not override Pool.ssl
+ * (pg v8 treats sslmode=require as verify-full and breaks Supabase on some hosts).
+ */
+export function stripSslModeFromConnectionString(connectionString: string): string {
+  try {
+    const normalized = connectionString.replace(/^postgresql:/i, "postgres:");
+    const u = new URL(normalized);
+    u.searchParams.delete("sslmode");
+    u.searchParams.delete("ssl");
+    const out = u.toString();
+    return out.replace(/^postgres:/i, "postgresql:");
+  } catch {
+    return connectionString
+      .replace(/([?&])sslmode=[^&]*/gi, "$1")
+      .replace(/[?&]$/, "");
+  }
+}
+
+/**
  * Configure node-postgres TLS for hosted Postgres (Railway, Supabase, Neon, …).
  * Local/docker sockets stay off TLS unless sslmode=require is present.
  */
