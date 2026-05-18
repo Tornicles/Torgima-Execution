@@ -7,8 +7,10 @@ import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 
 const router = Router();
 
-// GET /api/condition/current — current condition + enforcement package
-router.get("/condition/current", async (req, res) => {
+async function handleCurrentCondition(
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprintId =
@@ -76,6 +78,9 @@ router.get("/condition/current", async (req, res) => {
     }
     failure(res, "INTERNAL_ERROR", "Failed to load condition", 500);
   }
-});
+}
+
+router.get("/condition/current", handleCurrentCondition);
+router.get("/conditions/current", handleCurrentCondition);
 
 export default router;

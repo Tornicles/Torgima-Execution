@@ -24,7 +24,7 @@ import { ConditionBadge } from "@/components/ConditionBadge";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/orders", label: "Tasks", icon: ClipboardList },
+  { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/blueprint", label: "Blueprint", icon: Map },
   { href: "/signals", label: "Signals", icon: Activity },
   { href: "/knowledge", label: "Academy", icon: BookOpen },

@@ -5,8 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Settings as SettingsIcon, Save } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api-base";
 
 export default function SettingsPage() {
   const { data: settingsRes, isLoading } = useGetSettings();
@@ -17,6 +19,10 @@ export default function SettingsPage() {
     dailyTaskTarget: 3,
     notificationsEnabled: true,
     weeklyReviewDay: "sunday",
+  });
+  const [commProfile, setCommProfile] = useState({
+    tone: "standard" as "direct" | "standard" | "warm",
+    detailLevel: "standard" as "brief" | "standard" | "detailed",
   });
 
   useEffect(() => {
@@ -38,7 +44,7 @@ export default function SettingsPage() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     updateSettings.mutate(
       { data: formData },
       {
@@ -47,6 +53,14 @@ export default function SettingsPage() {
         },
       },
     );
+    if (API_BASE_URL) {
+      await fetch(`${API_BASE_URL}/api/me/communication-profile`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(commProfile),
+      }).catch(() => null);
+    }
   };
 
   return (
@@ -62,6 +76,14 @@ export default function SettingsPage() {
           </div>
         </div>
       </header>
+
+      <Link
+        href="/settings/skills"
+        className="block rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 text-sm text-indigo-900 hover:bg-indigo-50"
+      >
+        <span className="font-semibold">Execution skills</span>
+        <span className="block text-xs text-indigo-700 mt-0.5">View capability scores and mastered skills</span>
+      </Link>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between gap-4 py-2">
@@ -79,7 +101,7 @@ export default function SettingsPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-900">Daily task target</Label>
+            <Label className="text-sm font-semibold text-gray-900">Daily Order target</Label>
             <p className="text-xs text-gray-500 mt-0.5">Expected completed orders per day</p>
           </div>
           <Input
@@ -115,9 +137,54 @@ export default function SettingsPage() {
           </Select>
         </div>
 
+        <div className="h-px bg-gray-100" />
+
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-gray-900">Communication preferences</p>
+          <p className="text-xs text-gray-500">Shapes how system intelligence is phrased on your next session.</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-gray-600">Tone</Label>
+              <Select
+                value={commProfile.tone}
+                onValueChange={(v) =>
+                  setCommProfile((p) => ({ ...p, tone: v as typeof commProfile.tone }))
+                }
+              >
+                <SelectTrigger className="mt-1 border-gray-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="warm">Warm</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Detail level</Label>
+              <Select
+                value={commProfile.detailLevel}
+                onValueChange={(v) =>
+                  setCommProfile((p) => ({ ...p, detailLevel: v as typeof commProfile.detailLevel }))
+                }
+              >
+                <SelectTrigger className="mt-1 border-gray-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="brief">Brief</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="detailed">Detailed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
         <Button
           type="button"
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           disabled={updateSettings.isPending}
           className="w-full h-12 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800"
         >

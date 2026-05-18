@@ -42,17 +42,17 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Torgima is your personal execution OS. Give it your goal and it generates the next correct task, adapts to
-            your performance, and keeps you moving forward — without the noise.
+            Torgima is the execution operating system that never stops working. Give it your goal and it generates the
+            next correct Order, adapts to your performance, and keeps execution continuity — without the noise.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
-              <button
-                type="button"
-                className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all text-base group flex items-center gap-2 mx-auto sm:mx-0"
-              >
-                Start executing
+          <Link href="/signup">
+            <button
+              type="button"
+              className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all text-base group flex items-center gap-2 mx-auto sm:mx-0"
+            >
+              Start Your Blueprint
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </Link>
@@ -109,6 +109,17 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-gray-100 px-8 py-16 bg-white">
+        <div className="max-w-3xl mx-auto rounded-2xl border border-gray-200 p-6 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Sample Intelligence Report</p>
+          <p className="text-sm text-gray-700">
+            Trending in your niche: short-form proof-of-work content. Platform signal favors consistent publishing.
+            Today&apos;s recommendation: execute one high-leverage Order before expanding scope.
+          </p>
+          <p className="text-xs text-gray-400">Generated nightly — illustrative demo only.</p>
         </div>
       </section>
 

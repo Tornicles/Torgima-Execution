@@ -285,11 +285,14 @@ export default function OnboardingPage() {
         }
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/blueprints/${validation.blueprintId}/activate`, {
+      const res = await fetch(`${API_BASE_URL}/api/blueprint/launch`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedPath }),
+        body: JSON.stringify({
+          blueprintId: validation.blueprintId,
+          selectedPath,
+        }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: { message?: string } };
       if (data.ok) {
@@ -326,7 +329,7 @@ export default function OnboardingPage() {
       title: "Why purpose matters",
       points: [
         "Fuels execution during hard days",
-        "Connects daily tasks to meaning",
+        "Connects daily Orders to meaning",
         "Prevents abandonment",
         "Builds identity",
       ],
@@ -341,7 +344,7 @@ export default function OnboardingPage() {
     },
     4: {
       title: "Why commitment matters",
-      points: ["Determines task intensity", "Sets realistic daily output", "Calibrates difficulty", "Prevents burnout"],
+      points: ["Determines Order intensity", "Sets realistic daily output", "Calibrates difficulty", "Prevents burnout"],
       quote: "Commitment is the foundation of great accomplishments.",
       author: "Heidi Reeder",
     },
@@ -632,7 +635,7 @@ export default function OnboardingPage() {
               <>
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900">Your level of commitment</h2>
-                  <p className="text-gray-500 mt-1">Be honest — this helps us calibrate your daily workload and task difficulty.</p>
+                  <p className="text-gray-500 mt-1">Be honest — this helps us calibrate your daily workload and Order difficulty.</p>
                 </div>
                 <div className="space-y-3">
                   {COMMITMENT_OPTIONS.map((opt) => (

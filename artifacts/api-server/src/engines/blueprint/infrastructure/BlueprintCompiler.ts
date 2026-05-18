@@ -1,7 +1,9 @@
-import { db, plans, seasons, targets, phases, projects, actions, blueprints } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, plans, seasons, targets, phases, projects, actions, blueprints, validations } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { TorgimaError } from "../../../lib/errors.js";
 import { buildTierAwareBlueprintChain } from "../BlueprintChainGenerator.js";
+import type { ValidationToBlueprintContract } from "../../validation/intelligence/validation-intelligence-types.js";
+import { applyContractToChainSkeleton } from "../../validation/intelligence/ValidationToBlueprintBridge.js";
 import { parseMode, parseTier, assertSelectionComplete, buildTraceMetadata } from "../BlueprintRuleEngine.js";
 import { getBlueprintTypeConfig } from "./BlueprintTypeRegistry.js";
 import { assertFeatureAllowed, gateGenerationCapabilities } from "./FeatureGatingEngine.js";
@@ -18,6 +20,8 @@ export interface BlueprintCompileInput {
     plans: Array<{ name: string; description: string }>;
     targets: Array<{ name: string; type: string }>;
   };
+  /** Required for launch-time compiles; loaded from validations when omitted. */
+  validationContract?: ValidationToBlueprintContract | null;
 }
 
 export interface BlueprintCompileResult {
@@ -71,17 +75,39 @@ export async function compileBlueprint(input: BlueprintCompileInput): Promise<Bl
     return { ok: false, violations, generationContract: gateGenerationCapabilities(tier) };
   }
 
+  let validationContract = input.validationContract ?? null;
+  if (!validationContract) {
+    const [valRow] = await db
+      .select({ blueprint_contract: validations.blueprint_contract })
+      .from(validations)
+      .where(eq(validations.blueprint_id, input.blueprintId))
+      .orderBy(desc(validations.created_at))
+      .limit(1);
+    validationContract = (valRow?.blueprint_contract as ValidationToBlueprintContract | null) ?? null;
+  }
+
+  if (!validationContract) {
+    violations.push("ValidationToBlueprintContract required — complete validation and select a path first");
+    return { ok: false, violations, generationContract: gateGenerationCapabilities(tier) };
+  }
+
+  const pathSkeleton = applyContractToChainSkeleton(
+    validationContract,
+    input.pathSkeleton ?? validationContract.plan_skeleton,
+  );
+
   type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
   const runBuild = async (tx: Tx) =>
     buildTierAwareBlueprintChain(tx, {
       blueprintId: input.blueprintId,
       userId: input.userId,
-      goal: input.goal,
+      goal: validationContract!.refined_goal || input.goal,
       purpose: input.purpose,
       tier,
       mode,
-      pathSkeleton: input.pathSkeleton,
+      pathSkeleton,
+      validationContract,
     });
 
   const chain = await db.transaction(runBuild);

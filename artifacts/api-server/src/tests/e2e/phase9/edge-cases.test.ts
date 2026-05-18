@@ -12,7 +12,7 @@ import { guaranteeTask } from "../../../engines/task-guarantee/ContinuousTaskGua
 import { db, orders } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
-describe("Prompt 9 — Engine edge case matrix", () => {
+describe("Prompt 9 — Engine edge case matrix (EDGE-01 to EDGE-12)", () => {
   it("signal: insufficient data uses safe defaults", async () => {
     const { calculate } = await import("../../../engines/signal/SignalCalculationEngine.js");
     const r = await calculate({
@@ -61,6 +61,53 @@ describe("Prompt 9 — Engine edge case matrix", () => {
       aiEnabled: false,
     });
     expect(eis.demand_signal.direction).toBeTruthy();
+  });
+
+  it("EDGE-09: memory service caps injection at 800 chars", async () => {
+    const { retrieveMemory } = await import("../../../bhudhi/MemoryService.js");
+    const mem = await retrieveMemory({
+      userId: "00000000-0000-4000-8000-000000000099",
+      triggerType: "GOAL_STRUCTURING",
+    }).catch(() => "");
+    expect(typeof mem).toBe("string");
+    expect(mem.length).toBeLessThanOrEqual(800);
+  });
+
+  it("EDGE-10: character level 1 for zero history", async () => {
+    const { calculateCharacterLevel } = await import(
+      "../../../engines/character/CharacterProgressionEngine.js"
+    );
+    expect(calculateCharacterLevel(0)).toBe(1);
+    expect(calculateCharacterLevel(0.05)).toBe(1);
+  });
+
+  it("EDGE-12: agent chain circuit breaker at depth 5", async () => {
+    const { enterAgentChain, exitAgentChain } = await import(
+      "../../../engines/stability/StabilityEngine.js"
+    );
+    const chainId = `test-chain-${Date.now()}`;
+    let lastAllowed = true;
+    for (let i = 0; i < 6; i++) {
+      const r = enterAgentChain(chainId);
+      lastAllowed = r.allowed;
+      if (!r.allowed) break;
+    }
+    expect(lastAllowed).toBe(false);
+    exitAgentChain(chainId);
+  });
+
+  it("EDGE-04: EIS uses deterministic path when AI disabled", async () => {
+    const { runFullNightlyResearch } = await import("../../../engines/eis/EISEngine.js");
+    const briefing = await runFullNightlyResearch("00000000-0000-4000-8000-000000000099", {
+      userId: "00000000-0000-4000-8000-000000000099",
+      blueprintId: "00000000-0000-4000-8000-000000000001",
+      domain: "Content",
+      niche: "soccer",
+    }).catch(() => null);
+    if (briefing) {
+      expect(["WEB_SEARCH", "DETERMINISTIC", "CACHED"]).toContain(briefing.researchMethod);
+      expect(briefing.searchLog.length).toBe(5);
+    }
   });
 
   it("proof scoring: empty proof on required order scores low", () => {

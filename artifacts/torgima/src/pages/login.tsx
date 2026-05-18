@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
 
 export default function LoginPage() {
+  const [location] = useLocation();
+  const isSignup = location === "/signup";
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,8 +79,8 @@ export default function LoginPage() {
   }
 
   const FEATURES = [
-    "Personalized execution plan",
-    "Daily actionable tasks",
+    "Personalized execution Blueprint",
+    "Daily execution Orders",
     "Signal-driven adaptation",
     "Blueprint tracking",
   ];
@@ -97,7 +99,9 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col justify-center">
           <h2 className="text-4xl font-bold leading-tight mb-4">Your execution system awaits.</h2>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            Sign in to access your personalized execution blueprint and daily task engine.
+            {isSignup ?
+              "Create your account and start your execution Blueprint."
+            : "Sign in to access your personalized execution Blueprint and daily Order engine."}
           </p>
           <div className="space-y-3">
             {FEATURES.map((f) => (
@@ -124,7 +128,7 @@ export default function LoginPage() {
           {!sent ? (
             <>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{isSignup ? "Create your account" : "Welcome back"}</h1>
                 <p className="text-gray-500 mt-1">Enter your email to receive a magic sign-in link. No password required.</p>
               </div>
 

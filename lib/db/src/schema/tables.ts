@@ -79,6 +79,8 @@ export const users = pgTable("users", {
   commitment_level: commitmentLevelEnum("commitment_level"),
   timezone: text("timezone").notNull().default("UTC"),
   onboarding_complete: boolean("onboarding_complete").notNull().default(false),
+  civilization_context: jsonb("civilization_context"),
+  communication_profile: jsonb("communication_profile"),
   active: boolean("active").notNull().default(true),
   notification_preferences: jsonb("notification_preferences")
     .notNull()
@@ -164,6 +166,11 @@ export const bhudhiLogs = pgTable(
     latency_ms: integer("latency_ms"),
     token_count_in: integer("token_count_in"),
     token_count_out: integer("token_count_out"),
+    confidence_tier: text("confidence_tier"),
+    fallback_used: boolean("fallback_used").notNull().default(false),
+    output_hash: text("output_hash"),
+    world_state_version: integer("world_state_version"),
+    validation_fail_reason: text("validation_fail_reason"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -735,6 +742,7 @@ export const deadLetterEvents = pgTable(
     retry_count: integer("retry_count").notNull(),
     last_error: text("last_error"),
     resolution_status: text("resolution_status").notNull().default("OPEN"),
+    requires_manual: boolean("requires_manual").notNull().default(false),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     reviewed: boolean("reviewed").notNull().default(false),
     reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
@@ -1045,6 +1053,10 @@ export const rewardEvents = pgTable(
     ui_action: text("ui_action"),
     delivered: boolean("delivered").notNull().default(false),
     delivered_at: timestamp("delivered_at", { withTimezone: true }),
+    message: text("message"),
+    evidence_summary: text("evidence_summary"),
+    reward_level: text("reward_level").default("MINOR"),
+    seen: boolean("seen").notNull().default(false),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1194,6 +1206,73 @@ export const phaseCheckpoints = pgTable(
   (t) => [index("idx_phase_checkpoints_blueprint_id").on(t.blueprint_id)],
 );
 
+export const skillProfiles = pgTable(
+  "skill_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull().default("Content"),
+    skill_scores: jsonb("skill_scores").notNull().default(sql`'{}'::jsonb`),
+    detected_gaps: jsonb("detected_gaps").notNull().default(sql`'[]'::jsonb`),
+    mastered_skills: jsonb("mastered_skills").notNull().default(sql`'[]'::jsonb`),
+    last_assessment: timestamp("last_assessment", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_skill_profiles_user_id").on(t.user_id)],
+);
+
+export const learningPaths = pgTable(
+  "learning_paths",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, { onDelete: "set null" }),
+    skill_gap: text("skill_gap").notNull(),
+    domain: text("domain").notNull(),
+    path_status: text("path_status").notNull().default("ACTIVE"),
+    lessons: jsonb("lessons").notNull().default(sql`'[]'::jsonb`),
+    total_lessons: integer("total_lessons").notNull().default(0),
+    completed_lessons: integer("completed_lessons").notNull().default(0),
+    mastery_score: doublePrecision("mastery_score"),
+    mastery_evidence: text("mastery_evidence"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("idx_learning_paths_user_status").on(t.user_id, t.path_status)],
+);
+
+export const capabilityGapLogs = pgTable(
+  "capability_gap_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, { onDelete: "set null" }),
+    order_id: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+    gap_type: text("gap_type").notNull(),
+    detected_from: text("detected_from").notNull().default("FAILURE_CLASSIFICATION"),
+    severity: text("severity").notNull().default("MEDIUM"),
+    learning_path_id: uuid("learning_path_id").references(() => learningPaths.id, {
+      onDelete: "set null",
+    }),
+    resolved: boolean("resolved").notNull().default(false),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    metadata_json: jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_capability_gap_logs_user_resolved").on(t.user_id, t.resolved)],
+);
+
 export const academyTasks = pgTable(
   "academy_tasks",
   {
@@ -1205,6 +1284,9 @@ export const academyTasks = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     order_id: uuid("order_id").references(() => orders.id),
+    learning_path_id: uuid("learning_path_id").references(() => learningPaths.id, {
+      onDelete: "set null",
+    }),
     knowledge_id: text("knowledge_id").references(() => knowledgeObjects.id),
     title: text("title").notNull(),
     description: text("description"),
@@ -1212,6 +1294,13 @@ export const academyTasks = pgTable(
     trigger_reason: text("trigger_reason").notNull(),
     domain: text("domain"),
     skill_target: text("skill_target"),
+    skill_category: text("skill_category"),
+    lesson_number: integer("lesson_number"),
+    lesson_objective: text("lesson_objective"),
+    mastery_definition: text("mastery_definition"),
+    practice_type: text("practice_type"),
+    completion_score: doublePrecision("completion_score"),
+    skill_delta: doublePrecision("skill_delta"),
     proof_required: boolean("proof_required").notNull().default(true),
     proof_description: text("proof_description"),
     status: text("status").notNull().default("pending"),
@@ -1415,6 +1504,11 @@ export const taskGenerationLog = pgTable(
     fallback_reason: text("fallback_reason"),
     ai_log_id: uuid("ai_log_id").references(() => bhudhiLogs.id),
     ai_used: boolean("ai_used").notNull().default(false),
+    knowledge_injected: boolean("knowledge_injected").notNull().default(false),
+    knowledge_package_id: uuid("knowledge_package_id"),
+    debate_used: boolean("debate_used").notNull().default(false),
+    generation_ms: integer("generation_ms"),
+    control_rule_applied: jsonb("control_rule_applied").notNull().default(sql`'{}'::jsonb`),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1484,6 +1578,8 @@ export const bhudhiMemory = pgTable(
       .defaultNow(),
     expires_at: timestamp("expires_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
+    is_compressed: boolean("is_compressed").notNull().default(false),
+    source_event_id: text("source_event_id"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -1493,6 +1589,189 @@ export const bhudhiMemory = pgTable(
   (t) => [
     index("idx_bhudhi_memory_user_id").on(t.user_id),
     index("idx_bhudhi_memory_user_type").on(t.user_id, t.memory_type),
+  ],
+);
+
+export const worldModels = pgTable(
+  "world_models",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    user_state: jsonb("user_state").notNull().default(sql`'{}'::jsonb`),
+    goal_state: jsonb("goal_state").notNull().default(sql`'{}'::jsonb`),
+    signal_trajectory: jsonb("signal_trajectory").notNull().default(sql`'{}'::jsonb`),
+    motivation_state: jsonb("motivation_state").notNull().default(sql`'{}'::jsonb`),
+    market_state: jsonb("market_state").notNull().default(sql`'{}'::jsonb`),
+    identity_state: jsonb("identity_state").notNull().default(sql`'{}'::jsonb`),
+    environmental_state: jsonb("environmental_state").notNull().default(sql`'{}'::jsonb`),
+    state_version: integer("state_version").notNull().default(0),
+    last_drift_calculation: timestamp("last_drift_calculation", { withTimezone: true }),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_world_models_user_id").on(t.user_id)],
+);
+
+export const agentRegistry = pgTable("agent_registry", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agent_name: text("agent_name").notNull().unique(),
+  status: text("status").notNull().default("ACTIVE"),
+  activation_phase: text("activation_phase").notNull().default("P1"),
+  trigger_types: text("trigger_types").array().notNull().default(sql`ARRAY[]::text[]`),
+  output_contract: text("output_contract").notNull(),
+  last_activated: timestamp("last_activated", { withTimezone: true }),
+  total_activations: integer("total_activations").notNull().default(0),
+  average_latency_ms: doublePrecision("average_latency_ms"),
+  quality_score: doublePrecision("quality_score"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const predictionLogs = pgTable(
+  "prediction_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, { onDelete: "cascade" }),
+    agent_name: text("agent_name").notNull(),
+    prediction_type: text("prediction_type").notNull(),
+    prediction: jsonb("prediction").notNull().default(sql`'{}'::jsonb`),
+    confidence_level: doublePrecision("confidence_level").notNull().default(0.5),
+    confidence_tier: text("confidence_tier").notNull().default("MEDIUM"),
+    predicted_outcome: jsonb("predicted_outcome"),
+    actual_outcome: jsonb("actual_outcome"),
+    accuracy_score: doublePrecision("accuracy_score"),
+    verification_date: timestamp("verification_date", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_prediction_logs_user_id").on(t.user_id)],
+);
+
+export const contradictionRecords = pgTable(
+  "contradiction_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    contradiction_type: text("contradiction_type").notNull(),
+    description: text("description").notNull(),
+    elements: jsonb("elements").notNull().default(sql`'[]'::jsonb`),
+    severity: text("severity").notNull(),
+    status: text("status").notNull().default("PENDING"),
+    acknowledged_at: timestamp("acknowledged_at", { withTimezone: true }),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_contradiction_records_blueprint_id").on(t.blueprint_id),
+    index("idx_contradiction_records_user_id").on(t.user_id),
+  ],
+);
+
+export const governanceQueue = pgTable(
+  "governance_queue",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    proposal_type: text("proposal_type").notNull(),
+    proposing_agent: text("proposing_agent").notNull().default("BLUEPRINT"),
+    proposal_content: jsonb("proposal_content").notNull().default(sql`'{}'::jsonb`),
+    rationale: text("rationale").notNull(),
+    evidence_citations: jsonb("evidence_citations").notNull().default(sql`'[]'::jsonb`),
+    impact_assessment: jsonb("impact_assessment").notNull().default(sql`'{}'::jsonb`),
+    status: text("status").notNull().default("PENDING"),
+    priority: text("priority").notNull().default("NORMAL"),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
+    approved_at: timestamp("approved_at", { withTimezone: true }),
+    rejected_at: timestamp("rejected_at", { withTimezone: true }),
+    approval_note: text("approval_note"),
+    world_state_version: integer("world_state_version").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_governance_queue_blueprint_id").on(t.blueprint_id),
+    index("idx_governance_queue_status").on(t.blueprint_id, t.status),
+  ],
+);
+
+export const blueprintHealthRecords = pgTable(
+  "blueprint_health_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    health_score: doublePrecision("health_score").notNull(),
+    phase_progress_rate: doublePrecision("phase_progress_rate").notNull().default(0),
+    target_achievement_rate: doublePrecision("target_achievement_rate").notNull().default(0),
+    action_coverage_rate: doublePrecision("action_coverage_rate").notNull().default(0),
+    gaps_detected: jsonb("gaps_detected").notNull().default(sql`'[]'::jsonb`),
+    dead_actions_count: integer("dead_actions_count").notNull().default(0),
+    stagnant_phases_count: integer("stagnant_phases_count").notNull().default(0),
+    weak_targets_count: integer("weak_targets_count").notNull().default(0),
+    proposals_generated: integer("proposals_generated").notNull().default(0),
+    agent_assessment: text("agent_assessment").notNull(),
+    confidence_tier: text("confidence_tier").notNull().default("MEDIUM"),
+    world_state_version: integer("world_state_version").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_blueprint_health_records_blueprint_id").on(t.blueprint_id)],
+);
+
+export const blueprintInterpretations = pgTable(
+  "blueprint_interpretations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .unique()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    interpretation: text("interpretation").notNull(),
+    key_insights: jsonb("key_insights").notNull().default(sql`'[]'::jsonb`),
+    current_focus: text("current_focus").notNull(),
+    next_milestone: text("next_milestone").notNull(),
+    risk_flags: jsonb("risk_flags").notNull().default(sql`'[]'::jsonb`),
+    confidence_tier: text("confidence_tier").notNull().default("MEDIUM"),
+    world_state_version: integer("world_state_version").notNull().default(0),
+    generated_at: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("idx_blueprint_interpretations_blueprint_id").on(t.blueprint_id)],
+);
+
+export const morningReports = pgTable(
+  "morning_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, { onDelete: "cascade" }),
+    report_date: text("report_date").notNull(),
+    eis_section: jsonb("eis_section"),
+    signal_summary: jsonb("signal_summary").notNull().default(sql`'{}'::jsonb`),
+    next_task_preview: jsonb("next_task_preview"),
+    report_body: jsonb("report_body").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_morning_reports_user_id").on(t.user_id),
+    uniqueIndex("idx_morning_reports_user_date").on(t.user_id, t.report_date),
   ],
 );
 
@@ -1727,4 +2006,384 @@ export const pivotReviews = pgTable(
     index("idx_pivot_reviews_blueprint_id").on(t.blueprint_id),
     index("idx_pivot_reviews_status").on(t.status),
   ],
+);
+
+// ── GROUP 12 — BHUDHI PHASE 4 (STABILITY · CRITIC · DEBATE) ─────────────────
+
+export const stabilityEvents = pgTable(
+  "stability_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    event_type: text("event_type").notNull(),
+    severity: text("severity").notNull().default("MEDIUM"),
+    description: text("description").notNull(),
+    agent_involved: text("agent_involved"),
+    trigger_type: text("trigger_type"),
+    resolution: text("resolution").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_stability_events_user_id").on(t.user_id),
+    index("idx_stability_events_created_at").on(t.created_at),
+  ],
+);
+
+export const agentConflictLogs = pgTable(
+  "agent_conflict_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    agent_a: text("agent_a").notNull(),
+    agent_b: text("agent_b").notNull(),
+    trigger_type: text("trigger_type").notNull(),
+    agent_a_output: jsonb("agent_a_output").notNull().default(sql`'{}'::jsonb`),
+    agent_b_output: jsonb("agent_b_output").notNull().default(sql`'{}'::jsonb`),
+    conflict_type: text("conflict_type").notNull(),
+    resolution: text("resolution").notNull(),
+    resolved_output: jsonb("resolved_output").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_agent_conflict_logs_user_id").on(t.user_id)],
+);
+
+export const criticReviewLogs = pgTable(
+  "critic_review_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bhudhi_log_id: uuid("bhudhi_log_id")
+      .notNull()
+      .references(() => bhudhiLogs.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reviewing_agent: text("reviewing_agent").notNull().default("CRITIC"),
+    input_agent: text("input_agent").notNull(),
+    verdict: text("verdict").notNull(),
+    confidence_score: doublePrecision("confidence_score").notNull().default(0.5),
+    confidence_tier: text("confidence_tier").notNull().default("MEDIUM"),
+    rejection_reason: text("rejection_reason"),
+    flag_reason: text("flag_reason"),
+    governance_violation: boolean("governance_violation").notNull().default(false),
+    violation_detail: text("violation_detail"),
+    revised_output: jsonb("revised_output"),
+    revision_count: integer("revision_count").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("idx_critic_review_logs_bhudhi_log_id").on(t.bhudhi_log_id),
+    index("idx_critic_review_logs_user_id").on(t.user_id),
+  ],
+);
+
+export const debateLogs = pgTable(
+  "debate_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    trigger_type: text("trigger_type").notNull(),
+    debate_topic: text("debate_topic").notNull(),
+    rounds: jsonb("rounds").notNull().default(sql`'[]'::jsonb`),
+    consensus_reached: boolean("consensus_reached").notNull().default(false),
+    final_verdict: jsonb("final_verdict").notNull().default(sql`'{}'::jsonb`),
+    judge_rationale: text("judge_rationale").notNull().default(""),
+    debate_duration_ms: integer("debate_duration_ms").notNull().default(0),
+    agents_involved: text("agents_involved").array().notNull().default(sql`ARRAY[]::text[]`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_debate_logs_user_id").on(t.user_id)],
+);
+
+export const metaCognitionProfiles = pgTable("meta_cognition_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agent_name: text("agent_name").notNull().unique(),
+  domain_reliability: jsonb("domain_reliability").notNull().default(sql`'[]'::jsonb`),
+  prediction_accuracy: doublePrecision("prediction_accuracy").notNull().default(0.5),
+  total_predictions: integer("total_predictions").notNull().default(0),
+  correct_predictions: integer("correct_predictions").notNull().default(0),
+  hallucination_risk: doublePrecision("hallucination_risk").notNull().default(0.2),
+  strong_domains: text("strong_domains").array().notNull().default(sql`ARRAY[]::text[]`),
+  weak_domains: text("weak_domains").array().notNull().default(sql`ARRAY[]::text[]`),
+  last_calibration_update: timestamp("last_calibration_update", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  calibration_version: integer("calibration_version").notNull().default(1),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fallbackUsageLogs = pgTable(
+  "fallback_usage_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trigger_type: text("trigger_type").notNull(),
+    prompt_name: text("prompt_name").notNull(),
+    reason: text("reason").notNull(),
+    fallback_type: text("fallback_type").notNull().default("DETERMINISTIC_TEMPLATE"),
+    user_id: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    bhudhi_log_id: uuid("bhudhi_log_id").references(() => bhudhiLogs.id, { onDelete: "set null" }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_fallback_usage_logs_created_at").on(t.created_at)],
+);
+
+// ── GROUP 13 — BHUDHI PHASE 5 (EXECUTION LOOP · KNOWLEDGE) ───────────────────
+
+export const executionSessions = pgTable(
+  "execution_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    session_type: text("session_type").notNull().default("PRIMARY"),
+    started_at: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    ended_at: timestamp("ended_at", { withTimezone: true }),
+    tasks_generated: integer("tasks_generated").notNull().default(0),
+    tasks_completed: integer("tasks_completed").notNull().default(0),
+    feedback_cycles: integer("feedback_cycles").notNull().default(0),
+    signal_updates: integer("signal_updates").notNull().default(0),
+    session_health: text("session_health").notNull().default("ACTIVE"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_execution_sessions_user_id").on(t.user_id),
+    index("idx_execution_sessions_blueprint_id").on(t.blueprint_id),
+  ],
+);
+
+export const knowledgePackages = pgTable(
+  "knowledge_packages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    domain: text("domain").notNull(),
+    action_type: text("action_type").notNull(),
+    phase: text("phase"),
+    sop: text("sop"),
+    benchmark: text("benchmark"),
+    tool_recommendations: text("tool_recommendations").array().notNull().default(sql`ARRAY[]::text[]`),
+    common_mistakes: text("common_mistakes").array().notNull().default(sql`ARRAY[]::text[]`),
+    good_output_example: text("good_output_example"),
+    execution_guidance: text("execution_guidance"),
+    eis_enriched: boolean("eis_enriched").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_knowledge_packages_domain_action").on(t.domain, t.action_type)],
+);
+
+export const continuousTaskGuaranteeLogs = pgTable(
+  "continuous_task_guarantee_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, { onDelete: "set null" }),
+    trigger_reason: text("trigger_reason").notNull(),
+    blocker_type: text("blocker_type").notNull(),
+    task_type_generated: text("task_type_generated").notNull(),
+    order_id: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_continuous_task_guarantee_logs_user").on(t.user_id)],
+);
+
+// ── GROUP 14 — BHUDHI PHASE 7 (PSYCHOLOGY LAYER) ─────────────────────────────
+
+export const identityProfiles = pgTable(
+  "identity_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    self_image: text("self_image"),
+    identity_stage: text("identity_stage").notNull().default("FORMING"),
+    confidence_score: doublePrecision("confidence_score").notNull().default(0.5),
+    confidence_trend: text("confidence_trend").notNull().default("STABLE"),
+    purpose_alignment: doublePrecision("purpose_alignment").notNull().default(0.5),
+    primary_identity: text("primary_identity"),
+    aspirational_identity: text("aspirational_identity"),
+    execution_identity: text("execution_identity"),
+    active_conflicts: jsonb("active_conflicts").notNull().default(sql`'[]'::jsonb`),
+    conflict_count: integer("conflict_count").notNull().default(0),
+    milestones_reached: jsonb("milestones_reached").notNull().default(sql`'[]'::jsonb`),
+    last_milestone_at: timestamp("last_milestone_at", { withTimezone: true }),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_identity_profiles_user_id").on(t.user_id)],
+);
+
+export const characterProgression = pgTable(
+  "character_progression",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    consistency: doublePrecision("consistency").notNull().default(0),
+    grit: doublePrecision("grit").notNull().default(0),
+    discipline: doublePrecision("discipline").notNull().default(0),
+    execution_intelligence: doublePrecision("execution_intelligence").notNull().default(0),
+    adaptability: doublePrecision("adaptability").notNull().default(0),
+    overall_character_score: doublePrecision("overall_character_score").notNull().default(0),
+    character_level: integer("character_level").notNull().default(1),
+    trait_history: jsonb("trait_history").notNull().default(sql`'[]'::jsonb`),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_character_progression_user_id").on(t.user_id)],
+);
+
+export const burnoutRecords = pgTable(
+  "burnout_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    risk_level: text("risk_level").notNull(),
+    risk_score: doublePrecision("risk_score").notNull(),
+    evidence_factors: jsonb("evidence_factors").notNull().default(sql`'[]'::jsonb`),
+    completion_rate_drop: doublePrecision("completion_rate_drop"),
+    score_divergence: doublePrecision("score_divergence"),
+    reflection_quality_drop: doublePrecision("reflection_quality_drop"),
+    consecutive_declines: integer("consecutive_declines"),
+    session_frequency_drop: doublePrecision("session_frequency_drop"),
+    recommendation: text("recommendation").notNull(),
+    action_taken: text("action_taken"),
+    resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_burnout_records_user_created").on(t.user_id, t.created_at)],
+);
+
+export const failureClassifications = pgTable(
+  "failure_classifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    order_id: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    feedback_id: uuid("feedback_id")
+      .notNull()
+      .references(() => feedback.id, { onDelete: "cascade" }),
+    primary_candidate: text("primary_candidate").notNull(),
+    primary_likelihood: doublePrecision("primary_likelihood").notNull(),
+    secondary_candidate: text("secondary_candidate"),
+    secondary_likelihood: doublePrecision("secondary_likelihood"),
+    tertiary_candidate: text("tertiary_candidate"),
+    tertiary_likelihood: doublePrecision("tertiary_likelihood"),
+    evidence_citations: jsonb("evidence_citations").notNull().default(sql`'[]'::jsonb`),
+    system_action: text("system_action"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_failure_classifications_feedback").on(t.feedback_id)],
+);
+
+export const patternRecords = pgTable(
+  "pattern_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pattern_type: text("pattern_type").notNull(),
+    description: text("description").notNull(),
+    confidence: doublePrecision("confidence").notNull().default(0.5),
+    evidence_count: integer("evidence_count").notNull().default(0),
+    first_detected: timestamp("first_detected", { withTimezone: true }).notNull().defaultNow(),
+    last_confirmed: timestamp("last_confirmed", { withTimezone: true }).notNull().defaultNow(),
+    is_active: boolean("is_active").notNull().default(true),
+    actionable: boolean("actionable").notNull().default(false),
+    recommendation: text("recommendation"),
+    metadata_json: jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
+  },
+  (t) => [index("idx_pattern_records_user_active").on(t.user_id, t.is_active)],
+);
+
+export const outcomeValidationRecords = pgTable(
+  "outcome_validation_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    order_id: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    feedback_id: uuid("feedback_id")
+      .notNull()
+      .references(() => feedback.id, { onDelete: "cascade" }),
+    proof_quality_score: doublePrecision("proof_quality_score").notNull().default(0),
+    proof_type: text("proof_type"),
+    missing_criteria: text("missing_criteria").array().notNull().default(sql`ARRAY[]::text[]`),
+    false_progress_risk: text("false_progress_risk").notNull().default("NONE"),
+    false_progress_score: doublePrecision("false_progress_score").notNull().default(0),
+    divergence_factors: jsonb("divergence_factors").notNull().default(sql`'[]'::jsonb`),
+    validation_verdict: text("validation_verdict").notNull(),
+    proof_requirement_adjusted: boolean("proof_requirement_adjusted").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_outcome_validation_records_feedback").on(t.feedback_id)],
+);
+
+// ── GROUP 15 — PROMPT 8 EVENT / HEALTH INFRA ─────────────────────────────────
+
+export const idempotencyRecords = pgTable(
+  "idempotency_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull().unique(),
+    event_id: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+    result: jsonb("result"),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_idempotency_records_expires_at").on(t.expires_at),
+    index("idx_idempotency_records_key").on(t.key),
+  ],
+);
+
+export const systemHealthRecords = pgTable(
+  "system_health_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    health_score: doublePrecision("health_score").notNull(),
+    signal_engine_health: doublePrecision("signal_engine_health").notNull().default(1),
+    condition_engine_health: doublePrecision("condition_engine_health").notNull().default(1),
+    bhudhi_health: doublePrecision("bhudhi_health").notNull().default(1),
+    db_health: doublePrecision("db_health").notNull().default(1),
+    worker_health: doublePrecision("worker_health").notNull().default(1),
+    eis_health: doublePrecision("eis_health").notNull().default(1),
+    critical_alerts: jsonb("critical_alerts").notNull().default(sql`'[]'::jsonb`),
+    warnings: jsonb("warnings").notNull().default(sql`'[]'::jsonb`),
+    dlq_size: integer("dlq_size").notNull().default(0),
+    pending_events: integer("pending_events").notNull().default(0),
+    stale_users: integer("stale_users").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_system_health_records_created_at").on(t.created_at)],
 );

@@ -72,6 +72,10 @@ export const EVENT_TYPES = {
   EIS_REFRESH_REQUESTED:           "eis_refresh_requested",
   SYSTEM_HEALTH_SCAN_REQUESTED:    "system_health_scan_requested",
   DEAD_LETTER_REVIEW_REQUESTED:    "dead_letter_review_requested",
+  // Prompt 8 — system lifecycle
+  OVERNIGHT_COMPLETE:              "overnight_complete",
+  HEALTH_ALERT:                    "health_alert",
+  DLQ_ITEM_CREATED:                "dlq_item_created",
 } as const;
 
 export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];

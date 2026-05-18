@@ -12,6 +12,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
+import SignupPage from "@/pages/signup";
 import VerifyPage from "@/pages/verify";
 import Dashboard from "@/pages/dashboard";
 import Onboarding from "@/pages/onboarding";
@@ -21,6 +22,7 @@ import TaskPage from "@/pages/task";
 import FeedbackPage from "@/pages/feedback";
 import SignalsPage from "@/pages/signals";
 import SettingsPage from "@/pages/settings";
+import SettingsSkillsPage from "@/pages/settings-skills";
 import UnsubscribePage from "@/pages/unsubscribe";
 import OrdersPage from "@/pages/orders";
 import StrategyPage from "@/pages/strategy";
@@ -102,6 +104,7 @@ const ProtectedTaskPage = protect(TaskPage);
 const ProtectedFeedbackPage = protect(FeedbackPage);
 const ProtectedSignalsPage = protect(SignalsPage);
 const ProtectedSettingsPage = protect(SettingsPage);
+const ProtectedSettingsSkillsPage = protect(SettingsSkillsPage);
 const ProtectedBlueprintPage = protect(BlueprintPage);
 const ProtectedBlueprintIndex = protect(BlueprintIndexPage);
 const ProtectedOrdersPage = protect(OrdersPage);
@@ -130,6 +133,7 @@ const TaskRoute = withAppLayout(ProtectedTaskPage);
 const FeedbackRoute = withAppLayout(ProtectedFeedbackPage);
 const SignalsRoute = withAppLayout(ProtectedSignalsPage);
 const SettingsRoute = withAppLayout(ProtectedSettingsPage);
+const SettingsSkillsRoute = withAppLayout(ProtectedSettingsSkillsPage);
 const BlueprintRoute = withAppLayout(ProtectedBlueprintPage);
 const BlueprintIndexRoute = withAppLayout(ProtectedBlueprintIndex);
 const OrdersRoute = withAppLayout(ProtectedOrdersPage);
@@ -144,12 +148,15 @@ function AppRoutes() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/signup" component={SignupPage} />
       <Route path="/verify" component={VerifyPage} />
       <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
       <Route path="/onboarding" component={OnboardingRoute} />
       <Route path="/dashboard" component={DashboardRoute} />
       <Route path="/tasks/:orderId" component={TaskRoute} />
+      <Route path="/execute" component={TaskRoute} />
+      <Route path="/execute/:orderId" component={TaskRoute} />
       <Route path="/feedback/:orderId" component={FeedbackRoute} />
       <Route path="/feedback" component={FeedbackRoute} />
       <Route path="/signals" component={SignalsRoute} />
@@ -159,6 +166,7 @@ function AppRoutes() {
       <Route path="/recovery" component={RecoveryRoute} />
       <Route path="/character" component={CharacterRoute} />
       <Route path="/knowledge" component={KnowledgeRoute} />
+      <Route path="/settings/skills" component={SettingsSkillsRoute} />
       <Route path="/settings" component={SettingsRoute} />
       <Route path="/blueprint/:id" component={BlueprintRoute} />
       <Route path="/blueprint" component={BlueprintIndexRoute} />

@@ -157,9 +157,30 @@ registry.set("EIS_INDUSTRY_RESEARCH", {
   },
 });
 
+registry.set("DOMAIN_RESOLUTION", {
+  name:         "domain.resolve.v1",
+  version:      "1.0",
+  triggerType:  "DOMAIN_RESOLUTION",
+  mode:         "STRUCTURE",
+  outputType:   "structured_goal",
+  maxTokens:    1200,
+  temperature:  0.25,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.goal_structure",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nResolve the user's goal into primary domain, industry, and niche for blueprint generation.` +
+    ` Do not approve, launch, or mutate blueprint state.`,
+  buildUserPrompt: (ctx) => {
+    const goal = String(ctx["rawGoal"] ?? ctx["goal"] ?? "");
+    const hint = String(ctx["domainHint"] ?? "");
+    return `Goal: ${goal}\nDomain hint: ${hint || "none"}\nReturn structured_goal with cleanedGoal, primaryDomain, industryLabel, nicheLabel.`;
+  },
+});
+
 registry.set("TASK_DRAFTING", {
-  name:         "task.draft.command.v2",
-  version:      "2.0",
+  name:         "task.draft.v3",
+  version:      "3.0",
   triggerType:  "TASK_DRAFTING",
   mode:         "DRAFT",
   outputType:   "task_copy",
@@ -188,6 +209,9 @@ Difficulty: ${String(ctx["difficulty"] ?? "moderate")}
 Minutes budget: ${String(ctx["timeEstimateMinutes"] ?? 45)}
 Proof type: ${String(ctx["proofType"] ?? "none")}
 Condition snapshot (reference only): ${String(ctx["condition"] ?? "")}
+Condition tone (must reflect in copy): ${String(ctx["conditionTone"] ?? ctx["taskLanguageTone"] ?? "optimizing_forward")}
+Behavioral profile: ${JSON.stringify(ctx["behavioralProfile"] ?? {})}
+Knowledge package: ${JSON.stringify(ctx["knowledgePackage"] ?? null)}
 Allowed actions: ${JSON.stringify(ctx["allowedActions"] ?? [])}
 Strategic implication hint (reference only — not authoritative): "${String(ctx["intelligenceHint"] ?? "")}"
 
@@ -210,6 +234,8 @@ Return ONLY this JSON envelope:
     "successCriteria": ["1-3 bullets"],
     "estimatedEffortLabel": "SMALL|MEDIUM|LARGE",
     "proofInstruction": "align with proof requirement",
+    "taskLanguageTone": "must match condition tone above",
+    "knowledgeInjectionApplied": true | false,
     "aiPromptIfNeeded": null | "verbatim helper prompt OR null",
     "platformIfNeeded": null | "named platform focus OR null"
   },
@@ -402,7 +428,7 @@ registry.set("INACTIVITY_RESTART", {
   maxTokens:    300,
   temperature:  0.3,
   memoryAllowed: true,
-  fallbackKey:  "fallback.recovery_copy",
+  fallbackKey:  "fallback.restart_copy",
   systemPrompt: STANDARD_SYSTEM_HEADER,
   buildUserPrompt: (ctx) => `
 Goal: "${String(ctx["goal"] ?? "")}"
@@ -428,32 +454,115 @@ Write one sentence of warm, non-shaming re-entry guidance and a low-friction tas
 
 registry.set("ACADEMY_SUPPORT", {
   name:         "academy.instruction.v1",
-  version:      "1.0",
+  version:      "1.1",
   triggerType:  "ACADEMY_SUPPORT",
   mode:         "DRAFT",
   outputType:   "academy_instruction",
-  maxTokens:    400,
+  maxTokens:    600,
   temperature:  0.2,
   memoryAllowed: true,
   fallbackKey:  "fallback.academy_instruction",
-  systemPrompt: STANDARD_SYSTEM_HEADER,
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nUse execution language: "Capability development", "execution skill", "apply this capability", "mastery evidence".` +
+    ` FORBIDDEN in output: training, study, lesson, learning, quiz.`,
   buildUserPrompt: (ctx) => `
-Capability gap: "${String(ctx["capabilityGap"] ?? "unknown")}"
-Current capability level: ${String(ctx["capabilityLevel"] ?? "beginner")}
-Task that exposed the gap: "${String(ctx["taskTitle"] ?? "unknown")}"
+Skill category: "${String(ctx["skillCategory"] ?? ctx["capabilityGap"] ?? "unknown")}"
+Practice type: ${String(ctx["practiceType"] ?? "PRACTICE")}
+Current skill level: ${String(ctx["currentSkillLevel"] ?? ctx["capabilityLevel"] ?? 0.3)}
+Lesson objective: "${String(ctx["lessonObjective"] ?? "close capability gap")}"
 Goal: "${String(ctx["goal"] ?? "unknown")}"
 
-Write an academy task for this gap. Return ONLY this JSON:
+Return ONLY this JSON:
 {
   "outputType": "academy_instruction",
+  "contractVersion": "1.1",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "HIGH",
+  "data": {
+    "title": "Capability: [skill] (max 80 chars)",
+    "instruction": "max 600 chars",
+    "expectedOutput": "max 300 chars",
+    "masteryDefinition": "max 200 chars",
+    "proofRequirement": "max 200 chars",
+    "whyThisSkillMatters": "max 200 chars",
+    "selfCheck": ["q1", "q2", "q3"],
+    "practiceTask": "one practice exercise",
+    "proofOfUnderstanding": "mastery evidence criteria"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("ACADEMY_SKILL_ASSESSMENT", {
+  name:         "academy.skill_assessment.v1",
+  version:      "1.0",
+  triggerType:  "ACADEMY_SKILL_ASSESSMENT",
+  mode:         "INTERPRET",
+  outputType:   "academy_skill_assessment",
+  maxTokens:    400,
+  temperature:  0.1,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.academy_skill_assessment",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    "\nAssess mastery evidence quality only — MasteryAssessmentEngine applies pass/fail rules.",
+  buildUserPrompt: (ctx) => `
+Skill category: "${String(ctx["skillCategory"] ?? "")}"
+Mastery definition: "${String(ctx["masteryDefinition"] ?? "")}"
+Submitted proof: "${String(ctx["proofText"] ?? "")}"
+Completion score: ${String(ctx["completionScore"] ?? 0)}
+
+Return ONLY this JSON:
+{
+  "outputType": "academy_skill_assessment",
   "contractVersion": "1.0",
   "stateVersion": ${ctx["stateVersion"] ?? 0},
   "confidence": "HIGH",
   "data": {
-    "title": "Learn: [skill] (max 60 chars)",
-    "instruction": "specific learning instruction (max 300 chars)",
-    "practiceTask": "one practice exercise (max 150 chars)",
-    "proofOfUnderstanding": "how to demonstrate learning (max 100 chars)"
+    "masteryScore": 0.0,
+    "evidenceAnalysis": "max 300 chars",
+    "masteredCriteria": ["criterion met"],
+    "missingCriteria": ["criterion missing"]
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("ACADEMY_GAP_SEVERITY", {
+  name:         "academy.gap_severity.v1",
+  version:      "1.0",
+  triggerType:  "ACADEMY_GAP_SEVERITY",
+  mode:         "INTERPRET",
+  outputType:   "academy_gap_severity",
+  maxTokens:    350,
+  temperature:  0.1,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.academy_gap_severity",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    "\nAssess gap severity from evidence — CapabilityGapEngine applies deterministic thresholds.",
+  buildUserPrompt: (ctx) => `
+Failure details: "${String(ctx["failureDetails"] ?? "")}"
+Failed task: "${String(ctx["taskInstruction"] ?? "")}"
+Skill category: "${String(ctx["skillCategory"] ?? "")}"
+Current skill score: ${String(ctx["currentSkillScore"] ?? 0.35)}
+
+Return ONLY this JSON:
+{
+  "outputType": "academy_gap_severity",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "HIGH",
+  "data": {
+    "severity": "MEDIUM",
+    "evidenceSummary": "max 200 chars",
+    "recommendedLessons": 3,
+    "fastestPathToResolution": "max 200 chars"
   },
   "missingFields": [],
   "warnings": [],
@@ -529,6 +638,199 @@ Suggest candidate root causes. Return ONLY this JSON:
       }
     ],
     "recommendedNextDiagnosticQuestion": "one specific question to narrow the cause"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("BLUEPRINT_GENERATION", {
+  name:         "blueprint.health_analysis.v1",
+  version:      "1.0",
+  triggerType:  "BLUEPRINT_GENERATION",
+  mode:         "SUGGEST",
+  outputType:   "blueprint_health",
+  maxTokens:    800,
+  temperature:  0.2,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.blueprint_health",
+  systemPrompt: STANDARD_SYSTEM_HEADER,
+  buildUserPrompt: (ctx) => `
+Blueprint goal: "${String(ctx["goal"] ?? "")}"
+Trigger: ${String(ctx["triggerReason"] ?? "HEALTH_CHECK")}
+Gap count: ${ctx["gapCount"] ?? 0}
+State version: ${ctx["stateVersion"] ?? 0}
+
+Analyze blueprint health. Propose governance items only — never mutate structure directly.
+Return ONLY JSON:
+{
+  "outputType": "blueprint_health",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "LOW|MEDIUM|HIGH",
+  "data": {
+    "healthScore": 0.0,
+    "gapsDetected": [],
+    "proposalsGenerated": [],
+    "agentAssessment": "max 500 chars",
+    "confidenceTier": "MEDIUM"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("EXECUTION_SUPPORT", {
+  name:         "task.execution_help.v1",
+  version:      "1.0",
+  triggerType:  "EXECUTION_SUPPORT",
+  mode:         "EXPLAIN",
+  outputType:   "execution_help",
+  maxTokens:    500,
+  temperature:  0.2,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.execution_help",
+  systemPrompt: STANDARD_SYSTEM_HEADER,
+  buildUserPrompt: (ctx) => `
+Active order title: "${String(ctx["orderTitle"] ?? "")}"
+Instruction: "${String(ctx["instruction"] ?? "")}"
+Domain: ${String(ctx["domain"] ?? "delivery")}
+
+Return ONLY JSON:
+{
+  "outputType": "execution_help",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "steps": ["step 1 max 100 chars", "step 2", "step 3"],
+    "toolList": ["tool 1", "tool 2"],
+    "exampleOutput": "what good looks like",
+    "tip": "one actionable tip"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("BLUEPRINT_INTERPRETATION", {
+  name:         "blueprint.interpret.v1",
+  version:      "1.0",
+  triggerType:  "BLUEPRINT_INTERPRETATION",
+  mode:         "EXPLAIN",
+  outputType:   "blueprint_interpretation",
+  maxTokens:    900,
+  temperature:  0.25,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.blueprint_interpretation",
+  systemPrompt: STANDARD_SYSTEM_HEADER + `
+Never use words: approve, mark complete, phase transition, override.`,
+  buildUserPrompt: (ctx) => `
+Goal: "${String(ctx["goal"] ?? "")}"
+Purpose: "${String(ctx["purpose"] ?? "")}"
+Condition: ${String(ctx["condition"] ?? "stability")}
+Plans: ${ctx["planCount"] ?? 0}
+State version: ${ctx["stateVersion"] ?? 0}
+
+Return ONLY JSON:
+{
+  "outputType": "blueprint_interpretation",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "LOW|MEDIUM|HIGH",
+  "data": {
+    "interpretation": "max 800 chars plain language briefing",
+    "keyInsights": ["insight 1", "insight 2"],
+    "currentFocus": "max 200 chars",
+    "nextMilestone": "max 200 chars",
+    "riskFlags": []
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("BEHAVIORAL_ANALYSIS", {
+  name:         "psychology.identity_update.v1",
+  version:      "1.0",
+  triggerType:  "BEHAVIORAL_ANALYSIS",
+  mode:         "INTERPRET",
+  outputType:   "identity_update",
+  maxTokens:    600,
+  temperature:  0.25,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.psychology_identity",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nForbidden words: congratulations, great job, amazing, proud. Use execution language only.`,
+  buildUserPrompt: (ctx) => `
+Recent reflections: ${JSON.stringify(ctx["recentReflections"] ?? [])}
+Completion rate: ${ctx["completionRate"] ?? 0}
+Character level: ${ctx["characterLevel"] ?? 1}
+Reward type (if milestone): ${String(ctx["rewardType"] ?? "none")}
+Evidence: ${String(ctx["evidenceSummary"] ?? "")}
+
+Return ONLY JSON:
+{
+  "outputType": "identity_update",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "identityStage": "FORMING|DEVELOPING|ESTABLISHED|EVOLVING",
+    "confidenceDelta": 0.05,
+    "purposeAlignment": 0.5,
+    "keyInsight": "max 200 chars",
+    "milestoneProximity": false,
+    "title": "max 60 chars if reward",
+    "message": "max 200 chars execution-language milestone",
+    "evidenceSummary": "what execution evidence earned this"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("EIS_SYNTHESIS", {
+  name:         "eis.synthesis.v1",
+  version:      "1.0",
+  triggerType:  "EIS_SYNTHESIS",
+  mode:         "STRUCTURE",
+  outputType:   "eis_synthesis",
+  maxTokens:    1200,
+  temperature:  0.28,
+  memoryAllowed: true,
+  fallbackKey:  "reality_intelligence_deterministic",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nSynthesize overnight EIS briefing from supplied search results only.` +
+    ` Do not fabricate statistics or invent platform changes not present in search results.`,
+  buildUserPrompt: (ctx) => `
+Domain: ${String(ctx["domain"] ?? "")}
+Niche: ${String(ctx["niche"] ?? "")}
+Industry: ${String(ctx["industry"] ?? "")}
+Blueprint phase: ${String(ctx["blueprintPhase"] ?? "execution")}
+Current tasks: ${JSON.stringify(ctx["currentTasks"] ?? [])}
+Search results: ${JSON.stringify(ctx["searchResults"] ?? [])}
+
+Return ONLY JSON:
+{
+  "outputType": "eis_synthesis",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "trendingTopics": [{ "topic": "", "engagement": "", "platform": "", "relevance": 0.5, "insight": "" }],
+    "platformSignals": [{ "platform": "", "signal": "", "recommendation": "" }],
+    "opportunities": [{ "description": "", "timeWindow": "this_week", "relevanceScore": 0.5 }],
+    "todayRecommendation": "one actionable step for today",
+    "competitorInsights": ["insight"],
+    "knowledgeUpdates": [{ "packagesToUpdate": [], "newSOP": "", "newBenchmark": "" }]
   },
   "missingFields": [],
   "warnings": [],

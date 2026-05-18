@@ -1,0 +1,563 @@
+﻿CURSOR PROMPT 8  â€”  BHUDHI PHASE 1
+EVENT SYSTEM Â· EIS FULL ACTIVATION Â· DEAD LETTER QUEUE Â· IDEMPOTENCY Â· SYSTEM HEALTH
+Prerequisite: Prompt 7 complete, all 14 tests passing, READY FOR PROMPT 8: YES
+Full Event Bus Â· Idempotency Enforcement Â· Dead Letter Queue Â· System Health Engine Â· EIS Full Overnight Â· Source-of-Truth Hierarchy
+
+CONTEXT &amp; PREREQUISITE CHECK
+WHAT PROMPTS 1â€“7 DELIVERED
+â–¸  Complete Bhudhi AGI stack: all engines, agents, loops, 27 prompt contracts
+â–¸  Blueprint, validation, execution loop, 3-loop architecture
+â–¸  Psychology Agent, burnout detection, identity engine, reward system
+â–¸  All 15 frontend screens with execution language enforcement
+â–¸  89 tests passing across Prompts 1â€“7
+
+WHAT THIS PROMPT BUILDS
+Prompt 8 builds the infrastructure backbone that makes Torgima reliable at production scale. This includes: the complete event system with idempotency enforcement (every event runs exactly once), dead letter queue for failed events, multi-stage event pipeline, system health engine that monitors all components, EIS full activation with nightly web research for every user, background validation workers that run continuously, and the source-of-truth priority hierarchy that defines what data wins when systems conflict. When Prompt 8 is complete, Torgima can handle real user traffic without data corruption, event duplication, or silent failures.
+
+THREE LAWS RESTATEMENT
+LAW 1: The event system processes state changes but never initiates signal calculations or condition assignments directly. Events carry payloads that downstream engines process. The Signal Engine and Condition Engine remain the sole calculators.
+LAW 2: Dead letter queue items are logged and reviewed â€” they do not auto-retry with different data. Retries use the original event payload. Manual intervention is required for data-mutation retries.
+LAW 3: Source-of-truth hierarchy: SignalRecord (most trusted) &gt; ConditionRecord &gt; WorldModel &gt; BhudhiLog. When systems conflict, higher-trust source wins. Bhudhi cannot override higher-trust sources.
+
+
+PART 1 â€” NEW DATABASE TABLES
+1.1 â€” EVENT SYSTEM TABLES
+model SystemEvent {
+  id              String   @id @default(cuid())
+  eventType       String   // See EVENT_TYPES below
+  sourceEngine    String   // Which engine emitted this event
+  userId          String?  // Null for system-wide events
+  blueprintId     String?
+  orderId         String?
+  payload         Json     // Event-specific data
+  idempotencyKey  String   @unique // Prevents duplicate processing
+  status          String   @default(&quot;PENDING&quot;)
+                           // PENDING | PROCESSING | COMPLETE | FAILED | DLQ
+  processedAt     DateTime?
+  retryCount      Int      @default(0)
+  maxRetries      Int      @default(3)
+  errorMessage    String?
+  priority        String   @default(&quot;NORMAL&quot;) // LOW | NORMAL | HIGH | CRITICAL
+  createdAt       DateTime @default(now())
+  @@index([status, priority, createdAt])
+  @@index([userId, eventType])
+}
+
+model DeadLetterQueue {
+  id              String   @id @default(cuid())
+  originalEventId String   // FK â†’ SystemEvent
+  eventType       String
+  payload         Json     // Original payload
+  failureReason   String   // Why it failed
+  failedAt        DateTime @default(now())
+  retryCount      Int      // How many times it was attempted
+  requiresManual  Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?  // &apos;SYSTEM&apos; | &apos;MANUAL&apos;
+  resolution      String?
+}
+
+model IdempotencyRecord {
+  id         String   @id @default(cuid())
+  key        String   @unique // The idempotency key
+  eventId    String   // FK â†’ SystemEvent
+  result     Json?    // Stored result (for safe replay)
+  expiresAt  DateTime // TTL: 24h for most, 7d for critical
+  createdAt  DateTime @default(now())
+  @@index([key])
+}
+
+1.2 â€” SYSTEM HEALTH TABLES
+model SystemHealthRecord {
+  id                    String   @id @default(cuid())
+  healthScore           Float    // 0.0-1.0 overall system health
+  // Component health scores:
+  signalEngineHealth    Float
+  conditionEngineHealth Float
+  bhudhibHealth         Float    // Bhudhi API availability
+  dbHealth              Float
+  workerHealth          Float
+  eisHealth             Float
+  // Alert flags:
+  criticalAlerts        Json     @default(&quot;[]&quot;)
+  warnings              Json     @default(&quot;[]&quot;)
+  dlqSize               Int      @default(0)  // Dead letter queue size
+  pendingEvents         Int      @default(0)  // Events awaiting processing
+  staleUsers            Int      @default(0)  // Users with no active order &gt; 48h
+  createdAt             DateTime @default(now())
+}
+
+model EISRateLimit {
+  id           String   @id @default(cuid())
+  userId       String
+  domain       String
+  callCount    Int      @default(0)
+  windowStart  DateTime
+  windowEnd    DateTime  // 6-hour rolling window
+  maxCalls     Int       @default(3)  // Max per 6h window
+  @@unique([userId, domain, windowStart])
+}
+
+PART 2 â€” EVENT SYSTEM
+File: lib/engines/EventSystem.ts â€” The central event bus. All state changes emit events. All events are idempotent. No event runs twice.
+2.1 â€” EVENT TYPE REGISTRY
+// All system events â€” typed, versioned, idempotent
+export const EVENT_TYPES = {
+  // Execution events
+  ORDER_GENERATED:       &apos;execution.order.generated&apos;,
+  ORDER_ACTIVATED:       &apos;execution.order.activated&apos;,
+  ORDER_COMPLETED:       &apos;execution.order.completed&apos;,
+  ORDER_FAILED:          &apos;execution.order.failed&apos;,
+  ORDER_SKIPPED:         &apos;execution.order.skipped&apos;,
+  FEEDBACK_SUBMITTED:    &apos;execution.feedback.submitted&apos;,
+  FEEDBACK_CLASSIFIED:   &apos;execution.feedback.classified&apos;,
+  // Signal events (emitted BY SignalEngine â€” not to trigger it)
+  SIGNAL_CALCULATED:     &apos;signal.calculated&apos;,
+  // Condition events (emitted BY ConditionEngine â€” not to trigger it)
+  CONDITION_ASSIGNED:    &apos;condition.assigned&apos;,
+  CONDITION_CHANGED:     &apos;condition.changed&apos;,
+  // Blueprint events
+  BLUEPRINT_ACTIVATED:   &apos;blueprint.activated&apos;,
+  BLUEPRINT_PHASE_COMPLETE: &apos;blueprint.phase.complete&apos;,
+  BLUEPRINT_COMPLETE:    &apos;blueprint.complete&apos;,
+  GOVERNANCE_PROPOSED:   &apos;governance.proposal.created&apos;,
+  GOVERNANCE_APPROVED:   &apos;governance.proposal.approved&apos;,
+  // Bhudhi events
+  BHUDHI_CALLED:         &apos;bhudhi.call.executed&apos;,
+  BHUDHI_FALLBACK_USED:  &apos;bhudhi.fallback.used&apos;,
+  BHUDHI_REJECTED:       &apos;bhudhi.output.rejected&apos;,
+  // User events
+  USER_INACTIVITY:       &apos;user.inactivity.detected&apos;,
+  USER_RETURNED:         &apos;user.activity.resumed&apos;,
+  // Reward/psychology events
+  REWARD_GENERATED:      &apos;reward.event.created&apos;,
+  BURNOUT_DETECTED:      &apos;psychology.burnout.detected&apos;,
+  IDENTITY_MILESTONE:    &apos;psychology.identity.milestone&apos;,
+  // System events
+  OVERNIGHT_COMPLETE:    &apos;system.overnight.complete&apos;,
+  HEALTH_ALERT:          &apos;system.health.alert&apos;,
+  DLQ_ITEM_CREATED:      &apos;system.dlq.item.created&apos;,
+} as const
+
+2.2 â€” EVENT SYSTEM CORE
+// EventSystem.ts
+
+export interface EmitEventInput {
+  eventType: string
+  sourceEngine: string
+  userId?: string
+  blueprintId?: string
+  orderId?: string
+  payload: Record&lt;string, unknown&gt;
+  priority?: &apos;LOW&apos; | &apos;NORMAL&apos; | &apos;HIGH&apos; | &apos;CRITICAL&apos;
+  idempotencyKey: string  // REQUIRED â€” must be deterministic
+}
+
+export async function emitEvent(input: EmitEventInput): Promise&lt;SystemEvent | null&gt;
+// 1. Check IdempotencyRecord: if key exists, return stored result (do not re-process)
+// 2. Create SystemEvent with status PENDING
+// 3. Store IdempotencyRecord with event ID
+// 4. Queue for processing via pg-boss
+// 5. Return SystemEvent
+
+// IDEMPOTENCY KEY FORMAT:
+// &apos;{eventType}:{userId}:{resourceId}:{timestamp-day}&apos;
+// Example: &apos;execution.feedback.submitted:user_123:order_456:2025-01-15&apos;
+// This ensures: same feedback cannot be processed twice in one day
+
+export async function processEvent(eventId: string): Promise&lt;void&gt;
+// 1. Load SystemEvent
+// 2. Set status = PROCESSING
+// 3. Route to correct handler based on eventType
+// 4. On success: set status = COMPLETE, update IdempotencyRecord.result
+// 5. On failure: increment retryCount
+//   - If retryCount &lt; maxRetries: requeue with exponential backoff
+//   - If retryCount &gt;= maxRetries: move to DeadLetterQueue
+
+export async function handleDLQ(dlqItemId: string): Promise&lt;void&gt;
+// Reviews dead letter queue items
+// Determines if manual or system resolution is possible
+// Logs system health alert if DLQ grows &gt; 10 items
+
+2.3 â€” EVENT HANDLERS
+// Each event type has a dedicated handler
+
+// FEEDBACK_SUBMITTED handler:
+async function handleFeedbackSubmitted(event: SystemEvent): Promise&lt;void&gt; {
+  const { feedbackId, userId, orderId } = event.payload
+  // 1. Classify feedback via Bhudhi
+  // 2. Run outcome validation
+  // 3. Emit ORDER_COMPLETED or ORDER_FAILED
+  // 4. Signal Engine will pick up ORDER_COMPLETED/FAILED
+}
+
+// ORDER_COMPLETED handler:
+async function handleOrderCompleted(event: SystemEvent): Promise&lt;void&gt; {
+  const { orderId, userId } = event.payload
+  // 1. Update Order.status
+  // 2. Call SignalEngine.calculateSignals() â€” this is the ONLY trigger
+  // 3. Emit SIGNAL_CALCULATED when done
+}
+
+// SIGNAL_CALCULATED handler:
+async function handleSignalCalculated(event: SystemEvent): Promise&lt;void&gt; {
+  const { signalRecordId, userId } = event.payload
+  // 1. Call ConditionEngine.assignCondition()
+  // 2. Emit CONDITION_ASSIGNED
+}
+
+// CONDITION_CHANGED handler:
+async function handleConditionChanged(event: SystemEvent): Promise&lt;void&gt; {
+  const { userId, newCondition, previousCondition } = event.payload
+  // 1. Update WorldModel
+  // 2. Check for reward events (condition upgrade)
+  // 3. Run burnout check if declining condition
+  // 4. Generate next task via ExecutionLoopEngine
+}
+
+// BURNOUT_DETECTED handler:
+async function handleBurnoutDetected(event: SystemEvent): Promise&lt;void&gt; {
+  const { userId, riskLevel } = event.payload
+  // 1. Update WorldModel motivationState
+  // 2. If HIGH: generate meaning-reconnect task
+  // 3. Suppress non-critical notifications for 24h
+}
+
+PART 3 â€” MULTI-STAGE EVENT PIPELINE
+The complete event pipeline from feedback submission to new task generation. Every stage is idempotent. Every failure routes to DLQ. The pipeline never creates partial state.
+// Complete pipeline â€” each arrow is an event:
+//
+// User submits feedback
+//   â†“ emitEvent(FEEDBACK_SUBMITTED)
+// Bhudhi classifies feedback
+//   â†“ emitEvent(FEEDBACK_CLASSIFIED)
+// Outcome validation runs
+//   â†“ emitEvent(ORDER_COMPLETED | ORDER_FAILED)
+// Signal Engine calculates
+//   â†“ emitEvent(SIGNAL_CALCULATED)
+// Condition Engine assigns
+//   â†“ emitEvent(CONDITION_ASSIGNED)
+//   â†“ if changed: emitEvent(CONDITION_CHANGED)
+// Burnout check (if declining)
+//   â†“ if HIGH: emitEvent(BURNOUT_DETECTED)
+// Reward check
+//   â†“ if earned: emitEvent(REWARD_GENERATED)
+// Task generation
+//   â†“ emitEvent(ORDER_GENERATED)
+// World Model update
+//   â†“ emitEvent(OVERNIGHT_COMPLETE) [from worker]
+
+// KEY GUARANTEE: If any stage fails â†’ DLQ â†’ alert â†’ no partial state
+// Idempotency ensures: re-running from any point is safe
+// The signal record created BEFORE any retry attempt is the truth
+
+PART 4 â€” EIS FULL ACTIVATION
+Upgrade EISEngine to full capability. Full nightly web research for every active user. Rate limiting to prevent excessive API usage. Social signal integration.
+// EISEngine.ts â€” FULL ACTIVATION (upgraded from Prompt 3 basic)
+
+// â”€â”€ EIS RATE LIMITING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Max 3 full research calls per user per 6-hour window
+// Emergency override: CRITICAL priority events bypass rate limit
+// Free tier: 1 call per 24h  |  Paid: 3 calls per 6h
+
+export async function canRunResearch(
+  userId: string,
+  domain: string
+): Promise&lt;{ allowed: boolean; nextAvailableAt?: Date }&gt;
+// Checks EISRateLimit table
+// Returns: allowed (boolean), nextAvailableAt if not allowed
+
+// â”€â”€ FULL NIGHTLY RESEARCH SUITE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export async function runFullNightlyResearch(
+  userId: string,
+  context: OvernightContext
+): Promise&lt;FullEISBriefing&gt;
+// Step 1: Check rate limit â€” if exceeded, use cache or fallback
+// Step 2: Run 5 parallel searches:
+//   Search 1: &apos;[domain] [niche] trending content [current month year]&apos;
+//   Search 2: &apos;[platform] algorithm signals [current month year]&apos;
+//   Search 3: &apos;[niche] top performing creators what is working [current month year]&apos;
+//   Search 4: &apos;[domain] industry news opportunities [current week year]&apos;
+//   Search 5: &apos;[niche] common mistakes to avoid [current year]&apos;
+// Step 3: Synthesize via eis.synthesis.v1 prompt contract
+// Step 4: Cross-reference with user&apos;s current blueprint phase
+// Step 5: Flag time-sensitive opportunities (this week vs this month)
+// Step 6: Write to EISBriefing with 24h TTL
+// Step 7: Update EISRateLimit counter
+
+// â”€â”€ NEW PROMPT CONTRACT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// eis.synthesis.v1 â€” new
+// Trigger: OVERNIGHT_CYCLE
+// Context: all 5 search results, user domain, blueprint phase, current tasks
+// Output: { trendingTopics[], platformSignals[], opportunities[],
+//           todayRecommendation, competitorInsights[], knowledgeUpdates[] }
+// Max response: 1200 tokens
+
+PART 5 â€” SYSTEM HEALTH ENGINE
+File: lib/engines/SystemHealthEngine.ts â€” Continuous monitoring of all Torgima components. Alerts when anything degrades. Never blocks execution â€” monitors and reports.
+// SystemHealthEngine.ts â€” DETERMINISTIC. NO AI CALLS.
+
+export async function runHealthCheck(): Promise&lt;SystemHealthRecord&gt;
+// Runs every 30 minutes via pg-boss
+// Checks:
+//   1. Signal Engine: last signal calculation time vs expected frequency
+//   2. Condition Engine: last assignment vs signal calculation gap
+//   3. Bhudhi API: test call latency + recent fallback rate from BhudhiLog
+//   4. Database: connection pool health, query latency
+//   5. Workers: last execution time for each scheduled worker
+//   6. EIS: last research completion, rate limit status
+//   7. DLQ: current size + growth rate
+//   8. Active users with no orders: stale user count
+
+// Health score formula:
+// Starts at 1.0, subtract penalties:
+//   DLQ size &gt; 5:          -0.10
+//   DLQ size &gt; 20:         -0.20 (additional)
+//   Bhudhi fallback &gt; 30%: -0.15
+//   Worker missed run:     -0.10 per worker
+//   Stale users &gt; 10%:     -0.15
+//   Signal lag &gt; 2h:       -0.20
+
+export async function generateHealthAlert(
+  healthRecord: SystemHealthRecord
+): Promise&lt;void&gt;
+// If healthScore &lt; 0.70: emit HEALTH_ALERT event
+// If DLQ &gt; 50: emit CRITICAL health alert
+// Alerts written to BhudhiLog for audit
+// Does NOT send emails/notifications to users
+
+// â”€â”€ SOURCE-OF-TRUTH HIERARCHY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// When data conflicts between systems, this hierarchy wins:
+// 1. SignalRecord (calculated by SignalEngine from real feedback) â€” HIGHEST TRUST
+// 2. ConditionRecord (assigned by ConditionEngine from SignalRecord)
+// 3. Order.status (set by execution events)
+// 4. WorldModel (derived from above sources) â€” can lag by up to 6h
+// 5. BhudhiMemory (Bhudhi&apos;s interpretation) â€” LOWEST TRUST
+//
+// RULE: If WorldModel.signalTrajectory conflicts with latest SignalRecord,
+// SignalRecord wins. WorldModel is updated, not the other way around.
+
+PART 6 â€” BACKGROUND VALIDATION WORKERS
+Additional pg-boss workers that run continuously to validate system integrity and catch edge cases that real-time processing misses.
+// lib/workers/ValidationWorkers.ts
+
+// Worker 1: Signal Drift Validator â€” every 2 hours
+boss.schedule(&apos;signal-drift-validator&apos;, &apos;0 */2 * * *&apos;, {})
+// For every active user: compare WorldModel.signalTrajectory
+// with actual latest SignalRecord
+// If drift &gt; 20%: update WorldModel (source-of-truth hierarchy applied)
+
+// Worker 2: Orphan Order Cleaner â€” every 6 hours
+boss.schedule(&apos;orphan-order-cleaner&apos;, &apos;0 */6 * * *&apos;, {})
+// Find Orders with status ACTIVE but last feedback &gt; 7 days ago
+// Mark as STALE, generate inactivity restart event
+// Ensures no order remains active indefinitely
+
+// Worker 3: DLQ Processor â€” every 15 minutes
+boss.schedule(&apos;dlq-processor&apos;, &apos;*/15 * * * *&apos;, {})
+// Review DLQ items with resolvedAt = null
+// For items &lt; 24h old: attempt auto-retry if safe
+// For items 24-48h old: flag as requiresManual
+// For items &gt; 48h old: generate system health alert
+
+// Worker 4: Idempotency Key Cleaner â€” daily 04:00 UTC
+boss.schedule(&apos;idempotency-cleaner&apos;, &apos;0 4 * * *&apos;, {})
+// Delete IdempotencyRecord where expiresAt &lt; now()
+// Keeps idempotency table lean
+
+// Worker 5: Event Pipeline Health Check â€” every 30 minutes
+boss.schedule(&apos;event-pipeline-health&apos;, &apos;*/30 * * * *&apos;, {})
+// Check: are PENDING events older than 5 minutes? â†’ alert
+// Check: PROCESSING events older than 10 minutes? â†’ stuck detection
+// Check: DLQ growth rate &gt; 5/hour? â†’ critical alert
+
+// Worker 6: EIS Knowledge Library Refresh â€” daily 01:00 UTC
+boss.schedule(&apos;eis-knowledge-refresh&apos;, &apos;0 1 * * *&apos;, {})
+// For each active domain: refresh KnowledgePackage records
+// Uses EIS research to update SOPs and benchmarks with current data
+// Rate-limited per domain to prevent excessive API calls
+
+PART 7 â€” COMPLETE OVERNIGHT WORKER (FINAL ARCHITECTURE)
+The complete 15-step overnight worker after all upgrades across Prompts 1â€“8. This is the definitive architecture.
+STEP 00
+Rate Limit Check
+Verify overnight cycle not already running for this user (idempotency). Check worker health.
+
+STEP 01
+Load User Context
+Domain, niche, blueprint, condition, signal state, behavioral profile
+
+STEP 02
+EIS Full Research
+5 parallel web searches. Synthesis via eis.synthesis.v1. Rate limit enforced. 24h cache written.
+
+STEP 03
+Knowledge Library Update
+EIS results used to refresh KnowledgePackage records for user&apos;s domain
+
+STEP 04
+Blueprint Health Check (Sunday)
+Blueprint Agent weekly scan. Governance proposals generated if needed.
+
+STEP 05
+Blueprint Interpretation Refresh
+Regenerate if &gt; 24h old or world state version changed
+
+STEP 06
+Expire Stale Governance Proposals
+GovernanceService.expireStaleProposals()
+
+STEP 07
+Burnout Risk Assessment
+BurnoutDetectionEngine.scoreBurnoutRisk(). Write BurnoutRecord if MEDIUM+.
+
+STEP 08
+Identity Analysis
+PsychologyAgent.analyzeIdentityTrajectory(). Update IdentityProfile.
+
+STEP 09
+Pattern Analysis (Sunday)
+PatternLearningEngine.runPatternAnalysis(). Write PatternRecords.
+
+STEP 10
+Character Update (Sunday)
+CharacterProgressionEngine.updateCharacterScores(). Check level-up rewards.
+
+STEP 11
+Task Pre-Generation
+Full task generation with knowledge injection, behavioral profile, condition
+
+STEP 12
+Morning Report Assembly
+All sections assembled. Critic Agent reviews. Report written to DB.
+
+STEP 13
+Memory Writeback
+New insights, patterns, overnight findings written to BhudhiMemory. Compression if needed.
+
+STEP 14
+Self-Improvement Cycle
+SelfImprovementAgent.runDailyEvaluation(). Weekly calibration on Sunday.
+
+STEP 15
+Continuous Task Guarantee
+Ensure active order exists. Emit OVERNIGHT_COMPLETE event.
+
+
+PART 8 â€” NEW PROMPT CONTRACTS
+// Add to PromptRegistry â€” Total after Prompt 8: 28
+
+// eis.synthesis.v1 â€” NEW
+// Trigger: OVERNIGHT_CYCLE
+// Context: 5 search results, user domain, niche, blueprint phase, current tasks
+// Output: {
+//   trendingTopics: [{ topic, engagement, platform, relevance, insight }],
+//   platformSignals: [{ platform, signal, recommendation }],
+//   opportunities: [{ description, timeWindow, relevanceScore }],
+//   todayRecommendation: string,  // One action to take today
+//   knowledgeUpdates: [{ packagesToUpdate, newSOP?, newBenchmark? }]
+// }
+// Max output: 1200 tokens
+// Rate limit: 3 per user per 6h window
+// FORBIDDEN: fabricate statistics, invent platform changes not in search results
+
+
+PART 9 â€” TEST CASES
+All 14 tests must pass. Event system reliability is critical â€” failures here silently corrupt user data.
+TEST 1: Idempotency â€” Duplicate Event
+Scenario:  Emit the same FEEDBACK_SUBMITTED event twice with identical idempotency key. Only one should be processed.
+Pass:  PASS: SystemEvent count = 1, IdempotencyRecord.result set on first, second call returns stored result
+
+TEST 2: Event Pipeline â€” Full Flow
+Scenario:  Submit feedback. Trace: FEEDBACK_SUBMITTED â†’ FEEDBACK_CLASSIFIED â†’ ORDER_COMPLETED â†’ SIGNAL_CALCULATED â†’ CONDITION_ASSIGNED â†’ ORDER_GENERATED. All events present.
+Pass:  PASS: All 6 event types in SystemEvent table with status = COMPLETE, correct sequence timestamps
+
+TEST 3: Dead Letter Queue â€” Failed Event
+Scenario:  Cause an event to fail 3 times (mock handler failure). Verify DLQ item created.
+Pass:  PASS: DeadLetterQueue record exists, SystemEvent.status = DLQ, HEALTH_ALERT emitted when DLQ &gt; 10
+
+TEST 4: Dead Letter Queue â€” No Auto Mutation
+Scenario:  Attempt DLQ auto-retry that would mutate signal values. System must reject.
+Pass:  PASS: DLQ item flagged requiresManual = true, no signal recalculation occurs, error logged
+
+TEST 5: Source-of-Truth â€” WorldModel Drift
+Scenario:  Manually diverge WorldModel.signalTrajectory from actual SignalRecord. Run drift validator worker. WorldModel must update.
+Pass:  PASS: WorldModel updated to match SignalRecord after validator runs, drift event logged
+
+TEST 6: EIS Full Research â€” 5 Searches
+Scenario:  Trigger EIS full nightly research for test user in Content domain. Verify all 5 searches run.
+Pass:  PASS: EISBriefing.researchMethod = WEB_SEARCH, trendingTopics populated, 5 search calls logged
+
+TEST 7: EIS Rate Limiting
+Scenario:  Make 4 EIS research calls in one 6-hour window for same user. 4th should be blocked.
+Pass:  PASS: canRunResearch returns { allowed: false, nextAvailableAt: [time] } on 4th call, EISRateLimit.callCount = 3
+
+TEST 8: System Health â€” DLQ Alert
+Scenario:  Create 11 DLQ items. Run health check. Verify HEALTH_ALERT event generated.
+Pass:  PASS: SystemHealthRecord.dlqSize = 11, healthScore reduced, HEALTH_ALERT SystemEvent created
+
+TEST 9: System Health â€” Score Calculation
+Scenario:  Simulate: 2 missed workers, 35% fallback rate, 12 stale users. Calculate health score.
+Pass:  PASS: healthScore = 1.0 - 0.20 (workers) - 0.15 (fallback) - 0.15 (stale) = 0.50, status = DEGRADED
+
+TEST 10: Background Validator â€” Orphan Orders
+Scenario:  Create Order with status ACTIVE and no feedback for 8 days. Run orphan cleaner. Verify stale flag.
+Pass:  PASS: Order.status = STALE, USER_INACTIVITY event emitted, inactivity restart task generated
+
+TEST 11: Idempotency Key Cleaner
+Scenario:  Create 100 IdempotencyRecords with expiresAt in the past. Run cleaner. Verify all deleted.
+Pass:  PASS: IdempotencyRecord count = 0 after cleaner, no active records removed
+
+TEST 12: Complete Overnight Worker â€” All 16 Steps
+Scenario:  Run full overnight cycle for test user. Verify all 16 steps execute in order.
+Pass:  PASS: All 16 steps logged in worker execution log, OVERNIGHT_COMPLETE event emitted
+
+TEST 13: Event Pipeline Idempotency â€” Power Outage Simulation
+Scenario:  Start pipeline, interrupt after SIGNAL_CALCULATED. Re-run from beginning. Signal should NOT be recalculated.
+Pass:  PASS: Idempotency key prevents duplicate signal calculation, pipeline resumes from CONDITION_ASSIGNED
+
+TEST 14: Knowledge Library Refresh
+Scenario:  Run EIS knowledge refresh worker. Verify KnowledgePackage records updated with EIS research data.
+Pass:  PASS: KnowledgePackage.updatedAt recent, eisEnriched = true on updated records, SOPs/benchmarks reflect current data
+
+
+COMPLETION REPORT FORMAT
+=== PROMPT 8 COMPLETION REPORT ===
+
+FILES CREATED:
+  - lib/engines/EventSystem.ts
+  - lib/engines/SystemHealthEngine.ts
+  - lib/workers/ValidationWorkers.ts (6 new workers)
+
+FILES MODIFIED:
+  - lib/engines/EISEngine.ts (full activation, rate limiting)
+  - lib/workers/OvernightWorker.ts (upgraded to 16 steps)
+
+SCHEMA ADDITIONS:
+  - SystemEvent, DeadLetterQueue, IdempotencyRecord
+  - SystemHealthRecord, EISRateLimit
+
+PROMPT CONTRACTS ADDED: 1 (total: 28)
+  - eis.synthesis.v1
+
+EVENT SYSTEM VERIFIED:
+  - All EVENT_TYPES registered: CONFIRMED
+  - Idempotency enforced: CONFIRMED
+  - DLQ routing working: CONFIRMED
+  - Full pipeline (6 events) verified: CONFIRMED
+
+EIS FULL ACTIVATION:
+  - 5-search research suite running: CONFIRMED
+  - Rate limiting enforced: CONFIRMED
+  - Knowledge library updates working: CONFIRMED
+
+OVERNIGHT WORKER â€” ALL 16 STEPS: CONFIRMED
+
+SOURCE-OF-TRUTH HIERARCHY: CONFIRMED
+  - SignalRecord &gt; ConditionRecord &gt; WorldModel &gt; BhudhiMemory
+
+TESTS PASSED: [X/14]
+KNOWN ISSUES: [none / list]
+READY FOR PROMPT 9: YES / NO
+===================================
+

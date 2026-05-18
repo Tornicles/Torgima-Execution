@@ -16,8 +16,16 @@ export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhud
     STATE_EXPLANATION:        "state_explanation",
     INACTIVITY_RESTART:       "pattern_summary",
     ACADEMY_SUPPORT:          "academy_content",
+    ACADEMY_SKILL_ASSESSMENT: "academy_content",
+    ACADEMY_GAP_SEVERITY:     "academy_content",
     OUTCOME_EVIDENCE_SUMMARY: "evidence_summary",
     ROOT_CAUSE_ASSIST:        "root_cause_candidates",
+    BLUEPRINT_GENERATION:     "blueprint_generation",
+    BLUEPRINT_INTERPRETATION: "blueprint_interpretation",
+    DOMAIN_RESOLUTION:        "validation_analysis",
+    EXECUTION_SUPPORT:        "task_generation",
+    BEHAVIORAL_ANALYSIS:      "pattern_summary",
+    EIS_SYNTHESIS:            "validation_analysis",
   };
   return m[triggerType];
 }

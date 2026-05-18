@@ -49,6 +49,9 @@ const TERMINAL_EVENT_TYPES = new Set<string>([
   "false_progress_detected",
   "failure_classified",
   "operating_loop_stage",
+  "overnight_complete",
+  "health_alert",
+  "dlq_item_created",
 ]);
 
 const DISPATCH_BATCH_SIZE = 50;

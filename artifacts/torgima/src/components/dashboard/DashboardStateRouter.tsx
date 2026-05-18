@@ -15,6 +15,9 @@ import {
 import { ExecutionLoopTimeline } from "@/components/execution/ExecutionLoopTimeline";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { getDashboardUiState, type DashboardProjection, type DashboardUiState } from "@/lib/dashboard-types";
+import { MorningReport } from "@/components/bhudhi/MorningReport";
+import { SkillProgressPanel } from "@/components/dashboard/SkillProgressPanel";
+import { useExecutionStore } from "@/store/executionStore";
 
 export function DashboardStateRouter({
   state,
@@ -111,6 +114,12 @@ function DashboardMainContent({
     (state.user as { email?: string })?.email?.split("@")[0] ??
     "Builder";
   const blueprint = state.activeBlueprint as { id?: string; title?: string } | null;
+  const morningReport = useExecutionStore((s) => s.morningReport);
+  const refreshAll = useExecutionStore((s) => s.refreshAll);
+
+  useEffect(() => {
+    void refreshAll();
+  }, [refreshAll]);
 
   return (
     <div className="space-y-6">
@@ -125,12 +134,19 @@ function DashboardMainContent({
 
       <AlertsPanel alerts={state.alerts as Parameters<typeof AlertsPanel>[0]["alerts"]} />
 
+      <section className="rounded-2xl border border-gray-100 bg-white p-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Intelligence Report</p>
+        <MorningReport report={morningReport} />
+      </section>
+
       <CurrentActionPanel
         uiState={uiState}
         action={state.currentAction as Record<string, unknown> | undefined}
         onStart={onStart}
         starting={starting}
       />
+
+      <SkillProgressPanel />
 
       <OperationalAwarenessStrip
         awareness={state.operationalAwareness as string[] | undefined}

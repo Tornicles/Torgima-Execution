@@ -189,6 +189,39 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       if (!d["proofOfUnderstanding"]) errors.push("academy_instruction: missing proofOfUnderstanding");
       break;
 
+    case "academy_skill_assessment":
+      if (typeof d["masteryScore"] !== "number") errors.push("academy_skill_assessment: missing masteryScore");
+      if (!d["evidenceAnalysis"]) errors.push("academy_skill_assessment: missing evidenceAnalysis");
+      break;
+
+    case "academy_gap_severity":
+      if (!d["severity"]) errors.push("academy_gap_severity: missing severity");
+      if (!d["evidenceSummary"]) errors.push("academy_gap_severity: missing evidenceSummary");
+      break;
+
+    case "blueprint_health":
+      if (typeof d["healthScore"] !== "number") errors.push("blueprint_health: missing healthScore");
+      if (!d["agentAssessment"]) errors.push("blueprint_health: missing agentAssessment");
+      if (!Array.isArray(d["gapsDetected"])) errors.push("blueprint_health: gapsDetected must be array");
+      break;
+
+    case "execution_help":
+      if (!Array.isArray(d["steps"]) || (d["steps"] as unknown[]).length === 0) {
+        errors.push("execution_help: missing steps");
+      }
+      if (!Array.isArray(d["toolList"])) errors.push("execution_help: missing toolList");
+      if (!d["exampleOutput"]) errors.push("execution_help: missing exampleOutput");
+      break;
+
+    case "blueprint_interpretation":
+      if (!d["interpretation"]) errors.push("blueprint_interpretation: missing interpretation");
+      if (!d["currentFocus"]) errors.push("blueprint_interpretation: missing currentFocus");
+      if (!d["nextMilestone"]) errors.push("blueprint_interpretation: missing nextMilestone");
+      if (typeof d["interpretation"] === "string" && d["interpretation"].length > 800) {
+        errors.push("blueprint_interpretation: interpretation too long");
+      }
+      break;
+
     default:
       errors.push(`Unknown output type: ${expectedType}`);
   }

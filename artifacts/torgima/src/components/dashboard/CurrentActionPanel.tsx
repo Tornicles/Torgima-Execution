@@ -28,7 +28,7 @@ export function CurrentActionPanel({
           <h2 className="font-bold text-sky-950">Assembling your next order</h2>
         </div>
         <p className="text-sm text-sky-800">
-          The execution loop is generating your next valid task. This usually completes within a few seconds.
+          The execution loop is generating your next valid Order. This usually completes within a few seconds.
         </p>
       </section>
     );
@@ -59,7 +59,7 @@ export function CurrentActionPanel({
           <h2 className="font-bold">Feedback required</h2>
         </div>
         <p className="text-sm text-violet-800">
-          An execution order is waiting for your report. Submit feedback to continue the loop and receive your next task.
+          An execution Order is waiting for your report. Submit feedback to continue the loop and receive your next Order.
         </p>
         <Link href="/orders">
           <span className="inline-flex items-center gap-2 bg-violet-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer hover:bg-violet-800">

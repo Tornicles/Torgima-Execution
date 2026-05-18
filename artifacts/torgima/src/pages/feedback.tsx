@@ -27,13 +27,22 @@ export default function FeedbackPage() {
   const [error, setError] = useState("");
   const [interrogation, setInterrogation] = useState<{ feedbackId: string; question?: string } | null>(null);
   const [interrogationAnswer, setInterrogationAnswer] = useState("");
+  const [blueprintId, setBlueprintId] = useState<string | null>(null);
+  const [postSubmit, setPostSubmit] = useState<{
+    message: string;
+    nextOrderId?: string;
+    condition?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!orderId || !API_BASE_URL) return;
     void fetch(`${API_BASE_URL}/api/orders/${orderId}`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { proofRequired?: boolean } }) => {
-        if (d.ok && d.data) setProofRequired(Boolean(d.data.proofRequired));
+      .then((d: { ok?: boolean; data?: { proofRequired?: boolean; blueprintId?: string } }) => {
+        if (d.ok && d.data) {
+          setProofRequired(Boolean(d.data.proofRequired));
+          if (d.data.blueprintId) setBlueprintId(d.data.blueprintId);
+        }
       })
       .catch(() => null);
   }, [orderId]);
@@ -64,19 +73,36 @@ export default function FeedbackPage() {
     setError("");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/feedback`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          completionStatus: status,
-          score,
-          reflection,
-          proofJson: proofText.trim() ? { text: proofText } : undefined,
-          blockerJson: status === "failed" || hasBlocker ? { description: blocker, type: "manual" } : null,
-          idempotencyKey: `feedback-${orderId}-${Date.now()}`,
-        }),
-      });
+      const started = Date.now();
+      const usePrimaryLoop = Boolean(blueprintId);
+      const res = await fetch(
+        usePrimaryLoop ?
+          `${API_BASE_URL}/api/execution/feedback`
+        : `${API_BASE_URL}/api/orders/${orderId}/feedback`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            usePrimaryLoop ?
+              {
+                orderId,
+                blueprintId,
+                completionStatus: status,
+                score,
+                feedbackText: reflection,
+              }
+            : {
+                completionStatus: status,
+                score,
+                reflection,
+                proofJson: proofText.trim() ? { text: proofText } : undefined,
+                blockerJson: status === "failed" || hasBlocker ? { description: blocker, type: "manual" } : null,
+                idempotencyKey: `feedback-${orderId}-${Date.now()}`,
+              },
+          ),
+        },
+      );
 
       const data = await res.json();
       if (!data.ok) {
@@ -88,6 +114,7 @@ export default function FeedbackPage() {
         requiresInterrogation?: boolean;
         feedbackId?: string;
         interrogationQuestion?: string;
+        nextOrderId?: string;
       };
 
       if (result?.requiresInterrogation && result.feedbackId) {
@@ -99,6 +126,18 @@ export default function FeedbackPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
+
+      if (usePrimaryLoop) {
+        const elapsed = Date.now() - started;
+        const waitMs = Math.max(0, 3000 - elapsed);
+        await new Promise((r) => setTimeout(r, waitMs));
+        setPostSubmit({
+          message: "Execution continuity maintained.",
+          nextOrderId: result.nextOrderId,
+        });
+        return;
+      }
+
       setLocation("/dashboard");
     } catch {
       setError("Cannot connect to execution server");
@@ -141,6 +180,32 @@ export default function FeedbackPage() {
   const scoreLabels: Record<number, string> = {
     0: "Zero execution", 5: "Partial execution", 7: "Good execution", 10: "Perfect execution",
   };
+
+  if (postSubmit) {
+    return (
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900">Report received</h1>
+        <p className="text-sm text-green-700 font-medium">{postSubmit.message}</p>
+        {postSubmit.nextOrderId ? (
+          <button
+            type="button"
+            onClick={() => setLocation(`/tasks/${postSubmit.nextOrderId}`)}
+            className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl"
+          >
+            View next Order →
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl"
+          >
+            Return to dashboard
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (interrogation) {
     return (

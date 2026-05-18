@@ -83,7 +83,7 @@ export const difficultyEnum = pgEnum("difficulty", [
 export const proofTypeEnum = pgEnum("proof_type", ["link", "file", "text", "image", "none"]);
 export const orderStatusEnum = pgEnum("order_status", [
   "pending", "active", "paused", "blocked", "needs_feedback",
-  "needs_proof", "completed", "failed", "skipped", "cancelled",
+  "needs_proof", "completed", "failed", "skipped", "cancelled", "pre_generated",
 ]);
 
 // GROUP 4 — SIGNAL & CONDITION
@@ -135,6 +135,7 @@ export const bhudhiTriggerTypeEnum = pgEnum("bhudhi_trigger_type", [
   "goal_structuring", "validation_analysis", "condition_explanation", "state_explanation",
   "blocker_classification", "pattern_summary", "evidence_summary", "root_cause_candidates",
   "pivot_path_generation", "academy_content", "knowledge_update",
+  "blueprint_generation", "blueprint_interpretation",
 ]);
 export const bhudhiExecutionContextEnum = pgEnum("bhudhi_execution_context", [
   "marketing", "pr", "strategy", "execution", "analysis",

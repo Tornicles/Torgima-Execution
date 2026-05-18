@@ -4,9 +4,9 @@ import { db, feedback, orders } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
-import { classifyFailure } from "../engines/failure/FailureClassificationEngine.js";
 import { validateOutcome } from "../engines/outcome/OutcomeValidationEngine.js";
 import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { runPsychologyPostFeedback } from "../engines/psychology/PsychologyPipeline.js";
 import { recordCompulsionLoopStage } from "../engines/intelligence/CompulsionLoopEngine.js";
 import { logger } from "../lib/logger.js";
 
@@ -52,30 +52,26 @@ workerRegistry.register({
         const completionStatus = payloadRec?.["completion_status"] as string | undefined;
         const orderId = payloadRec?.["order_id"] as string | undefined;
 
-        if (feedbackId && orderId && (completionStatus === "failed" || completionStatus === "skipped")) {
-          const classification = await classifyFailure({
+        if (feedbackId && orderId) {
+          await runPsychologyPostFeedback({
             userId,
             blueprintId,
             orderId,
             feedbackId,
+            completionStatus,
           }).catch(() => null);
 
-          if (classification) {
-            await writeEvent({
-              eventType: EVENT_TYPES.FAILURE_CLASSIFIED,
-              entityType: "feedback",
-              entityId: feedbackId,
-              userId,
-              blueprintId,
-              payload: {
-                primary_category: classification.primaryCategory,
-                correction_type: classification.correctionType,
-                confidence: classification.confidence,
-              },
-              idempotencyKey: `failure_classified:${feedbackId}`,
-              causationEventId: data.eventId,
-            }).catch(() => null);
-          }
+          const score = Number(payloadRec?.["score"] ?? 7);
+          const { handleAcademyFeedback } = await import(
+            "../engines/academy/AcademyFeedbackHandler.js"
+          );
+          await handleAcademyFeedback({
+            userId,
+            blueprintId,
+            orderId,
+            feedbackId,
+            completionScore: score,
+          }).catch(() => null);
         }
 
         if (feedbackId && completionStatus === "completed") {

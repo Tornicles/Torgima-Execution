@@ -22,6 +22,7 @@ import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";
 import { startScheduledHealthChecks } from "./HealthWorker.js";
 import { startProductionSchedulers } from "../schedulers/ProductionScheduler.js";
+import { startBhudhiPhase1Schedulers } from "../schedulers/BhudhiPhase1Scheduler.js";
 import { db, blueprints } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import {
@@ -40,6 +41,7 @@ export async function startWorkers(): Promise<void> {
   startScheduledHealthChecks();
   startDailyLoopScheduler();
   startProductionSchedulers();
+  startBhudhiPhase1Schedulers();
 
   setInterval(async () => {
     try {

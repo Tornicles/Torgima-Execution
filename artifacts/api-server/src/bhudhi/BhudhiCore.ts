@@ -13,6 +13,16 @@ import { getFallback } from "./FallbackLibrary.js";
 import { validateOutput } from "./OutputValidator.js";
 import { retrieveMemory } from "./MemoryService.js";
 import { checkUsageAllowed, getTimeout, logUsage, updateBhudhiLog } from "./UsageController.js";
+import { reviewOutput } from "./agents/CriticAgent.js";
+import { logFallbackUsage } from "./fallbackUsageLog.js";
+import {
+  checkTriggerAllowed,
+  enterAgentChain,
+  exitAgentChain,
+  breakCircuit,
+  incrementSessionOutput,
+} from "../engines/stability/StabilityEngine.js";
+import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
 
 function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
   return response.content
@@ -30,13 +40,59 @@ export async function trigger<T = unknown>(
   const startTime = Date.now();
   let logId = "";
 
+  const chainId = `${request.userId}:${request.triggerType}`;
+  const chain = enterAgentChain(chainId);
+  if (!chain.allowed) {
+    await breakCircuit(chainId, "Agent chain depth exceeded");
+    exitAgentChain(chainId);
+    return { ok: false, fallbackUsed: true, logId: "", failureReason: "Circuit breaker" };
+  }
+
+  const stabilityCheck = await checkTriggerAllowed(request.triggerType, request.userId);
+  if (!stabilityCheck.allowed) {
+    exitAgentChain(chainId);
+    const contractEarly = getContract(request.triggerType);
+    if (contractEarly) {
+      logId = await logUsage({
+        userId: request.userId,
+        blueprintId: request.blueprintId,
+        triggerType: request.triggerType,
+        promptName: contractEarly.name,
+        promptVersion: contractEarly.version,
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: Date.now() - startTime,
+        status: "rejected",
+        fallbackReason: stabilityCheck.reason,
+      }).catch(() => "");
+      const fallback = getFallback(contractEarly.fallbackKey, request.facts ?? {}, request.stateVersion);
+      await logFallbackUsage({
+        triggerType: request.triggerType,
+        promptName: contractEarly.name,
+        reason: stabilityCheck.reason ?? "STABILITY_THROTTLE",
+        userId: request.userId,
+        bhudhiLogId: logId || undefined,
+      }).catch(() => null);
+      return {
+        ok: true,
+        output: fallback as BhudhiOutputEnvelope<T>,
+        fallbackUsed: true,
+        logId: logId ?? "",
+        failureReason: stabilityCheck.reason,
+      };
+    }
+    return { ok: false, fallbackUsed: true, logId: "", failureReason: stabilityCheck.reason };
+  }
+
   const contract = getContract(request.triggerType);
   if (!contract) {
+    exitAgentChain(chainId);
     logger.warn({ triggerType: request.triggerType }, "[BhudhiCore] Unregistered trigger type");
     return { ok: false, fallbackUsed: true, logId: "", failureReason: "Unregistered trigger type" };
   }
 
   if (FORBIDDEN_MODES.includes(contract.mode)) {
+    exitAgentChain(chainId);
     logger.error({ mode: contract.mode, triggerType: request.triggerType }, "[BhudhiCore] Forbidden mode attempted");
     return { ok: false, fallbackUsed: true, logId: "", failureReason: "Forbidden Bhudhi mode" };
   }
@@ -57,6 +113,14 @@ export async function trigger<T = unknown>(
     }).catch(() => "");
 
     const fallback = getFallback(contract.fallbackKey, request.facts ?? {}, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: usageCheck.reason ?? "BUDGET_EXCEEDED",
+      userId: request.userId,
+      bhudhiLogId: logId || undefined,
+    }).catch(() => null);
+    exitAgentChain(chainId);
     return {
       ok:            true,
       output:        fallback as BhudhiOutputEnvelope<T>,
@@ -87,6 +151,14 @@ export async function trigger<T = unknown>(
     }).catch(() => "");
 
     const fallback = getFallback(contract.fallbackKey, request.facts ?? {}, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: "ai_disabled",
+      userId: request.userId,
+      bhudhiLogId: logId || undefined,
+    }).catch(() => null);
+    exitAgentChain(chainId);
     return { ok: true, output: fallback as BhudhiOutputEnvelope<T>, fallbackUsed: true, logId: logId ?? "" };
   }
 
@@ -182,6 +254,14 @@ export async function trigger<T = unknown>(
     }).catch(() => null);
 
     const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: errMsg,
+      userId: request.userId,
+      bhudhiLogId: logId || undefined,
+    }).catch(() => null);
+    exitAgentChain(chainId);
     return {
       ok:            true,
       output:        fallback as BhudhiOutputEnvelope<T>,
@@ -205,7 +285,57 @@ export async function trigger<T = unknown>(
     }).catch(() => null);
 
     const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: `Validation failed: ${validation.errors.join(", ")}`,
+      userId: request.userId,
+      bhudhiLogId: logId,
+    }).catch(() => null);
+    exitAgentChain(chainId);
     return { ok: true, output: fallback as BhudhiOutputEnvelope<T>, fallbackUsed: true, logId };
+  }
+
+  const agents = getActiveAgentsForTrigger(request.triggerType);
+  const producingAgent = agents[0] ?? request.sourceEngine;
+
+  const critic = await reviewOutput({
+    output: rawOutput,
+    producingAgent,
+    triggerType: request.triggerType,
+    promptContract: contract.name,
+    userId: request.userId,
+    worldStateVersion: request.stateVersion,
+    bhudhiLogId: logId,
+  });
+
+  if (critic.verdict === "REJECTED") {
+    await updateBhudhiLog({
+      logId,
+      inputTokens,
+      outputTokens,
+      latencyMs: latency,
+      status: "rejected",
+      fallbackReason: critic.rejectionReason ?? "Critic rejected",
+      outputJson: { governanceViolation: critic.governanceViolation },
+    }).catch(() => null);
+
+    const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: critic.rejectionReason ?? "CRITIC_REJECTED",
+      userId: request.userId,
+      bhudhiLogId: logId,
+    }).catch(() => null);
+    exitAgentChain(chainId);
+    return {
+      ok: true,
+      output: fallback as BhudhiOutputEnvelope<T>,
+      fallbackUsed: true,
+      logId,
+      failureReason: critic.rejectionReason,
+    };
   }
 
   await updateBhudhiLog({
@@ -214,12 +344,24 @@ export async function trigger<T = unknown>(
     outputTokens,
     latencyMs: latency,
     status: "success",
+    outputJson: {
+      confidenceTier: critic.confidenceTier,
+      criticFlag: critic.flagReason,
+    },
   }).catch(() => null);
+
+  incrementSessionOutput(request.userId);
+  exitAgentChain(chainId);
 
   logger.info(
     { triggerType: request.triggerType, userId: request.userId, latency, tokens: inputTokens + outputTokens },
     "[BhudhiCore] Call completed",
   );
+
+  const envelope = rawOutput as BhudhiOutputEnvelope<T>;
+  if (envelope && typeof envelope === "object") {
+    (envelope as BhudhiOutputEnvelope).confidence = critic.confidenceTier;
+  }
 
   return {
     ok:           true,

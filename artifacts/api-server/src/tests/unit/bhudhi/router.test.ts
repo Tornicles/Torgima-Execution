@@ -27,6 +27,13 @@ describe("PromptRegistry", () => {
     }
   });
 
+  it("registers validation intelligence triggers (Phase 3)", () => {
+    expect(getContract("EIS_INDUSTRY_RESEARCH")).not.toBeNull();
+    expect(getContract("DOMAIN_RESOLUTION")).not.toBeNull();
+    expect(getContract("BLUEPRINT_GENERATION")).not.toBeNull();
+    expect(getContract("BLUEPRINT_INTERPRETATION")).not.toBeNull();
+  });
+
   it("getContract(TASK_DRAFTING) uses DRAFT mode and fallbackKey", () => {
     const c = getContract("TASK_DRAFTING");
     expect(c?.mode).toBe("DRAFT");

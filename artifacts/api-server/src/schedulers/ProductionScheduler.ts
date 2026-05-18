@@ -8,6 +8,8 @@ import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngi
 import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
 import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
 import { stopScheduledHealthChecks } from "../workers/HealthWorker.js";
+import { startValidationWorkerSchedules } from "../workers/ValidationWorkers.js";
+import { runHealthCheck } from "../engines/health/SystemHealthEngine.js";
 
 const timers: ReturnType<typeof setInterval>[] = [];
 
@@ -28,6 +30,7 @@ function schedule(ms: number, name: string, fn: () => Promise<void>): void {
 
 export function startProductionSchedulers(): void {
   schedule(5 * 60 * 1000, "health_check", async () => {
+    await runHealthCheck().catch(() => null);
     const findings = await runIntegrityChecks();
     await processFindings(findings);
     await writeEvent({
@@ -106,6 +109,8 @@ export function startProductionSchedulers(): void {
       }).catch(() => null);
     }
   });
+
+  startValidationWorkerSchedules(schedule);
 
   schedule(60 * 1000, "metrics_snapshot", async () => {
     const metrics = await collectProductionMetrics();

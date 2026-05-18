@@ -55,7 +55,7 @@ export function ExecutionLoopTimeline({ blueprintId }: { blueprintId?: string | 
       </div>
       {loading && <p className="text-xs text-slate-500">Loading loop events…</p>}
       {!loading && events.length === 0 && (
-        <p className="text-xs text-slate-500">No loop events yet — complete a task to start the chain.</p>
+        <p className="text-xs text-slate-500">No loop events yet — execute an Order to start the chain.</p>
       )}
       <ul className="space-y-2 max-h-48 overflow-y-auto">
         {events.map((e) => (

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import { KnowledgeInjectionAccordion, type KnowledgeInjection } from "@/components/execution/KnowledgeInjectionAccordion";
+import { ExecutionHelpPanel } from "@/components/execution/ExecutionHelpPanel";
+import { AcademyOrderCard } from "@/components/execution/AcademyOrderCard";
 
 type Trace = { goal?: string; plan?: string; phase?: string; project?: string; action?: string; task?: string };
 
@@ -42,6 +45,7 @@ export default function TaskPage() {
   const [copied, setCopied] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [whySummary, setWhySummary] = useState<string | null>(null);
+  const [knowledgeInjection, setKnowledgeInjection] = useState<KnowledgeInjection | null>(null);
 
   useEffect(() => {
     if (!orderId || !API_BASE_URL) return;
@@ -56,6 +60,13 @@ export default function TaskPage() {
       .then((r) => r.json())
       .then((d: { ok?: boolean; data?: { summary?: string } }) => {
         if (d.ok && d.data?.summary) setWhySummary(d.data.summary);
+      })
+      .catch(() => null);
+
+    fetch(`${API_BASE_URL}/api/execution/active-order`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: { knowledgeInjection?: KnowledgeInjection } }) => {
+        if (d.ok && d.data?.knowledgeInjection) setKnowledgeInjection(d.data.knowledgeInjection);
       })
       .catch(() => null);
   }, [orderId]);
@@ -111,6 +122,22 @@ export default function TaskPage() {
   const isOverTime = timeElapsed > timeLimit * 60;
   const ctx = order.commandContext ?? {};
   const trace = ctx.traceChain ?? {};
+
+  if (order.taskType === "academy") {
+    return (
+      <div className="max-w-3xl mx-auto p-6 space-y-5">
+        <AcademyOrderCard
+          order={{
+            id: orderId!,
+            title: order.title,
+            instruction: order.instruction,
+          }}
+          masteryDefinition={order.definitionOfDone ?? undefined}
+        />
+        <ExecutionHelpPanel orderId={orderId!} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-5">
@@ -180,7 +207,7 @@ export default function TaskPage() {
           className="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors"
         >
           <Brain className="w-3.5 h-3.5" />
-          Why this task?
+          Why this Order?
         </button>
         {whyOpen && (
           <p className="text-sm text-gray-300 leading-relaxed border-l-2 border-green-500 pl-3">
@@ -303,6 +330,10 @@ export default function TaskPage() {
         </div>
       ) : null}
 
+      <KnowledgeInjectionAccordion injection={knowledgeInjection} />
+
+      {orderId ? <ExecutionHelpPanel orderId={orderId} /> : null}
+
       {order.knowledgeObjects && order.knowledgeObjects.length > 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider font-mono">Intelligence context</p>
@@ -345,7 +376,7 @@ export default function TaskPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 blockerType: "other",
-                blockerDescription: "Execution blocked from task screen — dependency or resource gap.",
+                blockerDescription: "Execution blocked from Order screen — dependency or resource gap.",
                 idempotencyKey: `block-${orderId}-${Date.now()}`,
               }),
             });

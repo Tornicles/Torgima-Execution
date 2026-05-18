@@ -8,6 +8,8 @@ import {
   deadLetterEvents,
   taskGenerationLog,
   enforcementPackages,
+  continuousTaskGuaranteeLogs,
+  conditions,
 } from "@workspace/db";
 import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -244,6 +246,81 @@ async function createHoldTask(
   } catch {
     return null;
   }
+}
+
+export type GuaranteeBlockReason =
+  | "CONDITION_BLOCKS_NORMAL"
+  | "FEEDBACK_BLOCKER_SUBMITTED"
+  | "CAPABILITY_GAP_DETECTED"
+  | "PHASE_GATE_REQUIRED"
+  | "MISSING_INFORMATION"
+  | "UNKNOWN";
+
+export async function diagnoseExecutionBlock(
+  userId: string,
+  blueprintId: string,
+): Promise<GuaranteeBlockReason> {
+  const [cond] = await db
+    .select({ condition: conditions.condition })
+    .from(conditions)
+    .where(
+      and(
+        eq(conditions.user_id, userId),
+        eq(conditions.blueprint_id, blueprintId),
+        eq(conditions.is_current, true),
+      ),
+    )
+    .limit(1);
+
+  const c = String(cond?.condition ?? "stability").toLowerCase();
+  if (c === "danger" || c === "nothingness") return "CONDITION_BLOCKS_NORMAL";
+
+  return "UNKNOWN";
+}
+
+export async function ensureActiveOrder(userId: string): Promise<{
+  orderId?: string;
+  taskTypeGenerated?: string;
+}> {
+  const [bp] = await db
+    .select({ id: blueprints.id })
+    .from(blueprints)
+    .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true)))
+    .limit(1);
+
+  if (!bp) return {};
+
+  const existing = await findActionableOrder(bp.id, userId);
+  if (existing) return { orderId: existing, taskTypeGenerated: "existing" };
+
+  const blockReason = await diagnoseExecutionBlock(userId, bp.id);
+  const mode = blockReason === "CONDITION_BLOCKS_NORMAL" ? "recovery" : "post_feedback";
+
+  const result = await guaranteeTask({
+    blueprintId: bp.id,
+    userId,
+    generationMode: mode,
+    generationTrigger: "task_guarantee",
+  });
+
+  const taskTypeGenerated =
+    mode === "recovery" ? "recovery" : result.state === "RECOVER_EMPTY" ? "recovery" : "execution";
+
+  if (result.orderId) {
+    await db
+      .insert(continuousTaskGuaranteeLogs)
+      .values({
+        user_id: userId,
+        blueprint_id: bp.id,
+        trigger_reason: "ensure_active_order",
+        blocker_type: blockReason,
+        task_type_generated: taskTypeGenerated,
+        order_id: result.orderId,
+      })
+      .catch(() => null);
+  }
+
+  return { orderId: result.orderId, taskTypeGenerated };
 }
 
 async function logFallbackHealth(blueprintId: string): Promise<void> {

@@ -1,35 +1,58 @@
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-type SignalStateCondition = string;
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CONDITION_COLORS, CONDITION_LABELS } from "@/lib/execution-language";
+import { ConditionExplanation } from "@/components/bhudhi/ConditionExplanation";
 
 interface ConditionBadgeProps {
-  condition?: SignalStateCondition | string | null;
+  condition?: string | null;
   className?: string;
+  showExplanation?: boolean;
+  explanation?: string | null;
 }
 
-export function ConditionBadge({ condition, className = "" }: ConditionBadgeProps) {
-  if (!condition) return <Badge variant="outline" className={`font-mono ${className}`}>UNKNOWN</Badge>;
+function normalizeKey(raw: string): string {
+  return raw.toLowerCase().replace(/\s+/g, "_");
+}
 
-  const variants: Record<string, { bg: string; text: string; border: string }> = {
-    nothingness: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" },
-    danger: { bg: "bg-destructive/20", text: "text-destructive", border: "border-destructive/30" },
-    urgency: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
-    stability: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
-    power: { bg: "bg-primary/20", text: "text-primary", border: "border-primary/30" },
-    affluence: { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/30" },
-    power_change: { bg: "bg-violet-500/20", text: "text-violet-300", border: "border-violet-500/30" },
-    optimal: { bg: "bg-primary/20", text: "text-primary", border: "border-primary/30" },
-    building: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
-    recovering: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
-    critical: { bg: "bg-destructive/20", text: "text-destructive", border: "border-destructive/30" },
-    blocked: { bg: "bg-red-900/40", text: "text-red-400", border: "border-red-900/50" },
-  };
+export function ConditionBadge({
+  condition,
+  className = "",
+  showExplanation = false,
+  explanation,
+}: ConditionBadgeProps) {
+  if (!condition) {
+    return (
+      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-mono uppercase border border-gray-200 text-gray-500 ${className}`}>
+        Unknown
+      </span>
+    );
+  }
 
-  const style = variants[condition] || { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
+  const key = normalizeKey(condition);
+  const label = CONDITION_LABELS[key] ?? condition;
+  const colors = CONDITION_COLORS[key] ?? CONDITION_COLORS.stability;
+
+  const badge = (
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ring-1 ${colors.bg} ${colors.text} ${colors.ring} ${className}`}
+    >
+      {label}
+    </span>
+  );
+
+  if (!showExplanation) return badge;
 
   return (
-    <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold border ${style.bg} ${style.text} ${style.border} ${className}`}>
-      {condition}
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex">{badge}</button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0 border-0 shadow-lg" align="start">
+        {explanation ? (
+          <ConditionExplanation explanation={explanation} condition={key} />
+        ) : (
+          <p className="p-4 text-sm text-gray-600">Condition intelligence loading…</p>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

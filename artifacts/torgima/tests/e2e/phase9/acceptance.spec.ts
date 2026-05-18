@@ -21,4 +21,13 @@ test.describe("Phase 9 — Frontend acceptance", () => {
     await page.goto("/signals");
     await expect(page.getByText("TORGIMA_OS")).toBeVisible({ timeout: 20_000 });
   });
+
+  test("QUAL-05: no forbidden execution-language in visible shell", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText("TORGIMA_OS")).toBeVisible({ timeout: 20_000 });
+    const body = await page.locator("body").innerText();
+    expect(body.toLowerCase()).not.toMatch(/\bcongratulations\b/);
+    expect(body.toLowerCase()).not.toMatch(/\bgreat job\b/);
+    expect(body.toLowerCase()).not.toMatch(/\bto-do\b/);
+  });
 });

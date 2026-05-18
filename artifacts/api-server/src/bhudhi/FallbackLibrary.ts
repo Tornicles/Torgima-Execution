@@ -143,19 +143,66 @@ fallbacks.set("fallback.recovery_copy", (ctx, sv) => ({
   forbiddenActionRequested: false,
 }));
 
+fallbacks.set("fallback.restart_copy", (ctx, sv) => ({
+  outputType: "restart_copy",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    title: "One small step back in",
+    instruction: `Complete one low-friction action toward: "${String(ctx["goal"] ?? "your goal").slice(0, 100)}".`,
+    welcomeMessage: "Welcome back — momentum returns with a single completed step.",
+  },
+  missingFields: [],
+  warnings: ["AI restart copy unavailable — deterministic fallback"],
+  forbiddenActionRequested: false,
+}));
+
 fallbacks.set("fallback.academy_instruction", (ctx, sv) => ({
   outputType: "academy_instruction",
-  contractVersion: "1.0",
+  contractVersion: "1.1",
   stateVersion: sv,
   confidence: "MEDIUM",
   data: {
-    title:                `Learn: ${((ctx["capabilityGap"] as string) ?? "core skill").slice(0, 40)}`,
-    instruction:          `Spend 15 minutes on fundamentals related to: ${((ctx["capabilityGap"] as string) ?? "this gap").slice(0, 200)}.`,
-    practiceTask:         "Write one sentence on what you learned and one action you will try next.",
-    proofOfUnderstanding: "Share your sentence and the action you chose.",
+    title:                `Capability: ${((ctx["skillCategory"] as string) ?? (ctx["capabilityGap"] as string) ?? "core skill").slice(0, 40)}`,
+    instruction:          `Apply this execution skill: ${((ctx["capabilityGap"] as string) ?? "close the gap").slice(0, 200)}.`,
+    practiceTask:         "Produce one work sample showing deliberate capability application.",
+    proofOfUnderstanding: "Submit mastery evidence matching the definition.",
   },
   missingFields:           [],
   warnings:                ["AI academy drafting unavailable — template used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.academy_skill_assessment", (ctx, sv) => ({
+  outputType: "academy_skill_assessment",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    masteryScore: Number(ctx["completionScore"] ?? 5) / 10,
+    evidenceAnalysis: "Automated fallback — review proof manually.",
+    masteredCriteria: [],
+    missingCriteria: ["proof_quality"],
+  },
+  missingFields: [],
+  warnings: ["AI skill assessment unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.academy_gap_severity", (ctx, sv) => ({
+  outputType: "academy_gap_severity",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    severity: "MEDIUM",
+    evidenceSummary: "Gap severity assessed from failure pattern (fallback).",
+    recommendedLessons: 3,
+    fastestPathToResolution: "Route to capability development path.",
+  },
+  missingFields: [],
+  warnings: ["AI gap severity unavailable — fallback used"],
   forbiddenActionRequested: false,
 }));
 
@@ -267,6 +314,85 @@ function getMissingGoalFields(ctx: Record<string, unknown>): string[] {
   if (!ctx["timeframe"])                                               missing.push("timeframe");
   if (!ctx["commitmentLevel"])                                         missing.push("commitment");
   return missing;
+}
+
+fallbacks.set("fallback.blueprint_health", (ctx, sv) => ({
+  outputType: "blueprint_health",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    healthScore: 0.65,
+    gapsDetected: [],
+    proposalsGenerated: [],
+    agentAssessment: `Deterministic health snapshot for ${String(ctx["goal"] ?? "your goal").slice(0, 120)}.`,
+    confidenceTier: "LOW",
+  },
+  missingFields: [],
+  warnings: ["AI health analysis unavailable — deterministic fallback"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.blueprint_interpretation", (ctx, sv) => ({
+  outputType: "blueprint_interpretation",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    interpretation: `You are working toward: ${String(ctx["goal"] ?? "your goal").slice(0, 400)}`,
+    keyInsights: ["Focus on the active phase", "Complete orders to move signals"],
+    currentFocus: "Finish your current active order",
+    nextMilestone: "Complete the active phase requirements",
+    riskFlags: [],
+  },
+  missingFields: [],
+  warnings: ["AI interpretation unavailable — deterministic fallback"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.psychology_identity", (ctx, sv) => ({
+  outputType: "identity_update",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "MEDIUM",
+  data: {
+    identityStage: "DEVELOPING",
+    confidenceDelta: 0.03,
+    purposeAlignment: 0.55,
+    keyInsight: "Execution continuity is forming a stable operational identity.",
+    milestoneProximity: false,
+    title: String(ctx["rewardType"] ?? "Milestone").slice(0, 60),
+    message: "Phase execution complete — execution continuity maintained.",
+    evidenceSummary: String(ctx["evidenceSummary"] ?? "Sustained execution evidence"),
+  },
+  missingFields: [],
+  warnings: ["Psychology fallback — deterministic copy"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.execution_help", (ctx, sv) => ({
+  outputType: "execution_help",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    steps: [
+      "Clarify the smallest completable slice of this order.",
+      "Gather any tools or references you need.",
+      "Execute for a focused block of time.",
+      "Capture proof of what changed.",
+    ],
+    toolList: ["Notes app", "Timer"],
+    exampleOutput: `Completed deliverable for: ${String(ctx["orderTitle"] ?? "this order").slice(0, 80)}`,
+    tip: "If blocked for 10+ minutes, document the blocker and submit feedback anyway.",
+  },
+  missingFields: [],
+  warnings: ["AI execution help unavailable — deterministic steps used"],
+  forbiddenActionRequested: false,
+}));
+
+export function hasFallbackKey(key: string): boolean {
+  return fallbacks.has(key);
 }
 
 export function getFallback(key: string, ctx: Record<string, unknown>, stateVersion: number): BhudhiOutputEnvelope {

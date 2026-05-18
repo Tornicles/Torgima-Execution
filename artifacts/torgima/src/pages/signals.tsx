@@ -240,7 +240,7 @@ export default function SignalsPage() {
           <ul className="text-sm text-gray-700 space-y-1 list-disc pl-5">
             {enforcement.phasePermission && <li>Phase permission: {enforcement.phasePermission.replace(/_/g, " ")}</li>}
             {enforcement.difficultyCap && <li>Difficulty cap: {enforcement.difficultyCap}</li>}
-            {enforcement.maxTasksPerDay != null && <li>Up to {enforcement.maxTasksPerDay} tasks per day</li>}
+            {enforcement.maxTasksPerDay != null && <li>Up to {enforcement.maxTasksPerDay} Orders per day</li>}
             {enforcement.proofRequired && <li>Proof required on completion reports</li>}
           </ul>
         </div>

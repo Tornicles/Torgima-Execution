@@ -9,6 +9,13 @@ export { generateEnforcementPackage as applyControl } from "../control/ControlEn
 export { generate as generateTask } from "../task-generation/TaskGenerationEngine.js";
 export { guaranteeTask } from "../task-guarantee/ContinuousTaskGuaranteeEngine.js";
 export { scanForInactivity } from "../inactivity/InactivityDetectionEngine.js";
+export { generateNextTask } from "./generateNextTask.js";
+export { runPrimaryLoop } from "./runPrimaryLoop.js";
+export { runDailyLoop } from "./runDailyLoopUser.js";
+export { ensureActiveOrder } from "../task-guarantee/ContinuousTaskGuaranteeEngine.js";
+export { getBehavioralProfile } from "../../bhudhi/agents/ConditionAgent.js";
+export { getBasicProfile, detectInactivity } from "../../bhudhi/agents/BehavioralAgent.js";
+export { selectPackage, buildInitialKnowledgeLibrary, enrichPackagesWithEIS } from "../../bhudhi/agents/KnowledgeAgent.js";
 export { checkExecutability } from "../dependency/DependencyMappingEngine.js";
 export { detectFriction } from "../friction/FrictionDetectionEngine.js";
 export { scoreAndRankOrders as scoreCandidates } from "../priority/RealTimePriorityEngine.js";

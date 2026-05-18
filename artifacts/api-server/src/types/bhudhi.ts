@@ -71,8 +71,16 @@ export type BhudhiTriggerType =
   | "STATE_EXPLANATION"
   | "OUTCOME_EVIDENCE_SUMMARY"
   | "ACADEMY_SUPPORT"
+  | "ACADEMY_SKILL_ASSESSMENT"
+  | "ACADEMY_GAP_SEVERITY"
   | "ROOT_CAUSE_ASSIST"
-  | "INACTIVITY_RESTART";
+  | "INACTIVITY_RESTART"
+  | "BLUEPRINT_GENERATION"
+  | "BLUEPRINT_INTERPRETATION"
+  | "DOMAIN_RESOLUTION"
+  | "EXECUTION_SUPPORT"
+  | "BEHAVIORAL_ANALYSIS"
+  | "EIS_SYNTHESIS";
 
 export type BhudhiOutputType =
   | "structured_goal"
@@ -84,8 +92,15 @@ export type BhudhiOutputType =
   | "state_explanation"
   | "evidence_summary"
   | "academy_instruction"
+  | "academy_skill_assessment"
+  | "academy_gap_severity"
   | "root_cause_candidates"
-  | "restart_copy";
+  | "restart_copy"
+  | "blueprint_health"
+  | "blueprint_interpretation"
+  | "execution_help"
+  | "identity_update"
+  | "eis_synthesis";
 
 export interface BhudhiContextPacket {
   userId:                 string;

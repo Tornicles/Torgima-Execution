@@ -37,6 +37,13 @@ import {
 import { validateAIGeneratedObject } from "../blueprint/infrastructure/AIGenerationContracts.js";
 import { selectKnowledgeLinksForOrder } from "../blueprint/infrastructure/KnowledgeObjectRules.js";
 import { getOpenFlags } from "../outcome/OutcomeValidationEngine.js";
+import { getBehavioralProfile } from "../../bhudhi/agents/ConditionAgent.js";
+import {
+  hasBlockingGap,
+  inferSkillFromActionType,
+} from "../academy/CapabilityGapEngine.js";
+import { getBasicProfile } from "../../bhudhi/agents/BehavioralAgent.js";
+import { selectPackage, packageToInjection } from "../../bhudhi/agents/KnowledgeAgent.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -551,13 +558,17 @@ function buildTaskContent(params: {
     academy: () => {
       const label = truncate(goal, 60);
       return {
-        title: `Learn: ${label}`,
-        instruction: `Study the concept or skill needed for: "${truncate(goal, 200)}". After studying:\n1. Write a short summary\n2. Describe how you apply it today\n3. Name one deliberate practice repetition`,
-      expected_output: "Written learning summary and application plan.",
-      definition_of_done: "Summary written and one practice step identified and ready to execute.",
-      why_it_matters: "Capability gaps block execution. Learning fills the gap.",
-      time_estimate_minutes: 30,
-      proof_required: false,
+        title: `Capability Development: ${label}`,
+        instruction: `Apply the execution skill needed for: "${truncate(goal, 200)}". Complete:\n1. One deliberate practice repetition\n2. Document what changed in your output\n3. Submit mastery evidence if required`,
+        expected_output: "Documented capability application with measurable output.",
+        definition_of_done:
+          "Capability applied with evidence — not passive consumption. One concrete artifact produced.",
+        why_it_matters:
+          "Capability gaps block execution continuity. Deliberate skill progression removes the blocker.",
+        time_estimate_minutes: 30,
+        proof_required: true,
+        proof_type: "text",
+        proof_description: "Submit work sample or reflection proving capability application.",
       };
     },
 
@@ -808,6 +819,14 @@ async function enrichWithBhudhi(params: {
 
   const commandOrderMode = taskType === "execution";
 
+  const conditionProfile = await getBehavioralProfile(userId, blueprintId);
+  const behavioralProfile = await getBasicProfile(userId);
+  const knowledgePackage = await selectPackage({
+    domain,
+    actionType: ctx.action?.type ?? "Create",
+    userId,
+  });
+
   const result = await trigger({
     sourceEngine:   "TaskGenerationEngine",
     triggerType:    "TASK_DRAFTING",
@@ -831,6 +850,14 @@ async function enrichWithBhudhi(params: {
         ctx.enforcement.condition_code ??
         ctx.blueprint.current_condition ??
         "nothingness",
+      conditionTone: conditionProfile.taskTone,
+      taskLanguageTone: conditionProfile.taskTone,
+      behavioralProfile,
+      knowledgePackage: knowledgePackage ? packageToInjection(knowledgePackage) : null,
+      controlRule: {
+        maxDifficulty: conditionProfile.maxDifficulty,
+        maxActiveTasks: conditionProfile.maxActiveTasks,
+      },
       allowedActions: ctx.enforcement.allowed_actions,
       timeEstimateMinutes: next.time_estimate_minutes ?? 45,
       intelligenceHint,
@@ -946,7 +973,7 @@ export async function generate(params: {
     generationTrigger: genTrigNorm,
   });
 
-  const { enforcement } = ctx;
+  let { enforcement } = ctx;
 
   if (params.generationMode === "condition_change" || genModeNorm === "condition_change") {
     const capIdx = (DIFFICULTY_ORDER as readonly string[]).indexOf(enforcement.difficulty_cap);
@@ -1003,6 +1030,20 @@ export async function generate(params: {
   }
 
   let taskType = selectTaskType(ctx);
+  const requiredSkill = inferSkillFromActionType(
+    ctx.action?.type ?? null,
+    ctx.blueprint.current_domain,
+  );
+  if (requiredSkill && (await hasBlockingGap(params.userId, requiredSkill))) {
+    taskType = "academy";
+  } else if (requiredSkill && taskType === "execution") {
+    const capIdx = (DIFFICULTY_ORDER as readonly string[]).indexOf(enforcement.difficulty_cap);
+    const reducedIdx = Math.max(0, capIdx - 1);
+    if (reducedIdx < capIdx) {
+      enforcement = { ...enforcement, difficulty_cap: DIFFICULTY_ORDER[reducedIdx]! };
+    }
+  }
+
   const isFirstInPhase =
     ctx.phase?.status === "active" && countActive === 0;
   let difficulty = selectDifficulty({
