@@ -35,7 +35,6 @@ export * from "./getBlueprintExecutionFeed200";
 export * from "./getBlueprintExecutionFeed200Data";
 export * from "./getBlueprintExecutionFeed200DataEventsItem";
 export * from "./getBlueprintExecutionFeed200Meta";
-export * from "./getBlueprintExecutionFeedParams";
 export * from "./getValidationResultParams";
 export * from "./goalInput";
 export * from "./healthStatus";
