@@ -103,9 +103,16 @@ export async function runOvernightCycle(userId: string): Promise<{ reportId: str
     if (briefing) {
       eisSection = {
         researchMethod: briefing.researchMethod,
+        confidenceTier: briefing.confidenceTier,
         trendingTopics: briefing.trendingTopics,
         platformSignals: briefing.platformSignals,
+        platformAlgorithmSignals: briefing.platformAlgorithmSignals,
+        competitorInsights: briefing.competitorInsights,
+        competitorIntelligence: briefing.competitorIntelligence,
+        trendVelocity: briefing.trendVelocity,
+        narrative: briefing.narrative,
         opportunities: briefing.opportunities,
+        opportunityWindows: briefing.opportunityWindows,
         todayRecommendation: briefing.todayRecommendation,
         searchCount: briefing.searchLog.length,
         cacheUntil: briefing.cacheUntil,
@@ -255,6 +262,9 @@ export async function runOvernightCycle(userId: string): Promise<{ reportId: str
     })
     .returning({ id: morningReports.id });
   steps.push("12_morning_report");
+
+  const { refreshDashboardIntelligence } = await import("../engines/dashboard/DashboardIntelligenceEngine.js");
+  await refreshDashboardIntelligence(userId, "OVERNIGHT_COMPLETE").catch(() => null);
 
   // STEP 13 — memory writeback
   await writeMemory({

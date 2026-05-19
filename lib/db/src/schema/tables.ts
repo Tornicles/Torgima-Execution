@@ -131,6 +131,7 @@ export const validations = pgTable(
     path_alternative: jsonb("path_alternative"),
     selected_path: selectedPathEnum("selected_path"),
     selected_at: timestamp("selected_at", { withTimezone: true }),
+    idempotency_key: text("idempotency_key"),
     status: text("status").notNull().default("pending"),
     tier: userTierEnum("tier"),
     intelligence_payload: jsonb("intelligence_payload"),
@@ -138,9 +139,102 @@ export const validations = pgTable(
     launch_blocked: boolean("launch_blocked").notNull().default(false),
     readiness: validationReadinessEnum("readiness"),
     adjusted_path_confirmed: boolean("adjusted_path_confirmed").notNull().default(false),
+    location_country: text("location_country"),
+    location_city: text("location_city"),
+    business_type: text("business_type"),
+    business_model: text("business_model"),
+    budget_available: doublePrecision("budget_available"),
+    currency: text("currency"),
+    current_resources: jsonb("current_resources"),
+    target_customer: text("target_customer"),
+    desired_outcome: text("desired_outcome"),
+    known_blockers: jsonb("known_blockers"),
+    commitment_level: text("commitment_level"),
+    market_score: doublePrecision("market_score"),
+    execution_score: doublePrecision("execution_score"),
+    timing_score: doublePrecision("timing_score"),
+    competition_score: doublePrecision("competition_score"),
+    scalability_score: doublePrecision("scalability_score"),
+    local_economy_score: doublePrecision("local_economy_score"),
+    resource_score: doublePrecision("resource_score"),
+    blueprint_difficulty_score: doublePrecision("blueprint_difficulty_score"),
+    risk_score: doublePrecision("risk_score"),
+    momentum_potential: doublePrecision("momentum_potential"),
+    trust_building_score: doublePrecision("trust_building_score"),
+    reality_score: doublePrecision("reality_score"),
+    archetype_resolution: jsonb("archetype_resolution"),
+    purpose_decomposition: jsonb("purpose_decomposition"),
+    industry_intelligence: jsonb("industry_intelligence"),
+    market_analysis: jsonb("market_analysis"),
+    competitor_analysis: jsonb("competitor_analysis"),
+    economy_briefing: jsonb("economy_briefing"),
+    customer_pain_analysis: jsonb("customer_pain_analysis"),
+    timing_analysis: jsonb("timing_analysis"),
+    execution_difficulty: jsonb("execution_difficulty"),
+    time_simulations: jsonb("time_simulations"),
+    industry_pros: jsonb("industry_pros"),
+    industry_cons: jsonb("industry_cons"),
+    winner_analysis: jsonb("winner_analysis"),
+    first_week_plan: jsonb("first_week_plan"),
+    recommended_blueprint_level: text("recommended_blueprint_level"),
+    validation_stage: text("validation_stage").notNull().default("pending"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("idx_validations_blueprint_id").on(t.blueprint_id)],
+  (t) => [
+    index("idx_validations_blueprint_id").on(t.blueprint_id),
+    uniqueIndex("idx_validations_idempotency_key").on(t.idempotency_key),
+  ],
+);
+
+export const economicArchetypes = pgTable(
+  "economic_archetypes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    archetype_number: integer("archetype_number").notNull().unique(),
+    name: text("name").notNull(),
+    countries: text("countries").array().notNull().default(sql`ARRAY[]::text[]`),
+    institutional_strength: doublePrecision("institutional_strength").notNull(),
+    corruption_index: doublePrecision("corruption_index").notNull(),
+    infrastructure_quality: doublePrecision("infrastructure_quality").notNull(),
+    digital_adoption: doublePrecision("digital_adoption").notNull(),
+    consumer_purchasing_power: doublePrecision("consumer_purchasing_power").notNull(),
+    startup_ecosystem_maturity: doublePrecision("startup_ecosystem_maturity").notNull(),
+    regulatory_openness: doublePrecision("regulatory_openness").notNull(),
+    political_stability: doublePrecision("political_stability").notNull(),
+    labor_market_flexibility: doublePrecision("labor_market_flexibility").notNull(),
+    market_competition_density: doublePrecision("market_competition_density").notNull(),
+    consumer_behavior_patterns: jsonb("consumer_behavior_patterns").notNull().default(sql`'[]'::jsonb`),
+    typical_resistance_patterns: jsonb("typical_resistance_patterns").notNull().default(sql`'[]'::jsonb`),
+    survivor_behavior_patterns: jsonb("survivor_behavior_patterns").notNull().default(sql`'[]'::jsonb`),
+    cultural_business_norms: jsonb("cultural_business_norms").notNull().default(sql`'[]'::jsonb`),
+    primary_risk_factors: jsonb("primary_risk_factors").notNull().default(sql`'[]'::jsonb`),
+    primary_opportunity_factors: jsonb("primary_opportunity_factors").notNull().default(sql`'[]'::jsonb`),
+    timeframe_pressure_multiplier: doublePrecision("timeframe_pressure_multiplier").notNull().default(1),
+    execution_intensity_multiplier: doublePrecision("execution_intensity_multiplier").notNull().default(1),
+    blueprint_difficulty_adjustment: doublePrecision("blueprint_difficulty_adjustment").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [index("idx_economic_archetypes_number").on(t.archetype_number)],
+);
+
+export const validationArchetypeMaps = pgTable(
+  "validation_archetype_maps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    validation_id: uuid("validation_id")
+      .notNull()
+      .references(() => validations.id, { onDelete: "cascade" }),
+    archetype_id: uuid("archetype_id")
+      .notNull()
+      .references(() => economicArchetypes.id),
+    is_primary: boolean("is_primary").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_validation_archetype_maps_validation_id").on(t.validation_id)],
 );
 
 export const bhudhiLogs = pgTable(
@@ -209,6 +303,11 @@ export const blueprints = pgTable(
     current_phase_id: uuid("current_phase_id"),
     // FK enforced in Postgres; omit Drizzle `.references()` to avoid circular infer() with `validations`.
     validation_id: uuid("validation_id"),
+    erector_validation_id: uuid("erector_validation_id"),
+    primary_archetype_id: uuid("primary_archetype_id").references(() => economicArchetypes.id),
+    reality_score: doublePrecision("reality_score"),
+    chosen_blueprint_level: text("chosen_blueprint_level"),
+    economy_briefing_summary: text("economy_briefing_summary"),
     state_version: integer("state_version").notNull().default(0),
     paused_at: timestamp("paused_at", { withTimezone: true }),
     pause_reason: text("pause_reason"),
@@ -1733,6 +1832,72 @@ export const blueprintHealthRecords = pgTable(
   (t) => [index("idx_blueprint_health_records_blueprint_id").on(t.blueprint_id)],
 );
 
+export const dashboardIntelligenceSnapshots = pgTable(
+  "dashboard_intelligence_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    strategic_outlook: jsonb("strategic_outlook"),
+    behavioral_insight: jsonb("behavioral_insight"),
+    blueprint_health: jsonb("blueprint_health"),
+    signal_narrative: jsonb("signal_narrative"),
+    execution_brief: jsonb("execution_brief"),
+    governance_summary: jsonb("governance_summary"),
+    last_refreshed: timestamp("last_refreshed", { withTimezone: true }).notNull().defaultNow(),
+    snapshot_version: integer("snapshot_version").notNull().default(1),
+    world_state_version: integer("world_state_version").notNull().default(0),
+  },
+  (t) => [index("idx_dashboard_intelligence_user").on(t.user_id)],
+);
+
+export const strategicOutlookRecords = pgTable(
+  "strategic_outlook_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    execution_forecast: text("execution_forecast").notNull(),
+    risk_factors: jsonb("risk_factors").notNull().default(sql`'[]'::jsonb`),
+    opportunity_flags: jsonb("opportunity_flags").notNull().default(sql`'[]'::jsonb`),
+    highest_leverage_action: text("highest_leverage_action").notNull(),
+    condition_prediction: text("condition_prediction").notNull(),
+    momentum_trajectory: text("momentum_trajectory").notNull().default("STABLE"),
+    confidence_tier: text("confidence_tier").notNull().default("LOW"),
+    generated_at: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index("idx_strategic_outlook_user_generated").on(t.user_id, t.generated_at),
+    index("idx_strategic_outlook_expires").on(t.expires_at),
+  ],
+);
+
+export const behavioralInsightRecords = pgTable(
+  "behavioral_insight_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    insight_type: text("insight_type").notNull(),
+    insight_text: text("insight_text").notNull(),
+    evidence_summary: text("evidence_summary").notNull(),
+    action_suggestion: text("action_suggestion"),
+    trigger_event: text("trigger_event").notNull(),
+    seen: boolean("seen").notNull().default(false),
+    dismissed: boolean("dismissed").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_behavioral_insights_user_seen").on(t.user_id, t.seen, t.dismissed),
+    index("idx_behavioral_insights_created").on(t.created_at),
+  ],
+);
+
 export const blueprintInterpretations = pgTable(
   "blueprint_interpretations",
   {
@@ -1956,6 +2121,103 @@ export const eisCallLogs = pgTable(
   (t) => [
     index("idx_eis_call_logs_user_id").on(t.user_id),
     index("idx_eis_call_logs_created_at").on(t.created_at),
+  ],
+);
+
+export const competitorIntelligence = pgTable(
+  "competitor_intelligence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    niche: text("niche"),
+    competitors: jsonb("competitors").notNull().default(sql`'[]'::jsonb`),
+    activity_window: text("activity_window").notNull().default("24h"),
+    key_findings: jsonb("key_findings").notNull().default(sql`'[]'::jsonb`),
+    threat_level: text("threat_level").notNull().default("LOW"),
+    opportunity_flags: jsonb("opportunity_flags").notNull().default(sql`'[]'::jsonb`),
+    research_method: text("research_method").notNull().default("FALLBACK"),
+    confidence_tier: text("confidence_tier").notNull().default("LOW"),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_competitor_intelligence_user_created").on(t.user_id, t.created_at),
+    index("idx_competitor_intelligence_expires").on(t.expires_at),
+  ],
+);
+
+export const trendIntelligence = pgTable(
+  "trend_intelligence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    niche: text("niche"),
+    trends: jsonb("trends").notNull().default(sql`'[]'::jsonb`),
+    velocity_scores: jsonb("velocity_scores").notNull().default(sql`'[]'::jsonb`),
+    emerging_trends: jsonb("emerging_trends").notNull().default(sql`'[]'::jsonb`),
+    peaking_trends: jsonb("peaking_trends").notNull().default(sql`'[]'::jsonb`),
+    declining_trends: jsonb("declining_trends").notNull().default(sql`'[]'::jsonb`),
+    opportunity_windows: jsonb("opportunity_windows").notNull().default(sql`'[]'::jsonb`),
+    research_method: text("research_method").notNull().default("FALLBACK"),
+    confidence_tier: text("confidence_tier").notNull().default("LOW"),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_trend_intelligence_user_created").on(t.user_id, t.created_at),
+    index("idx_trend_intelligence_expires").on(t.expires_at),
+  ],
+);
+
+export const narrativeIntelligence = pgTable(
+  "narrative_intelligence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    niche: text("niche"),
+    dominant_narrative: text("dominant_narrative").notNull(),
+    emerging_narratives: jsonb("emerging_narratives").notNull().default(sql`'[]'::jsonb`),
+    sentiment_signal: text("sentiment_signal").notNull().default("NEUTRAL"),
+    audience_emotions: jsonb("audience_emotions").notNull().default(sql`'[]'::jsonb`),
+    content_angle: text("content_angle").notNull(),
+    risk_narratives: jsonb("risk_narratives").notNull().default(sql`'[]'::jsonb`),
+    research_method: text("research_method").notNull().default("FALLBACK"),
+    confidence_tier: text("confidence_tier").notNull().default("LOW"),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_narrative_intelligence_user_created").on(t.user_id, t.created_at),
+    index("idx_narrative_intelligence_expires").on(t.expires_at),
+  ],
+);
+
+export const platformAlgorithmSignals = pgTable(
+  "platform_algorithm_signals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platform: text("platform").notNull(),
+    signal_type: text("signal_type").notNull().default("UNKNOWN"),
+    content_category: text("content_category").notNull(),
+    signal_strength: doublePrecision("signal_strength").notNull().default(0.5),
+    confidence_tier: text("confidence_tier").notNull().default("LOW"),
+    source_evidence: text("source_evidence").notNull(),
+    recommendation: text("recommendation").notNull(),
+    valid_until: timestamp("valid_until", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_platform_algorithm_signals_platform").on(t.platform),
+    index("idx_platform_algorithm_signals_valid_until").on(t.valid_until),
   ],
 );
 

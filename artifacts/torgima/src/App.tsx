@@ -1,5 +1,5 @@
-import type { ComponentType } from "react";
-import { useState, useEffect } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,25 +11,30 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import HowItWorksPage from "@/pages/how-it-works";
+import PricingPage from "@/pages/pricing";
+import AboutPage from "@/pages/about";
+import ChangelogPage from "@/pages/changelog";
 import LoginPage from "@/pages/login";
 import SignupPage from "@/pages/signup";
 import VerifyPage from "@/pages/verify";
-import Dashboard from "@/pages/dashboard";
-import Onboarding from "@/pages/onboarding";
-import BlueprintPage from "@/pages/blueprint";
-import BlueprintIndexPage from "@/pages/blueprint-index";
-import TaskPage from "@/pages/task";
-import FeedbackPage from "@/pages/feedback";
-import SignalsPage from "@/pages/signals";
-import SettingsPage from "@/pages/settings";
-import SettingsSkillsPage from "@/pages/settings-skills";
 import UnsubscribePage from "@/pages/unsubscribe";
-import OrdersPage from "@/pages/orders";
-import StrategyPage from "@/pages/strategy";
-import RecoveryPage from "@/pages/recovery";
-import CharacterPage from "@/pages/character";
-import KnowledgePage from "@/pages/knowledge";
-import IntelligencePage from "@/pages/intelligence";
+
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Onboarding = lazy(() => import("@/pages/onboarding"));
+const BlueprintPage = lazy(() => import("@/pages/blueprint"));
+const BlueprintIndexPage = lazy(() => import("@/pages/blueprint-index"));
+const TaskPage = lazy(() => import("@/pages/task"));
+const FeedbackPage = lazy(() => import("@/pages/feedback"));
+const SignalsPage = lazy(() => import("@/pages/signals"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const SettingsSkillsPage = lazy(() => import("@/pages/settings-skills"));
+const OrdersPage = lazy(() => import("@/pages/orders"));
+const StrategyPage = lazy(() => import("@/pages/strategy"));
+const RecoveryPage = lazy(() => import("@/pages/recovery"));
+const CharacterPage = lazy(() => import("@/pages/character"));
+const KnowledgePage = lazy(() => import("@/pages/knowledge"));
+const IntelligencePage = lazy(() => import("@/pages/intelligence"));
 
 setBaseUrl(API_BASE_URL || null);
 
@@ -88,13 +93,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function protect(Page: ComponentType) {
+type RoutePage = ComponentType | LazyExoticComponent<ComponentType>;
+
+function displayNameFor(Page: RoutePage) {
+  const named = Page as RoutePage & { displayName?: string; name?: string };
+  return named.displayName ?? named.name ?? "Page";
+}
+
+function RouteLoading() {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-6 h-6 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Loading…</p>
+      </div>
+    </div>
+  );
+}
+
+function protect(Page: RoutePage) {
   const Wrapped = () => (
     <ProtectedRoute>
       <Page />
     </ProtectedRoute>
   );
-  Wrapped.displayName = `Protected(${Page.displayName ?? Page.name ?? "Page"})`;
+  Wrapped.displayName = `Protected(${displayNameFor(Page)})`;
   return Wrapped;
 }
 
@@ -122,7 +145,7 @@ function withAppLayout(Page: ComponentType) {
       </Layout>
     );
   }
-  Wrapped.displayName = `WithAppLayout(${Page.displayName ?? Page.name ?? "Page"})`;
+  Wrapped.displayName = `WithAppLayout(${displayNameFor(Page)})`;
   return Wrapped;
 }
 
@@ -145,34 +168,40 @@ const IntelligenceRoute = withAppLayout(ProtectedIntelligencePage);
 
 function AppRoutes() {
   return (
-    <Switch>
-      <Route path="/" component={LandingPage} />
-      <Route path="/login" component={LoginPage} />
-      <Route path="/signup" component={SignupPage} />
-      <Route path="/verify" component={VerifyPage} />
-      <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
+    <Suspense fallback={<RouteLoading />}>
+      <Switch>
+        <Route path="/" component={LandingPage} />
+        <Route path="/how-it-works" component={HowItWorksPage} />
+        <Route path="/pricing" component={PricingPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/changelog" component={ChangelogPage} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/signup" component={SignupPage} />
+        <Route path="/verify" component={VerifyPage} />
+        <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
-      <Route path="/onboarding" component={OnboardingRoute} />
-      <Route path="/dashboard" component={DashboardRoute} />
-      <Route path="/tasks/:orderId" component={TaskRoute} />
-      <Route path="/execute" component={TaskRoute} />
-      <Route path="/execute/:orderId" component={TaskRoute} />
-      <Route path="/feedback/:orderId" component={FeedbackRoute} />
-      <Route path="/feedback" component={FeedbackRoute} />
-      <Route path="/signals" component={SignalsRoute} />
-      <Route path="/intelligence" component={IntelligenceRoute} />
-      <Route path="/orders" component={OrdersRoute} />
-      <Route path="/strategy" component={StrategyRoute} />
-      <Route path="/recovery" component={RecoveryRoute} />
-      <Route path="/character" component={CharacterRoute} />
-      <Route path="/knowledge" component={KnowledgeRoute} />
-      <Route path="/settings/skills" component={SettingsSkillsRoute} />
-      <Route path="/settings" component={SettingsRoute} />
-      <Route path="/blueprint/:id" component={BlueprintRoute} />
-      <Route path="/blueprint" component={BlueprintIndexRoute} />
+        <Route path="/onboarding" component={OnboardingRoute} />
+        <Route path="/dashboard" component={DashboardRoute} />
+        <Route path="/tasks/:orderId" component={TaskRoute} />
+        <Route path="/execute" component={TaskRoute} />
+        <Route path="/execute/:orderId" component={TaskRoute} />
+        <Route path="/feedback/:orderId" component={FeedbackRoute} />
+        <Route path="/feedback" component={FeedbackRoute} />
+        <Route path="/signals" component={SignalsRoute} />
+        <Route path="/intelligence" component={IntelligenceRoute} />
+        <Route path="/orders" component={OrdersRoute} />
+        <Route path="/strategy" component={StrategyRoute} />
+        <Route path="/recovery" component={RecoveryRoute} />
+        <Route path="/character" component={CharacterRoute} />
+        <Route path="/knowledge" component={KnowledgeRoute} />
+        <Route path="/settings/skills" component={SettingsSkillsRoute} />
+        <Route path="/settings" component={SettingsRoute} />
+        <Route path="/blueprint/:id" component={BlueprintRoute} />
+        <Route path="/blueprint" component={BlueprintIndexRoute} />
 
-      <Route component={NotFound} />
-    </Switch>
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

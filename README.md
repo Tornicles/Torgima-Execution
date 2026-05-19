@@ -10,6 +10,7 @@ pnpm monorepo: **SPA** (`artifacts/torgima`) + **Express API + workers** (`artif
 | REST API + pg-boss + dispatcher | **Railway** / Fly / Render / VM | **Do not** add a second Vercel app for the API — it will fail and clutter GitHub with red checks. |
 
 Detailed steps, env vars, and pitfalls: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+Prompt 15 production handoff checklist, monitoring, backups, and Phase 2 thresholds: **[docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)**.
 
 ## Local quick start
 

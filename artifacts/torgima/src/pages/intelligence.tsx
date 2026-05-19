@@ -52,8 +52,42 @@ interface RealityIntelligence {
   executionImplication?: string;
 }
 
+interface EISIntelligence {
+  researchMethod?: string;
+  confidenceTier?: string;
+  competitorIntelligence?: {
+    competitors?: Array<{ handle?: string; recentContent?: string; performanceSignal?: string; whatWorked?: string }>;
+    threatLevel?: string;
+    opportunityFlags?: string[];
+    keyLesson?: string;
+  };
+  trendVelocity?: {
+    emergingTrends?: Array<{ trend?: string; velocity?: number; phase?: string }>;
+    peakingTrends?: Array<{ trend?: string; velocity?: number; phase?: string }>;
+    decliningTrends?: Array<{ trend?: string; velocity?: number; phase?: string }>;
+    opportunityWindows?: Array<{ trend?: string; timeWindow?: string; relevanceScore?: number; actionHint?: string; urgency?: string }>;
+  };
+  narrative?: {
+    dominantNarrative?: string;
+    bestContentAngle?: string;
+    contentAngle?: string;
+    riskNarratives?: string[];
+    audienceEmotions?: string[];
+    sentimentSignal?: string;
+  };
+  platformAlgorithmSignals?: Array<{
+    platform?: string;
+    signalType?: string;
+    signalStrength?: number;
+    confidenceTier?: string;
+    recommendation?: string;
+  }>;
+  todayRecommendation?: string;
+}
+
 export default function IntelligencePage() {
   const [intel, setIntel] = useState<RealityIntelligence | null>(null);
+  const [eis, setEis] = useState<EISIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [blueprintId, setBlueprintId] = useState<string | null>(null);
@@ -78,6 +112,13 @@ export default function IntelligencePage() {
       })
       .catch(() => null)
       .finally(() => setLoading(false));
+
+    fetch(`${API_BASE_URL}/api/intelligence/eis`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: EISIntelligence | null }) => {
+        if (d.ok && d.data) setEis(d.data);
+      })
+      .catch(() => null);
   }, []);
 
   async function handleRefresh() {
@@ -178,6 +219,94 @@ export default function IntelligencePage() {
         signalBridge={dash?.signalBlueprintBridge as Array<{ headline?: string; cite?: string }> | undefined}
         executionIdentity={dash?.executionIdentityLines as string[] | undefined}
       />
+
+      {eis ? (
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-indigo-500" />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Competitor brief</p>
+              </div>
+              <span className="text-xs font-mono px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                {eis.competitorIntelligence?.threatLevel ?? "LOW"} THREAT
+              </span>
+            </div>
+            <p className="text-sm font-medium text-gray-900">
+              {eis.competitorIntelligence?.keyLesson ?? "Competitor context is available as awareness."}
+            </p>
+            <details className="text-sm text-gray-600">
+              <summary className="cursor-pointer text-indigo-700 font-semibold">See opportunity gaps</summary>
+              <ul className="mt-3 space-y-2">
+                {(eis.competitorIntelligence?.opportunityFlags ?? []).map((gap) => (
+                  <li key={gap} className="flex items-start gap-2">
+                    <ChevronRight className="w-3.5 h-3.5 mt-0.5 text-indigo-400" />
+                    {gap}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution windows</p>
+            </div>
+            <div className="space-y-2">
+              {(eis.trendVelocity?.opportunityWindows ?? []).slice(0, 4).map((window) => (
+                <div key={`${window.trend}-${window.timeWindow}`} className="rounded-xl bg-gray-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-gray-900">{window.trend}</p>
+                    <span className="text-[10px] font-bold uppercase text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                      {window.timeWindow}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500"
+                      style={{ width: `${Math.round((window.relevanceScore ?? 0.5) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Audience intelligence</p>
+            <p className="text-sm text-gray-900 font-medium">{eis.narrative?.dominantNarrative}</p>
+            <p className="text-sm text-indigo-800 bg-indigo-50 rounded-xl p-3">
+              {eis.narrative?.bestContentAngle ?? eis.narrative?.contentAngle}
+            </p>
+            {(eis.narrative?.riskNarratives ?? []).length > 0 ? (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-700 uppercase">Risk narratives</p>
+                <ul className="mt-2 space-y-1">
+                  {(eis.narrative?.riskNarratives ?? []).map((risk) => (
+                    <li key={risk} className="text-sm text-amber-900">{risk}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Platform intelligence</p>
+            {(eis.platformAlgorithmSignals ?? []).map((signal) => (
+              <div key={signal.platform} className="flex items-start justify-between gap-3 rounded-xl bg-gray-50 p-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{signal.platform}</p>
+                  <p className="text-xs text-gray-600 mt-1">{signal.recommendation}</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-1">
+                  {signal.confidenceTier ?? "LOW"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {intel.executionImplication ? (
         <div className="bg-gray-900 text-white rounded-2xl p-6 space-y-2">

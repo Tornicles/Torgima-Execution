@@ -1,15 +1,57 @@
 import { Router } from "express";
-import { db, blueprints } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, blueprints, morningReports } from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { assessCapabilityLevel } from "../engines/capability/CapabilityEngine.js";
 import { getActivePatterns } from "../engines/pattern/PatternLearningEngine.js";
 import { RealityIntelligenceEngine } from "../engines/intelligence/RealityIntelligenceEngine.js";
+import { getLatestBriefing } from "../engines/eis/EISEngine.js";
 import { normalizeRealityIntelligenceData } from "../types/reality-intelligence.js";
 
 const router = Router();
+
+router.get("/intelligence/eis", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const [bp] = await db
+      .select({
+        id: blueprints.id,
+        domain_hint: blueprints.domain_hint,
+        current_domain: blueprints.current_domain,
+      })
+      .from(blueprints)
+      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
+      .limit(1);
+
+    if (!bp) {
+      success(res, null);
+      return;
+    }
+
+    const [report] = await db
+      .select({ eis_section: morningReports.eis_section })
+      .from(morningReports)
+      .where(eq(morningReports.user_id, auth.userId))
+      .orderBy(desc(morningReports.report_date))
+      .limit(1);
+
+    if (report?.eis_section) {
+      success(res, report.eis_section);
+      return;
+    }
+
+    const cached = await getLatestBriefing(auth.userId, bp.domain_hint ?? bp.current_domain ?? "Content");
+    success(res, cached);
+  } catch (e) {
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
+    failure(res, "INTERNAL_ERROR", "Failed to load EIS intelligence", 500);
+  }
+});
 
 router.get("/intelligence/blueprint/:id", async (req, res) => {
   try {

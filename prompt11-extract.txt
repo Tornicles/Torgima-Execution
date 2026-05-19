@@ -1,0 +1,432 @@
+﻿CURSOR PROMPT 11  â€”  BHUDHI PHASE 1
+EIS FULL CAPABILITY Â· COMPETITOR INTELLIGENCE Â· SOCIAL SIGNALS Â· NARRATIVE LAYER
+Prerequisite: Prompt 10 complete, all 12 tests passing, READY FOR PROMPT 11: YES
+Competitor Tracking Â· Platform Algorithm Intelligence Â· Trend Velocity Scoring Â· Opportunity Window Detection Â· Narrative Intelligence Â· Social Signal Fusion
+
+CONTEXT & PREREQUISITE CHECK
+WHAT PROMPTS 1â€“10 DELIVERED
+â–¸  Complete Phase 1 execution system with 20/20 acceptance criteria
+â–¸  Academy system with capability gap detection, learning paths, mastery assessment
+â–¸  Event system, psychology layer, burnout detection, reward system
+â–¸  EIS basic (Prompt 3) and EIS full activation (Prompt 8) â€” 5 parallel searches
+â–¸  31 prompt contracts, 115 tests passing across Prompts 1â€“10
+
+WHAT THIS PROMPT BUILDS
+Prompt 11 elevates EIS from a research tool into a full external intelligence layer. The Phase 1 EIS runs 5 web searches overnight and surfaces trending topics. Phase 11 EIS builds on that foundation to deliver: competitor activity tracking (what other creators/businesses in the user's niche published today), platform algorithm intelligence with confidence scoring, trend velocity analysis (rising vs peaking vs declining), opportunity window detection with time sensitivity flags, and narrative intelligence that understands public conversation shifts in the user's domain. When Prompt 11 is complete, Torgima tells users not just what is happening but what it means for their specific execution.
+
+THREE LAWS RESTATEMENT
+LAW 1: EIS intelligence is injected as context into task generation and validation. It never directly changes blueprint structure, signal values, or conditions. Market conditions inform Bhudhi â€” Bhudhi informs task generation â€” Control Engine governs what is actually generated.
+LAW 2: Competitor intelligence is surfaced as awareness, not direction. EIS never instructs the user to copy a competitor or pivot based on competitor success alone. It provides context that the Strategy Agent reads when generating direction analysis.
+LAW 3: EIS outputs are marked with a confidenceTier and researchMethod. WEB_SEARCH results are more trusted than CACHED, which are more trusted than FALLBACK. The user interface shows 'Intelligence based on recent research' vs 'Intelligence based on cached data' appropriately.
+
+
+PART 1 â€” NEW DATABASE TABLES
+1.1 â€” EIS EXTENDED TABLES
+model CompetitorIntelligence {
+  id                String   @id @default(cuid())
+  userId            String
+  domain            String
+  niche             String?
+  competitors       Json     // CompetitorProfile[]
+  activityWindow    String   // '24h' | '7d' | '30d'
+  keyFindings       Json     // What competitors did, how it performed
+  threatLevel       String   // LOW | MEDIUM | HIGH
+  opportunityFlags  Json     // Gaps competitors left open
+  researchMethod    String   // WEB_SEARCH | CACHED | FALLBACK
+  confidenceTier    String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+}
+
+model TrendIntelligence {
+  id               String   @id @default(cuid())
+  userId           String
+  domain           String
+  niche            String?
+  trends           Json     // TrendRecord[]
+  velocityScores   Json     // { trend: string, velocity: float, phase: string }[]
+  // velocity phase: EMERGING | RISING | PEAKING | DECLINING | DEAD
+  emergingTrends   Json     // Trends with velocity > 0.70, phase = EMERGING
+  peakingTrends    Json     // High engagement but velocity slowing
+  decliningTrends  Json     // Trends to avoid
+  opportunityWindows Json   // { trend, timeWindow, relevanceScore, actionHint }[]
+  researchMethod   String
+  confidenceTier   String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+}
+
+model NarrativeIntelligence {
+  id               String   @id @default(cuid())
+  userId           String
+  domain           String
+  niche            String?
+  dominantNarrative String  // The main public conversation in this space
+  emergingNarratives Json   // What is being said but not yet mainstream
+  sentimentSignal  String   // POSITIVE | NEUTRAL | NEGATIVE | MIXED
+  audienceEmotions Json     // What emotions dominate audience engagement
+  contentAngle     String   // The most resonant angle to approach content
+  riskNarratives   Json     // Narratives that could hurt the user's brand
+  researchMethod   String
+  confidenceTier   String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+}
+
+model PlatformAlgorithmSignal {
+  id               String   @id @default(cuid())
+  platform         String   // TikTok | YouTube | Instagram | LinkedIn | X | etc.
+  signalType       String   // BOOST | SUPPRESS | NEUTRAL | UNKNOWN
+  contentCategory  String   // What type of content this affects
+  signalStrength   Float    // 0.0-1.0
+  confidenceTier   String   // Based on evidence quality
+  sourceEvidence   String   // What data supports this signal
+  recommendation   String   // What to do about it
+  validUntil       DateTime // When this signal likely changes
+  createdAt        DateTime @default(now())
+}
+
+PART 2 â€” EIS ENGINE FULL CAPABILITY UPGRADE
+File: lib/engines/EISEngine.ts â€” Extended with 4 new intelligence modules on top of existing 5-search foundation.
+2.1 â€” COMPETITOR INTELLIGENCE MODULE
+// EISEngine.ts â€” ADD COMPETITOR INTELLIGENCE
+
+export async function runCompetitorIntelligence(
+  userId: string,
+  context: { domain: string; niche: string; userFollowerTier: string }
+): Promise<CompetitorIntelligence>
+// 1. Rate limit check (shares EISRateLimit pool with main research)
+// 2. Run 3 targeted searches:
+//   Search 1: '[niche] content creators [follower range] what posted recently'
+//   Search 2: '[niche] top performing content this week performance data'
+//   Search 3: '[niche] creators [follower range] growth strategy 2025'
+// 3. Synthesize via eis.competitor.v1 prompt contract
+// 4. Identify: what worked, what didn't, gaps in the space
+// 5. Write CompetitorIntelligence record
+
+// followerTier determines search scope:
+// < 1K followers: 'micro creators under 1000 followers'
+// 1K-10K: 'small creators 1000 to 10000 followers'
+// 10K-100K: 'mid-tier creators'
+// 100K+: 'established creators'
+
+2.2 â€” TREND VELOCITY ENGINE
+// EISEngine.ts â€” ADD TREND VELOCITY
+
+export async function runTrendVelocityAnalysis(
+  userId: string,
+  context: { domain: string; niche: string }
+): Promise<TrendIntelligence>
+// 1. Fetch trending topics from existing EISBriefing (avoid duplicate searches)
+// 2. For each trend: run velocity calculation:
+//   velocity = (engagementVolumeNow - engagementVolumePriorPeriod) / engagementVolumePriorPeriod
+// 3. Classify velocity phase:
+//   EMERGING: velocity > 0.70, first seen < 72h
+//   RISING:   velocity 0.30-0.70, growing
+//   PEAKING:  high volume but velocity slowing (< 0.10 growth)
+//   DECLINING: negative velocity
+//   DEAD:     velocity < -0.50
+// 4. Flag EMERGING trends as HIGH PRIORITY opportunities
+// 5. Flag DECLINING trends as 'avoid now'
+// 6. Write TrendIntelligence record
+
+// Opportunity window calculation:
+// EMERGING trend: window = 'Act in next 48-72 hours'
+// RISING trend: window = 'This week'
+// PEAKING trend: window = 'Proceed with caution â€” may be saturating'
+// DECLINING/DEAD: window = 'Avoid â€” trend over'
+
+2.3 â€” NARRATIVE INTELLIGENCE MODULE
+// EISEngine.ts â€” ADD NARRATIVE INTELLIGENCE
+
+export async function runNarrativeIntelligence(
+  userId: string,
+  context: { domain: string; niche: string }
+): Promise<NarrativeIntelligence>
+// 1. Run 2 additional searches:
+//   Search: '[niche] audience conversation sentiment comments 2025'
+//   Search: '[niche] what audience wants to see content gaps'
+// 2. Synthesize via eis.narrative.v1
+// 3. Identify: dominant narrative, emerging angles, audience emotions
+// 4. Flag risk narratives (controversies, backlash patterns)
+// 5. Recommend the strongest content angle for this moment
+// 6. Write NarrativeIntelligence record
+
+// Narrative example output for soccer content creator:
+// dominantNarrative: 'Authentic player development stories outperforming highlight reels'
+// emergingNarratives: ['Mental health in football', 'Lower league spotlight']
+// contentAngle: 'Raw, unfiltered training reality â€” audience tired of perfection'
+// riskNarratives: ['Transfer speculation creates backlash', 'Club criticism risks alienation']
+
+2.4 â€” PLATFORM ALGORITHM SCANNER
+// EISEngine.ts â€” ADD PLATFORM SCANNER
+
+export async function scanPlatformAlgorithms(
+  platforms: string[],  // From user's domain context
+  domain: string,
+  niche: string
+): Promise<PlatformAlgorithmSignal[]>
+// For each platform in user's active platforms:
+// Run search: '[platform] algorithm changes [current month year] [content type]'
+// Synthesize: what is being boosted? what is being suppressed?
+// Assign confidence tier based on evidence quality:
+//   Official announcements â†’ HIGH
+//   Multiple creator reports â†’ MEDIUM
+//   Single creator reports â†’ LOW
+// Write PlatformAlgorithmSignal records
+
+// IMPORTANT: Platform algorithm signals expire faster than trends
+// validUntil = 7 days max (platform signals change weekly)
+
+PART 3 â€” FULL EIS NIGHTLY RESEARCH ARCHITECTURE
+The complete nightly EIS research suite. 9 modules running in coordinated sequence, respecting rate limits, building on each other's outputs.
+// OvernightWorker.ts â€” STEP 02 UPGRADED TO FULL 9-MODULE EIS SUITE
+
+export async function runFullEISNightlySuite(
+  userId: string,
+  context: OvernightContext
+): Promise<FullEISBriefing> {
+  // Check rate limit first
+  const rateCheck = await canRunResearch(userId, context.domain)
+  if (!rateCheck.allowed) {
+    return await getLatestBriefing(userId, context.domain) || buildFallbackBriefing(context)
+  }
+
+  // MODULE 1: Core Research (from Prompt 8 â€” 5 searches)
+  const coreResearch = await runCoreResearch(userId, context)
+
+  // MODULE 2: Competitor Intelligence
+  const competitors = await runCompetitorIntelligence(userId, {
+    domain: context.domain,
+    niche: context.niche,
+    userFollowerTier: context.followerTier,
+  })
+
+  // MODULE 3: Trend Velocity (uses coreResearch trends as input)
+  const trendVelocity = await runTrendVelocityAnalysis(userId, {
+    domain: context.domain,
+    niche: context.niche,
+    existingTrends: coreResearch.trendingTopics,
+  })
+
+  // MODULE 4: Narrative Intelligence
+  const narrative = await runNarrativeIntelligence(userId, {
+    domain: context.domain,
+    niche: context.niche,
+  })
+
+  // MODULE 5: Platform Algorithm Scan
+  const platformSignals = await scanPlatformAlgorithms(
+    context.activePlatforms,
+    context.domain,
+    context.niche
+  )
+
+  // MODULE 6: Opportunity Window Synthesis
+  // Cross-references: emerging trends + competitor gaps + narrative angles
+  // Produces: ranked opportunity list with time windows
+  const opportunities = await synthesizeOpportunityWindows({
+    trends: trendVelocity,
+    competitors,
+    narrative,
+    currentBlueprintPhase: context.blueprintPhase,
+  })
+
+  // MODULE 7: Daily Recommendation Generation
+  // One specific action for today based on all intelligence
+  const todayRecommendation = await generateTodayRecommendation({
+    opportunities,
+    activeOrder: context.preGeneratedOrder,
+    condition: context.condition,
+  })
+
+  // MODULE 8: Knowledge Library Updates
+  // Update KnowledgePackage records with fresh intelligence
+  await updateKnowledgeLibrary(userId, context.domain, {
+    trends: trendVelocity,
+    narrative,
+    platformSignals,
+  })
+
+  // MODULE 9: Full Briefing Assembly
+  return assembleFull EISBriefing({
+    core: coreResearch,
+    competitors,
+    trends: trendVelocity,
+    narrative,
+    platforms: platformSignals,
+    opportunities,
+    todayRecommendation,
+  })
+}
+
+PART 4 â€” EIS INTELLIGENCE INJECTION INTO TORGIMA
+EIS intelligence is injected at 4 points in the execution system. Each injection is context-specific and filtered through Adaptive Communication Engine.
+INJECTION POINT 1
+Task Generation
+EIS competitor and trend data injected into task.draft.v3 context. Tasks framed around what is working in the market right now, not generic instructions. Example: task instruction includes 'Trending this week: goalkeeper POV clips â€” consider this angle for your Create task.'
+
+INJECTION POINT 2
+Goal Validation
+EIS demand signals injected into goal.feasibility.v1. Feasibility score reflects current market conditions, not just user capability. A goal in a declining niche scores lower than the same goal in an emerging niche.
+
+INJECTION POINT 3
+Direction Analysis
+EIS competitive landscape injected into direction.analysis.v1. Strategy Agent's proceed/adjust/pivot recommendation reflects market reality. User is told if competitors are already dominating their planned approach.
+
+INJECTION POINT 4
+Morning Report
+Full EIS briefing surfaced on dashboard. Competitor activity, trend velocity, platform signals, narrative angle, and today's opportunity all rendered in the Intelligence Report screen.
+
+
+PART 5 â€” NEW PROMPT CONTRACTS
+// Add to PromptRegistry â€” Total after Prompt 11: 34
+
+// eis.competitor.v1 â€” NEW
+// Trigger: OVERNIGHT_CYCLE
+// Context: 3 competitor search results, user niche, follower tier, blueprint phase
+// Output: {
+//   competitors: [{ handle, recentContent, performanceSignal, whatWorked }],
+//   threatLevel: 'LOW'|'MEDIUM'|'HIGH',
+//   opportunityGaps: string[],  // What competitors are NOT doing
+//   keyLesson: string,          // One actionable insight (max 200 chars)
+// }
+// FORBIDDEN: specific financial data, personal competitor information
+
+// eis.narrative.v1 â€” NEW
+// Trigger: OVERNIGHT_CYCLE
+// Context: 2 audience conversation search results, domain, niche
+// Output: {
+//   dominantNarrative: string,
+//   emergingNarratives: string[],
+//   sentimentSignal: string,
+//   audienceEmotions: string[],
+//   bestContentAngle: string,  // The angle most likely to resonate today
+//   riskNarratives: string[],  // What to avoid
+// }
+
+// eis.opportunity_synthesis.v1 â€” NEW
+// Trigger: OVERNIGHT_CYCLE
+// Context: trend velocity, competitor gaps, narrative angle, blueprint phase
+// Output: {
+//   opportunities: [{ description, timeWindow, relevanceScore, actionHint }],
+//   topOpportunity: { description, urgency, specificAction },
+//   alignmentWithBlueprint: string, // How top opportunity relates to user's plan
+// }
+
+PART 6 â€” FRONTEND UPDATES
+// S13 â€” Intelligence Report screen UPGRADED
+// New sections added to the Intelligence Report:
+
+// CompetitorBriefCard
+//   Shows: competitor count analyzed, top insight, threat level badge
+//   Expandable: full competitor activity list with performance signals
+//   CTA: 'See opportunity gaps'
+
+// TrendVelocityPanel
+//   Shows: emerging trends (HIGH PRIORITY), rising trends, declining trends
+//   Visual: velocity bar for each trend (rising/flat/declining)
+//   Time window badge: 'Act in 48h', 'This week', 'Saturating'
+//   Execution language: 'Execution Window' not 'Trending'
+
+// NarrativeAngleCard
+//   Shows: dominant narrative, recommended content angle, risks to avoid
+//   Framed as: 'Audience Intelligence' not 'What people are saying'
+
+// PlatformSignalStrip
+//   Shows: platform name + what it is rewarding today
+//   Confidence badge: HIGH/MEDIUM/LOW based on evidence
+//   Execution language: 'Platform Intelligence' not 'Algorithm Update'
+
+// OpportunityWindowBanner (new â€” appears at top of dashboard when URGENT opportunity)
+//   Shows: one high-urgency opportunity with 'Act in 48h' or 'This week' window
+//   Condition: only shown when opportunity.urgency = HIGH
+//   CTA: 'View in Intelligence Report'
+
+
+PART 7 â€” TEST CASES
+All 12 tests must pass. EIS full capability must deliver real intelligence, not placeholder data.
+TEST 1: Competitor Intelligence â€” Content Domain
+Scenario:  Run competitor intelligence for soccer content creator, 1K-10K follower tier. Verify structured output with real competitor insights.
+Pass:  PASS: CompetitorIntelligence.competitors.length > 0, keyLesson populated, threatLevel set, all from WEB_SEARCH
+
+TEST 2: Trend Velocity â€” Phase Classification
+Scenario:  Generate trend intelligence with at least 5 trends. Verify each has velocity phase classified.
+Pass:  PASS: All TrendIntelligence.velocityScores have phase set to EMERGING/RISING/PEAKING/DECLINING/DEAD, no null phases
+
+TEST 3: Emerging Trend â€” Opportunity Window
+Scenario:  Detect an EMERGING trend in test domain. Verify opportunity window = 'Act in next 48-72 hours'.
+Pass:  PASS: TrendIntelligence.opportunityWindows contains entry with timeWindow containing '48' or '72 hours'
+
+TEST 4: Narrative Intelligence â€” Angle Generation
+Scenario:  Run narrative intelligence for Content domain. Verify bestContentAngle is specific and actionable.
+Pass:  PASS: bestContentAngle is domain-specific (not generic), dominantNarrative populated, sentimentSignal set
+
+TEST 5: Platform Algorithm Scan â€” Multi-Platform
+Scenario:  Run platform scan for user with TikTok + Instagram active. Verify both platforms return signals.
+Pass:  PASS: 2 PlatformAlgorithmSignal records created, each with signalType, confidence, and recommendation
+
+TEST 6: EIS Injection â€” Task Generation
+Scenario:  Generate a task after full EIS suite runs. Verify task instruction references current market context.
+Pass:  PASS: Order.instruction contains reference to EIS context (trend or format that is currently working)
+
+TEST 7: EIS Injection â€” Feasibility
+Scenario:  Run goal validation with EIS showing LOW demand for goal type. Verify feasibility score reflects market reality.
+Pass:  PASS: ValidationRecord.feasibilityScore.domainScore is lower than it would be without EIS context, eisContextUsed = true
+
+TEST 8: Rate Limiting â€” 9 Modules
+Scenario:  Full 9-module EIS suite uses rate limit pool. Verify: suite does not exceed 3 calls per 6h limit.
+Pass:  PASS: EISRateLimit.callCount <= 3 after full suite, modules share pool correctly
+
+TEST 9: EIS Fallback â€” Module Failure
+Scenario:  Kill web search during competitor module. Verify: fallback used for that module, other modules continue.
+Pass:  PASS: CompetitorIntelligence.researchMethod = FALLBACK, other modules complete with WEB_SEARCH
+
+TEST 10: Opportunity Window Banner â€” Urgent
+Scenario:  Set EIS opportunity with urgency = HIGH. Load dashboard. Verify OpportunityWindowBanner appears.
+Pass:  PASS: Banner visible on dashboard, shows correct opportunity description and 'View in Intelligence Report' CTA
+
+TEST 11: Narrative Risk Alert
+Scenario:  EIS detects a risk narrative for user's niche. Verify it appears in Intelligence Report riskNarratives section.
+Pass:  PASS: NarrativeIntelligence.riskNarratives populated, displayed in UI with amber warning styling
+
+TEST 12: Full EIS Morning Report â€” All 9 Sections
+Scenario:  Run full overnight with EIS suite. Check morning report. Verify all 9 EIS modules contributed data.
+Pass:  PASS: EISBriefing.morningReport contains: trendingTopics, platformSignals, competitorInsights, narrative, opportunities, todayRecommendation â€” all non-null
+
+
+COMPLETION REPORT FORMAT
+=== PROMPT 11 COMPLETION REPORT ===
+
+FILES MODIFIED:
+  - lib/engines/EISEngine.ts (4 new modules added)
+  - lib/workers/OvernightWorker.ts (Step 02 upgraded to 9-module suite)
+  - app/dashboard/intelligence/page.tsx (4 new UI sections)
+  - app/dashboard/page.tsx (OpportunityWindowBanner added)
+
+SCHEMA ADDITIONS:
+  - CompetitorIntelligence, TrendIntelligence
+  - NarrativeIntelligence, PlatformAlgorithmSignal
+
+PROMPT CONTRACTS ADDED: 3 (total: 34)
+  - eis.competitor.v1
+  - eis.narrative.v1
+  - eis.opportunity_synthesis.v1
+
+EIS MODULES ACTIVE: 9/9
+  Core Research: ACTIVE
+  Competitor Intelligence: ACTIVE
+  Trend Velocity: ACTIVE
+  Narrative Intelligence: ACTIVE
+  Platform Algorithm Scan: ACTIVE
+  Opportunity Window Synthesis: ACTIVE
+  Daily Recommendation: ACTIVE
+  Knowledge Library Update: ACTIVE
+  Full Briefing Assembly: ACTIVE
+
+EIS INJECTION POINTS: 4/4 ACTIVE
+RATE LIMITING: CONFIRMED
+TESTS PASSED: [X/12]
+KNOWN ISSUES: [none / list]
+READY FOR PROMPT 12: YES / NO
+===================================

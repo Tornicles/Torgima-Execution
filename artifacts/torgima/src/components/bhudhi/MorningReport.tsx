@@ -17,10 +17,13 @@ export function MorningReport({ report }: { report: MorningReportData | null }) 
   }
 
   const section = report.eisSection;
-  const topics = (section.trendingTopics as string[] | undefined) ?? [];
+  const topics =
+    (section.trendingTopics as Array<string | { topic?: string; insight?: string }> | undefined) ?? [];
   const recommendation =
     typeof section.recommendation === "string" ?
       section.recommendation
+    : typeof section.todayRecommendation === "string" ?
+      section.todayRecommendation
     : typeof section.executionImplication === "string" ?
       section.executionImplication
     : "Focus on your active Order today.";
@@ -34,12 +37,20 @@ export function MorningReport({ report }: { report: MorningReportData | null }) 
       {topics.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-3">
           {topics.slice(0, 3).map((t) => (
-            <div key={t} className="rounded-xl border border-gray-100 bg-white p-3 text-xs text-gray-700">
-              {t}
+            <div
+              key={typeof t === "string" ? t : t.topic}
+              className="rounded-xl border border-gray-100 bg-white p-3 text-xs text-gray-700"
+            >
+              {typeof t === "string" ? t : t.topic}
             </div>
           ))}
         </div>
       )}
+      {section.competitorInsights ? (
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-xs text-indigo-900">
+          Competitor awareness: {((section.competitorInsights as string[]) ?? [])[0]}
+        </div>
+      ) : null}
       <IntelligencePanel
         type="report"
         title="Today's recommendation"

@@ -1,147 +1,147 @@
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, Zap, Target, Activity, Shield } from "lucide-react";
+import { ArrowRight, Brain, ClipboardList, Moon, Target } from "lucide-react";
+import { MarketingLayout, MarketingSection, ProductFrame } from "@/components/marketing/MarketingLayout";
+import { useMarketingMetadata } from "@/lib/marketing-metadata";
 
 export default function LandingPage() {
+  useMarketingMetadata({
+    title: "Torgima",
+    path: "/",
+  });
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 flex flex-col">
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden>
-            <path d="M14 4L4 10V18L14 24L24 18V10L14 4Z" stroke="#111827" strokeWidth="2" fill="none" />
-            <path d="M9 13L14 10L19 13" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
-            <path d="M14 10V19" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span className="font-bold text-xl tracking-tight">TORGIMA</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login">
-            <span className="text-sm text-gray-600 hover:text-gray-900 cursor-pointer">Sign in</span>
-          </Link>
-          <Link href="/login">
-            <button
-              type="button"
-              className="bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors"
-            >
-              Get started →
-            </button>
-          </Link>
-        </div>
-      </nav>
-
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2 text-xs font-semibold text-green-700 uppercase tracking-wider">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Phase 1 — Individual Execution System
+    <MarketingLayout>
+      <section className="px-5 py-24 lg:px-8 lg:py-28">
+        <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_0.85fr]">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#0EA5E9]">Execution operating system</p>
+            <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-[-0.04em] text-[#0A0F1E] sm:text-6xl lg:text-7xl">
+              The execution system that never stops working for you.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-600">
+              Enter a goal. Get a blueprint. Torgima generates your next task, and the one after that, until your goal
+              is complete. Even while you sleep.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0EA5E9] px-7 py-4 font-bold text-white hover:bg-sky-600">
+                Start Your Blueprint <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/how-it-works" className="inline-flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white px-7 py-4 font-bold text-[#0A0F1E] hover:bg-gray-50">
+                See how it works
+              </Link>
+            </div>
           </div>
+          <ProductFrame />
+        </div>
+      </section>
 
-          <h1 className="text-6xl sm:text-7xl font-bold tracking-tight leading-[1.05]">
-            Execute your goals.
-            <br />
-            <span className="text-green-600">Every single day.</span>
-          </h1>
+      <MarketingSection title="Most goals fail because ambition stops becoming action." eyebrow="The problem">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            ["Plan overwhelm", "The goal becomes a pile of possible work instead of one correct next step."],
+            ["Execution gap", "People know what they want, but not what today’s concrete move should be."],
+            ["Empty accountability", "A task list records intention. It does not adapt when reality changes."],
+          ].map(([title, copy]) => (
+            <div key={title} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
+              <p className="text-lg font-bold">{title}</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{copy}</p>
+            </div>
+          ))}
+        </div>
+      </MarketingSection>
 
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Torgima is the execution operating system that never stops working. Give it your goal and it generates the
-            next correct Order, adapts to your performance, and keeps execution continuity — without the noise.
-          </p>
+      <MarketingSection title="How Torgima works" eyebrow="Three steps">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            [Target, "Enter your goal", "Give Torgima the outcome, timeframe, and reason. It checks reality before structure."],
+            [ClipboardList, "Get your blueprint", "The system turns the goal into plans, phases, projects, actions, and tasks."],
+            [Moon, "Wake up with context", "Your next task is always ready, with intelligence refreshed overnight when enabled."],
+          ].map(([Icon, title, copy]) => (
+            <div key={String(title)} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
+              <Icon className="h-6 w-6 text-[#0EA5E9]" />
+              <p className="mt-5 text-lg font-bold">{String(title)}</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{String(copy)}</p>
+            </div>
+          ))}
+        </div>
+      </MarketingSection>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/signup">
-            <button
-              type="button"
-              className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all text-base group flex items-center gap-2 mx-auto sm:mx-0"
-            >
-              Start Your Blueprint
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+      <MarketingSection title="While you sleep, Torgima reads your industry." eyebrow="Overnight intelligence">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div>
+            <p className="text-lg leading-8 text-gray-600">
+              When you wake up, your morning report shows competitor gaps, platform signals, trend velocity, and the
+              execution context that matters for today’s task.
+            </p>
+            <Link href="/pricing" className="mt-8 inline-flex rounded-full bg-[#0A0F1E] px-6 py-3 text-sm font-bold text-white">
+              See full pricing
             </Link>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm text-gray-400">
-            {["No password required", "Magic link sign-in", "Free to start"].map((f) => (
-              <div key={f} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span>{f}</span>
-              </div>
-            ))}
-          </div>
+          <ProductFrame title="Morning report screenshot" />
         </div>
-      </main>
+      </MarketingSection>
 
-      <section className="border-t border-gray-100 px-8 py-20 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-12">How it works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[
-              {
-                icon: Target,
-                step: "01",
-                title: "Define Your Goal",
-                desc: "Enter your goal, purpose, and timeframe. Torgima validates and builds a structured execution blueprint.",
-              },
-              {
-                icon: Zap,
-                step: "02",
-                title: "Daily execution orders",
-                desc: "The system generates specific operational orders from your blueprint position, capability, and condition enforcement.",
-              },
-              {
-                icon: Activity,
-                step: "03",
-                title: "Submit feedback",
-                desc: "Complete orders and submit honest execution reports. Signals update; conditions adapt; the next execution order generates.",
-              },
-              {
-                icon: Shield,
-                step: "04",
-                title: "Stay On Track",
-                desc: "The control engine enforces correct pacing. Pivot when needed. The execution loop never goes empty.",
-              },
-            ].map((item) => (
-              <div key={item.step} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-600 font-bold text-lg">{item.step}</span>
-                  <item.icon className="w-4 h-4 text-green-500" />
-                </div>
-                <h3 className="font-bold text-gray-900">{item.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
+      <MarketingSection title="What Torgima is not" eyebrow="Positioning">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            ["Not a task manager", "It is a system that keeps turning a goal into the next correct task."],
+            ["Not an AI chatbot", "It is a controlled execution intelligence governed by real signals."],
+            ["Not a planner", "It is a loop that adapts after each task, report, and condition change."],
+          ].map(([not, is]) => (
+            <div key={not} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
+              <p className="text-sm text-gray-400 line-through">{not}</p>
+              <p className="mt-3 text-lg font-bold text-[#0EA5E9]">It is:</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">{is}</p>
+            </div>
+          ))}
         </div>
+      </MarketingSection>
+
+      <MarketingSection title="Bhudhi is the intelligence layer behind Torgima." eyebrow="The intelligence layer">
+        <div className="grid gap-4 md:grid-cols-2">
+          {[
+            "Validates goals against execution reality",
+            "Builds structured blueprints",
+            "Generates the next task continuously",
+            "Reads market and platform context overnight",
+            "Detects burnout and capability gaps",
+            "Surfaces strategic outlook and signal narratives",
+          ].map((feature) => (
+            <div key={feature} className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-5">
+              <Brain className="h-5 w-5 text-[#F59E0B]" />
+              <span className="font-medium">{feature}</span>
+            </div>
+          ))}
+        </div>
+      </MarketingSection>
+
+      <MarketingSection title="Free to execute. Upgrade when you want the full intelligence layer." eyebrow="Pricing preview">
+        <div className="grid gap-5 md:grid-cols-2">
+          {[
+            ["Execution", "Free", "Goal validation, blueprints, tasks, feedback, signals, conditions, Academy, and dashboard basics."],
+            ["Intelligence", "TBD", "Everything in free, plus overnight intelligence, morning reports, strategic outlook, and full signal history."],
+          ].map(([name, price, copy]) => (
+            <div key={name} className="rounded-3xl border border-[#E5E7EB] bg-white p-8">
+              <p className="text-2xl font-bold">{name}</p>
+              <p className="mt-4 text-4xl font-black">{price}</p>
+              <p className="mt-4 text-sm leading-6 text-gray-600">{copy}</p>
+            </div>
+          ))}
+        </div>
+        <Link href="/pricing" className="mt-8 inline-flex rounded-full bg-[#0EA5E9] px-6 py-3 text-sm font-bold text-white">
+          See full pricing
+        </Link>
+      </MarketingSection>
+
+      <section className="px-5 py-20 text-center lg:px-8">
+        <h2 className="text-4xl font-bold tracking-tight">Start with one blueprint.</h2>
+        <p className="mx-auto mt-4 max-w-xl text-lg leading-8 text-gray-600">
+          Create an account, enter your goal, and let Torgima build the execution structure.
+        </p>
+        <Link href="/signup" className="mt-8 inline-flex rounded-full bg-[#0EA5E9] px-7 py-4 font-bold text-white">
+          Start Your Blueprint
+        </Link>
       </section>
-
-      <section className="border-t border-gray-100 px-8 py-16 bg-white">
-        <div className="max-w-3xl mx-auto rounded-2xl border border-gray-200 p-6 space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Sample Intelligence Report</p>
-          <p className="text-sm text-gray-700">
-            Trending in your niche: short-form proof-of-work content. Platform signal favors consistent publishing.
-            Today&apos;s recommendation: execute one high-leverage Order before expanding scope.
-          </p>
-          <p className="text-xs text-gray-400">Generated nightly — illustrative demo only.</p>
-        </div>
-      </section>
-
-      <section className="border-t border-gray-100 px-8 py-20 text-center">
-        <div className="max-w-md mx-auto space-y-5">
-          <h2 className="text-2xl font-bold">Ready to start executing?</h2>
-          <p className="text-gray-500 text-sm">Create your account in under 60 seconds. No password required.</p>
-          <Link href="/login">
-            <button
-              type="button"
-              className="bg-gray-900 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all w-full text-base"
-            >
-              Get started for free
-            </button>
-          </Link>
-        </div>
-      </section>
-
-      <footer className="border-t border-gray-100 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span className="text-sm font-bold">TORGIMA</span>
-        <span className="text-xs text-gray-400">Individual Execution System — Phase 1</span>
-      </footer>
-    </div>
+    </MarketingLayout>
   );
 }

@@ -13,8 +13,8 @@ import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { BlueprintService } from "../services/BlueprintService.js";
 import { ValidationService } from "../services/ValidationService.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
-import { db, orders } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, orders, blueprints, validations } from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -67,6 +67,25 @@ router.post("/blueprint/launch", async (req, res) => {
     }
 
     await ValidationService.assertLaunchAllowed(body.blueprintId, auth.userId);
+    const [erectorValidation] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.blueprint_id, body.blueprintId))
+      .orderBy(desc(validations.created_at))
+      .limit(1);
+    if (erectorValidation?.reality_score != null) {
+      const resolution = erectorValidation.archetype_resolution as { primaryArchetype?: { id?: string; name?: string } } | null;
+      await db
+        .update(blueprints)
+        .set({
+          erector_validation_id: erectorValidation.id,
+          primary_archetype_id: resolution?.primaryArchetype?.id?.startsWith("seed-") ? null : resolution?.primaryArchetype?.id ?? null,
+          reality_score: erectorValidation.reality_score,
+          chosen_blueprint_level: erectorValidation.recommended_blueprint_level,
+          economy_briefing_summary: String((erectorValidation.economy_briefing as { briefingNarrative?: string } | null)?.briefingNarrative ?? "").slice(0, 500),
+        })
+        .where(eq(blueprints.id, body.blueprintId));
+    }
     const result = await BlueprintService.activate(body.blueprintId, auth.userId);
     success(res, result);
   } catch (err) {

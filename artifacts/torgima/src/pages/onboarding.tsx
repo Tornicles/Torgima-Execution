@@ -32,6 +32,19 @@ const COMMITMENT_OPTIONS = [
   { value: "full", label: "Full", sub: "All in — everything toward this" },
 ];
 
+const ERECTOR_ENGINE_MESSAGES = [
+  "Preparing reality analysis...",
+  "Economy mapped — loading civilization intelligence...",
+  "Understanding your goal and purpose...",
+  "Analyzing industry conditions...",
+  "Mapping market demand and competition...",
+  "Identifying who is winning in this market...",
+  "Building your economy intelligence report...",
+  "Analyzing customer pain points...",
+  "Calculating execution requirements...",
+  "Simulating your execution timelines...",
+];
+
 interface FormData {
   primaryGoal: string;
   secondaryGoals: string;
@@ -45,9 +58,18 @@ interface FormData {
   hoursPerWeek: string;
   currentContext: string;
   resources: string;
+  currentResources: string[];
   experience: string;
   knownBlockers: string;
   budget: string;
+  locationCountry: string;
+  locationCity: string;
+  businessType: "online" | "offline" | "hybrid";
+  businessModel: string;
+  budgetAvailable: string;
+  currency: string;
+  targetCustomer: string;
+  desiredOutcome: string;
 }
 
 const STEPS = [
@@ -55,7 +77,7 @@ const STEPS = [
   { number: 2, label: "Purpose", sub: "Why is this important?" },
   { number: 3, label: "Timeframe", sub: "When will you achieve this?" },
   { number: 4, label: "Commitment", sub: "Your level of commitment" },
-  { number: 5, label: "Context", sub: "Your current environment" },
+  { number: 5, label: "Reality Context", sub: "Economy, resources, and market context" },
   { number: 6, label: "Blueprint Type", sub: "Tier, mode, and execution depth" },
   { number: 7, label: "Review", sub: "Validate path and launch" },
 ];
@@ -90,13 +112,45 @@ export default function OnboardingPage() {
     hoursPerWeek: "",
     currentContext: "",
     resources: "",
+    currentResources: [],
     experience: "",
     knownBlockers: "",
     budget: "",
+    locationCountry: "",
+    locationCity: "",
+    businessType: "online",
+    businessModel: "",
+    budgetAvailable: "",
+    currency: "USD",
+    targetCustomer: "",
+    desiredOutcome: "",
   });
 
   function setField<K extends keyof FormData>(k: K, v: FormData[K]) {
     setForm((p) => ({ ...p, [k]: v }));
+  }
+
+  function toggleResource(resource: string) {
+    setForm((p) => ({
+      ...p,
+      currentResources: p.currentResources.includes(resource)
+        ? p.currentResources.filter((item) => item !== resource)
+        : [...p.currentResources, resource],
+    }));
+  }
+
+  function commitmentForErector(level: string): string {
+    if (level === "full") return "INTENSE";
+    return level.toUpperCase();
+  }
+
+  function budgetNumber(): number {
+    const direct = Number(form.budgetAvailable.replace(/[^0-9.]/g, ""));
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    if (form.budget.includes("10000")) return 10000;
+    if (form.budget.includes("5000")) return 5000;
+    if (form.budget.includes("1000")) return 1000;
+    return 0;
   }
 
   function canContinue(): boolean {
@@ -104,6 +158,17 @@ export default function OnboardingPage() {
     if (step === 2) return !!form.purpose.trim();
     if (step === 3) return !!form.timeframe.trim();
     if (step === 4) return !!form.commitmentLevel;
+    if (step === 5) {
+      return Boolean(
+        form.locationCountry.trim() &&
+          form.businessType &&
+          form.businessModel.trim() &&
+          form.budgetAvailable.trim() &&
+          form.currentResources.length > 0 &&
+          form.targetCustomer.trim() &&
+          form.desiredOutcome.trim(),
+      );
+    }
     if (step === 6) return goalStructured && !!selectedTier && !!selectedMode;
     return true;
   }
@@ -241,6 +306,49 @@ export default function OnboardingPage() {
       }
 
       if (payload?.status === "validated" && payload.blueprintId) {
+        const erectorRes = await fetch(`${API_BASE_URL}/api/v1/validation/run`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blueprintId: payload.blueprintId,
+            idempotencyKey: `erector-${payload.blueprintId}-${form.locationCountry}-${form.businessModel}`,
+            rawGoal: form.primaryGoal,
+            purpose: form.purpose,
+            timeframe: form.timeframe,
+            commitmentLevel: commitmentForErector(form.commitmentLevel),
+            desiredOutcome: form.desiredOutcome,
+            location: { country: form.locationCountry, city: form.locationCity || undefined },
+            businessType: form.businessType,
+            businessModel: form.businessModel,
+            budgetAvailable: budgetNumber(),
+            currency: form.currency,
+            currentResources: form.currentResources,
+            targetCustomer: form.targetCustomer,
+            knownBlockers: form.knownBlockers ? form.knownBlockers.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
+            successSignal: form.specificTarget,
+            currentContext: form.currentContext,
+            domainHint: form.domain,
+            tier: selectedTier ?? undefined,
+            mode: selectedMode ?? undefined,
+          }),
+        });
+        const erectorJson = (await erectorRes.json()) as { ok?: boolean; data?: Record<string, unknown>; error?: { message?: string } };
+        if (!erectorJson.ok) {
+          setError(erectorJson.error?.message ?? "Erector validation failed.");
+          return;
+        }
+        payload = {
+          ...payload,
+          validationId: String(erectorJson.data?.["validationId"] ?? payload.validationId ?? ""),
+          verdict: (erectorJson.data?.["verdict"] as ValidationPayload["verdict"]) ?? payload.verdict,
+          launchBlocked: erectorJson.data?.["verdict"] === "pivot",
+          intelligence: { ...(payload.intelligence ?? {}), erector: erectorJson.data },
+        };
+        if (!payload.blueprintId) {
+          setError("Validation did not return a blueprint id.");
+          return;
+        }
         const saved = await saveBlueprintSelection(payload.blueprintId);
         if (!saved) return;
         setValidation(payload);
@@ -269,7 +377,7 @@ export default function OnboardingPage() {
       if (!saved) return;
 
       if (validation.validationId) {
-        const pathRes = await fetch(`${API_BASE_URL}/api/validation/${validation.validationId}/select-path`, {
+        const pathRes = await fetch(`${API_BASE_URL}/api/v1/validation/${validation.validationId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -681,8 +789,121 @@ export default function OnboardingPage() {
             {step === 5 && (
               <>
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900">Your current environment</h2>
-                  <p className="text-gray-500 mt-1">Tell us about your starting point so we can build a realistic execution plan.</p>
+                  <h2 className="text-3xl font-bold text-gray-900">Reality context</h2>
+                  <p className="text-gray-500 mt-1">The Erector validates your goal against your economy, resources, customer, and timeframe.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Country <span className="text-red-500">*</span></label>
+                    <input
+                      value={form.locationCountry}
+                      onChange={(e) => setField("locationCountry", e.target.value)}
+                      placeholder="United States, Nigeria, Germany..."
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                    />
+                    {form.locationCountry && (
+                      <p className="text-xs text-blue-600">Economy archetype resolves before validation scoring.</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">City <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input
+                      value={form.locationCity}
+                      onChange={(e) => setField("locationCity", e.target.value)}
+                      placeholder="City or region"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Business Type <span className="text-red-500">*</span></label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["online", "offline", "hybrid"] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setField("businessType", type)}
+                          className={`rounded-xl border px-3 py-2 text-sm font-medium capitalize ${form.businessType === type ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Business Model <span className="text-red-500">*</span></label>
+                    <select
+                      value={form.businessModel}
+                      onChange={(e) => setField("businessModel", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      <option value="">Select model</option>
+                      {["SaaS", "Service", "Content", "Ecommerce", "Creator", "Consulting", "Local Business", "Agency", "Other"].map((model) => (
+                        <option key={model} value={model}>{model}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_120px] gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Budget Available <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.budgetAvailable}
+                      onChange={(e) => setField("budgetAvailable", e.target.value)}
+                      placeholder="2500"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Currency</label>
+                    <select
+                      value={form.currency}
+                      onChange={(e) => setField("currency", e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    >
+                      {["USD", "EUR", "GBP", "NGN", "INR", "BRL", "AED"].map((currency) => (
+                        <option key={currency} value={currency}>{currency}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Current Resources <span className="text-red-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Audience", "Team", "Equipment", "Skills", "Network", "Customers", "None yet"].map((resource) => (
+                      <button
+                        key={resource}
+                        type="button"
+                        onClick={() => toggleResource(resource)}
+                        className={`rounded-full border px-4 py-2 text-xs font-semibold ${form.currentResources.includes(resource) ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
+                      >
+                        {resource}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Target Customer <span className="text-red-500">*</span></label>
+                    <input
+                      value={form.targetCustomer}
+                      onChange={(e) => setField("targetCustomer", e.target.value)}
+                      placeholder="Who specifically will pay for this?"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Desired Outcome <span className="text-red-500">*</span></label>
+                    <input
+                      value={form.desiredOutcome}
+                      onChange={(e) => setField("desiredOutcome", e.target.value)}
+                      placeholder="What does success look like in your timeframe?"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-gray-700">Current Situation</label>
@@ -778,7 +999,15 @@ export default function OnboardingPage() {
                 {loading && (
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
                     <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-gray-500 text-sm">Validating your goal and building paths...</p>
+                    <p className="text-gray-500 text-sm">Running The Erector validation sequence...</p>
+                    <div className="grid gap-2 w-full max-w-xl">
+                      {ERECTOR_ENGINE_MESSAGES.map((message, index) => (
+                        <div key={message} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">
+                          <span className="w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-400">{index + 1}</span>
+                          {message}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -802,6 +1031,39 @@ export default function OnboardingPage() {
 
                 {!loading && validated && validation && (
                   <>
+                    {validation.intelligence?.["erector"] && (
+                      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">The Erector Reality Briefing</p>
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {String(((validation.intelligence["erector"] as Record<string, unknown>)["archetypeResolution"] as Record<string, unknown> | undefined)?.["primaryArchetype"] ? (((validation.intelligence["erector"] as Record<string, unknown>)["archetypeResolution"] as Record<string, unknown>)["primaryArchetype"] as Record<string, unknown>)["name"] : "Economy mapped")}
+                            </h3>
+                          </div>
+                          <div className="rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700">
+                            Reality Score {String(((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<string, unknown> | undefined)?.["realityScore"] ?? "—")}
+                          </div>
+                        </div>
+                        <p className="text-sm leading-6 text-gray-700">
+                          {String(((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["briefingNarrative"] ?? "Economy intelligence loaded before blueprint launch.")}
+                        </p>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="rounded-xl bg-white p-4">
+                            <p className="text-xs font-bold uppercase text-amber-600">Warning</p>
+                            <p className="mt-2 text-sm text-gray-700">
+                              {String((((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["keyWarnings"] as unknown[] | undefined)?.[0] ?? "No critical economy warning.")}
+                            </p>
+                          </div>
+                          <div className="rounded-xl bg-white p-4">
+                            <p className="text-xs font-bold uppercase text-green-600">Opportunity</p>
+                            <p className="mt-2 text-sm text-gray-700">
+                              {String((((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["keyOpportunities"] as unknown[] | undefined)?.[0] ?? "Narrow first market and prove value quickly.")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <ValidationScreen
                       data={validation}
                       tier={selectedTier}

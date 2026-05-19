@@ -110,6 +110,10 @@ workerRegistry.register({
         }
 
         await scanPatterns({ userId, blueprintId, windowDays: 7 }).catch(() => null);
+        const { refreshDashboardIntelligence } = await import(
+          "../engines/dashboard/DashboardIntelligenceEngine.js"
+        );
+        await refreshDashboardIntelligence(userId, "PRIMARY_LOOP_COMPLETE").catch(() => null);
 
         await writeEvent({
           eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,

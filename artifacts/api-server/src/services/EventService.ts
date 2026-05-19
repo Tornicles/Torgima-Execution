@@ -68,6 +68,8 @@ export const EVENT_TYPES = {
   FAILURE_CLASSIFIED:              "failure_classified",
   PATTERN_SCAN_REQUESTED:          "pattern_scan_requested",
   VALIDATION_START_REQUESTED:      "validation_start_requested",
+  VALIDATION_COMPLETED:            "validation_completed",
+  VALIDATION_PATH_SELECTED:        "validation_path_selected",
   ASSUMPTION_CHECK_REQUESTED:      "assumption_check_requested",
   EIS_REFRESH_REQUESTED:           "eis_refresh_requested",
   SYSTEM_HEALTH_SCAN_REQUESTED:    "system_health_scan_requested",

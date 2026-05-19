@@ -136,6 +136,7 @@ export const bhudhiTriggerTypeEnum = pgEnum("bhudhi_trigger_type", [
   "blocker_classification", "pattern_summary", "evidence_summary", "root_cause_candidates",
   "pivot_path_generation", "academy_content", "knowledge_update",
   "blueprint_generation", "blueprint_interpretation",
+  "erector_analysis",
 ]);
 export const bhudhiExecutionContextEnum = pgEnum("bhudhi_execution_context", [
   "marketing", "pr", "strategy", "execution", "analysis",

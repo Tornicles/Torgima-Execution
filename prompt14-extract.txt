@@ -1,0 +1,361 @@
+﻿CURSOR PROMPT 14  â€”  TORGIMA MARKETING WEBSITE
+PUBLIC PRESENCE Â· LANDING PAGE Â· PRICING Â· HOW IT WORKS Â· WAITLIST / SIGNUP FLOW
+Prerequisite: Prompt 13 complete, Phase 1 sign-off certificate issued
+Next.js Public Marketing Site Â· Complete Design System Â· Copy Architecture Â· SEO Â· Conversion Flow
+
+CONTEXT
+WHY THIS IS BUILT NOW
+Phase 1 is complete. Torgima is a working individual execution system. Before users can find it, there must be a public presence â€” a marketing website that communicates what Torgima is, why it is different, and how to get access. This prompt builds the complete marketing website as a separate section of the existing Next.js app, deployed to the same domain. The marketing site shares the codebase but has its own layout, design language, and conversion goals.
+
+CRITICAL DISTINCTION
+PRODUCT APP:  torgima.com/dashboard â†’ Operational execution language. Dense intelligence. Condition badges. Signal bars. For paying users who are executing inside the system.
+MARKETING SITE:  torgima.com (homepage + marketing pages) â†’ Benefit language. Social proof. Clear value proposition. Conversion-optimized. For potential users who have never heard of Torgima.
+
+
+PART 1 â€” SITE ARCHITECTURE
+// Marketing site pages â€” all in app/(marketing)/ route group
+// This route group has its own layout (no dashboard nav)
+
+app/
+â”œâ”€â”€ (marketing)/
+â”‚   â”œâ”€â”€ layout.tsx          # Marketing layout: nav + footer only
+â”‚   â”œâ”€â”€ page.tsx            # MP01: Homepage / Landing
+â”‚   â”œâ”€â”€ how-it-works/
+â”‚   â”‚   â””â”€â”€ page.tsx        # MP02: How It Works
+â”‚   â”œâ”€â”€ pricing/
+â”‚   â”‚   â””â”€â”€ page.tsx        # MP03: Pricing
+â”‚   â”œâ”€â”€ about/
+â”‚   â”‚   â””â”€â”€ page.tsx        # MP04: About / Manifesto
+â”‚   â””â”€â”€ changelog/
+â”‚       â””â”€â”€ page.tsx        # MP05: Changelog (Phase builds)
+
+// All (marketing) pages are public â€” no auth required
+// Separate from (dashboard) and (onboarding) route groups
+// Marketing layout: minimal, clean, conversion-focused
+
+PART 2 â€” DESIGN SYSTEM FOR MARKETING
+// Marketing design language â€” distinct from the app's operational UI
+// Both are professional but serve different purposes
+
+// TYPOGRAPHY
+// Hero headline: Inter 64px bold, line-height 1.1, tracking -0.02em
+// Section headline: Inter 40px bold
+// Body: Inter 18px, line-height 1.7
+// Caption: Inter 14px, color: #6B7280
+
+// COLOR PALETTE (marketing â€” slightly different from app)
+// Background: #FAFAFA (off-white, feels clean)
+// Primary text: #0A0F1E (near-black)
+// Accent: #0EA5E9 (Bhudhi blue â€” same as app)
+// Gold: #F59E0B (execution gold â€” same as app)
+// Surface: #FFFFFF
+// Border: #E5E7EB
+// Muted: #6B7280
+
+// DESIGN PRINCIPLES
+// 1. No gradients on backgrounds â€” clean, flat, professional
+// 2. Heavy use of whitespace â€” Torgima is about clarity
+// 3. No stock photos of people smiling at laptops
+// 4. Data visualizations > decorative illustrations
+// 5. Show the actual product â€” screenshots, not mockups
+// 6. Every section has one job â€” one message, one CTA
+
+PART 3 â€” MP01: HOMEPAGE
+The complete homepage specification. Every section defined with content, purpose, and design direction.
+SECTION 1
+Navigation
+Logo (left) Â· 'How It Works' Â· 'Pricing' Â· 'About' Â· CTA button: 'Start Your Blueprint' â†’ /signup
+Sticky on scroll. Clean horizontal nav. CTA button: filled blue. Mobile: hamburger menu.
+
+SECTION 2
+Hero
+Headline: 'The execution system that never stops working for you.' Sub: 'Enter a goal. Get a blueprint. Torgima generates your next task â€” and the one after that â€” until your goal is complete. Even while you sleep.' Primary CTA: 'Start Your Blueprint' â†’ /signup. Secondary: 'See how it works' â†’ /how-it-works
+Full-width. Headline large (64px). Product screenshot or animated loop of the dashboard below the fold. No stock images.
+
+SECTION 3
+The Problem
+'Most goals fail not because people lack ambition. They fail because no system keeps converting that ambition into the next correct action.' Three failure modes with icons: Plan overwhelm Â· Execution gap Â· Empty accountability
+Three horizontal cards. Clean icons. Brief copy. No decoration.
+
+SECTION 4
+How Torgima Works
+3-step visual flow: 1. Enter your goal 2. Torgima builds your execution blueprint 3. Your next task is always ready â€” even while you sleep. Each step: icon + headline + 2-sentence explanation.
+Horizontal flow with connecting arrows. Clean. Each step max 40 words.
+
+SECTION 5
+The Overnight Intelligence
+'While you sleep, Torgima reads your industry. When you wake up, your report is waiting.' Visual: morning report screenshot showing trending topics, platform signals, and today's task recommendation.
+Split: copy left, product screenshot right. Real screenshot from the app. This is the most differentiating feature â€” give it space.
+
+SECTION 6
+What Torgima Is Not
+Not a task manager. Not an AI chatbot. Not a planner. One-liner for each with brief explanation of what it IS instead.
+Three columns. Crossed-out 'Not:' in muted text. Bold 'It is:' in brand color. Honest positioning.
+
+SECTION 7
+The Intelligence Layer
+'Bhudhi â€” the execution intelligence behind Torgima â€” adapts to your execution behavior, detects when you're burning out, and adjusts before you do.' Feature grid: 6 capabilities with icons.
+Bhudhi name can be shown here â€” but as 'the intelligence layer', not as a separate product. Grid: 2 columns Ã— 3 rows.
+
+SECTION 8
+Pricing Preview
+Free tier available. Paid tier unlocks full overnight intelligence and extended history. CTA: 'See full pricing' â†’ /pricing
+Simple 2-card preview. Not full pricing page. Drive to pricing page.
+
+SECTION 9
+Footer
+Logo Â· Links: How It Works, Pricing, About, Changelog Â· Legal: Privacy, Terms Â· Copyright
+Clean. Dark background or light â€” designer's choice. No excessive links.
+
+
+PART 4 â€” MP02: HOW IT WORKS
+// /how-it-works â€” Full explanation of the system
+
+SECTION 1: THE EXECUTION LOOP
+  Visual diagram: Goal â†’ Blueprint â†’ Tasks â†’ Feedback â†’ Signals â†’ Conditions â†’ New Tasks
+  Copy: 'This loop runs until your goal is complete. It never stops.'
+  Show: the loop working even overnight (overnight worker visualization)
+
+SECTION 2: THE BLUEPRINT
+  What a blueprint looks like â€” Plans, Phases, Projects, Actions, Orders
+  Collapsed hierarchy visual showing a real example blueprint
+  Copy: 'Not a to-do list. A structured execution architecture for your goal.'
+
+SECTION 3: CONDITIONS AND SIGNALS
+  Explain: 7 conditions, what they mean, how they affect execution
+  Visual: condition spectrum from Nothingness â†’ Affluence
+  Copy: 'Torgima measures your execution reality â€” not your intentions'
+  Show: what changes at each condition (task difficulty, count, intensity)
+
+SECTION 4: BHUDHI INTELLIGENCE
+  What Bhudhi does in plain language
+  List: validates goals Â· builds blueprints Â· generates tasks Â· reads your industry Â· adapts to your behavior
+  Show: actual morning report example (anonymized)
+
+SECTION 5: THE THREE LAWS
+  Be honest about what Bhudhi cannot do:
+  'Bhudhi interprets and advises. Signals are calculated from real execution data.
+   Bhudhi cannot fake your progress. Reality governs the system.'
+  This builds trust â€” show what makes Torgima honest.
+
+CTA: 'Ready to start? Create your blueprint.' â†’ /signup
+
+PART 5 â€” MP03: PRICING
+// /pricing â€” Two tiers clearly explained
+
+POSITIONING HEADLINE:
+  'Free to execute. Upgrade for overnight intelligence.'
+
+FREE TIER â€” 'Execution'
+  Price: Free, forever
+  What's included:
+    - Full execution loop: goals, blueprints, tasks, feedback, signals
+    - All 7 conditions and control rules
+    - Basic EIS (cached intelligence)
+    - Academy and capability gap detection
+    - Dashboard with condition, signals, blueprint health
+    - Standard task knowledge injection
+  What's NOT included:
+    - Overnight intelligence (EIS full 9-module suite)
+    - Morning Intelligence Report
+    - Strategic Outlook Panel (7-day forecast)
+    - Competitor intelligence
+    - Trend velocity analysis
+    - Narrative intelligence
+    - Extended signal history (> 30 days)
+
+PAID TIER â€” 'Intelligence'
+  Price: [TBD â€” set when ready to launch]
+  Tagline: 'The system works harder while you sleep'
+  Everything in Free, plus:
+    - Full overnight intelligence (all 9 EIS modules)
+    - Daily Morning Intelligence Report
+    - Strategic Outlook Panel
+    - Competitor tracking
+    - Trend velocity scoring
+    - Narrative intelligence
+    - Opportunity window detection
+    - Full signal history
+    - Priority support
+
+COMPARISON TABLE:
+  Side-by-side feature comparison
+  Checkmarks for included, dash for not included
+  Clean, honest, no fine print
+
+CTA: Free tier â†’ 'Start executing free' | Paid â†’ 'Get full intelligence'
+FAQ section: 'Is free really free?', 'Can I upgrade anytime?', 'What is Bhudhi?'
+
+PART 6 â€” MP04: ABOUT / MANIFESTO
+// /about â€” The belief system behind Torgima
+
+HEADLINE: 'Execution is the only thing that matters'
+
+THE MANIFESTO (4 paragraphs):
+  Paragraph 1: The problem
+    'Most people have goals. Almost no one has an execution system.
+     The distance between knowing what you want and consistently doing
+     what is needed to get there is where most dreams end.'
+
+  Paragraph 2: What Torgima is
+    'Torgima is not a planner. Not a motivational tool.
+     It is an execution operating system.
+     It converts your goal into the next correct task â€”
+     and the one after that â€” until the goal is complete.
+     It measures your reality. It adapts to your behavior.
+     It works while you sleep.'
+
+  Paragraph 3: The intelligence
+    'The intelligence layer behind Torgima does not tell you what you
+     want to hear. It reads your execution signals, not your intentions.
+     It cannot fake your progress. Reality governs the system.'
+
+  Paragraph 4: The commitment
+    'Torgima is built on one principle:
+     the only thing that converts goals into reality is execution.
+     Everything else is preparation.'
+
+BUILT BY section:
+  Brief founder statement
+  No team photos necessary â€” keep it product-focused
+
+CTA: 'Start your first blueprint' â†’ /signup
+
+PART 7 â€” MP05: CHANGELOG
+// /changelog â€” Transparent build history
+
+PURPOSE:
+  Shows Torgima is actively built and improving
+  Creates trust through transparency
+  Shows Phase 1 is complete â€” future phases incoming
+
+FORMAT: Timeline / blog-style, newest first
+
+PHASE 1 ENTRY:
+  Date: [Phase 1 completion date]
+  Title: 'Phase 1 â€” Individual Execution System'
+  What shipped:
+    - Goal validation with reality checks
+    - Execution blueprint generation
+    - Continuous task loop (never empty)
+    - 7 execution conditions with adaptive control
+    - Academy and capability development
+    - Overnight intelligence (paid tier)
+    - Morning Intelligence Report
+    - Dashboard intelligence panels
+  Next: Phase 2 â€” Psychological Civilization (in development)
+
+CHANGELOG RULES:
+  - Honest about what shipped and what is still coming
+  - No vaporware â€” only list things that are actually built
+  - Show the roadmap direction without hard dates
+
+PART 8 â€” SEO & METADATA
+// app/(marketing)/layout.tsx â€” Base metadata
+
+export const metadata = {
+  metadataBase: new URL('https://torgima.com'),
+  title: {
+    default: 'Torgima â€” The Execution Operating System',
+    template: '%s | Torgima',
+  },
+  description: 'Torgima converts your goal into a structured execution blueprint, generates your next task continuously, and adapts to your execution reality â€” with overnight intelligence that reads your industry while you sleep.',
+  openGraph: {
+    type: 'website',
+    url: 'https://torgima.com',
+    title: 'Torgima â€” The Execution Operating System',
+    description: 'Enter a goal. Get a blueprint. Your next task is always ready.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Torgima â€” The Execution Operating System',
+    description: 'Enter a goal. Get a blueprint. Your next task is always ready.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
+
+// Per-page metadata:
+// /how-it-works: 'How Torgima Works | Torgima'
+// /pricing: 'Pricing | Torgima'
+// /about: 'About Torgima | The Execution Operating System'
+
+// Create: /public/og-image.png (1200Ã—630)
+// Show: headline, Bhudhi blue background, minimal
+
+
+PART 9 â€” TEST CASES
+All 10 tests must pass. Marketing site must convert, load fast, and represent Torgima accurately.
+TEST 1: Homepage â€” Loads in < 1.5s
+Scenario:  Load the homepage. Measure time to interactive.
+Pass:  PASS: Time to interactive < 1500ms, no render-blocking resources
+
+TEST 2: Navigation â€” All Links Work
+Scenario:  Click every navigation link on every marketing page. All must resolve correctly.
+Pass:  PASS: Zero 404 errors, all internal links resolve, CTA buttons navigate to correct routes
+
+TEST 3: CTA Flow â€” Signup Conversion
+Scenario:  Click 'Start Your Blueprint' CTA on homepage. Verify: routes to /signup, signup works, redirects to /onboarding/goal.
+Pass:  PASS: Full conversion flow working end-to-end
+
+TEST 4: Pricing â€” Tier Accuracy
+Scenario:  Verify pricing page accurately represents Free vs Intelligence tier features based on what was actually built.
+Pass:  PASS: Every listed feature in Free tier exists in the app, every Intelligence feature confirmed working
+
+TEST 5: Mobile â€” All 5 Pages
+Scenario:  View all 5 marketing pages on 375px viewport. Verify responsive layout on all pages.
+Pass:  PASS: All pages render correctly at 375px, no horizontal scroll, all content readable
+
+TEST 6: SEO â€” Metadata Present
+Scenario:  Check: every page has unique title, description, and og:image.
+Pass:  PASS: All 5 pages have distinct title and description tags, og:image resolves
+
+TEST 7: Copy Accuracy â€” How It Works
+Scenario:  The How It Works page accurately describes the actual Torgima system. No feature claims that are not built.
+Pass:  PASS: Every claim on /how-it-works matches a feature verified in Prompt 9 or 13 acceptance criteria
+
+TEST 8: App vs Marketing â€” No Cross-Contamination
+Scenario:  Marketing pages must not show dashboard components or execution language.
+Pass:  PASS: No condition badges, signal bars, or 'Orders' terminology visible on marketing pages
+
+TEST 9: Changelog â€” Accurate
+Scenario:  Phase 1 changelog entry lists only features that are actually shipped.
+Pass:  PASS: Every listed Phase 1 feature is confirmed built in Prompts 1-13
+
+TEST 10: Manifesto â€” Honest Positioning
+Scenario:  About page accurately positions what Torgima is and is not. No exaggeration.
+Pass:  PASS: About page claims verified against actual Phase 1 capabilities, no unbuilt feature claims
+
+
+COMPLETION REPORT FORMAT
+=== PROMPT 14 COMPLETION REPORT ===
+
+PAGES BUILT: [X/5]
+  MP01 Homepage: COMPLETE
+  MP02 How It Works: COMPLETE
+  MP03 Pricing: COMPLETE
+  MP04 About / Manifesto: COMPLETE
+  MP05 Changelog: COMPLETE
+
+SEO CONFIGURED:
+  All metadata set: CONFIRMED
+  OG image created: CONFIRMED
+  Sitemap generated: CONFIRMED
+
+COPY ACCURACY VERIFIED:
+  No unbuilt features claimed: CONFIRMED
+  Pricing tiers accurate: CONFIRMED
+  Changelog Phase 1 entry accurate: CONFIRMED
+
+PERFORMANCE:
+  Homepage TTI: [Xms] TARGET: < 1500ms
+
+MOBILE RESPONSIVE: [5/5] pages verified
+
+TESTS PASSED: [X/10]
+KNOWN ISSUES: [none / list]
+READY FOR PROMPT 15: YES / NO
+===================================

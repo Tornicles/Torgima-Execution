@@ -213,10 +213,10 @@ export const ValidationService = {
       throw new TorgimaError("NOT_FOUND", "Validation record not found. Run validation first.");
     }
 
-    if (validation.launch_blocked || validation.verdict === "pivot") {
+    if ((validation.launch_blocked || validation.verdict === "pivot") && params.selectedPath !== "alternative") {
       throw new TorgimaError(
         "VALIDATION_ERROR",
-        "Cannot select a path while verdict is Pivot Required. Edit inputs and re-validate.",
+        "Cannot select current or adjusted path while verdict is Pivot Required. Select alternative or re-validate.",
       );
     }
 
@@ -334,10 +334,10 @@ export const ValidationService = {
     }
     if (row.user_id !== userId) throw new TorgimaError("FORBIDDEN", "Not your validation");
 
-    if (row.launch_blocked || row.verdict === "pivot") {
+    if ((row.launch_blocked || row.verdict === "pivot") && row.selected_path !== "alternative") {
       throw new TorgimaError(
         "VALIDATION_ERROR",
-        "Blueprint launch blocked: Pivot Required. Address critical issues and re-validate.",
+        "Blueprint launch blocked: Pivot Required. Select an alternative path or re-validate.",
       );
     }
 

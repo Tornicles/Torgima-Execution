@@ -222,6 +222,60 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       }
       break;
 
+    case "eis_competitor":
+      if (!Array.isArray(d["competitors"])) errors.push("eis_competitor: competitors must be array");
+      if (!d["threatLevel"]) errors.push("eis_competitor: missing threatLevel");
+      if (!Array.isArray(d["opportunityGaps"])) errors.push("eis_competitor: opportunityGaps must be array");
+      if (!d["keyLesson"]) errors.push("eis_competitor: missing keyLesson");
+      break;
+
+    case "eis_narrative":
+      if (!d["dominantNarrative"]) errors.push("eis_narrative: missing dominantNarrative");
+      if (!Array.isArray(d["emergingNarratives"])) errors.push("eis_narrative: emergingNarratives must be array");
+      if (!d["sentimentSignal"]) errors.push("eis_narrative: missing sentimentSignal");
+      if (!d["bestContentAngle"]) errors.push("eis_narrative: missing bestContentAngle");
+      break;
+
+    case "eis_opportunity_synthesis":
+      if (!Array.isArray(d["opportunities"])) errors.push("eis_opportunity_synthesis: opportunities must be array");
+      if (!d["topOpportunity"]) errors.push("eis_opportunity_synthesis: missing topOpportunity");
+      if (!d["alignmentWithBlueprint"]) errors.push("eis_opportunity_synthesis: missing alignmentWithBlueprint");
+      break;
+
+    case "strategic_outlook":
+      if (!d["executionForecast"]) errors.push("strategic_outlook: missing executionForecast");
+      if (!Array.isArray(d["riskFactors"])) errors.push("strategic_outlook: riskFactors must be array");
+      if (!d["highestLeverageAction"]) errors.push("strategic_outlook: missing highestLeverageAction");
+      if (!d["confidenceTier"]) errors.push("strategic_outlook: missing confidenceTier");
+      break;
+
+    case "behavioral_insight":
+      if (!d["insightType"]) errors.push("behavioral_insight: missing insightType");
+      if (!d["insightText"]) errors.push("behavioral_insight: missing insightText");
+      if (!d["evidenceSummary"]) errors.push("behavioral_insight: missing evidenceSummary");
+      break;
+
+    case "signal_narrative":
+      if (!d["narrativeText"]) errors.push("signal_narrative: missing narrativeText");
+      if (!d["keyTrend"]) errors.push("signal_narrative: missing keyTrend");
+      if (!d["momentumStatus"]) errors.push("signal_narrative: missing momentumStatus");
+      break;
+
+    case "erector_archetype_narrative":
+    case "erector_purpose":
+    case "erector_industry":
+    case "erector_market":
+    case "erector_competitors":
+    case "erector_economy":
+    case "erector_pain":
+    case "erector_time_simulation":
+    case "erector_paths":
+    case "erector_first_week":
+      if (!d["summary"]) errors.push(`${expectedType}: missing summary`);
+      if (!Array.isArray(d["warnings"])) errors.push(`${expectedType}: warnings must be array`);
+      if (!Array.isArray(d["opportunities"])) errors.push(`${expectedType}: opportunities must be array`);
+      break;
+
     default:
       errors.push(`Unknown output type: ${expectedType}`);
   }

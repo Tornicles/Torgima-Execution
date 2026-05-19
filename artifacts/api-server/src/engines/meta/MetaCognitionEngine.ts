@@ -168,3 +168,36 @@ export async function runWeeklyCalibrationFromPredictions(): Promise<number> {
   logger.info({ calibrated }, "[MetaCognitionEngine] Weekly calibration");
   return calibrated;
 }
+
+export async function finalizePhase1Profiles(): Promise<number> {
+  const rows = await db.select().from(metaCognitionProfiles);
+  let updated = 0;
+
+  for (const profile of rows) {
+    const reliability = profile.prediction_accuracy >= 0.7 ? 0.75 : Math.max(0.5, profile.prediction_accuracy);
+    const currentDomains = (profile.domain_reliability as DomainReliability[]) ?? [];
+    const domains =
+      currentDomains.length > 0
+        ? currentDomains
+        : [
+            { domain: "execution", reliabilityScore: reliability },
+            { domain: "strategy", reliabilityScore: reliability },
+            { domain: "dashboard", reliabilityScore: reliability },
+          ];
+
+    await db
+      .update(metaCognitionProfiles)
+      .set({
+        domain_reliability: domains,
+        strong_domains: domains.filter((d) => d.reliabilityScore >= 0.75).map((d) => d.domain),
+        weak_domains: domains.filter((d) => d.reliabilityScore < 0.5).map((d) => d.domain),
+        last_calibration_update: new Date(),
+        calibration_version: profile.calibration_version + 1,
+      })
+      .where(eq(metaCognitionProfiles.id, profile.id));
+    updated++;
+  }
+
+  logger.info({ updated }, "[MetaCognitionEngine] Phase 1 baselines finalized");
+  return updated;
+}

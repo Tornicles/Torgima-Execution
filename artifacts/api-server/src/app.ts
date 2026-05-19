@@ -14,12 +14,16 @@ const explicitOrigins = rawFrontend
   .map((s) => s.trim())
   .filter(Boolean);
 
+const DEV_ORIGINS =
+  process.env.NODE_ENV === "production"
+    ? []
+    : [`http://localhost:${process.env.FRONTEND_DEV_PORT ?? "5173"}`, `http://localhost:${process.env.APP_DEV_PORT ?? "3000"}`];
+
 const ALLOWED_ORIGINS = [
   ...explicitOrigins,
   "https://torgima-execution.vercel.app",
   "https://torgima.com",
-  "http://localhost:5173",
-  "http://localhost:3000",
+  ...DEV_ORIGINS,
 ];
 
 const app: Express = express();

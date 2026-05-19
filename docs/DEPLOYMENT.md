@@ -1,6 +1,6 @@
 # Torgima Deployment
 
-The repo is a pnpm monorepo with two deployable artifacts that **MUST be hosted on different platforms**:
+The repo is a pnpm monorepo with two deployable artifacts that **MUST be hosted on different platforms**. The Prompt 15 production handoff checklist lives in [`docs/PRODUCTION_RUNBOOK.md`](./PRODUCTION_RUNBOOK.md).
 
 | Artifact | What it is | Where it deploys |
 | --- | --- | --- |
@@ -89,6 +89,8 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 | `EMAIL_FROM` | Recommended | Defaults to `noreply@torgima.com`. |
 | `EMAIL_REPLY_TO` | Optional | Defaults to `support@torgima.com`. |
 | `NODE_ENV` | Yes in production | Set to `production` to enable production logging and disable dev-only fallbacks. |
+| `APP_VERSION` | Recommended | Use `phase1` for Prompt 15 production health responses. |
+| `PGBOSS_DATABASE_URL` | Optional | Dedicated pg-boss connection URL. Falls back to `DATABASE_URL` when unset. |
 | `LOG_LEVEL` | Optional | Defaults to `info`. |
 
 ### CORS
@@ -154,3 +156,13 @@ GitHub: Tornicles/Torgima-Execution (main)
 ```
 
 The API host and the Vercel deployment must point at the **same** Postgres database. The frontend's `VITE_API_BASE_URL` must point at the API host's public URL.
+
+## Production health check
+
+After API deployment, external monitoring should ping:
+
+```bash
+curl -fsS https://api.torgima.com/api/health
+```
+
+The endpoint returns direct JSON with `status`, `checks.database`, `checks.bhudhi`, `checks.workers`, `checks.signals`, `version`, and operational metrics. Alert on consecutive `503` responses.

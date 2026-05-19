@@ -796,6 +796,232 @@ Return ONLY JSON:
 }`,
 });
 
+registry.set("EIS_COMPETITOR_INTELLIGENCE", {
+  name:         "eis.competitor.v1",
+  version:      "1.0",
+  triggerType:  "EIS_COMPETITOR_INTELLIGENCE",
+  mode:         "STRUCTURE",
+  outputType:   "eis_competitor",
+  maxTokens:    700,
+  temperature:  0.2,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.eis_competitor",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nUse only supplied competitor search results. Do not invent private personal data, exact revenue, or specific financial data.`,
+  buildUserPrompt: (ctx) => `
+Niche: ${String(ctx["niche"] ?? "")}
+Follower tier: ${String(ctx["userFollowerTier"] ?? "")}
+Blueprint phase: ${String(ctx["blueprintPhase"] ?? "execution")}
+Search results: ${JSON.stringify(ctx["searchResults"] ?? [])}
+
+Return ONLY JSON:
+{
+  "outputType": "eis_competitor",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "competitors": [{ "handle": "", "recentContent": "", "performanceSignal": "", "whatWorked": "" }],
+    "threatLevel": "LOW",
+    "opportunityGaps": ["gap"],
+    "keyLesson": "max 200 chars"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("EIS_NARRATIVE_INTELLIGENCE", {
+  name:         "eis.narrative.v1",
+  version:      "1.0",
+  triggerType:  "EIS_NARRATIVE_INTELLIGENCE",
+  mode:         "STRUCTURE",
+  outputType:   "eis_narrative",
+  maxTokens:    650,
+  temperature:  0.25,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.eis_narrative",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nSummarize public conversation shifts from supplied results only. Do not claim live sentiment beyond evidence.`,
+  buildUserPrompt: (ctx) => `
+Domain: ${String(ctx["domain"] ?? "")}
+Niche: ${String(ctx["niche"] ?? "")}
+Audience conversation results: ${JSON.stringify(ctx["searchResults"] ?? [])}
+
+Return ONLY JSON:
+{
+  "outputType": "eis_narrative",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "dominantNarrative": "main public conversation",
+    "emergingNarratives": ["angle"],
+    "sentimentSignal": "MIXED",
+    "audienceEmotions": ["emotion"],
+    "bestContentAngle": "specific angle for today",
+    "riskNarratives": ["risk"]
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("EIS_OPPORTUNITY_SYNTHESIS", {
+  name:         "eis.opportunity_synthesis.v1",
+  version:      "1.0",
+  triggerType:  "EIS_OPPORTUNITY_SYNTHESIS",
+  mode:         "STRUCTURE",
+  outputType:   "eis_opportunity_synthesis",
+  maxTokens:    600,
+  temperature:  0.2,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.eis_opportunity_synthesis",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nRank opportunities as execution context only. Never instruct the user to copy competitors or pivot automatically.`,
+  buildUserPrompt: (ctx) => `
+Trend velocity: ${JSON.stringify(ctx["trends"] ?? {})}
+Competitor gaps: ${JSON.stringify(ctx["competitors"] ?? {})}
+Narrative angle: ${JSON.stringify(ctx["narrative"] ?? {})}
+Blueprint phase: ${String(ctx["currentBlueprintPhase"] ?? "execution")}
+
+Return ONLY JSON:
+{
+  "outputType": "eis_opportunity_synthesis",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "opportunities": [{ "description": "", "timeWindow": "This week", "relevanceScore": 0.7, "actionHint": "", "urgency": "MEDIUM" }],
+    "topOpportunity": { "description": "", "urgency": "HIGH", "specificAction": "" },
+    "alignmentWithBlueprint": "how top opportunity relates to user's plan"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("DIRECTION_ANALYSIS", {
+  name:         "outlook.strategic.v1",
+  version:      "1.0",
+  triggerType:  "DIRECTION_ANALYSIS",
+  mode:         "INTERPRET",
+  outputType:   "strategic_outlook",
+  maxTokens:    700,
+  temperature:  0.18,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.strategic_outlook",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nUse execution language: trajectory, signal, momentum. Avoid: future, will, guaranteed, promises.`,
+  buildUserPrompt: (ctx) => `
+Signal trajectories: ${JSON.stringify(ctx["signalTrajectories"] ?? [])}
+Burnout record: ${JSON.stringify(ctx["burnoutRecord"] ?? null)}
+Active patterns: ${JSON.stringify(ctx["activePatterns"] ?? [])}
+EIS briefing: ${JSON.stringify(ctx["eisBriefing"] ?? {})}
+Blueprint health: ${JSON.stringify(ctx["blueprintHealth"] ?? {})}
+Current condition: ${String(ctx["currentCondition"] ?? "stability")}
+
+Return ONLY JSON:
+{
+  "outputType": "strategic_outlook",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "executionForecast": "max 300 chars, references signal data",
+    "riskFactors": [{ "risk": "", "likelihood": "MEDIUM", "mitigation": "" }],
+    "highestLeverageAction": "max 200 chars",
+    "conditionPrediction": "7-day condition trajectory with rationale",
+    "momentumTrajectory": "STABLE",
+    "opportunityFlags": ["max 3"],
+    "confidenceTier": "MEDIUM"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("BEHAVIORAL_INSIGHT", {
+  name:         "behavioral.insight.v1",
+  version:      "1.0",
+  triggerType:  "BEHAVIORAL_INSIGHT",
+  mode:         "INTERPRET",
+  outputType:   "behavioral_insight",
+  maxTokens:    350,
+  temperature:  0.15,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.behavioral_insight",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nSurface one execution pattern observation. Avoid: behavior, habit, I noticed, good news, well done.`,
+  buildUserPrompt: (ctx) => `
+Behavioral profile: ${JSON.stringify(ctx["behavioralProfile"] ?? {})}
+Active patterns: ${JSON.stringify(ctx["activePatterns"] ?? [])}
+Current condition: ${String(ctx["currentCondition"] ?? "stability")}
+Completion trend: ${JSON.stringify(ctx["completionTrend"] ?? [])}
+Burnout score: ${String(ctx["burnoutScore"] ?? 0)}
+
+Return ONLY JSON:
+{
+  "outputType": "behavioral_insight",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "insightType": "PATTERN",
+    "insightText": "max 200 chars",
+    "evidenceSummary": "what execution data supports this",
+    "actionSuggestion": "optional max 150 chars"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("SIGNAL_NARRATIVE", {
+  name:         "signal.narrative.v1",
+  version:      "1.0",
+  triggerType:  "SIGNAL_NARRATIVE",
+  mode:         "EXPLAIN",
+  outputType:   "signal_narrative",
+  maxTokens:    400,
+  temperature:  0.15,
+  memoryAllowed: true,
+  fallbackKey:  "fallback.signal_narrative",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\nExplain signal movement in plain language. Avoid raw decimals and technical signal jargon as primary display.`,
+  buildUserPrompt: (ctx) => `
+14-day signal history: ${JSON.stringify(ctx["signalHistory"] ?? [])}
+Trend directions: ${JSON.stringify(ctx["trendDirections"] ?? {})}
+Condition history: ${JSON.stringify(ctx["conditionHistory"] ?? [])}
+
+Return ONLY JSON:
+{
+  "outputType": "signal_narrative",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "narrativeText": "max 400 chars",
+    "keyTrend": "single most important signal movement",
+    "momentumStatus": "what momentum is doing and why"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
 registry.set("EIS_SYNTHESIS", {
   name:         "eis.synthesis.v1",
   version:      "1.0",
@@ -837,6 +1063,64 @@ Return ONLY JSON:
   "forbiddenActionRequested": false
 }`,
 });
+
+const ERECTOR_CONTRACTS: Array<{
+  triggerType: BhudhiTriggerType;
+  outputType: BhudhiOutputType;
+  name: string;
+  fallbackKey: string;
+  purpose: string;
+}> = [
+  { triggerType: "ERECTOR_ARCHETYPE_NARRATIVE", outputType: "erector_archetype_narrative", name: "erector.archetype_narrative.v1", fallbackKey: "fallback.erector_archetype_narrative", purpose: "Generate economy reality briefing from archetype profile." },
+  { triggerType: "ERECTOR_PURPOSE_DECOMPOSE", outputType: "erector_purpose", name: "erector.purpose_decompose.v1", fallbackKey: "fallback.erector_purpose", purpose: "Extract problem, value, change, motivation, contradictions, and clarity." },
+  { triggerType: "ERECTOR_INDUSTRY_ANALYZE", outputType: "erector_industry", name: "erector.industry_analyze.v1", fallbackKey: "fallback.erector_industry", purpose: "Analyze industry state in the resolved economy." },
+  { triggerType: "ERECTOR_MARKET_ANALYZE", outputType: "erector_market", name: "erector.market_analyze.v1", fallbackKey: "fallback.erector_market", purpose: "Produce six-layer archetype-adjusted market analysis." },
+  { triggerType: "ERECTOR_COMPETITORS_IDENTIFY", outputType: "erector_competitors", name: "erector.competitors_identify.v1", fallbackKey: "fallback.erector_competitors", purpose: "Identify winner patterns without fabricating unsupported claims." },
+  { triggerType: "ERECTOR_ECONOMY_BRIEFING", outputType: "erector_economy", name: "erector.economy_briefing.v1", fallbackKey: "fallback.erector_economy", purpose: "Create deep archetype behavioral briefing." },
+  { triggerType: "ERECTOR_PAIN_ANALYZE", outputType: "erector_pain", name: "erector.pain_analyze.v1", fallbackKey: "fallback.erector_pain", purpose: "Identify customer pain and willingness to pay." },
+  { triggerType: "ERECTOR_SIMULATE_TIMEFRAMES", outputType: "erector_time_simulation", name: "erector.simulate_timeframes.v1", fallbackKey: "fallback.erector_time_simulation", purpose: "Simulate execution requirements by timeframe." },
+  { triggerType: "ERECTOR_PATHS_GENERATE", outputType: "erector_paths", name: "erector.paths_generate.v1", fallbackKey: "fallback.erector_paths", purpose: "Generate current, adjusted, and alternative paths." },
+  { triggerType: "ERECTOR_FIRST_WEEK", outputType: "erector_first_week", name: "erector.first_week.v1", fallbackKey: "fallback.erector_first_week", purpose: "Generate first seven-day execution plan after path selection." },
+];
+
+for (const contract of ERECTOR_CONTRACTS) {
+  registry.set(contract.triggerType, {
+    name: contract.name,
+    version: "1.0",
+    triggerType: contract.triggerType,
+    mode: "STRUCTURE",
+    outputType: contract.outputType,
+    maxTokens: 1400,
+    temperature: 0.25,
+    memoryAllowed: true,
+    fallbackKey: contract.fallbackKey,
+    systemPrompt:
+      STANDARD_SYSTEM_HEADER +
+      `\nYou are supporting The Erector validation system. ${contract.purpose}` +
+      `\nThe rule engine owns all scores and launch decisions. Use probability language only. Return ONLY valid JSON matching the envelope.`,
+    buildUserPrompt: (ctx) => `
+Goal: ${String(ctx["goal"] ?? ctx["rawGoal"] ?? "")}
+Purpose: ${String(ctx["purpose"] ?? "")}
+Archetype profile: ${JSON.stringify(ctx["archetype"] ?? ctx["primaryArchetype"] ?? {})}
+Prior engine outputs: ${JSON.stringify(ctx["priorOutputs"] ?? {})}
+
+Return ONLY JSON:
+{
+  "outputType": "${contract.outputType}",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "MEDIUM",
+  "data": {
+    "summary": "operational economy-adjusted analysis",
+    "warnings": [],
+    "opportunities": []
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+  });
+}
 
 export function getContract(triggerType: BhudhiTriggerType): PromptContract | null {
   return registry.get(triggerType) ?? null;

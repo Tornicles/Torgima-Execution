@@ -13,27 +13,38 @@ function expiryDays(priority: string): number {
 }
 
 export async function submitProposal(params: {
-  proposal: GovernanceProposal;
+  proposal?: GovernanceProposal;
+  mutationType?: string;
+  proposedChanges?: Record<string, unknown>;
+  rationale?: string;
   blueprintId: string;
   userId: string;
   worldStateVersion: number;
   proposingAgent?: string;
 }): Promise<typeof governanceQueue.$inferSelect> {
+  const proposal: GovernanceProposal = params.proposal ?? {
+    proposalType: params.mutationType ?? "BLUEPRINT_RESTRUCTURE",
+    proposalContent: params.proposedChanges ?? {},
+    rationale: params.rationale ?? "Evidence-based recommendation",
+    evidenceCitations: [],
+    impactAssessment: {},
+    priority: "NORMAL",
+  };
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + expiryDays(params.proposal.priority));
+  expiresAt.setDate(expiresAt.getDate() + expiryDays(proposal.priority));
 
   const [row] = await db
     .insert(governanceQueue)
     .values({
       user_id: params.userId,
       blueprint_id: params.blueprintId,
-      proposal_type: params.proposal.proposalType,
+      proposal_type: proposal.proposalType,
       proposing_agent: params.proposingAgent ?? "BLUEPRINT",
-      proposal_content: params.proposal.proposalContent,
-      rationale: params.proposal.rationale,
-      evidence_citations: params.proposal.evidenceCitations,
-      impact_assessment: params.proposal.impactAssessment,
-      priority: params.proposal.priority,
+      proposal_content: proposal.proposalContent,
+      rationale: proposal.rationale,
+      evidence_citations: proposal.evidenceCitations,
+      impact_assessment: proposal.impactAssessment,
+      priority: proposal.priority,
       world_state_version: params.worldStateVersion,
       expires_at: expiresAt,
       status: "PENDING",

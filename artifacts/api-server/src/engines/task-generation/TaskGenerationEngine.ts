@@ -17,6 +17,8 @@ import {
   weeklyReviews,
   habits,
   habitCheckins,
+  trendIntelligence,
+  narrativeIntelligence,
 } from "@workspace/db";
 import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -592,6 +594,44 @@ function truncate(s: string, max: number): string {
   return s.length <= max ? s : s.slice(0, max - 3) + "...";
 }
 
+export function buildDeterministicTaskCopy(params: {
+  domain?: string;
+  actionType?: string;
+  condition?: string;
+}): { title: string; instruction: string; expectedOutput: string } {
+  const domain = params.domain ?? "Execution";
+  const action = params.actionType ?? "Create";
+  return {
+    title: `${action} ${domain} execution artifact`,
+    instruction: `${action} one ${domain.toLowerCase()} artifact with a clear hook, execution proof, and completion evidence.`,
+    expectedOutput: "One concrete output with proof of work.",
+  };
+}
+
+async function loadLatestEISTaskHint(userId: string): Promise<string | null> {
+  const [trend] = await db
+    .select({ opportunity_windows: trendIntelligence.opportunity_windows })
+    .from(trendIntelligence)
+    .where(eq(trendIntelligence.user_id, userId))
+    .orderBy(desc(trendIntelligence.created_at))
+    .limit(1)
+    .catch(() => []);
+  const [narrative] = await db
+    .select({ content_angle: narrativeIntelligence.content_angle })
+    .from(narrativeIntelligence)
+    .where(eq(narrativeIntelligence.user_id, userId))
+    .orderBy(desc(narrativeIntelligence.created_at))
+    .limit(1)
+    .catch(() => []);
+
+  const windows = (trend?.opportunity_windows as Array<{ trend?: string; timeWindow?: string }> | undefined) ?? [];
+  const first = windows[0];
+  if (!first && !narrative?.content_angle) return null;
+  const trendText = first ? `Execution Window: ${first.trend ?? "market signal"} (${first.timeWindow ?? "This week"}).` : "";
+  const angleText = narrative?.content_angle ? ` Audience Intelligence: ${narrative.content_angle}.` : "";
+  return `${trendText}${angleText}`.trim();
+}
+
 function actionVerb(actionType: string): string {
   const verbs: Record<string, string> = {
     create: "Create",
@@ -1065,6 +1105,14 @@ export async function generate(params: {
     difficulty,
     domain: ctx.blueprint.current_domain ?? null,
   });
+  const eisTaskHint = await loadLatestEISTaskHint(params.userId);
+  if (eisTaskHint && taskType === "execution") {
+    content = {
+      ...content,
+      instruction: `${content.instruction}\n\nCurrent market context: ${eisTaskHint}`,
+      why_it_matters: `${content.why_it_matters} Recent EIS context is included as awareness, not direction.`,
+    };
+  }
 
   let usedBhudhi = false;
   let usedFallback = false;

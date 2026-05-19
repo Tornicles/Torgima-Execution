@@ -1,10 +1,11 @@
-import { db, agentRegistry, criticReviewLogs, fallbackUsageLogs } from "@workspace/db";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { db, agentRegistry, criticReviewLogs, fallbackUsageLogs, predictionLogs, bhudhiLogs } from "@workspace/db";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeMemory } from "../MemoryService.js";
 import { runWeeklyCalibrationFromPredictions } from "../../engines/meta/MetaCognitionEngine.js";
 import { getStabilityEventsForUser } from "../../engines/stability/StabilityEngine.js";
 import type { BhudhiTriggerType } from "../../types/bhudhi.js";
+import { getAllContracts } from "../PromptRegistry.js";
 
 export async function runDailyEvaluation(userId: string): Promise<void> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -54,6 +55,129 @@ export async function runWeeklyCalibration(): Promise<void> {
   );
 
   logger.info({ calibrated, agents: report.length }, "[SelfImprovement] Weekly calibration");
+}
+
+export interface IntelligenceQualityReport {
+  agents: Array<{
+    agentName: string;
+    lowConfidenceRate: number;
+    averageConfidence: number;
+    flagged: boolean;
+  }>;
+  contracts: Array<{
+    contract: string;
+    fallbackRate: number;
+    flagged: boolean;
+  }>;
+  generatedAt: string;
+}
+
+export async function generateIntelligenceQualityReport(): Promise<IntelligenceQualityReport> {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const predictions: Array<typeof predictionLogs.$inferSelect> = await db
+    .select()
+    .from(predictionLogs)
+    .where(gte(predictionLogs.created_at, since))
+    .catch(() => [] as Array<typeof predictionLogs.$inferSelect>);
+  const fallbacks: Array<typeof fallbackUsageLogs.$inferSelect> = await db
+    .select()
+    .from(fallbackUsageLogs)
+    .where(gte(fallbackUsageLogs.created_at, since))
+    .catch(() => [] as Array<typeof fallbackUsageLogs.$inferSelect>);
+
+  const byAgent = new Map<string, Array<typeof predictionLogs.$inferSelect>>();
+  for (const prediction of predictions) {
+    const rows = byAgent.get(prediction.agent_name) ?? [];
+    rows.push(prediction);
+    byAgent.set(prediction.agent_name, rows);
+  }
+
+  const agents = [...byAgent.entries()].map(([agentName, rows]) => {
+    const low = rows.filter((r) => r.confidence_tier === "LOW").length;
+    const averageConfidence =
+      rows.reduce((sum, r) => sum + Number(r.confidence_level ?? 0.5), 0) / Math.max(1, rows.length);
+    const lowConfidenceRate = low / Math.max(1, rows.length);
+    return {
+      agentName,
+      lowConfidenceRate,
+      averageConfidence,
+      flagged: lowConfidenceRate > 0.3,
+    };
+  });
+
+  const contracts = [...getAllContracts().values()].map((contract) => {
+    const matchingFallbacks = fallbacks.filter((f) => f.prompt_name === contract.name || f.trigger_type === contract.triggerType);
+    const matchingLogs = predictions.filter((p) => p.prediction_type === contract.name || p.prediction_type === contract.triggerType);
+    const fallbackRate = matchingFallbacks.length / Math.max(1, matchingFallbacks.length + matchingLogs.length);
+    return {
+      contract: contract.name,
+      fallbackRate,
+      flagged: fallbackRate > 0.2,
+    };
+  });
+
+  return { agents, contracts, generatedAt: new Date().toISOString() };
+}
+
+export async function optimizeAgentRouting(): Promise<number> {
+  const report = await generateIntelligenceQualityReport();
+  let changed = 0;
+  for (const agent of report.agents) {
+    const delta = agent.flagged ? -0.03 : 0.02;
+    await updateAgentRoutingPriority(agent.agentName, "*", delta);
+    changed++;
+  }
+
+  if (changed === 0) {
+    const [row] = await db
+      .select()
+      .from(agentRegistry)
+      .orderBy(desc(agentRegistry.created_at))
+      .limit(1)
+      .catch(() => [] as Array<typeof agentRegistry.$inferSelect>);
+    if (row) {
+      await updateAgentRoutingPriority(row.agent_name, "*", 0.01);
+      changed = 1;
+    }
+  }
+
+  return changed;
+}
+
+export async function auditPromptContracts(): Promise<
+  Array<{ contract: string; avgTier: "HIGH" | "MEDIUM" | "LOW"; fallbackRate: number; needsRevision: boolean }>
+> {
+  const report = await generateIntelligenceQualityReport();
+  return report.contracts.map((c) => ({
+    contract: c.contract,
+    avgTier: c.flagged ? "LOW" : "MEDIUM",
+    fallbackRate: c.fallbackRate,
+    needsRevision: c.flagged,
+  }));
+}
+
+export const FORBIDDEN_OUTPUT_PHRASES = [
+  "I have updated",
+  "I have changed",
+  "I have set",
+  "signal is now",
+  "condition has been changed to",
+  "blueprint has been updated",
+  "task has been marked complete",
+  "I approve",
+  "you may proceed",
+  "phase is complete",
+] as const;
+
+export async function scanBhudhiAuthorityClaims(): Promise<number> {
+  const rows: Array<{ raw_response: string | null; output_json: unknown }> = await db
+    .select({ raw_response: bhudhiLogs.raw_response, output_json: bhudhiLogs.output_json })
+    .from(bhudhiLogs)
+    .catch(() => [] as Array<{ raw_response: string | null; output_json: unknown }>);
+  return rows.filter((row) => {
+    const text = `${row.raw_response ?? ""} ${JSON.stringify(row.output_json ?? {})}`.toLowerCase();
+    return FORBIDDEN_OUTPUT_PHRASES.some((phrase) => text.includes(phrase.toLowerCase()));
+  }).length;
 }
 
 export async function updateAgentRoutingPriority(

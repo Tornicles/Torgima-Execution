@@ -2,7 +2,9 @@ const APP_URL =
   process.env["PUBLIC_APP_URL"] ??
   process.env["NEXT_PUBLIC_APP_URL"] ??
   process.env["APP_URL"] ??
-  "http://localhost:3000";
+  (process.env.NODE_ENV === "production"
+    ? "https://torgima.com"
+    : `http://localhost:${process.env.APP_DEV_PORT ?? "5173"}`);
 const APP_NAME = "Torgima";
 
 function footer(

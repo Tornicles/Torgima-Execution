@@ -7,9 +7,9 @@ const globalForBoss = globalThis as unknown as {
 };
 
 export function createBoss(): PgBoss {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.PGBOSS_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("[Queue] DATABASE_URL is not set");
+    throw new Error("[Queue] PGBOSS_DATABASE_URL or DATABASE_URL is not set");
   }
 
   return new PgBoss({

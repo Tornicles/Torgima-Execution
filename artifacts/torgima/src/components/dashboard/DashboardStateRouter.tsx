@@ -16,7 +16,13 @@ import { ExecutionLoopTimeline } from "@/components/execution/ExecutionLoopTimel
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { getDashboardUiState, type DashboardProjection, type DashboardUiState } from "@/lib/dashboard-types";
 import { MorningReport } from "@/components/bhudhi/MorningReport";
+import { StrategicOutlookPanel, type StrategicOutlookVm } from "@/components/bhudhi/StrategicOutlookPanel";
+import { BehavioralInsightCard, type BehavioralInsightVm } from "@/components/bhudhi/BehavioralInsightCard";
+import { SignalTrendPanel, type SignalNarrativeVm } from "@/components/bhudhi/SignalTrendPanel";
+import { BlueprintHealthPanel, type BlueprintHealthVm } from "@/components/bhudhi/BlueprintHealthPanel";
+import { GovernanceActionCenter, type GovernanceProposalVm } from "@/components/bhudhi/GovernanceActionCenter";
 import { SkillProgressPanel } from "@/components/dashboard/SkillProgressPanel";
+import { EconomyIntelligencePanel, type EconomyIntelligenceVm } from "@/components/dashboard/EconomyIntelligencePanel";
 import { useExecutionStore } from "@/store/executionStore";
 
 export function DashboardStateRouter({
@@ -109,17 +115,54 @@ function DashboardMainContent({
   onStart: () => void;
   starting: boolean;
 }) {
+  const [, setLocation] = useLocation();
   const displayName =
     (state.user as { displayName?: string; email?: string })?.displayName ??
     (state.user as { email?: string })?.email?.split("@")[0] ??
     "Builder";
   const blueprint = state.activeBlueprint as { id?: string; title?: string } | null;
+  const economyIntel = state.activeBlueprint as (typeof blueprint & {
+    economyIntelligence?: EconomyIntelligenceVm;
+    realityScore?: number;
+    primaryArchetypeName?: string;
+  });
   const morningReport = useExecutionStore((s) => s.morningReport);
   const refreshAll = useExecutionStore((s) => s.refreshAll);
+  const [urgentOpportunity, setUrgentOpportunity] = useState<{
+    description?: string;
+    trend?: string;
+    timeWindow?: string;
+    urgency?: string;
+  } | null>(null);
+  const [dashboardIntel, setDashboardIntel] = useState<{
+    strategicOutlook?: StrategicOutlookVm;
+    behavioralInsight?: BehavioralInsightVm | null;
+    blueprintHealth?: BlueprintHealthVm;
+    signalNarrative?: SignalNarrativeVm;
+    governanceSummary?: { proposals?: GovernanceProposalVm[] };
+  } | null>(null);
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
+
+  useEffect(() => {
+    if (!API_BASE_URL) return;
+    fetch(`${API_BASE_URL}/api/state/dashboard-intelligence`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: typeof dashboardIntel }) => {
+        if (d.ok && d.data) setDashboardIntel(d.data);
+      })
+      .catch(() => null);
+
+    fetch(`${API_BASE_URL}/api/intelligence/eis`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; data?: { opportunityWindows?: Array<{ description?: string; trend?: string; timeWindow?: string; urgency?: string }> } | null }) => {
+        const urgent = d.data?.opportunityWindows?.find((o) => o.urgency === "HIGH") ?? null;
+        setUrgentOpportunity(urgent);
+      })
+      .catch(() => null);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -134,16 +177,69 @@ function DashboardMainContent({
 
       <AlertsPanel alerts={state.alerts as Parameters<typeof AlertsPanel>[0]["alerts"]} />
 
-      <section className="rounded-2xl border border-gray-100 bg-white p-5">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Intelligence Report</p>
-        <MorningReport report={morningReport} />
-      </section>
+      {urgentOpportunity ? (
+        <section className="rounded-2xl border border-green-200 bg-green-50 p-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-green-700">Opportunity window</p>
+            <p className="text-sm font-semibold text-green-950 mt-1">
+              {urgentOpportunity.description ?? urgentOpportunity.trend}
+            </p>
+            <p className="text-xs text-green-700 mt-1">{urgentOpportunity.timeWindow ?? "Act soon"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocation("/intelligence")}
+            className="shrink-0 text-xs font-semibold text-green-900 bg-white border border-green-200 rounded-lg px-3 py-2 hover:bg-green-100"
+          >
+            View in Intelligence Report
+          </button>
+        </section>
+      ) : null}
 
       <CurrentActionPanel
         uiState={uiState}
         action={state.currentAction as Record<string, unknown> | undefined}
         onStart={onStart}
         starting={starting}
+      />
+
+      <EconomyIntelligencePanel
+        intelligence={
+          economyIntel?.economyIntelligence ?? (
+            economyIntel?.primaryArchetypeName || economyIntel?.realityScore != null
+              ? {
+                  archetypeName: economyIntel.primaryArchetypeName,
+                  realityScore: economyIntel.realityScore,
+                  reportHref: economyIntel.id ? `/validation/${economyIntel.id}` : undefined,
+                }
+              : null
+          )
+        }
+      />
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <StrategicOutlookPanel outlook={dashboardIntel?.strategicOutlook} />
+        <BehavioralInsightCard insight={dashboardIntel?.behavioralInsight} />
+        <SignalTrendPanel signals={dashboardIntel?.signalNarrative} />
+        <BlueprintHealthPanel health={dashboardIntel?.blueprintHealth} />
+      </div>
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Intelligence Report</p>
+        <MorningReport report={morningReport} />
+      </section>
+
+      <GovernanceActionCenter
+        proposals={dashboardIntel?.governanceSummary?.proposals}
+        onChanged={() => {
+          if (!API_BASE_URL) return;
+          fetch(`${API_BASE_URL}/api/state/dashboard-intelligence`, { credentials: "include" })
+            .then((r) => r.json())
+            .then((d: { ok?: boolean; data?: typeof dashboardIntel }) => {
+              if (d.ok && d.data) setDashboardIntel(d.data);
+            })
+            .catch(() => null);
+        }}
       />
 
       <SkillProgressPanel />

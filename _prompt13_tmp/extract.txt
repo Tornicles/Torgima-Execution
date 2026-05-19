@@ -1,0 +1,386 @@
+﻿CURSOR PROMPT 13  â€”  BHUDHI PHASE 1 FINAL
+INTEGRATION Â· FULL AGI LOOP POLISH Â· SELF-IMPROVEMENT MATURITY Â· PRODUCTION SIGN-OFF
+Prerequisite: Prompt 12 complete, all 12 tests passing, READY FOR PROMPT 13: YES
+End-to-End AGI Loop Verification Â· Self-Improvement Agent Final Calibration Â· Intelligence Quality Benchmarks Â· Three Laws Final Audit Â· Phase 1 Complete
+
+CONTEXT
+WHAT PROMPTS 1â€“12 DELIVERED
+â–¸  Complete Bhudhi AGI Phase 1: all 12 agents, 37 prompt contracts, 6 intelligence panels
+â–¸  Full execution loop, event system, EIS 9-module suite, overnight intelligence
+â–¸  Psychology layer, burnout, identity, rewards, Academy, capability engine
+â–¸  Dashboard intelligence surface: strategic outlook, behavioral insight, signal narrative
+â–¸  139 tests passing across Prompts 1â€“12
+
+WHAT THIS PROMPT DOES
+Prompt 13 is the final integration and polish pass before Phase 1 is declared complete. After 12 prompts of building, this prompt runs the full AGI loop from end to end, calibrates the Self-Improvement Agent with 12 prompts of accumulated data, benchmarks intelligence quality across all 37 contracts, verifies the Three Laws one final time with adversarial tests, measures Bhudhi's felt presence across a simulated 7-day user journey, and produces the Phase 1 completion certificate. No new features â€” only excellence.
+
+WHAT GETS FIXED, NOT ADDED
+POLISH AREAS:  Any failing test from Prompts 1â€“12 is fixed here. Any prompt contract producing LOW confidence on routine tasks is investigated. Any fallback that feels too generic is improved. Any execution language violation anywhere in the codebase is corrected. Performance that misses benchmarks is optimized.
+INTEGRATION CHECK:  Every component that was built in isolation is tested as part of the complete system. Edge cases that only appear when multiple systems interact simultaneously are found and resolved.
+
+
+PART 1 â€” SELF-IMPROVEMENT AGENT FINAL CALIBRATION
+The Self-Improvement Agent has now observed 12 prompts worth of Bhudhi behavior. Run its full calibration suite before any other testing.
+// SelfImprovementAgent.ts â€” FINAL CALIBRATION RUN
+
+// STEP 1: Run weekly calibration (even if not Sunday)
+await selfImprovementAgent.runWeeklyCalibration()
+// This processes all PredictionLog entries since Prompt 1
+// Updates MetaCognitionProfile for all 12 agents
+// Identifies strong and weak domains for each agent
+
+// STEP 2: Generate intelligence quality report
+const qualityReport = await selfImprovementAgent.generateIntelligenceQualityReport()
+// For each agent: average confidenceTier distribution
+// For each prompt contract: fallback usage rate
+// For each prediction type: accuracy vs actual outcomes
+// Flag: any agent with > 30% LOW confidence outputs in its primary domain
+// Flag: any contract with > 20% fallback rate
+
+// STEP 3: Routing optimization pass
+await selfImprovementAgent.optimizeAgentRouting()
+// Reviews: which agents produce the highest quality for which triggers
+// Updates: AgentRegistry.qualityScore and activation priority
+// Effect: future trigger routing prioritizes highest-quality agents
+
+// STEP 4: Prompt contract quality check
+const contractQuality = await selfImprovementAgent.auditPromptContracts()
+// Checks each of the 37 contracts:
+// - Average confidence tier
+// - Fallback rate
+// - Schema validation pass rate
+// Flag any contract needing prompt revision
+// Returns: { contract, avgTier, fallbackRate, needsRevision }[]
+
+// STEP 5: Domain reliability final update
+await metaCognitionEngine.finalizePhase1Profiles()
+// Locks in Phase 1 domain reliability baselines
+// These become the starting point for Phase 2 calibration
+
+PART 2 â€” FULL AGI LOOP INTEGRATION TEST
+This is the definitive end-to-end test of the complete Bhudhi AGI architecture. Every system in sequence, every agent active, overnight running, 7-day simulation.
+// FULL 7-DAY SIMULATED USER JOURNEY
+// Tests every system that was built across Prompts 1-12
+
+// DAY 0 â€” Onboarding
+// 1. New user signs up
+// 2. Goal input â†’ validation (10-step pipeline fires)
+// 3. EIS context injected into validation
+// 4. Contradiction detection runs
+// 5. Domain resolution assigns domain
+// 6. Direction analysis produces 3 paths
+// 7. User selects Proceed path
+// 8. Blueprint generated (Plans â†’ Actions)
+// 9. Blueprint Agent initial health check
+// 10. Blueprint interpretation generated
+// 11. Blueprint activated
+// 12. First task generated (with knowledge injection)
+// VERIFY: All 12 steps complete, no errors, user has active Order
+
+// DAY 1 â€” First Execution
+// 1. User opens dashboard â€” Daily Loop runs
+// 2. State explanation generated
+// 3. Task executed â€” feedback submitted
+// 4. Primary Loop runs (< 3 seconds)
+// 5. Signals calculated, condition assigned
+// 6. New task generated
+// 7. Overnight worker runs â€” EIS 9-module suite
+// VERIFY: Full Primary Loop in < 3s, overnight completes all 16 steps
+
+// DAY 3 â€” Capability Gap
+// 1. User fails task (CAPABILITY_GAP classification)
+// 2. Failure Classification Engine â†’ Debate Loop
+// 3. Academy task generated
+// 4. User completes Academy task
+// 5. Mastery assessment runs
+// 6. SkillProfile updated
+// 7. Normal execution resumes
+// VERIFY: Academy gap â†’ lesson â†’ mastery flow complete without breaking loop
+
+// DAY 5 â€” Condition Change + Behavioral Insight
+// 1. Signals trend rising
+// 2. Condition transitions Stability â†’ Power
+// 3. Behavioral insight generated (pattern detected)
+// 4. Character progression updated
+// 5. Reward event generated
+// 6. Dashboard intelligence panels refresh
+// VERIFY: All psychology systems fire correctly on condition upgrade
+
+// DAY 6 â€” Blueprint Governance Proposal
+// 1. Blueprint Agent overnight health check detects gap
+// 2. Governance proposal generated
+// 3. User reviews on dashboard
+// 4. User accepts proposal
+// 5. BlueprintEngine applies mutation
+// 6. Blueprint interpretation regenerated
+// VERIFY: Governance flow complete, Three Laws intact throughout
+
+// DAY 7 â€” Strategic Outlook + Full Intelligence Surface
+// 1. Strategic outlook generated (7+ days of data)
+// 2. Signal narrative reflects week's trajectory
+// 3. EIS morning report includes competitor intelligence
+// 4. Opportunity window banner appears (if applicable)
+// 5. All 6 dashboard intelligence panels rendering
+// VERIFY: Full intelligence surface populated, all panels under 2s load
+
+PART 3 â€” THREE LAWS FINAL ADVERSARIAL AUDIT
+The definitive Three Laws verification. Run after all other tests. This is the final sign-off gate.
+// AUDIT 1: Codebase Signal Write Scan
+// grep -r 'SignalRecord' --include='*.ts' | grep -v 'SignalEngine.ts' | grep -v '.test.ts'
+// REQUIRED RESULT: Zero lines returned
+// Any SignalRecord write outside SignalEngine.ts is a Three Laws violation
+
+// AUDIT 2: Codebase Condition Assignment Scan
+// grep -r 'ConditionRecord' --include='*.ts' | grep -v 'ConditionEngine.ts' | grep -v '.test.ts'
+// REQUIRED RESULT: Zero lines returned (except read operations)
+// Any direct ConditionRecord.create or update outside ConditionEngine is a violation
+
+// AUDIT 3: Blueprint Direct Mutation Scan
+// grep -rE '(Phase|Project|Action|Plan)\.create|prisma\.phase\.create' --include='*.ts'
+// Exclude: BlueprintEngine.ts, prisma migrations, seed files, test files
+// REQUIRED RESULT: Zero unauthorized blueprint mutations
+
+// AUDIT 4: Bhudhi Output Authority Claim Detection
+// Search BhudhiLog.output for forbidden phrases:
+const FORBIDDEN_OUTPUT_PHRASES = [
+  'I have updated',
+  'I have changed',
+  'I have set',
+  'signal is now',
+  'condition has been changed to',
+  'blueprint has been updated',
+  'task has been marked complete',
+  'I approve',
+  'you may proceed',
+  'phase is complete',
+]
+// Query: SELECT * FROM BhudhiLog WHERE output ILIKE ANY(forbidden_phrases)
+// REQUIRED RESULT: Zero results
+
+// AUDIT 5: Governance Queue Bypass Check
+// Verify: every blueprint mutation in the last N events came through GovernanceQueue
+// SELECT COUNT(*) FROM SystemEvent WHERE eventType = 'blueprint.phase.complete'
+//   AND NOT EXISTS (SELECT 1 FROM GovernanceQueue WHERE status = 'APPROVED'...)
+// REQUIRED RESULT: Zero unauthorized blueprint completions
+
+PART 4 â€” INTELLIGENCE QUALITY BENCHMARKS
+These benchmarks define what 'good' looks like for each Bhudhi intelligence output. Run against 100 simulated calls per contract.
+goal.structure.v2
+QUALITY BENCHMARKS
+
+Clarity score >= 0.70 on valid goals
+Contradiction detected when HARD contradiction present
+Missing fields identified when critical fields absent
+Confidence tier = HIGH for clear goals, LOW for vague ones
+
+task.draft.v3
+QUALITY BENCHMARKS
+
+Domain-specific instruction (not generic) for 90%+ of calls
+Condition tone correctly applied to all 7 conditions
+Knowledge injection present when KnowledgePackage available
+Difficulty within controlRule.maxDifficulty 100% of calls
+
+outlook.strategic.v1
+QUALITY BENCHMARKS
+
+executionForecast references signal trajectory data
+momentumTrajectory matches actual signal trend direction
+highestLeverageAction is specific and actionable (not generic)
+confidenceTier = HIGH when >= 21 days of signal data available
+
+eis.synthesis.v1
+QUALITY BENCHMARKS
+
+trendingTopics are niche-specific (not generic creator advice)
+platformSignals reference current month/year
+opportunityWindows include specific timeWindow values
+todayRecommendation connects to user's current blueprint phase
+
+direction.analysis.v1
+QUALITY BENCHMARKS
+
+All 3 paths have probability scores between 0.0 and 1.0
+keyAssumption is specific and falsifiable for each path
+recommendedPath matches evidence in the output
+confidenceTier reflects data quality correctly
+
+behavioral.insight.v1
+QUALITY BENCHMARKS
+
+insightText reads as plain language (no jargon)
+evidenceSummary cites specific behavioral data
+One insight per call (not multiple)
+Execution language: 'execution pattern' not 'behavior'
+
+
+PART 5 â€” PERFORMANCE OPTIMIZATION TARGETS
+// After full integration, verify these performance targets
+// If any miss, optimize before Phase 1 sign-off
+
+// TARGET 1: Primary Loop < 3 seconds P95
+// Common failures: slow signal calculation, Bhudhi API latency
+// Fix: cache signal calculation results for 30 seconds
+//      Use parallel calls where possible in Primary Loop
+
+// TARGET 2: Dashboard load < 2 seconds
+// Common failures: sequential panel data fetching, large snapshot
+// Fix: Promise.all() for all panel data, pre-compute during overnight
+
+// TARGET 3: Overnight worker < 90 seconds per user
+// Common failures: sequential EIS searches, large memory operations
+// Fix: Parallel EIS searches (modules 1-4 run simultaneously)
+//      Memory compression before overnight, not during
+
+// TARGET 4: Intelligence panel refresh < 500ms after Primary Loop
+// Common failures: full snapshot rebuild on every refresh
+// Fix: Partial snapshot updates â€” only refresh panels whose data changed
+
+// CACHING STRATEGY:
+const CACHE_RULES = {
+  strategicOutlook: '12 hours',
+  behavioralInsight: '6 hours (or condition change)',
+  blueprintInterpretation: '24 hours (or worldStateVersion change)',
+  signalNarrative: '30 minutes (updates with each Primary Loop)',
+  eisBriefing: '24 hours',
+  knowledgePackages: '48 hours',
+}
+
+PART 6 â€” BHUDHI PRESENCE SCORE
+The 'Presence Score' measures how alive Bhudhi feels across a user's 7-day journey. Run this evaluation manually as the final quality check.
+P-01
+Morning Report Specificity
+Does the morning report feel written for this specific user's niche, or does it feel generic? Rate 1-5. Target: >= 4.
+
+P-02
+Task Instruction Relevance
+Do tasks reference current market conditions (from EIS)? Does the instruction feel alive with today's context? Rate 1-5. Target: >= 4.
+
+P-03
+Condition Explanation Quality
+Does the condition explanation help the user understand why they are where they are? Rate 1-5. Target: >= 4.
+
+P-04
+Behavioral Insight Accuracy
+Does the behavioral insight match what a human coach would notice? Rate 1-5. Target: >= 3.
+
+P-05
+Strategic Outlook Usefulness
+After reading the 7-day outlook, does the user know what to focus on? Rate 1-5. Target: >= 4.
+
+P-06
+Blueprint Briefing Clarity
+Does the blueprint interpretation panel explain the user's execution journey clearly? Rate 1-5. Target: >= 4.
+
+P-07
+Intelligence Continuity
+Does Bhudhi feel like it remembers previous conversations and builds on them? Rate 1-5. Target: >= 3.
+
+P-08
+Recovery Intelligence
+After a Danger condition, does Bhudhi's response feel personalized and genuinely supportive? Rate 1-5. Target: >= 3.
+
+
+
+PART 7 â€” TEST CASES
+All 12 integration tests must pass. These tests verify the complete system working together â€” not individual components.
+INT-01: 7-Day Journey â€” No Empty States
+Scenario:  Run full 7-day simulated journey. Verify: zero moments where user has no active Order and no task in queue.
+Pass:  PASS: ContinuousTaskGuaranteeLog shows guarantee engine never needed (normal generation always succeeded)
+
+INT-02: 7-Day Journey â€” Signal Coherence
+Scenario:  Across 7-day journey, verify: signal values in WorldModel always match latest SignalRecord (source-of-truth hierarchy respected).
+Pass:  PASS: Zero drift between WorldModel.signalTrajectory and latest SignalRecord across all 7 days
+
+INT-03: Intelligence Panel Coherence
+Scenario:  Strategic outlook references signal data. Behavioral insight references pattern data. EIS data in morning report matches stored EISBriefing. No panel shows contradictory information.
+Pass:  PASS: All 6 panels reference consistent underlying data, no contradictions between panels
+
+INT-04: Self-Improvement â€” Quality Improvement
+Scenario:  After final calibration, verify: at least one agent routing was updated based on quality data.
+Pass:  PASS: AgentRegistry.qualityScore changed for at least one agent, BhudhiMemory improvement pattern written
+
+INT-05: Three Laws Final Audit
+Scenario:  Run all 5 codebase audits. Zero violations allowed.
+Pass:  PASS: All 5 grep audits return zero results, BhudhiLog authority claim search returns zero results
+
+INT-06: Prompt Contract Quality â€” No Chronic LOW
+Scenario:  For each of 37 contracts: average confidenceTier in their primary use case must not be LOW.
+Pass:  PASS: All 37 contracts show HIGH or MEDIUM confidence on primary use case, zero chronic LOW confidence contracts
+
+INT-07: Fallback Rate â€” Under Threshold
+Scenario:  For each contract: fallback rate < 20% in normal operation.
+Pass:  PASS: FallbackUsageLog shows no contract above 20% fallback rate in test session
+
+INT-08: Academy â†’ Normal Resume
+Scenario:  User completes full Academy learning path. Verify: normal execution resumes immediately with no gap.
+Pass:  PASS: After LearningPath.pathStatus = COMPLETE, next normal Order generated within Primary Loop SLA
+
+INT-09: Overnight â†’ Dashboard â†’ Execution
+Scenario:  Run overnight. Dashboard loads. User completes task. Full cycle runs without any stale data.
+Pass:  PASS: No stale data visible at any point, dashboard reflects overnight intelligence, post-feedback state updated
+
+INT-10: EIS Intelligence Freshness
+Scenario:  After 25-hour gap (past 24h TTL), load dashboard. Verify: EIS data shows age notice, overnight worker triggered to refresh.
+Pass:  PASS: Intelligence Report shows 'last updated' timestamp > 24h ago with refresh notice, overnight triggered
+
+INT-11: Performance â€” Full Load
+Scenario:  Under simulated concurrent load (10 users simultaneously): Primary Loop P95 < 5s, dashboard load P95 < 3s.
+Pass:  PASS: P95 targets met under 10-user concurrent load
+
+INT-12: Phase 1 Presence Score
+Scenario:  Run Bhudhi Presence evaluation (Part 6). Average score across all 8 checks must meet targets.
+Pass:  PASS: Average presence score >= 3.5/5.0, P-01, P-02, P-05 specifically score >= 4.0
+
+
+PART 8 â€” PHASE 1 COMPLETION CERTIFICATE
+TORGIMA Â· BHUDHI PHASE 1
+PHASE 1 COMPLETE
+13 Cursor Prompts Â· 12 Agents Â· 37 Prompt Contracts Â· 151 Tests
+
+Bhudhi is now a controlled execution intelligence that validates goals against reality, interprets blueprints with depth, generates tasks that teach while they execute, understands human behavior through real execution evidence, surfaces external intelligence every morning, and provides strategic direction of genuine quality â€” all while remaining completely obedient to the three laws that make it trustworthy.
+Signals are sacred.  Blueprints are law.  Conditions are enforced.
+
+COMPLETION REPORT FORMAT
+=== PROMPT 13 â€” PHASE 1 FINAL COMPLETION REPORT ===
+
+SELF-IMPROVEMENT CALIBRATION:
+  Weekly calibration run: COMPLETE
+  Intelligence quality report: GENERATED
+  Agent routing optimization: COMPLETE
+  Prompt contract audit: [X/37 pass quality benchmark]
+  Contracts needing revision: [none / list]
+
+THREE LAWS FINAL AUDIT:
+  SignalRecord write scan: ZERO VIOLATIONS
+  ConditionRecord assignment scan: ZERO VIOLATIONS
+  Blueprint direct mutation scan: ZERO VIOLATIONS
+  Bhudhi authority claim scan: ZERO VIOLATIONS
+  Governance bypass scan: ZERO VIOLATIONS
+
+INTELLIGENCE QUALITY BENCHMARKS:
+  goal.structure.v2: PASS
+  task.draft.v3: PASS
+  outlook.strategic.v1: PASS
+  eis.synthesis.v1: PASS
+  direction.analysis.v1: PASS
+  behavioral.insight.v1: PASS
+
+PERFORMANCE TARGETS:
+  Primary Loop P95: [Xms] TARGET: < 3000ms
+  Dashboard load P95: [Xms] TARGET: < 2000ms
+  Overnight worker: [Xs] TARGET: < 90s
+
+BHUDHI PRESENCE SCORE: [X.X / 5.0] TARGET: >= 3.5
+
+INTEGRATION TESTS: [12/12] PASS
+
+PHASE 1 ACCEPTANCE CRITERIA: [20/20] CHECKED
+
+PHASE 1 STATUS: âœ“ COMPLETE
+
+NEXT: Phase 1 Individual System is production-ready.
+      Phase 2 (Psychological Civilization) build sequence
+      begins when first real users are generating data.
+
+=====================================================

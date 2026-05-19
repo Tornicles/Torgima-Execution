@@ -9,65 +9,110 @@ import { ensureSchemaPatches } from "../lib/ensureSchema.js";
 
 const router: IRouter = Router();
 
+export type ProductionHealthCheck = "ok" | "error";
+
+export interface ProductionHealthResponse {
+  status: "healthy" | "degraded";
+  timestamp: string;
+  checks: {
+    database: ProductionHealthCheck;
+    bhudhi: ProductionHealthCheck;
+    workers: ProductionHealthCheck;
+    signals: ProductionHealthCheck;
+  };
+  version: string;
+  metrics: {
+    pendingEvents: number | null;
+    deadLetters: number | null;
+    healthIssues: number | null;
+    latestSignalAgeHours: number | null;
+  };
+}
+
+export async function checkDatabaseConnection(): Promise<void> {
+  await pool.query("SELECT 1");
+}
+
+export async function checkBhudhiAPIAvailability(): Promise<void> {
+  const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  if (process.env.NODE_ENV === "production" && !apiKey) {
+    throw new Error("ANTHROPIC_API_KEY is required in production");
+  }
+}
+
+export async function checkPgBossWorkers(): Promise<void> {
+  const result = await pool.query("SELECT to_regclass('pgboss.job') AS job_table");
+  if (!result.rows[0]?.job_table) {
+    throw new Error("pg-boss job table not found");
+  }
+}
+
+export async function checkSignalEngineRecency(maxAgeHours = 48): Promise<number | null> {
+  const result = await pool.query<{ latest: Date | null }>(
+    "SELECT MAX(created_at) AS latest FROM signal_snapshots",
+  );
+  const latest = result.rows[0]?.latest;
+  if (!latest) return null;
+
+  const ageHours = (Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000);
+  if (ageHours > maxAgeHours) {
+    throw new Error(`latest signal snapshot is stale: ${ageHours.toFixed(1)}h`);
+  }
+  return ageHours;
+}
+
+async function collectProductionMetrics(): Promise<ProductionHealthResponse["metrics"]> {
+  const [pendingR, dlR, healthR, signalR] = await Promise.all([
+    pool.query("SELECT COUNT(*)::int AS c FROM events WHERE status = 'pending'").catch(() => null),
+    pool.query("SELECT COUNT(*)::int AS c FROM dead_letter_events WHERE resolved = false").catch(() => null),
+    pool.query("SELECT COUNT(*)::int AS c FROM system_health_records WHERE health_score < 0.7").catch(() => null),
+    pool.query<{ latest: Date | null }>("SELECT MAX(created_at) AS latest FROM signal_snapshots").catch(() => null),
+  ]);
+
+  const latest = signalR?.rows[0]?.latest;
+  return {
+    pendingEvents: pendingR ? Number(pendingR.rows[0]?.c ?? 0) : null,
+    deadLetters: dlR ? Number(dlR.rows[0]?.c ?? 0) : null,
+    healthIssues: healthR ? Number(healthR.rows[0]?.c ?? 0) : null,
+    latestSignalAgeHours: latest ? Number(((Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000)).toFixed(2)) : null,
+  };
+}
+
+export async function buildProductionHealthResponse(): Promise<ProductionHealthResponse> {
+  const healthChecks = await Promise.allSettled([
+    checkDatabaseConnection(),
+    checkBhudhiAPIAvailability(),
+    checkPgBossWorkers(),
+    checkSignalEngineRecency(),
+  ]);
+
+  const checks: ProductionHealthResponse["checks"] = {
+    database: healthChecks[0]?.status === "fulfilled" ? "ok" : "error",
+    bhudhi: healthChecks[1]?.status === "fulfilled" ? "ok" : "error",
+    workers: healthChecks[2]?.status === "fulfilled" ? "ok" : "error",
+    signals: healthChecks[3]?.status === "fulfilled" ? "ok" : "error",
+  };
+  const healthy = Object.values(checks).every((check) => check === "ok");
+
+  return {
+    status: healthy ? "healthy" : "degraded",
+    timestamp: new Date().toISOString(),
+    checks,
+    version: process.env.APP_VERSION ?? process.env.NEXT_PUBLIC_APP_VERSION ?? "phase1",
+    metrics: await collectProductionMetrics(),
+  };
+}
+
 router.get("/healthz", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
   res.json(data);
 });
 
-type TableCheck = readonly [string, string];
-
-// Prompt 14 — aggregate readiness probe (database + core tables).
+// Prompt 15 — production monitoring probe for external uptime checks.
 router.get("/health", async (req, res) => {
   try {
-    const checks: Record<string, boolean> = {};
-
-    const tableChecks: TableCheck[] = [
-      ["database", "SELECT 1"],
-      ["blueprints", "SELECT COUNT(*) FROM blueprints LIMIT 1"],
-      ["signals", "SELECT COUNT(*) FROM signal_snapshots LIMIT 1"],
-      ["conditions", "SELECT COUNT(*) FROM conditions LIMIT 1"],
-      ["enforcement", "SELECT COUNT(*) FROM enforcement_packages LIMIT 1"],
-      ["events", "SELECT COUNT(*) FROM events LIMIT 1"],
-      ["notifications", "SELECT COUNT(*) FROM notification_logs LIMIT 1"],
-      ["identity", "SELECT COUNT(*) FROM user_identity_states LIMIT 1"],
-      ["framework_signals", "SELECT COUNT(*) FROM framework_signal_snapshots LIMIT 1"],
-    ];
-
-    for (const [name, sqlText] of tableChecks) {
-      try {
-        await pool.query(sqlText);
-        checks[name] = true;
-      } catch {
-        checks[name] = false;
-      }
-    }
-
-    const [pendingR, dlR, healthR] = await Promise.all([
-      pool.query("SELECT COUNT(*)::int AS c FROM events WHERE status = 'pending'").catch(() => null),
-      pool
-        .query("SELECT COUNT(*)::int AS c FROM dead_letter_events WHERE resolved = false")
-        .catch(() => null),
-      pool.query("SELECT COUNT(*)::int AS c FROM system_health_logs WHERE status = 'degraded'").catch(() => null),
-    ]);
-
-    const pending_events = pendingR ? Number(pendingR.rows[0]?.c ?? 0) : -1;
-    const dead_letters = dlR ? Number(dlR.rows[0]?.c ?? 0) : -1;
-    const health_issues = healthR ? Number(healthR.rows[0]?.c ?? 0) : -1;
-
-    const allPassing = Object.values(checks).every(Boolean);
-
-    success(
-      res,
-      {
-        ...checks,
-        pending_events,
-        dead_letters,
-        health_issues,
-        timestamp: new Date().toISOString(),
-        version: "phase1-prompt14",
-      },
-      allPassing ? 200 : 503,
-    );
+    const results = await buildProductionHealthResponse();
+    res.status(results.status === "healthy" ? 200 : 503).json(results);
   } catch (err) {
     handleError(req, res, err);
   }

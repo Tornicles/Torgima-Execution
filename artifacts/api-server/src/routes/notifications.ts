@@ -13,7 +13,9 @@ const APP_PUBLIC_URL =
   process.env["PUBLIC_APP_URL"] ??
   process.env["NEXT_PUBLIC_APP_URL"] ??
   process.env["APP_URL"] ??
-  "http://localhost:3000";
+  (process.env.NODE_ENV === "production"
+    ? "https://torgima.com"
+    : `http://localhost:${process.env.APP_DEV_PORT ?? "5173"}`);
 
 // GET /api/notifications/unsubscribe — no session; redirects to app unsubscribe UI
 router.get("/notifications/unsubscribe", async (req, res) => {

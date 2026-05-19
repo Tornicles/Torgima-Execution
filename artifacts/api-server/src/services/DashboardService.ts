@@ -70,6 +70,13 @@ export const DashboardService = {
     let stateVersion = primaryTask?.stateVersion ?? 0;
     let pivotReviewOpen = false;
     let pivotReviewId: string | null = null;
+    let economyIntelligence: {
+      archetypeName?: string | null;
+      realityScore?: number | null;
+      warning?: string | null;
+      opportunity?: string | null;
+      reportHref?: string;
+    } | null = null;
     let pivotReview: {
       id: string;
       triggerType: string;
@@ -338,11 +345,27 @@ export const DashboardService = {
       openFalseProgressCount = fpCount?.c ?? 0;
 
       const [valRow] = await db
-        .select({ created_at: validations.created_at })
+        .select({
+          id: validations.id,
+          created_at: validations.created_at,
+          reality_score: validations.reality_score,
+          archetype_resolution: validations.archetype_resolution,
+          economy_briefing: validations.economy_briefing,
+        })
         .from(validations)
         .where(eq(validations.blueprint_id, blueprintId))
         .orderBy(desc(validations.created_at))
         .limit(1);
+
+      const briefing = valRow?.economy_briefing as { keyWarnings?: string[]; keyOpportunities?: string[] } | null;
+      const resolution = valRow?.archetype_resolution as { primaryArchetype?: { name?: string } } | null;
+      economyIntelligence = valRow ? {
+        archetypeName: resolution?.primaryArchetype?.name ?? null,
+        realityScore: valRow.reality_score ?? null,
+        warning: briefing?.keyWarnings?.[0] ?? null,
+        opportunity: briefing?.keyOpportunities?.[0] ?? null,
+        reportHref: `/validation/${valRow.id}`,
+      } : null;
 
       const daysSinceValidation = valRow?.created_at
         ? (Date.now() - valRow.created_at.getTime()) / 86400000
@@ -374,7 +397,7 @@ export const DashboardService = {
     return {
       user,
       signals,
-      activeBlueprint,
+      activeBlueprint: activeBlueprint ? { ...activeBlueprint, economyIntelligence } : activeBlueprint,
       recentCompletionBlueprint,
       activeOrders,
       recentFeedback,

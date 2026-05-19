@@ -206,6 +206,124 @@ fallbacks.set("fallback.academy_gap_severity", (ctx, sv) => ({
   forbiddenActionRequested: false,
 }));
 
+fallbacks.set("fallback.eis_competitor", (ctx, sv) => ({
+  outputType: "eis_competitor",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    competitors: [
+      {
+        handle: "market-reference",
+        recentContent: `Recent ${String(ctx["niche"] ?? "niche")} execution example`,
+        performanceSignal: "Fallback signal only",
+        whatWorked: "Specific proof of execution",
+      },
+    ],
+    threatLevel: "LOW",
+    opportunityGaps: ["Show execution proof competitors are not showing"],
+    keyLesson: "Use competitor context as awareness, not direction.",
+  },
+  missingFields: [],
+  warnings: ["AI competitor synthesis unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.eis_narrative", (ctx, sv) => ({
+  outputType: "eis_narrative",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    dominantNarrative: `Audience wants practical ${String(ctx["niche"] ?? "domain")} proof`,
+    emergingNarratives: ["Behind-the-scenes execution"],
+    sentimentSignal: "MIXED",
+    audienceEmotions: ["curiosity"],
+    bestContentAngle: "Show the real execution path with proof",
+    riskNarratives: ["Avoid unsupported claims"],
+  },
+  missingFields: [],
+  warnings: ["AI narrative synthesis unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.eis_opportunity_synthesis", (_ctx, sv) => ({
+  outputType: "eis_opportunity_synthesis",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    opportunities: [
+      {
+        description: "Use current intelligence as execution context",
+        timeWindow: "This week",
+        relevanceScore: 0.6,
+        actionHint: "Ship one proof-led artifact",
+        urgency: "MEDIUM",
+      },
+    ],
+    topOpportunity: {
+      description: "Proof-led execution artifact",
+      urgency: "MEDIUM",
+      specificAction: "Create one artifact tied to the active order",
+    },
+    alignmentWithBlueprint: "Supports the active execution phase without changing blueprint structure.",
+  },
+  missingFields: [],
+  warnings: ["AI opportunity synthesis unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.strategic_outlook", (_ctx, sv) => ({
+  outputType: "strategic_outlook",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    executionForecast: "Current patterns suggest a stable execution trajectory; confidence is limited by available signal history.",
+    riskFactors: [{ risk: "Signal history is thin", likelihood: "MEDIUM", mitigation: "Complete the next execution cycle with clear proof." }],
+    highestLeverageAction: "Complete the active order and submit evidence that updates the signal trail.",
+    conditionPrediction: "Condition trajectory remains stable unless completion signal weakens.",
+    momentumTrajectory: "STABLE",
+    opportunityFlags: ["Execution window open for one proof-led cycle"],
+    confidenceTier: "LOW",
+  },
+  missingFields: [],
+  warnings: ["AI strategic outlook unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.behavioral_insight", (_ctx, sv) => ({
+  outputType: "behavioral_insight",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    insightType: "PATTERN",
+    insightText: "Execution pattern detected: current signal trail needs one clean completion cycle.",
+    evidenceSummary: "Dashboard snapshot did not have enough recent completion data for higher confidence.",
+    actionSuggestion: "Use the active order to create one verifiable outcome.",
+  },
+  missingFields: [],
+  warnings: ["AI behavioral insight unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.signal_narrative", (_ctx, sv) => ({
+  outputType: "signal_narrative",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    narrativeText: "Momentum trajectory is forming. The next execution cycle will make the signal clearer.",
+    keyTrend: "Signal movement is not yet established.",
+    momentumStatus: "Stable with low confidence.",
+  },
+  missingFields: [],
+  warnings: ["AI signal narrative unavailable — fallback used"],
+  forbiddenActionRequested: false,
+}));
+
 fallbacks.set("fallback.evidence_summary", (ctx, sv) => ({
   outputType: "evidence_summary",
   contractVersion: "1.0",
@@ -390,6 +508,36 @@ fallbacks.set("fallback.execution_help", (ctx, sv) => ({
   warnings: ["AI execution help unavailable — deterministic steps used"],
   forbiddenActionRequested: false,
 }));
+
+const ERECTOR_FALLBACKS: Array<{ key: string; outputType: BhudhiOutputEnvelope["outputType"] }> = [
+  { key: "fallback.erector_archetype_narrative", outputType: "erector_archetype_narrative" },
+  { key: "fallback.erector_purpose", outputType: "erector_purpose" },
+  { key: "fallback.erector_industry", outputType: "erector_industry" },
+  { key: "fallback.erector_market", outputType: "erector_market" },
+  { key: "fallback.erector_competitors", outputType: "erector_competitors" },
+  { key: "fallback.erector_economy", outputType: "erector_economy" },
+  { key: "fallback.erector_pain", outputType: "erector_pain" },
+  { key: "fallback.erector_time_simulation", outputType: "erector_time_simulation" },
+  { key: "fallback.erector_paths", outputType: "erector_paths" },
+  { key: "fallback.erector_first_week", outputType: "erector_first_week" },
+];
+
+for (const item of ERECTOR_FALLBACKS) {
+  fallbacks.set(item.key, (ctx, sv) => ({
+    outputType: item.outputType,
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "LOW",
+    data: {
+      summary: `Deterministic Erector fallback for ${String(ctx["goal"] ?? ctx["rawGoal"] ?? "the validation").slice(0, 120)}.`,
+      warnings: ["AI analysis unavailable; deterministic Erector fallback used."],
+      opportunities: ["Use narrow proof, local trust channels, and staged execution before expanding scope."],
+    },
+    missingFields: [],
+    warnings: ["Erector AI support unavailable — deterministic fallback used"],
+    forbiddenActionRequested: false,
+  }));
+}
 
 export function hasFallbackKey(key: string): boolean {
   return fallbacks.has(key);
