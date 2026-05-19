@@ -179,6 +179,26 @@ function record(outcomes: Outcome[], name: string, ok: boolean, detail?: string)
   print(`${ok ? "PASS" : "FAIL"} — ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt === attempts - 1) break;
+      const delay = 500 * 2 ** attempt;
+      print(`[Retry] ${label} failed on attempt ${attempt + 1}/${attempts}; retrying in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`${label} failed`);
+}
+
 async function runPipeline(
   E: Awaited<ReturnType<typeof loadEnginesMerged>>,
   params: { blueprintId: string; userId: string },
@@ -405,21 +425,23 @@ void (async () => {
       bpDraft ? `blueprintId=${blueprintId} status=${bpDraft.status}` : "missing row",
     );
 
-    const validationResult = await E.ValidationService.validateGoal({
-      blueprintId,
-      userId,
-      tier: "starter",
-      mode: "individual",
-      input: {
-        goal: structured.cleanedGoal,
-        purpose: structured.purpose,
-        timeframe: structured.timeframe,
-        commitmentLevel: structured.commitmentLevel,
-        currentContext: structured.currentContext,
-        successSignal: structured.successSignals[0],
-        knownBlockers: structured.blockers[0],
-      },
-    });
+    const validationResult = await withRetry("goal validation", () =>
+      E.ValidationService.validateGoal({
+        blueprintId,
+        userId,
+        tier: "starter",
+        mode: "individual",
+        input: {
+          goal: structured.cleanedGoal,
+          purpose: structured.purpose,
+          timeframe: structured.timeframe,
+          commitmentLevel: structured.commitmentLevel,
+          currentContext: structured.currentContext,
+          successSignal: structured.successSignals[0],
+          knownBlockers: structured.blockers[0],
+        },
+      }),
+    );
 
     const [valRow] = await db.select().from(validations).where(eq(validations.blueprint_id, blueprintId)).limit(1);
 
@@ -1260,21 +1282,23 @@ void (async () => {
         commitmentLevel: "high",
       });
       await db.execute(sqlRaw(`UPDATE blueprints SET e2e_test_run_id = ${JSON.stringify(`${ctx.runId}-law`)} WHERE id = '${lawBp}'::uuid`));
-      await E.ValidationService.validateGoal({
-        blueprintId: lawBp,
-        userId,
-        tier: "starter",
-        mode: "individual",
-        input: {
-          goal: "Law-complete-probe-with-minimum-scope",
-          purpose: "completion law",
-          timeframe: "30 days",
-          commitmentLevel: "high",
-          currentContext: "Synthetic context row for LAW2.".repeat(3),
-          successSignal: "Ship",
-          knownBlockers: "none stated",
-        },
-      });
+      await withRetry("law probe validation", () =>
+        E.ValidationService.validateGoal({
+          blueprintId: lawBp,
+          userId,
+          tier: "starter",
+          mode: "individual",
+          input: {
+            goal: "Law-complete-probe-with-minimum-scope",
+            purpose: "completion law",
+            timeframe: "30 days",
+            commitmentLevel: "high",
+            currentContext: "Synthetic context row for LAW2.".repeat(3),
+            successSignal: "Ship",
+            knownBlockers: "none stated",
+          },
+        }),
+      );
       await E.ValidationService.selectValidationPath({ blueprintId: lawBp, userId, selectedPath: "current" });
       await engLaw.activateBlueprint(lawBp, userId);
       for (let i = 0; i < 6; i++) {

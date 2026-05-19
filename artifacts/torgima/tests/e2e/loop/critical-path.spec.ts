@@ -7,18 +7,21 @@ import { test, expect } from "@playwright/test";
  */
 test.describe("Torgima critical path — SPA shell", () => {
   test("marketing home renders with brand chrome", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("link", { name: /start your blueprint/i }).first()).toBeVisible();
   });
 
   test("dashboard is protected when no API session exists", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 25_000 });
   });
 
   test("signals route resolves through the auth gate", async ({ page }) => {
-    await page.goto("/signals");
+    await page.goto("/signals", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 20_000 });
   });
 });

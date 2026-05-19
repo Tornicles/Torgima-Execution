@@ -6,24 +6,28 @@ import { test, expect } from "@playwright/test";
  */
 test.describe("Phase 9 — Frontend acceptance", () => {
   test("marketing route renders without raw engine errors", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 20_000 });
     const body = await page.locator("body").innerText();
     expect(body).not.toMatch(/ControlEngine|SignalWorker|dead_letter_events/i);
   });
 
   test("onboarding route is reachable", async ({ page }) => {
-    await page.goto("/onboarding");
+    await page.goto("/onboarding", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 20_000 });
   });
 
   test("signals route resolves through the auth gate", async ({ page }) => {
-    await page.goto("/signals");
+    await page.goto("/signals", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 20_000 });
   });
 
   test("QUAL-05: no forbidden execution-language in visible shell", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 20_000 });
     const body = await page.locator("body").innerText();
     expect(body.toLowerCase()).not.toMatch(/\bcongratulations\b/);

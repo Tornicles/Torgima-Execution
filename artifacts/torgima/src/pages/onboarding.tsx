@@ -45,6 +45,26 @@ const ERECTOR_ENGINE_MESSAGES = [
   "Simulating your execution timelines...",
 ];
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, attempts = 3): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const res = await fetch(input, init);
+      if (res.status < 500 || attempt === attempts - 1) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      if (attempt === attempts - 1) throw err;
+    }
+    await sleep(500 * 2 ** attempt);
+  }
+  throw lastError instanceof Error ? lastError : new Error("Request failed");
+}
+
 interface FormData {
   primaryGoal: string;
   secondaryGoals: string;
@@ -228,8 +248,8 @@ export default function OnboardingPage() {
     const maxAttempts = 60;
     for (let i = 0; i < maxAttempts; i++) {
       const [statusRes, timelineRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/validation/${validationId}/status`, { credentials: "include" }),
-        fetch(`${API_BASE_URL}/api/validation/${validationId}/timeline`, { credentials: "include" }),
+        fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/status`, { credentials: "include" }),
+        fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/timeline`, { credentials: "include" }),
       ]);
       const timelineJson = (await timelineRes.json()) as {
         ok?: boolean;
@@ -244,7 +264,7 @@ export default function OnboardingPage() {
       };
       const sessionStatus = statusJson.data?.status;
       if (sessionStatus === "complete" || sessionStatus === "validated") {
-        const resultRes = await fetch(`${API_BASE_URL}/api/validation/${validationId}/result`, {
+        const resultRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/result`, {
           credentials: "include",
         });
         const resultJson = (await resultRes.json()) as { ok?: boolean; data?: ValidationPayload };
@@ -252,7 +272,7 @@ export default function OnboardingPage() {
         return null;
       }
       if (sessionStatus === "failed" || sessionStatus === "invalid") return null;
-      await new Promise((r) => setTimeout(r, 1500));
+      await sleep(1500);
     }
     return null;
   }
@@ -267,7 +287,7 @@ export default function OnboardingPage() {
     setError("");
     setValidation(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/onboarding/goal`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/onboarding/goal`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -306,7 +326,7 @@ export default function OnboardingPage() {
       }
 
       if (payload?.status === "validated" && payload.blueprintId) {
-        const erectorRes = await fetch(`${API_BASE_URL}/api/v1/validation/run`, {
+        const erectorRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/run`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -380,7 +400,7 @@ export default function OnboardingPage() {
       if (!saved) return;
 
       if (validation.validationId) {
-        const pathRes = await fetch(`${API_BASE_URL}/api/v1/validation/${validation.validationId}/select-path`, {
+        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${validation.validationId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

@@ -24,6 +24,8 @@ tmp
 # Test artifacts
 coverage/
 *.lcov
+test-results/
+playwright-report/
 
 # Logs
 *.log

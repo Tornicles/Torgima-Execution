@@ -81,6 +81,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
+      RAILWAY_API_URL: ${{ vars.RAILWAY_API_URL || secrets.RAILWAY_API_URL || '' }}
       TORGIMA_INTEGRATION: "true"
     steps:
       - uses: actions/checkout@v4
@@ -93,8 +94,25 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Wait for Postgres readiness
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres -d torgima_test && exit 0
+            sleep 2
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
       - name: Apply database schema to test database
         run: pnpm -F @workspace/db run push-force
+      - name: Wait for Railway API and onboarding schema readiness
+        run: |
+          if [ -z "$RAILWAY_API_URL" ]; then
+            echo "RAILWAY_API_URL is not configured; skipping external Railway readiness check for local Postgres E2E."
+            exit 0
+          fi
+          pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/healthz" --label "Railway healthz" --timeout-ms 120000 --interval-ms 3000
+          curl -fsS "$RAILWAY_API_URL/api/health" >/tmp/railway-health.json
+          pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/health/schema" --label "onboarding schema readiness" --timeout-ms 120000 --interval-ms 3000
       - name: Phase 9 scenario suite
         run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts
 
@@ -117,10 +135,28 @@ jobs:
         run: pnpm -F @workspace/torgima exec playwright install chromium --with-deps
       - name: Build frontend
         run: pnpm -F @workspace/torgima run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.RAILWAY_API_URL || secrets.RAILWAY_API_URL || '' }}
       - name: Run Playwright against preview
         run: |
-          pnpm -F @workspace/torgima exec vite preview --port 4173 --host 127.0.0.1 &
-          sleep 4
+          echo "Testing preview URL: $PREVIEW_URL"
+          echo "Testing API URL: ${RAILWAY_API_URL:-not configured}"
+          if [ "$PREVIEW_URL" = "http://127.0.0.1:4173" ]; then
+            pnpm -F @workspace/torgima exec vite preview --port 4173 --host 127.0.0.1 &
+          fi
+          pnpm -F @workspace/scripts run wait:url -- --url "$PREVIEW_URL" --method HEAD --label "frontend preview" --timeout-ms 120000 --interval-ms 3000
+          curl -I "$PREVIEW_URL"
+          if [ -n "$RAILWAY_API_URL" ]; then
+            pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/healthz" --label "Railway healthz" --timeout-ms 120000 --interval-ms 3000
+            curl -fsS "$RAILWAY_API_URL/api/health" >/tmp/api-health.json
+            pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/health/schema" --label "onboarding API readiness" --timeout-ms 120000 --interval-ms 3000
+          elif [ "$PREVIEW_URL" != "http://127.0.0.1:4173" ]; then
+            curl -fsS "$PREVIEW_URL/api/health" >/tmp/api-health.json
+          else
+            echo "No Railway API URL configured; local preview smoke will verify static routing only."
+          fi
           pnpm -F @workspace/torgima exec playwright test tests/e2e
         env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          PREVIEW_URL: ${{ vars.PLAYWRIGHT_PREVIEW_URL || 'http://127.0.0.1:4173' }}
+          PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_PREVIEW_URL || 'http://127.0.0.1:4173' }}
+          RAILWAY_API_URL: ${{ vars.RAILWAY_API_URL || secrets.RAILWAY_API_URL || '' }}
