@@ -22,6 +22,7 @@ import {
   validationVerdictEnum,
   selectedPathEnum,
   validationReadinessEnum,
+  validationKindEnum,
   domainEnum,
   seasonNameEnum,
   planStatusEnum,
@@ -137,6 +138,7 @@ export const validations = pgTable(
   "validations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    contract_id: uuid("contract_id").notNull().defaultRandom(),
     blueprint_id: uuid("blueprint_id")
       .notNull()
       .references(() => blueprints.id, { onDelete: "cascade" }),
@@ -173,6 +175,9 @@ export const validations = pgTable(
     selected_at: timestamp("selected_at", { withTimezone: true }),
     idempotency_key: text("idempotency_key"),
     status: text("status").notNull().default("pending"),
+    validation_kind: validationKindEnum("validation_kind").notNull().default("unknown"),
+    payload_version: integer("payload_version").notNull().default(1),
+    selected_path_type: text("selected_path_type"),
     tier: userTierEnum("tier"),
     intelligence_payload: jsonb("intelligence_payload"),
     blueprint_contract: jsonb("blueprint_contract"),
@@ -226,6 +231,7 @@ export const validations = pgTable(
   },
   (t) => [
     index("idx_validations_blueprint_id").on(t.blueprint_id),
+    uniqueIndex("idx_validations_contract_id").on(t.contract_id),
     uniqueIndex("idx_validations_idempotency_key").on(t.idempotency_key),
   ],
 );

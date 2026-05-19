@@ -110,16 +110,13 @@ Email never arrives despite a success toast means **`RESEND_API_KEY`** / verifie
 
 ### Database schema + seed
 
-**Note:** This repo uses **`pnpm -F @workspace/db push`** (Drizzle Kit *push*). That syncs the Drizzle schema straight to `DATABASE_URL`; it is **not** a ledger of versioned migrations, so there is no automated down-migration path. Review the emitted DDL in staging before applying to production.
-
-Additional SQL in `scripts/` (partial indexes, `updated_at` triggers) is **not** run by `push` and must still be applied explicitly.
+**Note:** The Drizzle schema is the database authority. Schema changes must be generated into committed Drizzle migrations and applied with `migrate`; do not use `drizzle-kit push` or ad hoc SQL patch scripts in production.
 
 Before first boot:
 
 ```bash
-pnpm -F @workspace/db push
-pnpm -F @workspace/db db:partial-indexes
-pnpm -F @workspace/db db:triggers
+pnpm -F @workspace/db check
+pnpm -F @workspace/db migrate
 pnpm -F @workspace/db tsx src/seed.ts
 pnpm -F @workspace/db verify           # table count + indexes + flags — see lib/db/src/verify-db.ts for expected baselines
 ```

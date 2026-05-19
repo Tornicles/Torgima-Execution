@@ -933,7 +933,7 @@ export function useGetBlueprint<
 }
 
 /**
- * @summary Activate a blueprint — optionally with a selected validation path
+ * @summary Activate a blueprint with a selected validation path
  */
 export const getActivateBlueprintUrl = (id: string) => {
   return `/api/blueprints/${id}/activate`;
@@ -941,7 +941,7 @@ export const getActivateBlueprintUrl = (id: string) => {
 
 export const activateBlueprint = async (
   id: string,
-  activateBlueprintInput?: ActivateBlueprintInput,
+  activateBlueprintInput: ActivateBlueprintInput,
   options?: RequestInit,
 ): Promise<BlueprintActivateResult> => {
   return customFetch<BlueprintActivateResult>(getActivateBlueprintUrl(id), {
@@ -997,7 +997,7 @@ export type ActivateBlueprintMutationBody = BodyType<ActivateBlueprintInput>;
 export type ActivateBlueprintMutationError = ErrorType<unknown>;
 
 /**
- * @summary Activate a blueprint — optionally with a selected validation path
+ * @summary Activate a blueprint with a selected validation path
  */
 export const useActivateBlueprint = <
   TError = ErrorType<unknown>,

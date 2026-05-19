@@ -35,6 +35,7 @@ export interface Phase9Fixture {
   name: Phase9FixtureName;
   userId: string;
   blueprintId?: string;
+  validationContractId?: string;
   orderId?: string;
   trace: { runId: string; fixture: Phase9FixtureName };
 }
@@ -237,17 +238,24 @@ export async function seedPhase9Fixture(name: Phase9FixtureName): Promise<Phase9
           selected_blueprint_tier: "starter",
           selected_blueprint_mode: "individual",
           status: "complete",
+          validation_kind: "intelligence",
           verdict: "pivot",
           launch_blocked: true,
           path_current: { title: "Current", summary: "x", rationale: "y", riskLevel: "high", planSkeleton: {} },
           intelligence_payload: {
+            verdict: "pivot",
+            paths: {
+              current: { title: "Current", summary: "x", rationale: "y", riskLevel: "high", planSkeleton: {} },
+              adjusted: { title: "Adjusted", summary: "x", rationale: "y", riskLevel: "high", planSkeleton: {} },
+              alternative: { title: "Alternative", summary: "x", rationale: "y", riskLevel: "medium", planSkeleton: {} },
+            },
             verdictReasoning: "Demand signal too weak for this goal.",
             pis: { risk_flags: [{ level: "critical", resolvable: false, message: "Market fit" }] },
           },
         })
-        .returning({ id: validations.id });
+        .returning({ id: validations.id, contract_id: validations.contract_id });
       await db.update(blueprints).set({ validation_id: val!.id }).where(eq(blueprints.id, bp.id));
-      return { name, userId: user.id, blueprintId: bp.id, trace };
+      return { name, userId: user.id, blueprintId: bp.id, validationContractId: val!.contract_id, trace };
     }
 
     default:

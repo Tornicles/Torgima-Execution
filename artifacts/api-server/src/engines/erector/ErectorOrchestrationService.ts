@@ -1,6 +1,7 @@
 import { db, validations, validationArchetypeMaps } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { validatePayload } from "../../lib/validationPayloadSchemas.js";
 import type {
   ArchetypeResolutionOutput,
   ErectorValidationInput,
@@ -173,13 +174,15 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
   if (existing?.validation_stage === "complete") return rowToResult(existing);
 
   const [created] = existing
-    ? await db.update(validations).set({ validation_stage: "running", status: "running" }).where(eq(validations.id, existing.id)).returning()
+    ? await db.update(validations).set({ validation_kind: "erector", payload_version: 1, validation_stage: "running", status: "running" }).where(eq(validations.id, existing.id)).returning()
     : await db
         .insert(validations)
         .values({
           blueprint_id: input.blueprintId,
           user_id: input.userId,
           idempotency_key: input.idempotencyKey,
+          validation_kind: "erector",
+          payload_version: 1,
           status: "running",
           validation_stage: "running",
           tier: input.tier ?? null,
@@ -222,6 +225,17 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     adjusted: path("adjusted", scores),
     alternative: path("alternative", scores),
   };
+  const intelligencePayload = {
+    erector: true,
+    archetypeResolution,
+    scores,
+    economyBriefing: outputs.economyBriefing,
+    systemsProgress: { ERECTOR: "complete" },
+  };
+  const payloadCheck = validatePayload("erector", intelligencePayload);
+  if (!payloadCheck.success) {
+    throw new Error(`Erector payload failed schema check: ${payloadCheck.error.message}`);
+  }
 
   const [complete] = await db
     .update(validations)
@@ -259,13 +273,9 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
       readiness: scores.verdict === "proceed" ? "ready_proceed" : scores.verdict === "adjust" ? "ready_with_adjustment" : "blocked_pivot",
       validation_stage: "complete",
       status: "complete",
-      intelligence_payload: {
-        erector: true,
-        archetypeResolution,
-        scores,
-        economyBriefing: outputs.economyBriefing,
-        systemsProgress: { ERECTOR: "complete" },
-      },
+      validation_kind: "erector",
+      payload_version: 1,
+      intelligence_payload: intelligencePayload,
     })
     .where(eq(validations.id, created.id))
     .returning();

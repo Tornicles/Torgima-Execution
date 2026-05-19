@@ -224,6 +224,8 @@ export interface OnboardingGoalResult {
   /** @nullable */
   validationId?: string | null;
   /** @nullable */
+  validationContractId?: string | null;
+  /** @nullable */
   verdict?: OnboardingGoalResultVerdict;
   scores?: ValidationScores;
   paths?: ValidationPaths;
@@ -244,6 +246,8 @@ export const ValidationResultP5Verdict = {
 
 export interface ValidationResultP5 {
   validationId: string;
+  /** @nullable */
+  validationContractId?: string | null;
   blueprintId: string;
   verdict: ValidationResultP5Verdict;
   scores: ValidationScores;
@@ -429,9 +433,43 @@ export const ActivateBlueprintInputSelectedPath = {
   alternative: "alternative",
 } as const;
 
+/**
+ * @nullable
+ */
+export type ActivateBlueprintInputSelectedPathType =
+  | (typeof ActivateBlueprintInputSelectedPathType)[keyof typeof ActivateBlueprintInputSelectedPathType]
+  | null;
+
+export const ActivateBlueprintInputSelectedPathType = {
+  current: "current",
+  adjusted: "adjusted",
+  alternative: "alternative",
+} as const;
+
+/**
+ * @nullable
+ */
+export type ActivateBlueprintInputSelectedBlueprintLevel =
+  | (typeof ActivateBlueprintInputSelectedBlueprintLevel)[keyof typeof ActivateBlueprintInputSelectedBlueprintLevel]
+  | null;
+
+export const ActivateBlueprintInputSelectedBlueprintLevel = {
+  starter: "starter",
+  growth: "growth",
+  ultimate: "ultimate",
+} as const;
+
 export interface ActivateBlueprintInput {
   /** @nullable */
-  selectedPath?: ActivateBlueprintInputSelectedPath;
+  selectedPath: ActivateBlueprintInputSelectedPath;
+  /** @nullable */
+  selected_path_type?: ActivateBlueprintInputSelectedPathType;
+  /** @nullable */
+  selectedBlueprintLevel?: ActivateBlueprintInputSelectedBlueprintLevel;
+  /** @nullable */
+  validationContractId: string | null;
+  /** @nullable */
+  validation_contract_id?: string | null;
 }
 
 export interface BlockInput {

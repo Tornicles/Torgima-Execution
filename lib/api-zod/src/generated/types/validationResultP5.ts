@@ -11,6 +11,8 @@ import type { ValidationScores } from "./validationScores";
 
 export interface ValidationResultP5 {
   validationId: string;
+  /** @nullable */
+  validationContractId?: string | null;
   blueprintId: string;
   verdict: ValidationResultP5Verdict;
   scores: ValidationScores;

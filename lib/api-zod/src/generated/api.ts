@@ -115,6 +115,7 @@ export const SubmitOnboardingGoalResponse = zod.object({
   status: zod.enum(["invalid", "needs_clarification", "validated"]),
   blueprintId: zod.string(),
   validationId: zod.string().nullish(),
+  validationContractId: zod.string().nullish(),
   verdict: zod
     .union([
       zod.literal("proceed"),
@@ -348,7 +349,7 @@ export const GetBlueprintResponse = zod.object({
 });
 
 /**
- * @summary Activate a blueprint — optionally with a selected validation path
+ * @summary Activate a blueprint with a selected validation path
  */
 export const ActivateBlueprintParams = zod.object({
   id: zod.coerce.string(),
@@ -362,7 +363,25 @@ export const ActivateBlueprintBody = zod.object({
       zod.literal("alternative"),
       zod.literal(null),
     ])
+    .nullable(),
+  selected_path_type: zod
+    .union([
+      zod.literal("current"),
+      zod.literal("adjusted"),
+      zod.literal("alternative"),
+      zod.literal(null),
+    ])
     .nullish(),
+  selectedBlueprintLevel: zod
+    .union([
+      zod.literal("starter"),
+      zod.literal("growth"),
+      zod.literal("ultimate"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  validationContractId: zod.string().nullable(),
+  validation_contract_id: zod.string().nullish(),
 });
 
 export const ActivateBlueprintResponse = zod.object({
@@ -575,6 +594,7 @@ export const RunValidationBody = zod.object({
 
 export const RunValidationResponse = zod.object({
   validationId: zod.string(),
+  validationContractId: zod.string().nullish(),
   blueprintId: zod.string(),
   verdict: zod.enum(["proceed", "adjust", "pivot"]),
   scores: zod.object({
@@ -692,6 +712,7 @@ export const GetValidationResultQueryParams = zod.object({
 
 export const GetValidationResultResponse = zod.object({
   validationId: zod.string(),
+  validationContractId: zod.string().nullish(),
   blueprintId: zod.string(),
   verdict: zod.enum(["proceed", "adjust", "pivot"]),
   scores: zod.object({

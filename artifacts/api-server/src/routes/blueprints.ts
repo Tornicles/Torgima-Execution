@@ -2,8 +2,8 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
+import { BlueprintLaunchService } from "../services/BlueprintLaunchService.js";
 import { getExecutionCommandCenter } from "../services/ExecutionCommandCenterService.js";
-import { ValidationService } from "../services/ValidationService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import {
   checkCompletionEligibility,
@@ -18,8 +18,6 @@ import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleE
 import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
-import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
-import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import {
   createPivotReview,
   resolvePivotReview,
@@ -199,14 +197,17 @@ router.post("/blueprints/:id/configure-selection", async (req, res) => {
   }
 });
 
-// POST /api/blueprints/:id/activate — activates the full post-validation execution chain.
+// POST /api/blueprints/:id/activate — canonical blueprint launch route.
 router.post("/blueprints/:id/activate", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
       selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
+      selected_path_type: z.enum(["current", "adjusted", "alternative"]).optional(),
       selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]).optional(),
+      validationContractId: z.string().uuid().optional(),
+      validation_contract_id: z.string().uuid().optional(),
       confirmed: z.literal(true).optional(),
     });
 
@@ -216,34 +217,26 @@ router.post("/blueprints/:id/activate", async (req, res) => {
       return;
     }
     const body = parsed.data;
+    const validationContractId = body.validationContractId ?? body.validation_contract_id;
+    const selectedPathType = body.selectedPath ?? body.selected_path_type;
 
-    const schemaCheck = await verifyBlueprintLaunchSchema();
-    if (!schemaCheck.ok) {
-      failure(res, "SCHEMA_OUT_OF_DATE", "Database schema is out of date.", 503, {
-        retryable: true,
-        detail: schemaCheck.detail ?? "Missing blueprint launch schema requirement",
-      });
+    if (!validationContractId || !selectedPathType) {
+      failure(
+        res,
+        "VALIDATION_ERROR",
+        "validation_contract_id and selected_path_type are required",
+        400,
+      );
       return;
     }
 
-    const blueprint = await BlueprintRepository.findById(req.params.id!, auth.userId);
-    if (body.selectedBlueprintLevel) {
-      await BlueprintService.configureSelection(req.params.id!, auth.userId, {
-        tier: body.selectedBlueprintLevel,
-        mode: blueprint.mode ?? "individual",
-      });
-    }
-
-    if (body.selectedPath) {
-      await ValidationService.selectValidationPath({
-        blueprintId:  req.params.id!,
-        userId:       auth.userId,
-        selectedPath: body.selectedPath,
-        confirmAdjusted: body.selectedPath === "adjusted",
-      });
-    }
-
-    const result = await BlueprintService.activate(req.params.id!, auth.userId);
+    const result = await BlueprintLaunchService.launch({
+      blueprintId: req.params.id!,
+      userId: auth.userId,
+      validationContractId,
+      selectedPathType,
+      selectedBlueprintLevel: body.selectedBlueprintLevel,
+    });
     success(res, result);
   } catch (err) {
     handleError(req, res, err);

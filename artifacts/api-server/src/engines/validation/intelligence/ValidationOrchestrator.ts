@@ -1,8 +1,9 @@
 import { db } from "@workspace/db";
 import { validations, blueprints } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "../../../lib/logger.js";
 import { TorgimaError } from "../../../lib/errors.js";
+import { validatePayload } from "../../../lib/validationPayloadSchemas.js";
 import type { BlueprintTier } from "../../blueprint/infrastructure/blueprint-types.js";
 import { parseMode, parseTier } from "../../blueprint/BlueprintRuleEngine.js";
 import { scoreGoal } from "../ValidationEngine.js";
@@ -197,10 +198,23 @@ export async function runFullValidation(params: {
   const aiSummary = buildSummary(verdict, reasoning, scores.overall);
   const usedFallback = !params.aiEnabled || eis.source === "EIS+fallback";
 
+  const payloadCheck = validatePayload("intelligence", intelligence);
+  if (!payloadCheck.success) {
+    throw new TorgimaError(
+      "VALIDATION_PAYLOAD_CORRUPT",
+      `Intelligence payload failed schema check: ${payloadCheck.error.message}`,
+    );
+  }
+
   const existing = await db
     .select({ id: validations.id })
     .from(validations)
-    .where(eq(validations.blueprint_id, params.blueprintId))
+    .where(
+      and(
+        eq(validations.blueprint_id, params.blueprintId),
+        eq(validations.validation_kind, "intelligence"),
+      ),
+    )
     .limit(1);
 
   const payload = {
@@ -213,6 +227,8 @@ export async function runFullValidation(params: {
     path_adjusted: paths.adjusted as unknown as Record<string, unknown>,
     path_alternative: paths.alternative as unknown as Record<string, unknown>,
     status: "complete",
+    validation_kind: "intelligence" as const,
+    payload_version: 1,
     tier,
     intelligence_payload: intelligence as unknown as Record<string, unknown>,
     blueprint_contract: blueprintContract as unknown as Record<string, unknown>,
@@ -221,9 +237,16 @@ export async function runFullValidation(params: {
   };
 
   let validationId: string;
+  let validationContractId: string;
   if (existing[0]) {
     validationId = existing[0].id;
-    await db.update(validations).set(payload).where(eq(validations.id, validationId));
+    const [updated] = await db
+      .update(validations)
+      .set(payload)
+      .where(eq(validations.id, validationId))
+      .returning({ contract_id: validations.contract_id });
+    if (!updated) throw new TorgimaError("INTERNAL_ERROR", "Failed to update validation");
+    validationContractId = updated.contract_id;
   } else {
     const [inserted] = await db
       .insert(validations)
@@ -232,9 +255,10 @@ export async function runFullValidation(params: {
         user_id: params.userId,
         ...payload,
       })
-      .returning({ id: validations.id });
+      .returning({ id: validations.id, contract_id: validations.contract_id });
     if (!inserted) throw new TorgimaError("INTERNAL_ERROR", "Failed to create validation");
     validationId = inserted.id;
+    validationContractId = inserted.contract_id;
   }
 
   const bpRow = await db
@@ -262,6 +286,7 @@ export async function runFullValidation(params: {
 
   const full: FullValidationResult = {
     validationId,
+    validationContractId,
     blueprintId: params.blueprintId,
     verdict,
     scores,

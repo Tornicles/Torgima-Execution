@@ -188,6 +188,7 @@ export class BlueprintEngine {
   async activateBlueprint(
     blueprintId: string,
     userId: string,
+    validationContractId: string,
   ): Promise<{ launched: true; blueprintId: string }> {
     logger.info({ blueprintId, userId }, "BlueprintEngine.activateBlueprint");
 
@@ -208,7 +209,7 @@ export class BlueprintEngine {
 
     assertFeatureAllowed({ tier, mode, feature: "orders", surface: "generation" });
 
-    await ValidationService.assertLaunchAllowed(blueprintId, userId);
+    await ValidationService.assertLaunchAllowed(blueprintId, userId, validationContractId);
 
     const resolvedDomain = domainEngine.resolve(existing.goal, existing.domain_hint);
 

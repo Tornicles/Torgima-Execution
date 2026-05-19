@@ -15,9 +15,9 @@ function readRepo(path: string) {
 describe("Prompt 15 — Production deployment readiness", () => {
   it("TEST 1: production database migration checklist is documented", () => {
     const runbook = readRepo("docs/PRODUCTION_RUNBOOK.md");
-    expect(runbook).toContain("pnpm -F @workspace/db push");
-    expect(runbook).toContain("pnpm -F @workspace/db db:partial-indexes");
-    expect(runbook).toContain("pnpm -F @workspace/db db:triggers");
+    expect(runbook).toContain("pnpm run db:check");
+    expect(runbook).toContain("pnpm run db:migrate:prod");
+    expect(runbook).toContain("Do not use `drizzle-kit push`");
     expect(runbook).toContain("pnpm -F @workspace/db verify");
   });
 

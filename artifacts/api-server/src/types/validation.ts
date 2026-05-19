@@ -32,6 +32,7 @@ export interface ValidationPath {
 
 export interface ValidationResult {
   validationId:  string;
+  validationContractId?: string;
   blueprintId:   string;
   verdict:       ValidationVerdict;
   scores:        ValidationScores;

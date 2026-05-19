@@ -80,11 +80,6 @@ export const BlueprintService = {
     return engine.configureSelection(blueprintId, userId, input);
   },
 
-  async activate(blueprintId: string, userId: string): Promise<{ launched: true; blueprintId: string }> {
-    logger.info({ blueprintId, userId }, "BlueprintService.activate");
-    return engine.activateBlueprint(blueprintId, userId);
-  },
-
   async pause(id: string, userId: string, reason: string): Promise<Blueprint> {
     logger.info({ id, userId }, "BlueprintService.pause");
     const bp = await engine.pause(id, userId, reason);

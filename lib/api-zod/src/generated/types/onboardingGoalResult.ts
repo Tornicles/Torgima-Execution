@@ -17,6 +17,8 @@ export interface OnboardingGoalResult {
   /** @nullable */
   validationId?: string | null;
   /** @nullable */
+  validationContractId?: string | null;
+  /** @nullable */
   verdict?: OnboardingGoalResultVerdict;
   scores?: ValidationScores;
   paths?: ValidationPaths;

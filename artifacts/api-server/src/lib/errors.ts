@@ -19,7 +19,9 @@ export type ErrorCode =
   | "AI_CONTRACT_ERROR"
   | "FEATURE_DISABLED"
   | "BLUEPRINT_SELECTION_REQUIRED"
-  | "SCHEMA_OUT_OF_DATE";
+  | "SCHEMA_OUT_OF_DATE"
+  | "CONTRACT_NOT_FOUND"
+  | "VALIDATION_PAYLOAD_CORRUPT";
 
 export class TorgimaError extends Error {
   constructor(
@@ -44,8 +46,10 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
     case "FORBIDDEN":
       return 403;
     case "NOT_FOUND":
+    case "CONTRACT_NOT_FOUND":
       return 404;
     case "VALIDATION_ERROR":
+    case "VALIDATION_PAYLOAD_CORRUPT":
       return 422;
     case "STALE_STATE":
       return 409;

@@ -5,7 +5,6 @@ import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
-import { ensureSchemaPatches } from "../lib/ensureSchema.js";
 
 const router: IRouter = Router();
 
@@ -132,25 +131,16 @@ router.get("/health/current", async (req, res) => {
 // GET /api/health/schema — onboarding-critical schema (public, for deploy checks)
 router.get("/health/schema", async (_req, res) => {
   try {
-    const before = await verifyOnboardingSchema();
-    const launchBefore = await verifyBlueprintLaunchSchema();
-    let patchResult: { applied: number; failed: number; verified: boolean } | null = null;
-    if (!before.ok || !launchBefore.ok) {
-      patchResult = await ensureSchemaPatches();
-    }
-    const after = await verifyOnboardingSchema();
-    const launchAfter = await verifyBlueprintLaunchSchema();
-    const ok = after.ok && launchAfter.ok;
+    const onboarding = await verifyOnboardingSchema();
+    const launch = await verifyBlueprintLaunchSchema();
+    const ok = onboarding.ok && launch.ok;
     success(res, {
       ok,
-      before,
-      after,
-      launchBefore,
-      launchAfter,
-      patchResult,
+      onboarding,
+      launch,
       hint: ok
         ? "Schema ready for onboarding and blueprint launch"
-        : "Apply scripts/migrations/*.sql to the DATABASE_URL Postgres instance",
+        : "Run Drizzle migrations with: pnpm -F @workspace/db migrate",
     }, ok ? 200 : 503);
   } catch (err) {
     handleError(_req, res, err);

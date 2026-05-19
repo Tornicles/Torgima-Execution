@@ -10,6 +10,7 @@ import {
 import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
+import { activateBlueprint, ApiError } from "@workspace/api-client-react";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL_STEPS = 7;
@@ -360,7 +361,7 @@ export default function OnboardingPage() {
         }
         payload = {
           ...payload,
-          validationId: String(erectorJson.data?.["validationId"] ?? payload.validationId ?? ""),
+          erectorValidationId: String(erectorJson.data?.["validationId"] ?? ""),
           verdict: (erectorJson.data?.["verdict"] as ValidationPayload["verdict"]) ?? payload.verdict,
           launchBlocked: erectorJson.data?.["verdict"] === "pivot",
           intelligence: { ...(payload.intelligence ?? {}), erector: erectorJson.data },
@@ -388,6 +389,10 @@ export default function OnboardingPage() {
 
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
+    if (!validation.validationContractId) {
+      setError("Validation contract is missing. Re-run validation before launch.");
+      return;
+    }
     if ((validation.launchBlocked || validation.verdict === "pivot") && selectedPath !== "alternative") {
       setError("This validation requires the alternative path before launch.");
       return;
@@ -400,7 +405,7 @@ export default function OnboardingPage() {
       if (!saved) return;
 
       if (validation.validationId) {
-        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${validation.validationId}/select-path`, {
+        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${validation.validationId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -416,31 +421,23 @@ export default function OnboardingPage() {
         }
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/blueprint/launch`, {
+      await activateBlueprint(validation.blueprintId, {
+        validationContractId: validation.validationContractId,
+        validation_contract_id: validation.validationContractId,
+        selectedPath,
+        selected_path_type: selectedPath,
+        selectedBlueprintLevel: selectedTier,
+      });
+
+      await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blueprintId: validation.blueprintId,
-          selectedPath,
-          selectedBlueprintLevel: selectedTier,
-          confirmed: true,
-        }),
+        body: JSON.stringify({}),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: { message?: string; detail?: string } };
-      if (data.ok) {
-        await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        setLocation("/dashboard");
-      } else {
-        setError(data.error?.detail ?? data.error?.message ?? "Launch failed.");
-      }
-    } catch {
-      setError("Cannot connect to server.");
+      setLocation("/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
     } finally {
       setLoading(false);
     }

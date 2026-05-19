@@ -19,7 +19,10 @@
     "test:system:e2e": "pnpm -F @workspace/scripts test:system:e2e",
     "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:phase9",
     "verify:system": "pnpm -F @workspace/scripts verify:system",
-    "db:migrate:prod": "pnpm -F @workspace/scripts apply-migrations"
+    "db:generate": "pnpm -F @workspace/db generate",
+    "db:migrate": "pnpm -F @workspace/db migrate",
+    "db:check": "pnpm -F @workspace/db check",
+    "db:migrate:prod": "pnpm -F @workspace/db migrate"
   },
   "private": true,
   "devDependencies": {

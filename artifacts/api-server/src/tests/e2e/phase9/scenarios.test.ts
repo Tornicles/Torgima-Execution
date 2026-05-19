@@ -29,6 +29,7 @@ import { guaranteeTask } from "../../../engines/task-guarantee/ContinuousTaskGua
 import { scanForInactivity } from "../../../engines/inactivity/InactivityDetectionEngine.js";
 import { validateOutcome } from "../../../engines/outcome/OutcomeValidationEngine.js";
 import { ValidationService } from "../../../services/ValidationService.js";
+import { BlueprintLaunchService } from "../../../services/BlueprintLaunchService.js";
 import { BlueprintEngine } from "../../../engines/blueprint/BlueprintEngine.js";
 import { structureGoalDeterministic } from "../../../engines/validation/ValidationEngine.js";
 import { TorgimaError } from "../../../lib/errors.js";
@@ -117,7 +118,7 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       });
       blueprintId = draft.blueprintId;
 
-      await ValidationService.validateGoal({
+      const validation = await ValidationService.validateGoal({
         blueprintId,
         userId,
         tier: "growth",
@@ -132,9 +133,14 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
           knownBlockers: structured.blockers[0],
         },
       });
-      await ValidationService.selectValidationPath({ blueprintId, userId, selectedPath: "current" });
-      await engine.configureSelection(blueprintId, userId, { tier: "growth", mode: "individual" });
-      await engine.activateBlueprint(blueprintId, userId);
+      if (!validation.validationContractId) throw new Error("validation contract missing");
+      await BlueprintLaunchService.launch({
+        blueprintId,
+        userId,
+        validationContractId: validation.validationContractId,
+        selectedPathType: "current",
+        selectedBlueprintLevel: "growth",
+      });
     });
 
     it("produces first valid task with signals and enforcement", async () => {
@@ -400,7 +406,7 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       const fx = await seedPhase9Fixture("pivot_required_user");
       fixtures.s8 = fx;
 
-      await expect(ValidationService.assertLaunchAllowed(fx.blueprintId!, fx.userId)).rejects.toBeInstanceOf(
+      await expect(ValidationService.assertLaunchAllowed(fx.blueprintId!, fx.userId, fx.validationContractId!)).rejects.toBeInstanceOf(
         TorgimaError,
       );
 

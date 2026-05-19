@@ -7,7 +7,9 @@
  */
 
 export * from "./activateBlueprintInput";
+export * from "./activateBlueprintInputSelectedBlueprintLevel";
 export * from "./activateBlueprintInputSelectedPath";
+export * from "./activateBlueprintInputSelectedPathType";
 export * from "./blockInput";
 export * from "./blueprint";
 export * from "./blueprintActivateResult";
@@ -35,6 +37,7 @@ export * from "./getBlueprintExecutionFeed200";
 export * from "./getBlueprintExecutionFeed200Data";
 export * from "./getBlueprintExecutionFeed200DataEventsItem";
 export * from "./getBlueprintExecutionFeed200Meta";
+export * from "./getBlueprintExecutionFeedParams";
 export * from "./getValidationResultParams";
 export * from "./goalInput";
 export * from "./healthStatus";

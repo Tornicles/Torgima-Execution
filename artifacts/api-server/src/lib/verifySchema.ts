@@ -5,6 +5,10 @@ type RequiredColumn = { table: string; column: string; detail?: string };
 /** Columns required for POST /api/onboarding/goal. */
 const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "validations", column: "intelligence_payload" },
+  { table: "validations", column: "validation_kind" },
+  { table: "validations", column: "payload_version" },
+  { table: "validations", column: "contract_id" },
+  { table: "validations", column: "selected_path_type" },
   { table: "validations", column: "launch_blocked" },
   { table: "validations", column: "readiness" },
   { table: "validations", column: "blueprint_contract" },

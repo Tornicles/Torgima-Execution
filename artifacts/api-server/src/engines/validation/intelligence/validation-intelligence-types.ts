@@ -193,6 +193,7 @@ export interface ValidationToBlueprintContract {
 
 export interface FullValidationResult {
   validationId: string;
+  validationContractId?: string;
   blueprintId: string;
   verdict: ValidationVerdict;
   scores: import("../../../types/validation.js").ValidationScores;

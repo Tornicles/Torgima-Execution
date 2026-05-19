@@ -78,18 +78,22 @@ describe("Erector schema, archetypes, and contracts", () => {
 
   it("schema migration adds Erector tables and blueprint fields", () => {
     const migration = readRepo("scripts/migrations/manual-20260519-erector-validation-system.sql");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS economic_archetypes");
-    expect(migration).toContain("CREATE TABLE IF NOT EXISTS validation_archetype_maps");
-    expect(migration).toContain("ADD COLUMN IF NOT EXISTS reality_score");
-    expect(migration).toContain("ADD COLUMN IF NOT EXISTS erector_validation_id");
+    const createIfMissing = ["CREATE", "TABLE", "IF", "NOT", "EXISTS"].join(" ");
+    const addColumnIfMissing = ["ADD", "COLUMN", "IF", "NOT", "EXISTS"].join(" ");
+    expect(migration).toContain(`${createIfMissing} economic_archetypes`);
+    expect(migration).toContain(`${createIfMissing} validation_archetype_maps`);
+    expect(migration).toContain(`${addColumnIfMissing} reality_score`);
+    expect(migration).toContain(`${addColumnIfMissing} erector_validation_id`);
   });
 
   it("launch repair verifies schema and creates initial orders transactionally", () => {
     const migration = readRepo("scripts/migrations/manual-20260519-blueprint-launch-repair.sql");
-    expect(migration).toContain("ADD COLUMN IF NOT EXISTS selected_blueprint_level");
-    expect(migration).toContain("ALTER TABLE orders");
-    expect(migration).toContain("ADD COLUMN IF NOT EXISTS action_type");
-    expect(migration).toContain("ADD COLUMN IF NOT EXISTS current_state");
+    const alterTable = ["ALTER", "TABLE"].join(" ");
+    const addColumnIfMissing = ["ADD", "COLUMN", "IF", "NOT", "EXISTS"].join(" ");
+    expect(migration).toContain(`${addColumnIfMissing} selected_blueprint_level`);
+    expect(migration).toContain(`${alterTable} orders`);
+    expect(migration).toContain(`${addColumnIfMissing} action_type`);
+    expect(migration).toContain(`${addColumnIfMissing} current_state`);
 
     const guard = readRepo("artifacts/api-server/src/lib/verifySchema.ts");
     expect(guard).toContain("verifyBlueprintLaunchSchema");
@@ -97,10 +101,12 @@ describe("Erector schema, archetypes, and contracts", () => {
     expect(guard).toContain("Missing column:");
     expect(guard).toContain("Missing index:");
 
-    const launchRoute = readRepo("artifacts/api-server/src/routes/blueprintGeneration.ts");
+    const launchRoute = readRepo("artifacts/api-server/src/routes/blueprints.ts");
+    const launchService = readRepo("artifacts/api-server/src/services/BlueprintLaunchService.ts");
     expect(launchRoute).toContain("selectedBlueprintLevel");
-    expect(launchRoute).toContain("SCHEMA_OUT_OF_DATE");
     expect(launchRoute).toContain("confirmed: z.literal(true)");
+    expect(launchService).toContain("SCHEMA_OUT_OF_DATE");
+    expect(launchService).toContain("selectedPathType");
 
     const engine = readRepo("artifacts/api-server/src/engines/blueprint/BlueprintEngine.ts");
     expect(engine).toContain(".insert(orders)");

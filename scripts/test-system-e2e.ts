@@ -34,10 +34,7 @@ async function loadEnvThenDb(): Promise<Awaited<ReturnType<typeof import("@works
   const dotenv = await import("dotenv");
   dotenv.config({ path: path.join(REPO_ROOT, ".env.local") });
   dotenv.config({ path: path.join(REPO_ROOT, ".env") });
-  const mod = await import("@workspace/db");
-  await mod.db.execute(mod.sql.raw(`ALTER TABLE users ADD COLUMN IF NOT EXISTS e2e_test_run_id text`));
-  await mod.db.execute(mod.sql.raw(`ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS e2e_test_run_id text`));
-  return mod;
+  return import("@workspace/db");
 }
 
 async function loadEnginesMerged() {
@@ -250,7 +247,6 @@ void (async () => {
     dbBundle = await loadEnvThenDb();
     const wm = dbBundle;
     const db = wm.db;
-    const sqlRaw = wm.sql.raw;
     const { eq, and, desc, sql, inArray, asc, isNull, isNotNull } = await import("drizzle-orm");
 
     const {
@@ -327,7 +323,6 @@ void (async () => {
       if (!u) throw new Error("user insert");
       ctx.userId = u.id;
       await db.insert(capabilityProfiles).values({ user_id: u.id });
-      await db.execute(sqlRaw(`UPDATE users SET e2e_test_run_id = ${JSON.stringify(ctx.runId)} WHERE id = '${u.id}'`));
 
       record(outcomes, "2 Create test user", true, `userId=${u.id}`);
     } catch (e) {
@@ -413,10 +408,6 @@ void (async () => {
     });
     ctx.blueprintId = blueprintId;
 
-    await db.execute(
-      sqlRaw(`UPDATE blueprints SET e2e_test_run_id = ${JSON.stringify(ctx.runId)} WHERE id = '${blueprintId}'::uuid`),
-    );
-
     const [bpDraft] = await db.select().from(blueprints).where(eq(blueprints.id, blueprintId)).limit(1);
     record(
       outcomes,
@@ -459,7 +450,9 @@ void (async () => {
       pShape(validationResult.paths[k as keyof typeof validationResult.paths]),
     );
 
-    await E.ValidationService.selectValidationPath({ blueprintId, userId, selectedPath: "current" });
+    const validationContractId = validationResult.validationContractId;
+    if (!validationContractId) throw new Error("validation contract missing");
+    await E.ValidationService.selectValidationPath({ blueprintId, userId, selectedPath: "current", validationContractId });
 
     const traceMissing: string[] = [];
     if (!valRow?.verdict) traceMissing.push("validation.verdict");
@@ -481,7 +474,7 @@ void (async () => {
       traceMissing.length ? `Missing:${traceMissing.join(",")}` : `Validation trace complete. selected_path pending row updated next`,
     );
 
-    await engine.activateBlueprint(blueprintId, userId);
+    await engine.activateBlueprint(blueprintId, userId, validationContractId);
 
     const [{ pc }] = await db
       .select({ pc: sql<number>`count(*)::int` })
@@ -1281,8 +1274,7 @@ void (async () => {
         purpose: "Law2",
         commitmentLevel: "high",
       });
-      await db.execute(sqlRaw(`UPDATE blueprints SET e2e_test_run_id = ${JSON.stringify(`${ctx.runId}-law`)} WHERE id = '${lawBp}'::uuid`));
-      await withRetry("law probe validation", () =>
+      const lawValidation = await withRetry("law probe validation", () =>
         E.ValidationService.validateGoal({
           blueprintId: lawBp,
           userId,
@@ -1299,8 +1291,10 @@ void (async () => {
           },
         }),
       );
-      await E.ValidationService.selectValidationPath({ blueprintId: lawBp, userId, selectedPath: "current" });
-      await engLaw.activateBlueprint(lawBp, userId);
+      const lawValidationContractId = lawValidation.validationContractId;
+      if (!lawValidationContractId) throw new Error("law validation contract missing");
+      await E.ValidationService.selectValidationPath({ blueprintId: lawBp, userId, selectedPath: "current", validationContractId: lawValidationContractId });
+      await engLaw.activateBlueprint(lawBp, userId, lawValidationContractId);
       for (let i = 0; i < 6; i++) {
         const adv = await engLaw.advanceBlueprintPosition(lawBp, userId);
         if (adv.blueprintComplete) break;

@@ -11,6 +11,8 @@ import { ScenarioSimulator } from "./ScenarioSimulator";
 
 export interface ValidationScreenData {
   validationId?: string;
+  validationContractId?: string;
+  erectorValidationId?: string;
   blueprintId?: string;
   verdict?: string;
   readiness?: string;

@@ -90,6 +90,7 @@ router.get("/v1/validation/:id", async (req, res) => {
     }
     success(res, {
       validationId: row.id,
+      validationContractId: row.contract_id,
       blueprintId: row.blueprint_id,
       validationStage: row.validation_stage ?? row.status,
       status: row.status,
@@ -147,6 +148,7 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       .update(validations)
       .set({
         selected_path: selected,
+        selected_path_type: selected,
         selected_at: new Date(),
         adjusted_path_confirmed: selected === "adjusted" || selected === "alternative",
       })
@@ -162,6 +164,7 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
     }).catch(() => null);
     success(res, {
       validation_id: row.id,
+      validation_contract_id: row.contract_id,
       selected_path: selected,
       recommended_blueprint_level: row.recommended_blueprint_level ?? "starter",
     });
@@ -363,6 +366,7 @@ router.post("/validation/:id/select-path", async (req, res) => {
       blueprintId: row.blueprint_id,
       userId: auth.userId,
       selectedPath: parsed.data.selectedPath,
+      validationContractId: row.contract_id,
       confirmAdjusted: parsed.data.confirmAdjusted,
     });
     success(res, out);

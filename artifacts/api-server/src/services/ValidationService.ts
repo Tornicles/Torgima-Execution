@@ -1,8 +1,9 @@
 import { db } from "@workspace/db";
 import { validations, blueprints, featureFlags } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { TorgimaError } from "../lib/errors.js";
+import { validatePayload } from "../lib/validationPayloadSchemas.js";
 import {
   runValidation,
   structureGoalWithBhudhi,
@@ -41,6 +42,7 @@ function rowToResult(row: typeof validations.$inferSelect, blueprintId: string):
 
   return {
     validationId: row.id,
+    validationContractId: row.contract_id,
     blueprintId,
     verdict: (row.verdict ?? "adjust") as ValidationResult["verdict"],
     scores: {
@@ -66,6 +68,22 @@ function rowToResult(row: typeof validations.$inferSelect, blueprintId: string):
     blueprintContract: row.blueprint_contract as Record<string, unknown> | null,
     systemsProgress: intel?.systemsProgress,
   };
+}
+
+function assertIntelligencePayload(row: typeof validations.$inferSelect): ValidationIntelligencePayload {
+  if (row.validation_kind !== "intelligence") {
+    throw new TorgimaError("VALIDATION_ERROR", `Validation ${row.id} is ${row.validation_kind}, not intelligence`);
+  }
+
+  const payloadCheck = validatePayload("intelligence", row.intelligence_payload);
+  if (!payloadCheck.success) {
+    throw new TorgimaError(
+      "VALIDATION_PAYLOAD_CORRUPT",
+      `Intelligence payload failed schema check: ${payloadCheck.error.message}`,
+    );
+  }
+
+  return row.intelligence_payload as ValidationIntelligencePayload;
 }
 
 export const ValidationService = {
@@ -137,6 +155,8 @@ export const ValidationService = {
         blueprint_id: params.blueprintId,
         user_id: params.userId,
         status: "queued",
+        validation_kind: "intelligence",
+        payload_version: 1,
         tier: params.tier ?? null,
       })
       .returning({ id: validationsTable.id });
@@ -171,6 +191,7 @@ export const ValidationService = {
     const intel = row.intelligence_payload as ValidationIntelligencePayload | null;
     return {
       validationId: row.id,
+      validationContractId: row.contract_id,
       status: row.status,
       systemsProgress: intel?.systemsProgress ?? {},
       readiness: row.readiness,
@@ -183,6 +204,7 @@ export const ValidationService = {
     userId: string;
     selectedPath: "current" | "adjusted" | "alternative";
     confirmAdjusted?: boolean;
+    validationContractId?: string;
   }): Promise<{ selected: boolean; blueprintContract: Record<string, unknown> | null }> {
     const bpRows = await db
       .select({ id: blueprints.id, status: blueprints.status, goal: blueprints.goal })
@@ -201,12 +223,31 @@ export const ValidationService = {
       throw new TorgimaError("STALE_STATE", `Blueprint is not in path selection state (current: ${bp.status})`);
     }
 
-    const validationRows = await db
-      .select()
-      .from(validations)
-      .where(eq(validations.blueprint_id, params.blueprintId))
-      .orderBy(desc(validations.created_at))
-      .limit(1);
+    const validationRows =
+      params.validationContractId ?
+        await db
+          .select()
+          .from(validations)
+          .where(
+            and(
+              eq(validations.contract_id, params.validationContractId),
+              eq(validations.blueprint_id, params.blueprintId),
+              eq(validations.validation_kind, "intelligence"),
+            ),
+          )
+          .limit(1)
+      : await db
+          .select()
+          .from(validations)
+          .where(
+            and(
+              eq(validations.blueprint_id, params.blueprintId),
+              eq(validations.validation_kind, "intelligence"),
+              eq(validations.status, "complete"),
+            ),
+          )
+          .orderBy(desc(validations.created_at))
+          .limit(1);
 
     const validation = validationRows[0];
     if (!validation) {
@@ -227,7 +268,7 @@ export const ValidationService = {
       );
     }
 
-    const intel = validation.intelligence_payload as ValidationIntelligencePayload | null;
+    const intel = assertIntelligencePayload(validation);
     let blueprintContract = validation.blueprint_contract as Record<string, unknown> | null;
 
     if (intel) {
@@ -244,6 +285,7 @@ export const ValidationService = {
       .update(validations)
       .set({
         selected_path: params.selectedPath,
+        selected_path_type: params.selectedPath,
         selected_at: new Date(),
         blueprint_contract: blueprintContract,
         adjusted_path_confirmed:
@@ -306,7 +348,13 @@ export const ValidationService = {
     const valRows = await db
       .select()
       .from(validations)
-      .where(eq(validations.blueprint_id, params.blueprintId))
+      .where(
+        and(
+          eq(validations.blueprint_id, params.blueprintId),
+          eq(validations.validation_kind, "intelligence"),
+          eq(validations.status, "complete"),
+        ),
+      )
       .orderBy(desc(validations.created_at))
       .limit(1);
 
@@ -321,18 +369,32 @@ export const ValidationService = {
     return { panel: result.industryPanel, eis: (result.intelligence as { eis?: unknown })?.eis };
   },
 
-  async assertLaunchAllowed(blueprintId: string, userId: string): Promise<void> {
+  async getValidationByContractId(contractId: string): Promise<typeof validations.$inferSelect> {
     const [row] = await db
       .select()
       .from(validations)
-      .where(eq(validations.blueprint_id, blueprintId))
-      .orderBy(desc(validations.created_at))
+      .where(eq(validations.contract_id, contractId))
       .limit(1);
+
+    if (!row) {
+      throw new TorgimaError("CONTRACT_NOT_FOUND", `No validation found for contract_id: ${contractId}`);
+    }
+
+    return row;
+  },
+
+  async assertLaunchAllowed(blueprintId: string, userId: string, validationContractId: string): Promise<void> {
+    const row = await this.getValidationByContractId(validationContractId);
 
     if (!row) {
       throw new TorgimaError("VALIDATION_ERROR", "Validation must complete before blueprint launch.");
     }
     if (row.user_id !== userId) throw new TorgimaError("FORBIDDEN", "Not your validation");
+    if (row.blueprint_id !== blueprintId) {
+      throw new TorgimaError("FORBIDDEN", "validation_contract_id does not belong to this blueprint");
+    }
+
+    const intel = assertIntelligencePayload(row);
 
     if ((row.launch_blocked || row.verdict === "pivot") && row.selected_path !== "alternative") {
       throw new TorgimaError(
@@ -349,7 +411,7 @@ export const ValidationService = {
       throw new TorgimaError("VALIDATION_ERROR", "Confirm adjusted path before launch.");
     }
 
-    const critical = ((row.intelligence_payload as ValidationIntelligencePayload | null)?.pis?.risk_flags ?? []).filter(
+    const critical = (intel.pis?.risk_flags ?? []).filter(
       (r) => r.level === "critical" && !r.resolvable,
     );
     if (critical.length > 0) {

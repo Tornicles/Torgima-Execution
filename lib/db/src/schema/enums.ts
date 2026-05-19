@@ -46,6 +46,14 @@ export const validationReadinessEnum = pgEnum("validation_readiness", [
   "ready_with_adjustment",
   "blocked_pivot",
 ]);
+export const validationKindEnum = pgEnum("validation_kind", [
+  "legacy",
+  "intelligence",
+  "erector",
+  "readiness",
+  "path_selection",
+  "unknown",
+]);
 export const domainEnum = pgEnum("domain", [
   "genesis", "market", "delivery", "operations", "people", "growth", "continuity",
 ]);

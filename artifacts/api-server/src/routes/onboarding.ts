@@ -6,7 +6,6 @@ import { ValidationService } from "../services/ValidationService.js";
 import { db, users, blueprints, featureFlags, validations } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
-import { ensureSchemaPatches } from "../lib/ensureSchema.js";
 import { checkSchemaHealth } from "../lib/verifySchema.js";
 
 const router = Router();
@@ -97,17 +96,13 @@ router.post("/onboarding/goal", async (req, res) => {
 
     const input = parsed.data;
 
-    let schemaHealth = await checkSchemaHealth();
-    if (!schemaHealth.ok) {
-      await ensureSchemaPatches();
-      schemaHealth = await checkSchemaHealth();
-    }
+    const schemaHealth = await checkSchemaHealth();
     if (!schemaHealth.ok) {
       res.status(503).json({
         ok: false,
         error: {
           code: "SCHEMA_OUTDATED",
-          message: "Database schema is out of date. Run: pnpm -F @workspace/db push",
+          message: "Database schema is out of date. Run Drizzle migrations with: pnpm -F @workspace/db migrate",
           missing: schemaHealth.missing,
           details: schemaHealth.missing.join(", "),
         },
@@ -262,6 +257,7 @@ router.post("/onboarding/goal", async (req, res) => {
       status:       "validated",
       blueprintId,
       validationId: validationResult.validationId,
+      validationContractId: validationResult.validationContractId,
       verdict:      validationResult.verdict,
       scores:       validationResult.scores,
       paths:        validationResult.paths,

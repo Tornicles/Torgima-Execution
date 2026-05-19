@@ -5,9 +5,19 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import type { ActivateBlueprintInputSelectedBlueprintLevel } from "./activateBlueprintInputSelectedBlueprintLevel";
 import type { ActivateBlueprintInputSelectedPath } from "./activateBlueprintInputSelectedPath";
+import type { ActivateBlueprintInputSelectedPathType } from "./activateBlueprintInputSelectedPathType";
 
 export interface ActivateBlueprintInput {
   /** @nullable */
-  selectedPath?: ActivateBlueprintInputSelectedPath;
+  selectedPath: ActivateBlueprintInputSelectedPath;
+  /** @nullable */
+  selected_path_type?: ActivateBlueprintInputSelectedPathType;
+  /** @nullable */
+  selectedBlueprintLevel?: ActivateBlueprintInputSelectedBlueprintLevel;
+  /** @nullable */
+  validationContractId: string | null;
+  /** @nullable */
+  validation_contract_id?: string | null;
 }

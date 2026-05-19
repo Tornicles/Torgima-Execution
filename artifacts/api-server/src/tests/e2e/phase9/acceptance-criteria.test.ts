@@ -121,7 +121,7 @@ describe.skipIf(!integrationEnabled())("AC — integration spot checks", () => {
     const { seedPhase9Fixture, cleanupPhase9User } = await import("../../helpers/phase9-fixtures.js");
     const { ValidationService } = await import("../../../services/ValidationService.js");
     const fx = await seedPhase9Fixture("pivot_required_user");
-    await expect(ValidationService.assertLaunchAllowed(fx.blueprintId!, fx.userId)).rejects.toBeTruthy();
+    await expect(ValidationService.assertLaunchAllowed(fx.blueprintId!, fx.userId, fx.validationContractId!)).rejects.toBeTruthy();
     await cleanupPhase9User(fx.userId);
   });
 });

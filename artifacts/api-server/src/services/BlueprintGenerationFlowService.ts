@@ -1,6 +1,5 @@
 import { db, blueprints, validations, orders } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { BlueprintEngine } from "../engines/blueprint/BlueprintEngine.js";
 import { DomainResolutionEngine } from "../engines/domain/DomainResolutionEngine.js";
 import { checkContradictionBlock } from "../engines/blueprint/BlueprintGovernanceEngine.js";
 import { analyzeBlueprint, generateInterpretation } from "../bhudhi/agents/BlueprintAgent.js";
@@ -8,8 +7,8 @@ import { getWorldModel, updateWorldModel } from "../engines/world-model/WorldMod
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchService.js";
 
-const blueprintEngine = new BlueprintEngine();
 const domainEngine = new DomainResolutionEngine();
 
 export async function getBlueprintGenerateReady(userId: string): Promise<{
@@ -67,6 +66,8 @@ export async function resolveBlueprintDomain(
 export async function runFullBlueprintGenerationFlow(params: {
   userId: string;
   blueprintId: string;
+  validationContractId: string;
+  selectedPathType: LaunchPathType;
 }): Promise<{
   blueprintId: string;
   activated: boolean;
@@ -90,7 +91,12 @@ export async function runFullBlueprintGenerationFlow(params: {
     triggerReason: "CREATION",
   });
 
-  const launch = await blueprintEngine.activateBlueprint(params.blueprintId, params.userId);
+  const launch = await BlueprintLaunchService.launch({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    validationContractId: params.validationContractId,
+    selectedPathType: params.selectedPathType,
+  });
 
   await updateWorldModel(params.userId, "SCHEDULED");
 

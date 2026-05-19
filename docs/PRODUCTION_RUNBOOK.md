@@ -51,14 +51,12 @@ Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Thi
 2. Apply production schema:
 
    ```bash
+   pnpm run db:check
    pnpm run db:migrate:prod
-   pnpm -F @workspace/db push
-   pnpm -F @workspace/db db:partial-indexes
-   pnpm -F @workspace/db db:triggers
    pnpm -F @workspace/db verify
    ```
 
-   `db:migrate:prod` applies every `scripts/migrations/*.sql` file to `DIRECT_URL` when set, otherwise `DATABASE_URL`. On Railway, confirm `DATABASE_URL` points at the same Supabase Postgres instance used by the API and set `DIRECT_URL` for direct migration access if the pooled URL blocks DDL.
+   `db:migrate:prod` runs Drizzle migrations from the committed `migrations/` folder. Do not use `drizzle-kit push` or ad hoc SQL patch scripts in production. On Railway, confirm `DATABASE_URL` points at the same Supabase Postgres instance used by the API and set `DIRECT_URL` for direct migration access if the pooled URL blocks DDL.
 
 3. Build locally:
 
@@ -119,7 +117,7 @@ External monitoring should ping this endpoint every 5 minutes and alert on conse
 
 - Vercel Analytics: enable for the public SPA; alert when P95 page load or API proxy timing exceeds 5 seconds.
 - API health: monitor `/api/health` every 5 minutes; alert on 2 consecutive degraded responses.
-- Blueprint launch: after each migration, run a staging smoke test for validation -> launch -> dashboard and confirm `/api/blueprint/launch` creates plans, targets, phases, projects, actions, orders, `signal_snapshots`, `conditions`, `enforcement_packages`, and `state_memory`.
+- Blueprint launch: after each migration, run a staging smoke test for validation -> launch -> dashboard and confirm `POST /api/blueprints/:id/activate` creates plans, targets, phases, projects, actions, orders, `signal_snapshots`, `conditions`, `enforcement_packages`, and `state_memory`.
 - System health: `SystemHealthEngine` runs through production schedulers and records DLQ size, fallback rate, stale users, and signal lag.
 - Error tracking: configure Sentry or equivalent for API unhandled errors, rejected Bhudhi outputs, and failed worker jobs.
 - Database: monitor Supabase connection pool usage, slow queries over 1 second, and failed auth/connection attempts.

@@ -210,7 +210,7 @@ paths:
     post:
       operationId: activateBlueprint
       tags: [blueprints]
-      summary: Activate a blueprint — optionally with a selected validation path
+      summary: Activate a blueprint with a selected validation path
       parameters:
         - name: id
           in: path
@@ -218,7 +218,7 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -803,6 +803,8 @@ components:
           type: string
         validationId:
           type: ["string", "null"]
+        validationContractId:
+          type: ["string", "null"]
         verdict:
           type: ["string", "null"]
           enum: [proceed, adjust, pivot, null]
@@ -917,6 +919,8 @@ components:
       properties:
         validationId:
           type: string
+        validationContractId:
+          type: ["string", "null"]
         blueprintId:
           type: string
         verdict:
@@ -1111,10 +1115,21 @@ components:
 
     ActivateBlueprintInput:
       type: object
+      required: [validationContractId, selectedPath]
       properties:
         selectedPath:
           type: ["string", "null"]
           enum: [current, adjusted, alternative, null]
+        selected_path_type:
+          type: ["string", "null"]
+          enum: [current, adjusted, alternative, null]
+        selectedBlueprintLevel:
+          type: ["string", "null"]
+          enum: [starter, growth, ultimate, null]
+        validationContractId:
+          type: ["string", "null"]
+        validation_contract_id:
+          type: ["string", "null"]
 
     Order:
       type: object
