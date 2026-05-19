@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "@workspace/db";
 import { logger } from "./logger.js";
-import { verifyOnboardingSchema } from "./verifySchema.js";
+import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "./verifySchema.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -99,6 +99,24 @@ const EMBEDDED_FALLBACK: string[] = [
   `ALTER TABLE validations ADD COLUMN IF NOT EXISTS adjusted_path_confirmed boolean NOT NULL DEFAULT false`,
   `ALTER TABLE validations ADD COLUMN IF NOT EXISTS readiness validation_readiness`,
   `ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS operational_mathematics_json jsonb NOT NULL DEFAULT '{}'::jsonb`,
+  `ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS raw_goal TEXT`,
+  `ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS selected_path TEXT`,
+  `ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS selected_blueprint_level TEXT`,
+  `ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS current_project_id UUID`,
+  `ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS current_action_id UUID`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS context_why TEXT`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_type TEXT`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS time_estimate_mins INTEGER`,
+  `ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS week_start TIMESTAMPTZ`,
+  `ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS daily_score DOUBLE PRECISION NOT NULL DEFAULT 0`,
+  `ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS condition TEXT`,
+  `ALTER TABLE conditions ADD COLUMN IF NOT EXISTS reason TEXT`,
+  `ALTER TABLE conditions ADD COLUMN IF NOT EXISTS source TEXT`,
+  `ALTER TABLE enforcement_packages ADD COLUMN IF NOT EXISTS user_id UUID`,
+  `ALTER TABLE enforcement_packages ADD COLUMN IF NOT EXISTS restricted_actions JSONB NOT NULL DEFAULT '[]'::jsonb`,
+  `ALTER TABLE state_memory ADD COLUMN IF NOT EXISTS current_state JSONB NOT NULL DEFAULT '{}'::jsonb`,
+  `ALTER TABLE state_memory ADD COLUMN IF NOT EXISTS last_event TEXT`,
 ];
 
 async function runStatement(sql: string, label: string): Promise<{ ok: boolean; error?: string }> {
@@ -136,8 +154,9 @@ export async function ensureSchemaPatches(): Promise<{ applied: number; failed: 
   }
 
   const verify = await verifyOnboardingSchema();
-  if (verify.ok) {
-    logger.info({ applied, failed }, "[Schema] Patches applied — onboarding schema verified");
+  const launchVerify = await verifyBlueprintLaunchSchema();
+  if (verify.ok && launchVerify.ok) {
+    logger.info({ applied, failed }, "[Schema] Patches applied — onboarding and launch schema verified");
   } else {
     logger.error(
       {
@@ -145,10 +164,15 @@ export async function ensureSchemaPatches(): Promise<{ applied: number; failed: 
         failed,
         missingColumns: verify.missingColumns,
         missingTables: verify.missingTables,
+        missingIndexes: verify.missingIndexes,
+        launchMissingColumns: launchVerify.missingColumns,
+        launchMissingTables: launchVerify.missingTables,
+        launchMissingIndexes: launchVerify.missingIndexes,
+        launchDetail: launchVerify.detail,
       },
-      "[Schema] Patches incomplete — onboarding will return 503 until fixed",
+      "[Schema] Patches incomplete — onboarding or launch will return 503 until fixed",
     );
   }
 
-  return { applied, failed, verified: verify.ok };
+  return { applied, failed, verified: verify.ok && launchVerify.ok };
 }

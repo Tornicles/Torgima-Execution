@@ -1,7 +1,9 @@
 import { pool } from "@workspace/db";
 
-/** Columns required for POST /api/onboarding/goal and launch flow. */
-const REQUIRED_COLUMNS: Array<{ table: string; column: string }> = [
+type RequiredColumn = { table: string; column: string; detail?: string };
+
+/** Columns required for POST /api/onboarding/goal. */
+const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "validations", column: "intelligence_payload" },
   { table: "validations", column: "launch_blocked" },
   { table: "validations", column: "readiness" },
@@ -22,37 +24,221 @@ const REQUIRED_TABLES = [
   "validation_memory",
 ];
 
+const BLUEPRINT_LAUNCH_TABLES = [
+  "users",
+  "validations",
+  "blueprints",
+  "plans",
+  "targets",
+  "phases",
+  "projects",
+  "actions",
+  "orders",
+  "feedback",
+  "signal_snapshots",
+  "conditions",
+  "enforcement_packages",
+  "state_memory",
+  "knowledge_objects",
+  "order_knowledge_links",
+  "character_progression",
+];
+
+const BLUEPRINT_LAUNCH_COLUMNS: RequiredColumn[] = [
+  { table: "blueprints", column: "id" },
+  { table: "blueprints", column: "user_id" },
+  { table: "blueprints", column: "validation_id" },
+  { table: "blueprints", column: "goal", detail: "blueprints.goal maps to required raw_goal" },
+  { table: "blueprints", column: "raw_goal" },
+  { table: "blueprints", column: "purpose" },
+  { table: "blueprints", column: "timeframe_days" },
+  { table: "blueprints", column: "commitment_level" },
+  { table: "blueprints", column: "domain" },
+  { table: "blueprints", column: "location" },
+  { table: "blueprints", column: "business_model" },
+  { table: "blueprints", column: "online_offline" },
+  { table: "blueprints", column: "budget" },
+  { table: "blueprints", column: "current_resources" },
+  { table: "blueprints", column: "target_customers" },
+  { table: "blueprints", column: "target_profit" },
+  { table: "blueprints", column: "selected_path" },
+  { table: "blueprints", column: "selected_blueprint_level" },
+  { table: "blueprints", column: "validation_verdict" },
+  { table: "blueprints", column: "validation_scores" },
+  { table: "blueprints", column: "validation_report" },
+  { table: "blueprints", column: "path_options" },
+  { table: "blueprints", column: "blueprint_options" },
+  { table: "blueprints", column: "status" },
+  { table: "blueprints", column: "active" },
+  { table: "blueprints", column: "current_plan_id" },
+  { table: "blueprints", column: "current_phase_id" },
+  { table: "blueprints", column: "current_project_id" },
+  { table: "blueprints", column: "current_action_id" },
+  { table: "blueprints", column: "current_condition" },
+  { table: "blueprints", column: "metadata" },
+  { table: "blueprints", column: "created_at" },
+  { table: "blueprints", column: "updated_at" },
+  { table: "plans", column: "blueprint_id" },
+  { table: "plans", column: "user_id" },
+  { table: "plans", column: "name", detail: "plans.name maps to required title" },
+  { table: "plans", column: "title" },
+  { table: "plans", column: "description" },
+  { table: "plans", column: "purpose" },
+  { table: "plans", column: "outcome" },
+  { table: "plans", column: "order_index" },
+  { table: "plans", column: "status" },
+  { table: "targets", column: "blueprint_id" },
+  { table: "targets", column: "plan_id" },
+  { table: "targets", column: "user_id" },
+  { table: "targets", column: "name", detail: "targets.name maps to required title" },
+  { table: "targets", column: "title" },
+  { table: "targets", column: "target_type" },
+  { table: "targets", column: "metric_name" },
+  { table: "targets", column: "due_date" },
+  { table: "phases", column: "blueprint_id" },
+  { table: "phases", column: "plan_id" },
+  { table: "phases", column: "user_id" },
+  { table: "phases", column: "name", detail: "phases.name maps to required title" },
+  { table: "phases", column: "title" },
+  { table: "phases", column: "is_active" },
+  { table: "phases", column: "progress_percent" },
+  { table: "phases", column: "unlock_criteria" },
+  { table: "projects", column: "blueprint_id" },
+  { table: "projects", column: "phase_id" },
+  { table: "projects", column: "user_id" },
+  { table: "projects", column: "name", detail: "projects.name maps to required title" },
+  { table: "projects", column: "title" },
+  { table: "projects", column: "project_type" },
+  { table: "projects", column: "progress_percent" },
+  { table: "actions", column: "blueprint_id" },
+  { table: "actions", column: "project_id" },
+  { table: "actions", column: "target_id" },
+  { table: "actions", column: "user_id" },
+  { table: "actions", column: "name", detail: "actions.name maps to required title" },
+  { table: "actions", column: "title" },
+  { table: "actions", column: "action_type" },
+  { table: "actions", column: "expected_output" },
+  { table: "orders", column: "blueprint_id" },
+  { table: "orders", column: "action_id" },
+  { table: "orders", column: "user_id" },
+  { table: "orders", column: "title" },
+  { table: "orders", column: "instruction" },
+  { table: "orders", column: "context_why" },
+  { table: "orders", column: "expected_output" },
+  { table: "orders", column: "order_type" },
+  { table: "orders", column: "due_date" },
+  { table: "orders", column: "condition_at_generation" },
+  { table: "orders", column: "time_estimate_mins" },
+  { table: "signal_snapshots", column: "blueprint_id" },
+  { table: "signal_snapshots", column: "user_id" },
+  { table: "signal_snapshots", column: "week_start" },
+  { table: "signal_snapshots", column: "completion_rate" },
+  { table: "signal_snapshots", column: "daily_score" },
+  { table: "signal_snapshots", column: "momentum" },
+  { table: "signal_snapshots", column: "condition" },
+  { table: "conditions", column: "condition" },
+  { table: "conditions", column: "reason" },
+  { table: "conditions", column: "source" },
+  { table: "enforcement_packages", column: "blueprint_id" },
+  { table: "enforcement_packages", column: "user_id" },
+  { table: "enforcement_packages", column: "condition" },
+  { table: "enforcement_packages", column: "allowed_actions" },
+  { table: "enforcement_packages", column: "restricted_actions" },
+  { table: "enforcement_packages", column: "task_limits" },
+  { table: "state_memory", column: "blueprint_id" },
+  { table: "state_memory", column: "user_id" },
+  { table: "state_memory", column: "current_state" },
+  { table: "state_memory", column: "last_event" },
+];
+
+const BLUEPRINT_LAUNCH_INDEXES = [
+  "idx_blueprints_user_id",
+  "idx_orders_action_id",
+  "idx_orders_blueprint_status",
+  "idx_signal_snapshots_blueprint_current",
+  "idx_enforcement_packages_blueprint_current",
+  "idx_state_memory_blueprint_current",
+];
+
 export type SchemaVerifyResult = {
   ok: boolean;
   missingColumns: Array<{ table: string; column: string }>;
   missingTables: string[];
+  missingIndexes: string[];
+  detail?: string;
 };
 
-export async function verifyOnboardingSchema(): Promise<SchemaVerifyResult> {
+async function hasTable(table: string): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [table],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+async function hasColumn(table: string, column: string): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+    [table, column],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+async function hasIndex(indexName: string): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM pg_indexes
+     WHERE schemaname = 'public' AND indexname = $1`,
+    [indexName],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+function firstMissingDetail(
+  missingTables: string[],
+  missingColumns: Array<{ table: string; column: string }>,
+  missingIndexes: string[],
+): string | undefined {
+  if (missingTables[0]) return `Missing table: ${missingTables[0]}`;
+  if (missingColumns[0]) return `Missing column: ${missingColumns[0].table}.${missingColumns[0].column}`;
+  if (missingIndexes[0]) return `Missing index: ${missingIndexes[0]}`;
+  return undefined;
+}
+
+async function verifySchemaRequirements(tables: string[], columns: RequiredColumn[], indexes: string[] = []): Promise<SchemaVerifyResult> {
   const missingColumns: Array<{ table: string; column: string }> = [];
   const missingTables: string[] = [];
+  const missingIndexes: string[] = [];
 
-  for (const { table, column } of REQUIRED_COLUMNS) {
-    const r = await pool.query(
-      `SELECT 1 FROM information_schema.columns
-       WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
-      [table, column],
-    );
-    if ((r.rowCount ?? 0) === 0) missingColumns.push({ table, column });
+  for (const table of tables) {
+    if (!(await hasTable(table))) missingTables.push(table);
   }
 
-  for (const table of REQUIRED_TABLES) {
-    const r = await pool.query(
-      `SELECT 1 FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = $1`,
-      [table],
-    );
-    if ((r.rowCount ?? 0) === 0) missingTables.push(table);
+  for (const { table, column } of columns) {
+    if (!missingTables.includes(table) && !(await hasColumn(table, column))) {
+      missingColumns.push({ table, column });
+    }
   }
 
+  for (const indexName of indexes) {
+    if (!(await hasIndex(indexName))) missingIndexes.push(indexName);
+  }
+
+  const detail = firstMissingDetail(missingTables, missingColumns, missingIndexes);
   return {
-    ok: missingColumns.length === 0 && missingTables.length === 0,
+    ok: missingColumns.length === 0 && missingTables.length === 0 && missingIndexes.length === 0,
     missingColumns,
     missingTables,
+    missingIndexes,
+    detail,
   };
+}
+
+export async function verifyOnboardingSchema(): Promise<SchemaVerifyResult> {
+  return verifySchemaRequirements(REQUIRED_TABLES, REQUIRED_COLUMNS);
+}
+
+export async function verifyBlueprintLaunchSchema(): Promise<SchemaVerifyResult> {
+  return verifySchemaRequirements(BLUEPRINT_LAUNCH_TABLES, BLUEPRINT_LAUNCH_COLUMNS, BLUEPRINT_LAUNCH_INDEXES);
 }

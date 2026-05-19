@@ -15,6 +15,7 @@ export interface ApiResponse<T = unknown> {
   error?: {
     code: string;
     message: string;
+    detail?: string;
     fieldErrors?: Record<string, string[]>;
     retryable?: boolean;
   };
@@ -38,7 +39,7 @@ export function failure(
   code: string,
   message: string,
   status = 500,
-  opts?: { fieldErrors?: Record<string, string[]>; retryable?: boolean },
+  opts?: { fieldErrors?: Record<string, string[]>; retryable?: boolean; detail?: string },
 ): void {
   const body: ApiResponse = {
     ok: false,
@@ -107,6 +108,8 @@ function mapInfrastructureFailure(err: unknown): {
 
   if (
     combinedMsg.includes("column") && combinedMsg.includes("does not exist") ||
+    combinedMsg.includes("relation") && combinedMsg.includes("does not exist") ||
+    combinedMsg.includes("table") && combinedMsg.includes("does not exist") ||
     combinedMsg.includes("type") && combinedMsg.includes("does not exist") ||
     combinedMsg.includes("validation_readiness") ||
     combinedMsg.includes("launch_blocked") ||
@@ -114,9 +117,8 @@ function mapInfrastructureFailure(err: unknown): {
   ) {
     return {
       status: 503,
-      code: "SERVICE_UNAVAILABLE",
-      message:
-        "The database schema is out of date. Redeploy the API server (it applies patches on boot) or run scripts/migrations/*.sql on your Postgres instance.",
+      code: "SCHEMA_OUT_OF_DATE",
+      message: "Database schema is out of date.",
       retryable: true,
     };
   }

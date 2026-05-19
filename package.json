@@ -18,7 +18,8 @@
     "test:phase9": "pnpm -F @workspace/scripts test:phase9",
     "test:system:e2e": "pnpm -F @workspace/scripts test:system:e2e",
     "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:phase9",
-    "verify:system": "pnpm -F @workspace/scripts verify:system"
+    "verify:system": "pnpm -F @workspace/scripts verify:system",
+    "db:migrate:prod": "pnpm -F @workspace/scripts apply-migrations"
   },
   "private": true,
   "devDependencies": {

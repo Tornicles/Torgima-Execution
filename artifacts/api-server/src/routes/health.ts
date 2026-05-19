@@ -4,7 +4,7 @@ import { pool } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
-import { verifyOnboardingSchema } from "../lib/verifySchema.js";
+import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
 import { ensureSchemaPatches } from "../lib/ensureSchema.js";
 
 const router: IRouter = Router();
@@ -133,20 +133,25 @@ router.get("/health/current", async (req, res) => {
 router.get("/health/schema", async (_req, res) => {
   try {
     const before = await verifyOnboardingSchema();
+    const launchBefore = await verifyBlueprintLaunchSchema();
     let patchResult: { applied: number; failed: number; verified: boolean } | null = null;
-    if (!before.ok) {
+    if (!before.ok || !launchBefore.ok) {
       patchResult = await ensureSchemaPatches();
     }
     const after = await verifyOnboardingSchema();
+    const launchAfter = await verifyBlueprintLaunchSchema();
+    const ok = after.ok && launchAfter.ok;
     success(res, {
-      ok: after.ok,
+      ok,
       before,
       after,
+      launchBefore,
+      launchAfter,
       patchResult,
-      hint: after.ok
-        ? "Schema ready for /api/onboarding/goal"
+      hint: ok
+        ? "Schema ready for onboarding and blueprint launch"
         : "Apply scripts/migrations/*.sql to the DATABASE_URL Postgres instance",
-    }, after.ok ? 200 : 503);
+    }, ok ? 200 : 503);
   } catch (err) {
     handleError(_req, res, err);
   }

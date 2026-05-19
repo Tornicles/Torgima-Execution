@@ -1,7 +1,14 @@
 import { defineConfig } from "drizzle-kit";
+import dotenv from "dotenv";
 import { resolvePgSsl } from "./src/pg-ssl";
 
-if (!process.env.DATABASE_URL) {
+dotenv.config({ path: "../../.env.local" });
+dotenv.config({ path: "../../.env" });
+dotenv.config({ path: "../../artifacts/api-server/.env" });
+
+const connectionUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+
+if (!connectionUrl) {
   throw new Error("DATABASE_URL, ensure the database is provisioned");
 }
 
@@ -25,14 +32,12 @@ function parsePgUrl(connectionString: string): {
   };
 }
 
-const url = process.env.DATABASE_URL;
-
 /** Match schema modules (explicit list is reliable for drizzle-kit on Windows). */
 export default defineConfig({
   schema: ["./src/schema/enums.ts", "./src/schema/tables.ts"],
   dialect: "postgresql",
   dbCredentials: {
-    ...parsePgUrl(url),
-    ssl: resolvePgSsl(url),
+    ...parsePgUrl(connectionUrl),
+    ssl: resolvePgSsl(connectionUrl),
   },
 });

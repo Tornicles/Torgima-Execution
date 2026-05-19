@@ -56,7 +56,7 @@ const TARGET_TYPES = [
 ] as const;
 
 function pickTargetType(index: number, tier: BlueprintTier): (typeof TARGET_TYPES)[number] {
-  if (tier === "starter") return "primary";
+  if (tier === "starter") return TARGET_TYPES[index % 5] ?? "primary";
   return TARGET_TYPES[Math.min(index, TARGET_TYPES.length - 1)] ?? "primary";
 }
 
@@ -99,8 +99,12 @@ export async function buildTierAwareBlueprintChain(
       .insert(plans)
       .values({
         blueprint_id: params.blueprintId,
+        user_id: params.userId,
         name: def.name,
+        title: def.name,
         description: def.description,
+        purpose: i === 0 ? params.purpose : `Execution layer ${i + 1} for ${goalShort}`,
+        outcome: i === 0 ? "First operational proof and customer clarity" : `Progress marker for ${def.name}`,
         order_index: i + 1,
         status: i === 0 ? "active" : "pending",
       })
@@ -128,10 +132,7 @@ export async function buildTierAwareBlueprintChain(
     contractedSkeleton?.targets?.length ?
       contractedSkeleton.targets.slice(0, tierRules.targetCount)
     : Array.from({ length: tierRules.targetCount }, (_, i) => ({
-        name:
-          i === 0 ?
-            `Primary target: ${params.goal.slice(0, 80)}`
-          : `Supporting target ${i + 1}`,
+        name: `${pickTargetType(i, params.tier)} target: ${params.goal.slice(0, 70)}`,
         type: pickTargetType(i, params.tier),
       }));
 
@@ -152,17 +153,21 @@ export async function buildTierAwareBlueprintChain(
       .insert(targets)
       .values({
         blueprint_id: params.blueprintId,
-        plan_id: insertedPlans[t % insertedPlans.length]!.id,
+        plan_id: insertedPlans[Math.floor(t / 5) % insertedPlans.length]!.id,
+        user_id: params.userId,
         owner_id: params.userId,
         contributor_ids: contributorIds,
         name: def.name,
+        title: def.name,
         description: t === 0 ? params.goal : def.name,
         type: validType,
+        target_type: validType,
+        metric_name: "execution_proof",
         order_index: t + 1,
         status: t === 0 ? "active" : "pending",
         trace_metadata: buildTraceMetadata({
           layer: "target",
-          parentId: insertedPlans[t % insertedPlans.length]!.id,
+          parentId: insertedPlans[Math.floor(t / 5) % insertedPlans.length]!.id,
           parentLayer: "plan",
           tier: params.tier,
           mode: params.mode,
@@ -192,39 +197,56 @@ export async function buildTierAwareBlueprintChain(
     },
   ].slice(0, tierRules.phaseCount);
 
-  const insertedPhases: { id: string; name: string }[] = [];
-  for (const def of phaseDefinitions) {
-    const [p] = await tx
-      .insert(phases)
-      .values({
-        blueprint_id: params.blueprintId,
-        target_id: primaryTarget.id,
-        plan_id: primaryPlan.id,
-        name: def.name,
-        order_index: def.orderIndex,
-        status: def.status,
-        locked: def.locked,
-        gate_passed: false,
-        gate_criteria:
-          tierRules.phaseGates ?
-            { min_completion_rate: def.name === "initiation" ? 0.6 : 0.75, min_momentum: 40 }
-          : { min_completion_rate: 0.5 },
-        started_at: def.name === "initiation" ? new Date() : null,
-        trace_metadata: buildTraceMetadata({
-          layer: "phase",
-          parentId: primaryTarget.id,
-          parentLayer: "target",
-          tier: params.tier,
-          mode: params.mode,
-          generationReason: `phase_${def.name}`,
-        }),
-      })
-      .returning({ id: phases.id, name: phases.name });
-    if (!p) throw new TorgimaError("INTERNAL_ERROR", `Failed to create phase: ${def.name}`);
-    insertedPhases.push({ id: p.id, name: p.name });
+  const insertedPhases: { id: string; name: string; planId: string }[] = [];
+  for (const plan of insertedPlans) {
+    const planTarget =
+      insertedTargets.find((_, index) => insertedPlans[Math.floor(index / 5) % insertedPlans.length]?.id === plan.id) ??
+      primaryTarget;
+    for (const def of phaseDefinitions) {
+      const activeFirstPhase = plan.id === primaryPlan.id && def.name === "initiation";
+      const title = def.name[0]!.toUpperCase() + def.name.slice(1);
+      const [p] = await tx
+        .insert(phases)
+        .values({
+          blueprint_id: params.blueprintId,
+          target_id: planTarget.id,
+          plan_id: plan.id,
+          user_id: params.userId,
+          name: def.name,
+          title,
+          description: `${title} phase for ${plan.name}`,
+          order_index: def.orderIndex,
+          status: activeFirstPhase ? "active" : "pending",
+          locked: !activeFirstPhase,
+          is_active: activeFirstPhase,
+          progress_percent: 0,
+          gate_passed: false,
+          gate_criteria:
+            tierRules.phaseGates ?
+              { min_completion_rate: def.name === "initiation" ? 0.6 : 0.75, min_momentum: 40 }
+            : { min_completion_rate: 0.5 },
+          unlock_criteria:
+            tierRules.phaseGates ?
+              { min_completion_rate: def.name === "initiation" ? 0.6 : 0.75, min_momentum: 40 }
+            : { min_completion_rate: 0.5 },
+          started_at: activeFirstPhase ? new Date() : null,
+          trace_metadata: buildTraceMetadata({
+            layer: "phase",
+            parentId: planTarget.id,
+            parentLayer: "target",
+            tier: params.tier,
+            mode: params.mode,
+            generationReason: `phase_${def.name}`,
+          }),
+        })
+        .returning({ id: phases.id, name: phases.name });
+      if (!p) throw new TorgimaError("INTERNAL_ERROR", `Failed to create phase: ${def.name}`);
+      insertedPhases.push({ id: p.id, name: p.name, planId: plan.id });
+    }
   }
 
-  const initiationPhase = insertedPhases.find((p) => p.name === "initiation") ?? insertedPhases[0]!;
+  const initiationPhase =
+    insertedPhases.find((p) => p.name === "initiation" && p.planId === primaryPlan.id) ?? insertedPhases[0]!;
 
   let actionCount = 0;
   const projectTypes = ["setup", "execution", "analysis", "optimization"] as const;
@@ -233,6 +255,9 @@ export async function buildTierAwareBlueprintChain(
     { name: "Identify immediate first steps", type: "create" as const },
     { name: "Establish baseline metrics", type: "measure" as const },
     { name: "Optimize execution leverage", type: "improve" as const },
+    { name: "Write the first offer promise", type: "create" as const },
+    { name: "List the first ten target customers", type: "analyze" as const },
+    { name: "Create one proof-of-demand action", type: "test" as const },
   ];
 
   for (let pi = 0; pi < tierRules.projectsPerActivePhase; pi++) {
@@ -242,14 +267,20 @@ export async function buildTierAwareBlueprintChain(
         blueprint_id: params.blueprintId,
         phase_id: initiationPhase.id,
         target_id: primaryTarget.id,
+        user_id: params.userId,
         owner_id: params.userId,
         assignee_ids: modeRules.distributedExecution ? [params.userId] : [],
         name:
           pi === 0 ?
             "Setup & Foundation"
           : `${projectTypes[pi] ?? "execution"} — ${goalShort}`,
+        title:
+          pi === 0 ?
+            "Setup & Foundation"
+          : `${projectTypes[pi] ?? "execution"} — ${goalShort}`,
         description: `Initial work package for ${params.goal.slice(0, 60)}`,
         type: projectTypes[pi] ?? "setup",
+        project_type: projectTypes[pi] ?? "setup",
         order_index: pi + 1,
         status: pi === 0 ? "active" : "pending",
         started_at: pi === 0 ? new Date() : null,
@@ -272,9 +303,13 @@ export async function buildTierAwareBlueprintChain(
         blueprint_id: params.blueprintId,
         project_id: project.id,
         target_id: primaryTarget.id,
+        user_id: params.userId,
         name: def.name,
+        title: def.name,
         description: def.name,
         type: def.type,
+        action_type: def.type,
+        expected_output: `Completed artifact for: ${def.name}`,
         knowledge_category: params.tier === "starter" ? "execution" : "execution",
         order_index: ai + 1,
         status: "pending",

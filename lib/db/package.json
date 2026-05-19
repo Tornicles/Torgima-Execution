@@ -16,6 +16,7 @@
     "db:triggers": "psql $DATABASE_URL -f ../../scripts/apply-triggers.sql"
   },
   "dependencies": {
+    "dotenv": "^16.6.1",
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.20.0",

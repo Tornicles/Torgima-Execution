@@ -13,6 +13,7 @@ import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { BlueprintService } from "../services/BlueprintService.js";
 import { ValidationService } from "../services/ValidationService.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
 import { db, orders, blueprints, validations } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 
@@ -44,27 +45,45 @@ router.post("/blueprint/resolve-domain", async (req, res) => {
   }
 });
 
-// POST /api/blueprint/launch — requires valid validation + selected path (Prompt 3)
+// POST /api/blueprint/launch — launches the full post-validation execution chain.
 router.post("/blueprint/launch", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const body = z
       .object({
         blueprintId: z.string().uuid(),
-        selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
+        selectedPath: z.enum(["current", "adjusted", "alternative"]),
+        selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]),
+        confirmed: z.literal(true),
       })
       .parse(req.body);
 
-    await BlueprintRepository.findById(body.blueprintId, auth.userId);
-
-    if (body.selectedPath) {
-      await ValidationService.selectValidationPath({
-        blueprintId: body.blueprintId,
-        userId: auth.userId,
-        selectedPath: body.selectedPath,
-        confirmAdjusted: body.selectedPath === "adjusted",
+    const schemaCheck = await verifyBlueprintLaunchSchema();
+    if (!schemaCheck.ok) {
+      failure(res, "SCHEMA_OUT_OF_DATE", "Database schema is out of date.", 503, {
+        retryable: true,
+        detail: schemaCheck.detail ?? "Missing blueprint launch schema requirement",
       });
+      return;
     }
+
+    const blueprint = await BlueprintRepository.findById(body.blueprintId, auth.userId);
+    if (blueprint.status === "active") {
+      failure(res, "BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active", 409);
+      return;
+    }
+
+    await BlueprintService.configureSelection(body.blueprintId, auth.userId, {
+      tier: body.selectedBlueprintLevel,
+      mode: blueprint.mode ?? "individual",
+    });
+
+    await ValidationService.selectValidationPath({
+      blueprintId: body.blueprintId,
+      userId: auth.userId,
+      selectedPath: body.selectedPath,
+      confirmAdjusted: body.selectedPath === "adjusted",
+    });
 
     await ValidationService.assertLaunchAllowed(body.blueprintId, auth.userId);
     const [erectorValidation] = await db
@@ -81,7 +100,30 @@ router.post("/blueprint/launch", async (req, res) => {
           erector_validation_id: erectorValidation.id,
           primary_archetype_id: resolution?.primaryArchetype?.id?.startsWith("seed-") ? null : resolution?.primaryArchetype?.id ?? null,
           reality_score: erectorValidation.reality_score,
-          chosen_blueprint_level: erectorValidation.recommended_blueprint_level,
+          chosen_blueprint_level: body.selectedBlueprintLevel,
+          selected_path: body.selectedPath,
+          selected_blueprint_level: body.selectedBlueprintLevel,
+          validation_verdict: erectorValidation.verdict,
+          validation_scores: {
+            marketScore: erectorValidation.market_score,
+            executionScore: erectorValidation.execution_score,
+            realityScore: erectorValidation.reality_score,
+            riskScore: erectorValidation.risk_score,
+          },
+          validation_report: {
+            archetypeResolution: erectorValidation.archetype_resolution,
+            economyBriefing: erectorValidation.economy_briefing,
+            firstWeekPlan: erectorValidation.first_week_plan,
+          },
+          path_options: {
+            current: erectorValidation.path_current,
+            adjusted: erectorValidation.path_adjusted,
+            alternative: erectorValidation.path_alternative,
+          },
+          blueprint_options: {
+            selected: body.selectedBlueprintLevel,
+            recommended: erectorValidation.recommended_blueprint_level,
+          },
           economy_briefing_summary: String((erectorValidation.economy_briefing as { briefingNarrative?: string } | null)?.briefingNarrative ?? "").slice(0, 500),
         })
         .where(eq(blueprints.id, body.blueprintId));

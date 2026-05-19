@@ -368,7 +368,10 @@ export default function OnboardingPage() {
 
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
-    if (validation.launchBlocked || validation.verdict === "pivot") return;
+    if ((validation.launchBlocked || validation.verdict === "pivot") && selectedPath !== "alternative") {
+      setError("This validation requires the alternative path before launch.");
+      return;
+    }
     if (!API_BASE_URL) return;
     setLoading(true);
     setError("");
@@ -400,9 +403,11 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           blueprintId: validation.blueprintId,
           selectedPath,
+          selectedBlueprintLevel: selectedTier,
+          confirmed: true,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: { message?: string } };
+      const data = (await res.json()) as { ok?: boolean; error?: { message?: string; detail?: string } };
       if (data.ok) {
         await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
           method: "POST",
@@ -412,7 +417,7 @@ export default function OnboardingPage() {
         });
         setLocation("/dashboard");
       } else {
-        setError(data.error?.message ?? "Launch failed.");
+        setError(data.error?.detail ?? data.error?.message ?? "Launch failed.");
       }
     } catch {
       setError("Cannot connect to server.");

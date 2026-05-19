@@ -83,6 +83,30 @@ describe("Erector schema, archetypes, and contracts", () => {
     expect(migration).toContain("ADD COLUMN IF NOT EXISTS reality_score");
     expect(migration).toContain("ADD COLUMN IF NOT EXISTS erector_validation_id");
   });
+
+  it("launch repair verifies schema and creates initial orders transactionally", () => {
+    const migration = readRepo("scripts/migrations/manual-20260519-blueprint-launch-repair.sql");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS selected_blueprint_level");
+    expect(migration).toContain("ALTER TABLE orders");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS action_type");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS current_state");
+
+    const guard = readRepo("artifacts/api-server/src/lib/verifySchema.ts");
+    expect(guard).toContain("verifyBlueprintLaunchSchema");
+    expect(guard).toContain("Missing table:");
+    expect(guard).toContain("Missing column:");
+    expect(guard).toContain("Missing index:");
+
+    const launchRoute = readRepo("artifacts/api-server/src/routes/blueprintGeneration.ts");
+    expect(launchRoute).toContain("selectedBlueprintLevel");
+    expect(launchRoute).toContain("SCHEMA_OUT_OF_DATE");
+    expect(launchRoute).toContain("confirmed: z.literal(true)");
+
+    const engine = readRepo("artifacts/api-server/src/engines/blueprint/BlueprintEngine.ts");
+    expect(engine).toContain(".insert(orders)");
+    expect(engine).toContain("condition_at_generation: CONDITIONS.NOTHINGNESS");
+    expect(engine).toContain("current_state");
+  });
 });
 
 describe("Erector scoring and route integration", () => {

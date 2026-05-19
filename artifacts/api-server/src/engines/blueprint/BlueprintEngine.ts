@@ -7,6 +7,7 @@ import {
   phases,
   projects,
   actions,
+  orders,
   conditions,
   enforcementPackages,
   stateMemory,
@@ -51,6 +52,25 @@ import type { ValidationToBlueprintContract } from "../validation/intelligence/v
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const domainEngine = new DomainResolutionEngine();
+
+function dayOneOrderCount(tier: BlueprintTier): number {
+  if (tier === "starter") return 2;
+  if (tier === "growth") return 3;
+  return 4;
+}
+
+function instructionForAction(actionName: string): string {
+  if (/customer segment/i.test(actionName)) {
+    return "Define the first customer segment in one paragraph. Include who pays, what pain they have, and why they need this now.";
+  }
+  if (/offer/i.test(actionName)) {
+    return "Write the first offer promise in direct language. Include the problem, the outcome, and the proof you will produce.";
+  }
+  if (/target customer|ten/i.test(actionName)) {
+    return "List 10 people or businesses matching the target customer profile. Include one reason each is reachable.";
+  }
+  return `Complete the launch action: ${actionName}. Produce a concrete artifact and submit proof when done.`;
+}
 
 /**
  * BlueprintEngine — Full Prompt 4 implementation.
@@ -187,8 +207,17 @@ export class BlueprintEngine {
         .set({
           status: "active",
           active: true,
+          raw_goal: existing.goal,
+          domain: String(resolvedDomain),
+          selected_blueprint_level: tier,
           current_domain: resolvedDomain,
           current_condition: CONDITIONS.NOTHINGNESS,
+          metadata: {
+            launchCompleted: true,
+            selectedBlueprintLevel: tier,
+            selectedMode: mode,
+            initializedCondition: CONDITIONS.NOTHINGNESS,
+          },
           state_version: 1,
         })
         .where(eq(blueprints.id, blueprintId));
@@ -282,44 +311,58 @@ export class BlueprintEngine {
       //    has a row from the start; SignalWorker overwrites on first feedback.
       const now = new Date();
       const windowStart = new Date(now.getTime() - 7 * 24 * 3600_000);
-      await tx.insert(signalSnapshots).values({
+      const [signalSnapshot] = await tx.insert(signalSnapshots).values({
         blueprint_id:       blueprintId,
         user_id:            userId,
         window_start:       windowStart,
+        week_start:         windowStart,
         window_end:         now,
         completion_rate:    0,
         weighted_score:     0,
+        daily_score:        0,
         momentum:           0,
         trend:              "stable",
         confidence:         "insufficient_data",
         assigned_condition: CONDITIONS.NOTHINGNESS,
+        condition:          CONDITIONS.NOTHINGNESS,
         is_current:         true,
-      });
+      }).returning({ id: signalSnapshots.id });
 
       // 5. Initial condition record (nothingness)
-      await tx.insert(conditions).values({
+      const [conditionRecord] = await tx.insert(conditions).values({
         blueprint_id:       blueprintId,
         user_id:            userId,
         condition:          CONDITIONS.NOTHINGNESS,
+        signal_snapshot_id: signalSnapshot?.id ?? null,
         duration_days:      0,
         escalation_level:   0,
         recovery_required:  false,
+        reason:             "Blueprint launched with no execution history",
+        source:             "launch_initialization",
+        transition_reason:  "Blueprint launched with no execution history",
         is_current:         true,
         entered_at:         new Date(),
-      });
+      }).returning({ id: conditions.id });
 
       // 6. Initial enforcement package — nothingness defaults: minimum
       //    viable execution. Real package generator runs in Prompt 7+.
-      await tx.insert(enforcementPackages).values({
+      const allowedActions = ["setup", "initial_action", "first_output"];
+      const restrictedActions = ["scaling", "optimization", "expansion"];
+      const taskLimits = { taskLimit: { min: 1, max: tier === "starter" ? 2 : tier === "growth" ? 3 : 4 } };
+      const [enforcementPackage] = await tx.insert(enforcementPackages).values({
         blueprint_id:        blueprintId,
+        user_id:             userId,
+        condition_id:        conditionRecord?.id ?? null,
+        signal_snapshot_id:  signalSnapshot?.id ?? null,
         condition:           CONDITIONS.NOTHINGNESS,
-        task_limits:         { daily_max: 1, active_max: 1 },
+        task_limits:         taskLimits,
         difficulty_cap:
           tier === "starter" ? "very_easy"
           : tier === "growth" ? "moderate"
           : "hard",
-        allowed_actions:     tier === "starter" ? ["create", "analyze"] : ["create", "analyze", "measure", "improve"],
+        allowed_actions:     allowedActions,
         blocked_actions:     tierRules.lockedSystems,
+        restricted_actions:  restrictedActions,
         phase_permission:    tier === "starter" ? "restricted" : "normal",
         ai_mode:             tier === "ultimate" ? "analytical" : "command",
         ui_mode:             tierRules.uiMode as typeof enforcementPackages.$inferInsert["ui_mode"],
@@ -332,13 +375,100 @@ export class BlueprintEngine {
         },
         risk_level:          "low",
         is_current:          true,
-      });
+      }).returning({ id: enforcementPackages.id });
+
+      const actionRows = await tx
+        .select({
+          id: actions.id,
+          name: actions.name,
+          title: actions.title,
+          description: actions.description,
+          project_id: actions.project_id,
+          target_id: actions.target_id,
+          type: actions.type,
+        })
+        .from(actions)
+        .where(eq(actions.blueprint_id, blueprintId))
+        .orderBy(actions.order_index)
+        .limit(dayOneOrderCount(tier));
+
+      if (actionRows.length === 0) {
+        throw new TorgimaError("SCHEMA_OUT_OF_DATE", "Blueprint launch failed: no actions were created for initial orders.");
+      }
+
+      await tx
+        .update(blueprints)
+        .set({
+          current_project_id: actionRows[0]?.project_id ?? null,
+          current_action_id: actionRows[0]?.id ?? null,
+        })
+        .where(eq(blueprints.id, blueprintId));
+
+      const dueToday = new Date();
+      for (let i = 0; i < actionRows.length; i++) {
+        const action = actionRows[i]!;
+        const title = action.title ?? action.name;
+        await tx.insert(orders).values({
+          blueprint_id: blueprintId,
+          user_id: userId,
+          action_id: action.id,
+          linked_plan_id: chain.planId,
+          linked_target_id: action.target_id,
+          linked_phase_id: chain.phaseId,
+          linked_project_id: action.project_id,
+          enforcement_package_id: enforcementPackage?.id ?? null,
+          task_type: "execution",
+          title,
+          instruction: instructionForAction(title),
+          expected_output: `Completed launch artifact for: ${title}`,
+          definition_of_done: "A concrete artifact exists and can be reviewed.",
+          context_why: "Blueprint launched from validated reality context; this order creates the first execution signal.",
+          order_type: "execution",
+          why_it_matters: "Creates the first proof signal after validation.",
+          time_estimate_minutes: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
+          time_estimate_mins: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
+          proof_required: true,
+          proof_type: "text",
+          proof_description: "Submit the artifact or a concise written proof of completion.",
+          difficulty: tier === "starter" ? "easy" : tier === "growth" ? "moderate" : "hard",
+          priority: 10 - i,
+          domain: resolvedDomain,
+          condition_at_generation: CONDITIONS.NOTHINGNESS,
+          domain_at_generation: String(resolvedDomain),
+          generation_reason: "blueprint_launch_initial_order",
+          assigned_member_id: userId,
+          status: "pending",
+          due_at: dueToday,
+          due_date: dueToday,
+          command_context: {
+            source: "launch_initialization",
+            selectedPath: valRow?.selected_path ?? null,
+            selectedBlueprintLevel: tier,
+          },
+          trace_metadata: {
+            layer: "order",
+            parentId: action.id,
+            parentLayer: "action",
+            tier,
+            mode,
+            generationReason: "blueprint_launch_initial_order",
+          },
+        });
+      }
 
       // 7. State memory record (nothingness)
       await tx.insert(stateMemory).values({
         blueprint_id:     blueprintId,
         user_id:          userId,
         condition:        CONDITIONS.NOTHINGNESS,
+        current_state: {
+          stage: "post_launch",
+          condition: CONDITIONS.NOTHINGNESS,
+          activePlanIndex: 0,
+          activePhaseIndex: 0,
+          launchCompleted: true,
+        },
+        last_event:       "blueprint_launched",
         duration_days:    0,
         escalation_level: 0,
         is_current:       true,

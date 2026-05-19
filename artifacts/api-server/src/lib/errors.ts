@@ -18,7 +18,8 @@ export type ErrorCode =
   | "INTERNAL_ERROR"
   | "AI_CONTRACT_ERROR"
   | "FEATURE_DISABLED"
-  | "BLUEPRINT_SELECTION_REQUIRED";
+  | "BLUEPRINT_SELECTION_REQUIRED"
+  | "SCHEMA_OUT_OF_DATE";
 
 export class TorgimaError extends Error {
   constructor(
@@ -54,6 +55,8 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
       return 422;
     case "RATE_LIMITED":
       return 429;
+    case "SCHEMA_OUT_OF_DATE":
+      return 503;
     default:
       return 500;
   }

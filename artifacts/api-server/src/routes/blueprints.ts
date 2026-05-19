@@ -18,6 +18,8 @@ import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleE
 import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
+import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import {
   createPivotReview,
   resolvePivotReview,
@@ -197,24 +199,48 @@ router.post("/blueprints/:id/configure-selection", async (req, res) => {
   }
 });
 
-// POST /api/blueprints/:id/activate — Prompt 5: accepts optional selectedPath
+// POST /api/blueprints/:id/activate — activates the full post-validation execution chain.
 router.post("/blueprints/:id/activate", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
       selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
+      selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]).optional(),
+      confirmed: z.literal(true).optional(),
     });
 
-    const body = schema.safeParse(req.body).data ?? {};
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid launch request", 422);
+      return;
+    }
+    const body = parsed.data;
 
-    // If a path was selected, store it on the validation record first
+    const schemaCheck = await verifyBlueprintLaunchSchema();
+    if (!schemaCheck.ok) {
+      failure(res, "SCHEMA_OUT_OF_DATE", "Database schema is out of date.", 503, {
+        retryable: true,
+        detail: schemaCheck.detail ?? "Missing blueprint launch schema requirement",
+      });
+      return;
+    }
+
+    const blueprint = await BlueprintRepository.findById(req.params.id!, auth.userId);
+    if (body.selectedBlueprintLevel) {
+      await BlueprintService.configureSelection(req.params.id!, auth.userId, {
+        tier: body.selectedBlueprintLevel,
+        mode: blueprint.mode ?? "individual",
+      });
+    }
+
     if (body.selectedPath) {
       await ValidationService.selectValidationPath({
         blueprintId:  req.params.id!,
         userId:       auth.userId,
         selectedPath: body.selectedPath,
-      }).catch(() => null); // Non-fatal — blueprint may not have a validation record
+        confirmAdjusted: body.selectedPath === "adjusted",
+      });
     }
 
     const result = await BlueprintService.activate(req.params.id!, auth.userId);
