@@ -11,6 +11,7 @@ import {
 import { and, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
+import { BlueprintStatus, EventStatus, OrderStatus, SystemHealthStatus } from "@workspace/state-machine";
 
 // SystemHealthService — runs integrity checks across the execution chain, classifies
 // findings, writes SystemHealthLog records, emits system_health_degraded, and
@@ -92,14 +93,14 @@ async function checkActiveBlueprintsHaveTasks(): Promise<HealthFinding[]> {
   const activeBlueprints = await db
     .select({ id: blueprints.id, user_id: blueprints.user_id })
     .from(blueprints)
-    .where(and(eq(blueprints.active, true), eq(blueprints.status, "active")));
+    .where(and(eq(blueprints.active, true), eq(blueprints.status, BlueprintStatus.ACTIVE)));
 
   for (const bp of activeBlueprints) {
     const [{ count } = { count: 0 }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(orders)
       .where(
-        and(eq(orders.blueprint_id, bp.id), inArray(orders.status, ["pending", "active"])),
+        and(eq(orders.blueprint_id, bp.id), inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE])),
       );
 
     if ((count ?? 0) === 0) {
@@ -130,7 +131,7 @@ async function checkEventBacklog(): Promise<HealthFinding[]> {
   const [{ count } = { count: 0 }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(events)
-    .where(and(eq(events.status, "pending"), lt(events.process_after, threshold)));
+    .where(and(eq(events.status, EventStatus.PENDING), lt(events.process_after, threshold)));
 
   const stuckCount = count ?? 0;
 
@@ -259,7 +260,7 @@ export async function processFindings(findings: HealthFinding[]): Promise<void> 
       .where(
         and(
           eq(systemHealthLogs.check_type, finding.issueCode),
-          eq(systemHealthLogs.status, "degraded"),
+          eq(systemHealthLogs.status, SystemHealthStatus.DEGRADED),
           finding.blueprintId
             ? eq(systemHealthLogs.blueprint_id, finding.blueprintId)
             : sql`${systemHealthLogs.blueprint_id} is null`,
@@ -394,7 +395,7 @@ export async function getUserFacingHealthState(userId: string): Promise<{
     .from(systemHealthLogs)
     .where(
       and(
-        eq(systemHealthLogs.status, "degraded"),
+        eq(systemHealthLogs.status, SystemHealthStatus.DEGRADED),
         inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
       ),
     );

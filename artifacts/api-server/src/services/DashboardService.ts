@@ -24,6 +24,7 @@ import {
   deriveOperationalAwarenessLines,
   deriveSignalBlueprintBridgeLines,
 } from "../lib/operationalDerivation.js";
+import { BlueprintStatus, OrderStatus, PivotReviewStatus, SystemHealthStatus } from "@workspace/state-machine";
 
 export const DashboardService = {
   async getDashboardState(userId: string) {
@@ -38,11 +39,11 @@ export const DashboardService = {
       OrderService.getPrimaryDashboardTask(userId),
     ]);
 
-    const activeBlueprint = userBlueprints.find((b) => b.status === "active") ?? null;
+    const activeBlueprint = userBlueprints.find((b) => b.status === BlueprintStatus.ACTIVE) ?? null;
     /** When execution just finished there is often no longer an "active" row — surface completion UI briefly. */
     let recentCompletionBlueprint: (typeof userBlueprints)[number] | null = null;
     if (!activeBlueprint) {
-      const completed = userBlueprints.filter((b) => b.status === "complete");
+      const completed = userBlueprints.filter((b) => b.status === BlueprintStatus.COMPLETE);
       const sorted = [...completed].sort((a, b) => {
         const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
         const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
@@ -122,7 +123,7 @@ export const DashboardService = {
             and(
               eq(pivotReviews.blueprint_id, blueprintId),
               eq(pivotReviews.user_id, userId),
-              eq(pivotReviews.status, "open"),
+              eq(pivotReviews.status, PivotReviewStatus.OPEN),
             ),
           )
           .limit(1)
@@ -150,7 +151,7 @@ export const DashboardService = {
           .where(
             and(
               eq(systemHealthLogs.blueprint_id, blueprintId),
-              eq(systemHealthLogs.status, "degraded"),
+              eq(systemHealthLogs.status, SystemHealthStatus.DEGRADED),
               inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
             ),
           )
@@ -272,7 +273,7 @@ export const DashboardService = {
         signalProjection,
         enforcementPhasePermission: enforcementPerm,
         pivotReviewOpen,
-        hasBlockedOrders: activeOrders.some((o) => o.status === "blocked"),
+        hasBlockedOrders: activeOrders.some((o) => o.status === OrderStatus.BLOCKED),
         lockedPhaseCount: 0,
       });
 
@@ -298,14 +299,14 @@ export const DashboardService = {
           and(
             eq(orders.blueprint_id, blueprintId),
             eq(orders.user_id, userId),
-            inArray(orders.status, ["needs_feedback", "needs_proof"]),
+            inArray(orders.status, [OrderStatus.NEEDS_FEEDBACK, OrderStatus.NEEDS_PROOF]),
           ),
         )
         .limit(1);
       hasAwaitingFeedbackOrder = Boolean(awaitingRow);
     }
 
-    const hasBlockedOrder = activeOrders.some((o) => o.status === "blocked");
+    const hasBlockedOrder = activeOrders.some((o) => o.status === OrderStatus.BLOCKED);
     const hasPendingOrActiveTask = Boolean(primaryTask);
 
     const condEffective = conditionDetail ?? {

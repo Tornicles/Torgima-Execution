@@ -18,6 +18,7 @@ import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleE
 import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { BlueprintStatus, PivotReviewStatus } from "../types/stateMachine.js";
 import {
   createPivotReview,
   resolvePivotReview,
@@ -508,11 +509,11 @@ router.get("/blueprints/:id/pause-status", async (req, res) => {
       pauseGapDays <= 2 ? "normal" : pauseGapDays <= 7 ? "check_in" : pauseGapDays <= 30 ? "recovery" : "restart";
 
     success(res, {
-      isPaused: bp.status === "paused",
+      isPaused: bp.status === BlueprintStatus.PAUSED,
       pausedAt: bp.paused_at,
       pauseReason: bp.pause_reason,
       pauseGapDays,
-      resumeMode: bp.status === "paused" ? resumeMode : null,
+      resumeMode: bp.status === BlueprintStatus.PAUSED ? resumeMode : null,
       goal: bp.goal,
     });
   } catch (err) {
@@ -531,7 +532,7 @@ router.get("/blueprints/:id/pivot-review/current", async (req, res) => {
         and(
           eq(pivotReviews.blueprint_id, req.params.id!),
           eq(pivotReviews.user_id, auth.userId),
-          eq(pivotReviews.status, "open"),
+          eq(pivotReviews.status, PivotReviewStatus.OPEN),
         ),
       )
       .limit(1);

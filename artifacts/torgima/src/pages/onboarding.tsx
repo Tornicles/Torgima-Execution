@@ -11,6 +11,7 @@ import { ValidationScreen, type ValidationScreenData } from "@/components/valida
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { activateBlueprint, ApiError } from "@workspace/api-client-react";
+import { ValidationStatus } from "@workspace/state-machine";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 const TOTAL_STEPS = 7;
@@ -228,13 +229,13 @@ export default function OnboardingPage() {
   function applyTimelineProgress(
     events: Array<{ stage?: string; status?: string }>,
   ): void {
-    const map: Record<string, "pending" | "running" | "complete"> = {};
+    const map: Record<string, ValidationStatus> = {};
     for (const ev of events) {
       if (!ev.stage || ev.stage === "COMPLETE") continue;
       map[ev.stage] =
-        ev.status === "COMPLETED" ? "complete"
-        : ev.status === "RUNNING" ? "running"
-        : "pending";
+        ev.status === "COMPLETED" ? ValidationStatus.COMPLETE
+        : ev.status === "RUNNING" ? ValidationStatus.RUNNING
+        : ValidationStatus.PENDING;
     }
     if (Object.keys(map).length === 0) return;
     setValidation((prev) =>
@@ -264,7 +265,7 @@ export default function OnboardingPage() {
         data?: { status?: string; verdict?: string };
       };
       const sessionStatus = statusJson.data?.status;
-      if (sessionStatus === "complete" || sessionStatus === "validated") {
+      if (sessionStatus === ValidationStatus.COMPLETE || sessionStatus === "validated") {
         const resultRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/result`, {
           credentials: "include",
         });
@@ -272,7 +273,7 @@ export default function OnboardingPage() {
         if (resultJson.ok && resultJson.data) return resultJson.data;
         return null;
       }
-      if (sessionStatus === "failed" || sessionStatus === "invalid") return null;
+      if (sessionStatus === ValidationStatus.FAILED || sessionStatus === "invalid") return null;
       await sleep(1500);
     }
     return null;

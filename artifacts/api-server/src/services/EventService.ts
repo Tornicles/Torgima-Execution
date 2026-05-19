@@ -3,6 +3,7 @@ import { events } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { InferInsertModel } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+import { EventStatus } from "@workspace/state-machine";
 
 // ── EVENT TYPES ───────────────────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export async function writeEvent(
     payload: payloadMerged,
     idempotency_key: input.idempotencyKey,
     process_after: input.processAfter ?? new Date(),
-    status: "pending",
+    status: EventStatus.PENDING,
   };
 
   const [inserted] = await (client as typeof db)
@@ -151,7 +152,7 @@ export async function emitEvent(
       payload: params.payload ?? {},
       idempotency_key: params.idempotencyKey,
       process_after: params.processAfter ?? new Date(),
-      status: "pending",
+      status: EventStatus.PENDING,
     })
     .onConflictDoNothing({ target: events.idempotency_key })
     .returning({ id: events.id });
@@ -189,7 +190,7 @@ export async function writeEventInTx(
       payload: payloadMerged,
       idempotency_key: input.idempotencyKey,
       process_after: input.processAfter ?? new Date(),
-      status: "pending",
+      status: EventStatus.PENDING,
     })
     .returning({ id: events.id });
 

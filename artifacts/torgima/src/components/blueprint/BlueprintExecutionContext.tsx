@@ -1,3 +1,5 @@
+import { ConditionState } from "@workspace/state-machine";
+
 interface HierarchyPlan {
   id: string;
   name: string;
@@ -23,17 +25,17 @@ export function DomainContextBanner({
 }
 
 export function OperationalStateIndicator({ condition }: { condition?: string | null }) {
-  const c = (condition ?? "nothingness").toLowerCase();
+  const c = (condition ?? ConditionState.NOTHINGNESS).toLowerCase();
   const colors: Record<string, string> = {
-    power: "bg-violet-600",
-    stability: "bg-emerald-600",
-    urgency: "bg-amber-600",
-    danger: "bg-red-600",
-    nothingness: "bg-slate-500",
+    [ConditionState.POWER]: "bg-violet-600",
+    [ConditionState.STABILITY]: "bg-emerald-600",
+    [ConditionState.URGENCY]: "bg-amber-600",
+    [ConditionState.DANGER]: "bg-red-600",
+    [ConditionState.NOTHINGNESS]: "bg-slate-500",
   };
   return (
     <div className="flex items-center gap-2">
-      <span className={`w-2.5 h-2.5 rounded-full ${colors[c] ?? colors.nothingness}`} />
+      <span className={`w-2.5 h-2.5 rounded-full ${colors[c] ?? colors[ConditionState.NOTHINGNESS]}`} />
       <span className="text-xs font-semibold text-slate-700 capitalize">{c}</span>
     </div>
   );

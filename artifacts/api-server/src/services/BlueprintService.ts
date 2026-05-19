@@ -12,6 +12,7 @@ import type { Order } from "../types/order.js";
 import { db, orders, pivotReviews, blueprints as blueprintsTable } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { checkCompletionEligibility } from "../engines/lifecycle/CompletionEngine.js";
+import { PhaseStatus, PivotReviewStatus } from "@workspace/state-machine";
 
 function mapDbOrderRow(row: typeof orders.$inferSelect): Order {
   const statusMap: Record<string, Order["status"]> = {
@@ -64,7 +65,7 @@ export const BlueprintService = {
   async get(id: string, userId: string): Promise<Blueprint> {
     const bp = await BlueprintRepository.findById(id, userId);
     const allPhases = await BlueprintRepository.getPhases(id);
-    const activePhase = allPhases.find((p) => p.status === "active");
+    const activePhase = allPhases.find((p) => p.status === PhaseStatus.ACTIVE);
     const currentPhaseIndex = activePhase
       ? allPhases.findIndex((p) => p.id === activePhase.id) + 1
       : 1;
@@ -130,7 +131,7 @@ export const BlueprintService = {
           and(
             eq(pivotReviews.blueprint_id, id),
             eq(pivotReviews.user_id, userId),
-            eq(pivotReviews.status, "open"),
+            eq(pivotReviews.status, PivotReviewStatus.OPEN),
           ),
         )
         .limit(1),

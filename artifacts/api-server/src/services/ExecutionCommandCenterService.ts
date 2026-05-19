@@ -21,9 +21,10 @@ import {
   type SignalProjectionLite,
 } from "../lib/operationalDerivation.js";
 import { deriveOperationalState } from "../engines/blueprint/infrastructure/BlueprintFailureStates.js";
+import { OrderStatus, PhaseStatus, PivotReviewStatus, ProjectStatus, TargetStatus } from "@workspace/state-machine";
 
-const DONE_ORDER_STATUS = ["completed", "skipped", "cancelled"];
-const DONE_PROJECT_STATUS = ["complete", "skipped"];
+const DONE_ORDER_STATUS: readonly string[] = [OrderStatus.COMPLETED, OrderStatus.SKIPPED, OrderStatus.CANCELLED];
+const DONE_PROJECT_STATUS: readonly string[] = [ProjectStatus.COMPLETE, ProjectStatus.SKIPPED];
 
 function isDoneOrder(status: string): boolean {
   return DONE_ORDER_STATUS.includes(status);
@@ -34,7 +35,7 @@ function isDoneProject(status: string): boolean {
 }
 
 function phaseIsTerminal(status: string): boolean {
-  return status === "complete" || status === "skipped";
+  return status === PhaseStatus.COMPLETE || status === PhaseStatus.SKIPPED;
 }
 
 function asRecord(val: unknown): Record<string, unknown> {
@@ -327,7 +328,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
         and(
           eq(pivotReviews.blueprint_id, blueprintId),
           eq(pivotReviews.user_id, userId),
-          eq(pivotReviews.status, "open"),
+          eq(pivotReviews.status, PivotReviewStatus.OPEN),
         ),
       )
       .limit(1)
@@ -616,7 +617,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
       const progressionPctOrders =
         phaseOrdersAll.length === 0 ?
           phaseIsTerminal(ph.status) ? 100
-          : ph.status === "active" ? 0
+          : ph.status === PhaseStatus.ACTIVE ? 0
           : 0
         : Math.round((completedPhaseOrders / phaseOrdersAll.length) * 100);
 
@@ -681,7 +682,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
       id: `orphan-structure-${blueprintId}`,
       name: "Structural phases",
       description: "Phases not linked to a plan row (`plan_id` null) — still active in progression.",
-      status: "pending",
+      status: ProjectStatus.PENDING,
       purposeLine: "Carries initiation / recovery phases when activation did not associate a plan FK.",
       unlockSummary: `${donePh} / ${totalPh} phases terminal.`,
       failureImpact:
@@ -715,7 +716,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
       linkedProjectIds: projsFor.map((p) => p.id),
       emphasis,
       riskState:
-        t.status === "at_risk" ? "at_risk" : t.progress < 0.35 && t.status !== "complete" ? "watch" : "stable",
+        t.status === TargetStatus.AT_RISK ? "at_risk" : t.progress < 0.35 && t.status !== TargetStatus.COMPLETE ? "watch" : "stable",
       whyMatters: "Targets define measurable reality checks — signals and enforcement compare execution against them.",
       consequenceIfMissed: "Missed targets keep gates closed and may trigger recovery conditioning.",
       unlockHint: "Close dependent projects and submit proof-backed feedback to move the metric.",
@@ -794,7 +795,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
   const [doneCount] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(orders)
-    .where(and(eq(orders.blueprint_id, blueprintId), eq(orders.user_id, userId), eq(orders.status, "completed")));
+    .where(and(eq(orders.blueprint_id, blueprintId), eq(orders.user_id, userId), eq(orders.status, OrderStatus.COMPLETED)));
 
   const ownershipLines = deriveExecutionIdentityLines({
     momentumStreakDays: snapRow?.momentum ?? 0,
@@ -856,7 +857,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
                 {
                   id: `empty-phase-${hp.id}`,
                   name: emptyPhaseName(planRows.find((pr) => pr.id === hp.id)),
-                  status: "pending",
+                  status: OrderStatus.PENDING,
                   lockedDb: false,
                   gatePassed: false,
                   unlockRequirements: ["No persisted phases mapped to this plan — activation may still be hydrating."],
@@ -876,7 +877,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
             id: `no-plans-${blueprintId}`,
             name: "Execution chain pending",
             description: "No plans found — onboarding may still be finalizing blueprint generation.",
-            status: "pending",
+            status: OrderStatus.PENDING,
             purposeLine: missionStrategicIntent ?? "Hydrate blueprint from activation pathway.",
             unlockSummary: "No plan rows; nothing to unlock until chain exists.",
             failureImpact: "Execution cannot attach orders to plan/phase metadata until chain materializes.",
@@ -886,7 +887,7 @@ export async function getExecutionCommandCenter(blueprintId: string, userId: str
               {
                 id: `empty-${blueprintId}`,
                 name: "No phases",
-                status: "pending",
+                status: OrderStatus.PENDING,
                 lockedDb: true,
                 gatePassed: false,
                 unlockRequirements: ["Blueprint chain must be generated (activate + validate path)."],

@@ -8,6 +8,7 @@ import { IntelligenceStatusBar } from "./IntelligenceStatusBar";
 import { PathComparisonTable } from "./PathComparisonTable";
 import { FeasibilityScoreCard } from "./FeasibilityScoreCard";
 import { ScenarioSimulator } from "./ScenarioSimulator";
+import type { ValidationStatus } from "@workspace/state-machine";
 
 export interface ValidationScreenData {
   validationId?: string;
@@ -22,7 +23,7 @@ export interface ValidationScreenData {
   paths?: Partial<Record<PathKey, Record<string, unknown>>>;
   intelligence?: Record<string, unknown> & { verdictReasoning?: string };
   scores?: Record<string, { score?: number; verdict?: string }>;
-  systemsProgress?: Record<string, "pending" | "running" | "complete">;
+  systemsProgress?: Record<string, ValidationStatus>;
 }
 
 export function ValidationScreen({

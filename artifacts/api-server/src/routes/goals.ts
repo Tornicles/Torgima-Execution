@@ -6,6 +6,7 @@ import { routeTrigger } from "../bhudhi/TriggerRouter.js";
 import { detectContradictions, hasHardContradiction } from "../engines/contradiction/ContradictionEngine.js";
 import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
 import { db, blueprints } from "@workspace/db";
+import { BlueprintStatus, ConditionState } from "../types/stateMachine.js";
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.post("/goals/create", async (req, res) => {
       blueprintId: body.blueprintId,
       payload: { rawGoal: body.goal, purpose: body.purpose, timeframe: body.timeframe, userInput: body.goal },
       worldStateVersion: world?.stateVersion ?? 0,
-      currentCondition: "stability",
+      currentCondition: ConditionState.STABILITY,
       triggerType: "USER_GOAL_TRIGGER",
       priority: "HIGH",
     });
@@ -49,7 +50,7 @@ router.post("/goals/validate", async (req, res) => {
           user_id: auth.userId,
           goal: body.goal,
           purpose: body.purpose,
-          status: "draft",
+          status: BlueprintStatus.DRAFT,
         })
         .returning({ id: blueprints.id });
       blueprintId = bp?.id;
@@ -75,7 +76,7 @@ router.post("/goals/validate", async (req, res) => {
       blueprintId,
       payload: { rawGoal: body.goal, purpose: body.purpose, timeframe: body.timeframe },
       worldStateVersion: world?.stateVersion ?? 0,
-      currentCondition: "stability",
+      currentCondition: ConditionState.STABILITY,
       triggerType: "USER_GOAL_TRIGGER",
       priority: "HIGH",
     });

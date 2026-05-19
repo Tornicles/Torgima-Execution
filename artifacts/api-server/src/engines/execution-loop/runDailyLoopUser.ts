@@ -5,6 +5,7 @@ import { routeTrigger } from "../../bhudhi/TriggerRouter.js";
 import { getWorldModel } from "../world-model/WorldModelEngine.js";
 import { detectInactivity } from "../../bhudhi/agents/BehavioralAgent.js";
 import { getPendingProposals } from "../governance/GovernanceService.js";
+import { BlueprintStatus, OrderStatus } from "@workspace/state-machine";
 
 export interface DailyLoopResult {
   activeOrder: typeof orders.$inferSelect | null;
@@ -17,7 +18,7 @@ export async function runDailyLoop(userId: string): Promise<DailyLoopResult> {
   const [bp] = await db
     .select()
     .from(blueprints)
-    .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true)))
+    .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true), eq(blueprints.status, BlueprintStatus.ACTIVE)))
     .limit(1);
 
   if (!bp) {
@@ -38,7 +39,7 @@ export async function runDailyLoop(userId: string): Promise<DailyLoopResult> {
           and(
             eq(orders.user_id, userId),
             eq(orders.blueprint_id, bp.id),
-            eq(orders.status, "pre_generated"),
+            eq(orders.status, OrderStatus.PRE_GENERATED),
           ),
         )
         .orderBy(desc(orders.created_at))
@@ -52,7 +53,7 @@ export async function runDailyLoop(userId: string): Promise<DailyLoopResult> {
           .select()
           .from(orders)
           .where(
-            and(eq(orders.user_id, userId), eq(orders.blueprint_id, bp.id), eq(orders.status, "pending")),
+            and(eq(orders.user_id, userId), eq(orders.blueprint_id, bp.id), eq(orders.status, OrderStatus.PENDING)),
           )
           .orderBy(desc(orders.created_at))
           .limit(1)

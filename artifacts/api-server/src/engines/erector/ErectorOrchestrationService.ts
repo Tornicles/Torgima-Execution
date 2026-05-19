@@ -11,6 +11,7 @@ import type {
 } from "../../types/erector.js";
 import { resolveArchetype } from "./ArchetypeResolutionEngine.js";
 import { calculateAllScores } from "./ScoringEngine.js";
+import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
 function stagePayload(input: ErectorValidationInput, archetype: ArchetypeResolutionOutput) {
   const economy = archetype.primaryArchetype;
@@ -171,20 +172,20 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     .where(eq(validations.idempotency_key, input.idempotencyKey))
     .limit(1)
     .catch(() => [] as Array<typeof validations.$inferSelect>);
-  if (existing?.validation_stage === "complete") return rowToResult(existing);
+  if (existing?.validation_stage === ValidationStatus.COMPLETE) return rowToResult(existing);
 
   const [created] = existing
-    ? await db.update(validations).set({ validation_kind: "erector", payload_version: 1, validation_stage: "running", status: "running" }).where(eq(validations.id, existing.id)).returning()
+    ? await db.update(validations).set({ validation_kind: ValidationKind.ERECTOR, payload_version: 1, validation_stage: ValidationStatus.RUNNING, status: ValidationStatus.RUNNING }).where(eq(validations.id, existing.id)).returning()
     : await db
         .insert(validations)
         .values({
           blueprint_id: input.blueprintId,
           user_id: input.userId,
           idempotency_key: input.idempotencyKey,
-          validation_kind: "erector",
+          validation_kind: ValidationKind.ERECTOR,
           payload_version: 1,
-          status: "running",
-          validation_stage: "running",
+          status: ValidationStatus.RUNNING,
+          validation_stage: ValidationStatus.RUNNING,
           tier: input.tier ?? null,
           location_country: input.location.country,
           location_city: input.location.city,
@@ -232,7 +233,7 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     economyBriefing: outputs.economyBriefing,
     systemsProgress: { ERECTOR: "complete" },
   };
-  const payloadCheck = validatePayload("erector", intelligencePayload);
+  const payloadCheck = validatePayload(ValidationKind.ERECTOR, intelligencePayload);
   if (!payloadCheck.success) {
     throw new Error(`Erector payload failed schema check: ${payloadCheck.error.message}`);
   }
@@ -272,8 +273,8 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
       launch_blocked: scores.verdict === "pivot",
       readiness: scores.verdict === "proceed" ? "ready_proceed" : scores.verdict === "adjust" ? "ready_with_adjustment" : "blocked_pivot",
       validation_stage: "complete",
-      status: "complete",
-      validation_kind: "erector",
+      status: ValidationStatus.COMPLETE,
+      validation_kind: ValidationKind.ERECTOR,
       payload_version: 1,
       intelligence_payload: intelligencePayload,
     })

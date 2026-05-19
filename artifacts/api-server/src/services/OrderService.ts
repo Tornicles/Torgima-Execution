@@ -13,21 +13,22 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, inArray, count } from "drizzle-orm";
 import { computeOrderPriorityDimensions } from "../engines/order/OrderPrioritizationEngine.js";
+import { ApiOrderStatus, OrderStatus } from "@workspace/state-machine";
 
 const store = new Map<string, Order>();
 
 function mapDbOrderRow(row: typeof ordersTable.$inferSelect): Order {
   const statusMap: Record<string, Order["status"]> = {
-    pending:        "queued",
-    active:         "active",
-    paused:         "paused",
-    blocked:        "blocked",
-    needs_feedback: "in_progress",
-    needs_proof:    "in_progress",
-    completed:      "complete",
-    failed:         "cancelled",
-    skipped:        "cancelled",
-    cancelled:      "cancelled",
+    [OrderStatus.PENDING]:        ApiOrderStatus.QUEUED,
+    [OrderStatus.ACTIVE]:         ApiOrderStatus.ACTIVE,
+    [OrderStatus.PAUSED]:         ApiOrderStatus.PAUSED,
+    [OrderStatus.BLOCKED]:        ApiOrderStatus.BLOCKED,
+    [OrderStatus.NEEDS_FEEDBACK]: ApiOrderStatus.IN_PROGRESS,
+    [OrderStatus.NEEDS_PROOF]:    ApiOrderStatus.IN_PROGRESS,
+    [OrderStatus.COMPLETED]:      ApiOrderStatus.COMPLETE,
+    [OrderStatus.FAILED]:         ApiOrderStatus.CANCELLED,
+    [OrderStatus.SKIPPED]:        ApiOrderStatus.CANCELLED,
+    [OrderStatus.CANCELLED]:      ApiOrderStatus.CANCELLED,
   };
   const taskTypeMap: Partial<Record<string, Order["type"]>> = {
     execution: "action",
@@ -48,7 +49,7 @@ function mapDbOrderRow(row: typeof ordersTable.$inferSelect): Order {
     title:            row.title,
     description:      row.instruction,
     type:             taskTypeMap[row.task_type] ?? typeFallback,
-    status:           statusMap[row.status] ?? "active",
+    status:           statusMap[row.status] ?? ApiOrderStatus.ACTIVE,
     priority:         row.priority,
     estimatedMinutes: row.time_estimate_minutes,
     instructions:     row.instruction,
@@ -122,7 +123,7 @@ export const OrderService = {
         and(
           eq(ordersTable.blueprint_id, bp.id),
           eq(ordersTable.user_id, userId),
-          inArray(ordersTable.status, ["pending", "active"]),
+          inArray(ordersTable.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
         ),
       )
       .limit(40);
@@ -229,7 +230,7 @@ export const OrderService = {
       .where(
         and(
           eq(ordersTable.user_id, userId),
-          inArray(ordersTable.status, ["pending", "active"]),
+          inArray(ordersTable.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
         ),
       )
       .orderBy(desc(ordersTable.priority), desc(ordersTable.created_at));
@@ -256,35 +257,35 @@ export const OrderService = {
 
   async start(id: string, userId: string): Promise<Order> {
     const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: "in_progress", startedAt: now() };
+    const updated: Order = { ...o, status: ApiOrderStatus.IN_PROGRESS, startedAt: now() };
     store.set(id, updated);
     return updated;
   },
 
   async finish(id: string, userId: string): Promise<Order> {
     const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: "complete", completedAt: now() };
+    const updated: Order = { ...o, status: ApiOrderStatus.COMPLETE, completedAt: now() };
     store.set(id, updated);
     return updated;
   },
 
   async block(id: string, userId: string, reason: string): Promise<Order> {
     const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: "blocked", blockedReason: reason };
+    const updated: Order = { ...o, status: ApiOrderStatus.BLOCKED, blockedReason: reason };
     store.set(id, updated);
     return updated;
   },
 
   async pause(id: string, userId: string): Promise<Order> {
     const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: "paused" };
+    const updated: Order = { ...o, status: ApiOrderStatus.PAUSED };
     store.set(id, updated);
     return updated;
   },
 
   async resume(id: string, userId: string): Promise<Order> {
     const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: "active" };
+    const updated: Order = { ...o, status: ApiOrderStatus.ACTIVE };
     store.set(id, updated);
     return updated;
   },
@@ -299,7 +300,7 @@ export const OrderService = {
         title: "Define your north star metric",
         description: "Identify the single metric that, if moved, would indicate real progress",
         type: "action",
-        status: "active",
+        status: ApiOrderStatus.ACTIVE,
         priority: 1,
         estimatedMinutes: 45,
         instructions: "Write it down. Make it measurable. Set a target and a deadline.",

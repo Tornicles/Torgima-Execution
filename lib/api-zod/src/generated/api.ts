@@ -261,6 +261,8 @@ export const ListBlueprintsResponseItem = zod.object({
   status: zod.enum([
     "draft",
     "validating",
+    "awaiting_selection",
+    "path_selection",
     "active",
     "paused",
     "complete",
@@ -301,6 +303,8 @@ export const GetBlueprintHistoryResponseItem = zod.object({
   status: zod.enum([
     "draft",
     "validating",
+    "awaiting_selection",
+    "path_selection",
     "active",
     "paused",
     "complete",
@@ -334,6 +338,8 @@ export const GetBlueprintResponse = zod.object({
   status: zod.enum([
     "draft",
     "validating",
+    "awaiting_selection",
+    "path_selection",
     "active",
     "paused",
     "complete",
@@ -406,6 +412,8 @@ export const GetBlueprintStateResponse = zod.object({
     status: zod.enum([
       "draft",
       "validating",
+      "awaiting_selection",
+      "path_selection",
       "active",
       "paused",
       "complete",
@@ -534,6 +542,8 @@ export const PauseBlueprintResponse = zod.object({
   status: zod.enum([
     "draft",
     "validating",
+    "awaiting_selection",
+    "path_selection",
     "active",
     "paused",
     "complete",
@@ -564,6 +574,8 @@ export const ResumeBlueprintResponse = zod.object({
   status: zod.enum([
     "draft",
     "validating",
+    "awaiting_selection",
+    "path_selection",
     "active",
     "paused",
     "complete",
@@ -1176,6 +1188,8 @@ export const GetDashboardStateResponse = zod.object({
       status: zod.enum([
         "draft",
         "validating",
+        "awaiting_selection",
+        "path_selection",
         "active",
         "paused",
         "complete",
@@ -1200,6 +1214,8 @@ export const GetDashboardStateResponse = zod.object({
       status: zod.enum([
         "draft",
         "validating",
+        "awaiting_selection",
+        "path_selection",
         "active",
         "paused",
         "complete",

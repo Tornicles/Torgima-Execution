@@ -49,6 +49,7 @@ import { blueprintMembers } from "@workspace/db";
 import { getClientFeatureManifest } from "./infrastructure/BlueprintTypeRegistry.js";
 import { ValidationService } from "../../services/ValidationService.js";
 import type { ValidationToBlueprintContract } from "../validation/intelligence/validation-intelligence-types.js";
+import { BlueprintStatus, OrderStatus, PhaseStatus, ProjectStatus } from "@workspace/state-machine";
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -111,7 +112,7 @@ export class BlueprintEngine {
         current_domain: resolvedDomain,
         domain_hint: input.domainHint ?? null,
         commitment_level: input.commitmentLevel ?? null,
-        status: "draft",
+        status: BlueprintStatus.DRAFT,
         active: false,
         version: 1,
         state_version: 0,
@@ -132,7 +133,7 @@ export class BlueprintEngine {
     input: { tier: BlueprintTier; mode: BlueprintMode },
   ): Promise<{ blueprintId: string; tier: BlueprintTier; mode: BlueprintMode; intelligenceDepth: string }> {
     const bp = await BlueprintRepository.findById(blueprintId, userId);
-    if (bp.status === "active") {
+    if (bp.status === BlueprintStatus.ACTIVE) {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Cannot change selection on an active blueprint");
     }
 
@@ -143,9 +144,9 @@ export class BlueprintEngine {
     const now = new Date();
 
     const nextStatus =
-      bp.validation_id ? "path_selection"
-      : bp.status === "draft" || bp.status === "validating" ? "awaiting_selection"
-      : "awaiting_selection";
+      bp.validation_id ? BlueprintStatus.PATH_SELECTION
+      : bp.status === BlueprintStatus.DRAFT || bp.status === BlueprintStatus.VALIDATING ? BlueprintStatus.AWAITING_SELECTION
+      : BlueprintStatus.AWAITING_SELECTION;
 
     await db
       .update(blueprints)
@@ -193,7 +194,7 @@ export class BlueprintEngine {
     logger.info({ blueprintId, userId }, "BlueprintEngine.activateBlueprint");
 
     const existing = await BlueprintRepository.findById(blueprintId, userId);
-    if (existing.status === "active") {
+    if (existing.status === BlueprintStatus.ACTIVE) {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
 
@@ -228,7 +229,7 @@ export class BlueprintEngine {
       await tx
         .update(blueprints)
         .set({
-          status: "active",
+          status: BlueprintStatus.ACTIVE,
           active: true,
           raw_goal: existing.goal,
           domain: String(resolvedDomain),
@@ -463,7 +464,7 @@ export class BlueprintEngine {
           domain_at_generation: String(resolvedDomain),
           generation_reason: "blueprint_launch_initial_order",
           assigned_member_id: userId,
-          status: "pending",
+          status: OrderStatus.PENDING,
           due_at: dueToday,
           due_date: dueToday,
           command_context: {
@@ -653,7 +654,7 @@ export class BlueprintEngine {
     logger.info({ blueprintId, userId }, "BlueprintEngine.advanceBlueprintPosition");
 
     const bp = await BlueprintRepository.findById(blueprintId, userId);
-    if (bp.status !== "active") {
+    if (bp.status !== BlueprintStatus.ACTIVE) {
       throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", "Blueprint must be active to advance");
     }
 
@@ -664,7 +665,7 @@ export class BlueprintEngine {
         .where(eq(phases.blueprint_id, blueprintId))
         .orderBy(phases.order_index);
 
-      const activePhase = allPhases.find((p) => p.status === "active");
+      const activePhase = allPhases.find((p) => p.status === PhaseStatus.ACTIVE);
       if (!activePhase) {
         return { advanced: false, completedPhaseId: null, nextPhaseId: null, blueprintComplete: false };
       }
@@ -672,17 +673,17 @@ export class BlueprintEngine {
       const now = new Date();
       await tx
         .update(phases)
-        .set({ status: "complete", gate_passed: true, completed_at: now })
+        .set({ status: PhaseStatus.COMPLETE, gate_passed: true, completed_at: now })
         .where(eq(phases.id, activePhase.id));
 
       const nextPhase = allPhases.find(
-        (p) => p.order_index > activePhase.order_index && p.status !== "complete",
+        (p) => p.order_index > activePhase.order_index && p.status !== PhaseStatus.COMPLETE,
       );
 
       if (!nextPhase) {
         await tx
           .update(blueprints)
-          .set({ status: "complete", active: false, completed_at: now })
+          .set({ status: BlueprintStatus.COMPLETE, active: false, completed_at: now })
           .where(eq(blueprints.id, blueprintId));
 
         await writeEventInTx(
@@ -719,7 +720,7 @@ export class BlueprintEngine {
 
       await tx
         .update(phases)
-        .set({ status: "active", locked: false, started_at: now })
+        .set({ status: PhaseStatus.ACTIVE, locked: false, started_at: now })
         .where(eq(phases.id, nextPhase.id));
 
       // Build at least one placeholder project for the new phase if it has none.
@@ -740,7 +741,7 @@ export class BlueprintEngine {
           description:  `Auto-generated placeholder for ${nextPhase.name} phase`,
           type:         "execution",
           order_index:  1,
-          status:       "active",
+          status:       ProjectStatus.ACTIVE,
           started_at:   now,
         });
       }
@@ -829,10 +830,10 @@ export class BlueprintEngine {
     const allPhases = await BlueprintRepository.getPhases(blueprintId);
     const allPlans = await BlueprintRepository.getPlans(blueprintId);
 
-    const activePhase = allPhases.find((p) => p.status === "active") ?? allPhases[0] ?? null;
+    const activePhase = allPhases.find((p) => p.status === PhaseStatus.ACTIVE) ?? allPhases[0] ?? null;
     const activePlan = allPlans[0] ?? null;
 
-    const completedPhases = allPhases.filter((p) => p.status === "complete").length;
+    const completedPhases = allPhases.filter((p) => p.status === PhaseStatus.COMPLETE).length;
     const totalPhases = allPhases.length || 3;
     const progressPercent =
       totalPhases > 0 ? Math.round((completedPhases / totalPhases) * 100) : 0;

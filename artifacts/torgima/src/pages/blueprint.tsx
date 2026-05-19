@@ -6,6 +6,7 @@ import {
   usePauseBlueprint,
   useResumeBlueprint,
 } from "@workspace/api-client-react";
+import { BlueprintStatus } from "@workspace/state-machine";
 import { useParams, Link } from "wouter";
 import {
   ArrowLeft,
@@ -322,7 +323,7 @@ export default function BlueprintPage() {
     );
   }
 
-  const isActive = cc.blueprintStatus === "active";
+  const isActive = cc.blueprintStatus === BlueprintStatus.ACTIVE;
   const signalLines = cc.signalBridge?.lines ?? [];
 
   return (
@@ -417,7 +418,7 @@ export default function BlueprintPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          ) : cc.blueprintStatus === "paused" ? (
+          ) : cc.blueprintStatus === BlueprintStatus.PAUSED ? (
             <button
               type="button"
               onClick={handleResume}

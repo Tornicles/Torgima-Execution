@@ -1,21 +1,22 @@
 import { Link } from "wouter";
 import { ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { DashboardAlert, DashboardProjection } from "@/lib/dashboard-types";
+import { ConditionState } from "@workspace/state-machine";
 
 const CONDITION_UI: Record<string, { icon: string; message: string; bg: string; color: string }> = {
-  stability: { icon: "🛡️", message: "Execution chain stable — maintain continuity.", bg: "bg-green-50", color: "text-green-700" },
-  power: { icon: "⚡", message: "Elevated execution — scale disciplined output.", bg: "bg-blue-50", color: "text-blue-700" },
-  affluence: { icon: "👑", message: "Maximum capacity window — prioritize leverage.", bg: "bg-purple-50", color: "text-purple-700" },
-  urgency: { icon: "🔥", message: "Continuity needs reinforcement.", bg: "bg-orange-50", color: "text-orange-700" },
-  danger: { icon: "⚠️", message: "Recovery stance — protect signal quality.", bg: "bg-red-50", color: "text-red-700" },
-  nothingness: { icon: "○", message: "Baseline initializing — complete your first order.", bg: "bg-gray-50", color: "text-gray-700" },
-  power_change: { icon: "↗️", message: "Condition transition — adaptation active.", bg: "bg-amber-50", color: "text-amber-700" },
+  [ConditionState.STABILITY]: { icon: "🛡️", message: "Execution chain stable — maintain continuity.", bg: "bg-green-50", color: "text-green-700" },
+  [ConditionState.POWER]: { icon: "⚡", message: "Elevated execution — scale disciplined output.", bg: "bg-blue-50", color: "text-blue-700" },
+  [ConditionState.AFFLUENCE]: { icon: "👑", message: "Maximum capacity window — prioritize leverage.", bg: "bg-purple-50", color: "text-purple-700" },
+  [ConditionState.URGENCY]: { icon: "🔥", message: "Continuity needs reinforcement.", bg: "bg-orange-50", color: "text-orange-700" },
+  [ConditionState.DANGER]: { icon: "⚠️", message: "Recovery stance — protect signal quality.", bg: "bg-red-50", color: "text-red-700" },
+  [ConditionState.NOTHINGNESS]: { icon: "○", message: "Baseline initializing — complete your first order.", bg: "bg-gray-50", color: "text-gray-700" },
+  [ConditionState.POWER_CHANGE]: { icon: "↗️", message: "Condition transition — adaptation active.", bg: "bg-amber-50", color: "text-amber-700" },
 };
 
 export function ConditionPanel({ state }: { state: DashboardProjection }) {
   const detail = state.conditionDetail as { condition?: string } | undefined;
-  const key = (detail?.condition ?? (state.signals as { condition?: string })?.condition ?? "nothingness").toLowerCase();
-  const cfg = CONDITION_UI[key] ?? CONDITION_UI.nothingness;
+  const key = (detail?.condition ?? (state.signals as { condition?: string })?.condition ?? ConditionState.NOTHINGNESS).toLowerCase();
+  const cfg = CONDITION_UI[key] ?? CONDITION_UI[ConditionState.NOTHINGNESS];
   const enforcement = state.enforcement as { allowedActions?: string[]; blockedActions?: string[] } | null;
 
   return (

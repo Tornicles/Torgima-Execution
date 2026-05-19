@@ -992,7 +992,7 @@ components:
           type: string
         status:
           type: string
-          enum: [draft, validating, active, paused, complete, abandoned]
+          enum: [draft, validating, awaiting_selection, path_selection, active, paused, complete, abandoned]
         phase:
           type: integer
         totalPhases:

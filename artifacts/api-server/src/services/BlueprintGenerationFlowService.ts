@@ -8,6 +8,7 @@ import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchService.js";
+import { BlueprintStatus } from "@workspace/state-machine";
 
 const domainEngine = new DomainResolutionEngine();
 
@@ -19,7 +20,7 @@ export async function getBlueprintGenerateReady(userId: string): Promise<{
   const [bp] = await db
     .select()
     .from(blueprints)
-    .where(and(eq(blueprints.user_id, userId), eq(blueprints.status, "draft")))
+    .where(and(eq(blueprints.user_id, userId), eq(blueprints.status, BlueprintStatus.DRAFT)))
     .limit(1);
 
   if (!bp) return { ready: false, reason: "No draft blueprint" };

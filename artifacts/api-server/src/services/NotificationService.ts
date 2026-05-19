@@ -20,6 +20,7 @@ import {
   type NotificationContext,
   type EmailContent,
 } from "./notification/EmailTemplates.js";
+import { NotificationStatus } from "@workspace/state-machine";
 
 const appUrl = (
   process.env["APP_URL"] ||
@@ -181,7 +182,7 @@ async function isFrequencyCapped(
   const conds = [
     eq(notificationLogs.user_id, userId),
     eq(notificationLogs.notification_type, notificationType),
-    eq(notificationLogs.status, "sent"),
+    eq(notificationLogs.status, NotificationStatus.SENT),
     gte(notificationLogs.sent_at, since),
   ];
   if (blueprintId) {
@@ -334,7 +335,7 @@ async function deliverEmail(params: {
     await db
       .update(notificationLogs)
       .set({
-        status: "pending",
+        status: NotificationStatus.PENDING,
         suppression_reason: null,
         attempt_count: sql`${notificationLogs.attempt_count} + 1`,
         updated_at: new Date(),
@@ -348,7 +349,7 @@ async function deliverEmail(params: {
         blueprint_id: params.blueprintId ?? null,
         notification_type: params.notificationType,
         channel: "email",
-        status: "pending",
+        status: NotificationStatus.PENDING,
         source_event_id: params.sourceEventId ?? null,
         idempotency_key: params.idempotencyKey,
         attempt_count: 1,
@@ -405,7 +406,7 @@ async function deliverEmail(params: {
 
   await db
     .update(notificationLogs)
-    .set({ status: "pending", last_error: errMsg, updated_at: new Date() })
+    .set({ status: NotificationStatus.PENDING, last_error: errMsg, updated_at: new Date() })
     .where(eq(notificationLogs.id, logId));
 
   logger.warn({ logId, attempt: attempts, error: errMsg }, "[NotificationService] Delivery failed — retry");
@@ -423,13 +424,13 @@ export async function sendNotification(params: SendNotificationParams): Promise<
     .limit(1);
 
   if (existing) {
-    if (existing.status === "sent") {
+    if (existing.status === NotificationStatus.SENT) {
       return { sent: false, suppressed: true, suppressionReason: "duplicate", logId: existing.id };
     }
-    if (existing.status === "deferred" && existing.suppression_reason === "quiet_hours") {
+    if (existing.status === NotificationStatus.DEFERRED && existing.suppression_reason === "quiet_hours") {
       return { sent: false, suppressed: true, suppressionReason: "quiet_hours", logId: existing.id };
     }
-    if (existing.status === "suppressed") {
+    if (existing.status === NotificationStatus.SUPPRESSED) {
       return {
         sent: false,
         suppressed: true,
@@ -502,7 +503,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
   }
 
   const retryLogId =
-    existing && (existing.status === "pending" || existing.status === "failed") ? existing.id : undefined;
+    existing && (existing.status === NotificationStatus.PENDING || existing.status === NotificationStatus.FAILED) ? existing.id : undefined;
 
   return deliverEmail({
     userId: params.userId,
@@ -525,7 +526,7 @@ export async function processDeferredNotifications(): Promise<number> {
     .select()
     .from(notificationLogs)
     .where(
-      and(eq(notificationLogs.status, "deferred"), eq(notificationLogs.suppression_reason, "quiet_hours")),
+      and(eq(notificationLogs.status, NotificationStatus.DEFERRED), eq(notificationLogs.suppression_reason, "quiet_hours")),
     )
     .orderBy(asc(notificationLogs.created_at))
     .limit(20);

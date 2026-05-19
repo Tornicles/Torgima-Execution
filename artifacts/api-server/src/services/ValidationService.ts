@@ -23,6 +23,7 @@ import { recordValidationMemory } from "../engines/validation/ValidationMemorySe
 import { recordStrategicAssumptions } from "../engines/validation/AssumptionMonitoringService.js";
 import { validations as validationsTable } from "@workspace/db";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
+import { BlueprintStatus, ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
 export async function getAiEnabled(): Promise<boolean> {
   const rows = await db
@@ -71,11 +72,11 @@ function rowToResult(row: typeof validations.$inferSelect, blueprintId: string):
 }
 
 function assertIntelligencePayload(row: typeof validations.$inferSelect): ValidationIntelligencePayload {
-  if (row.validation_kind !== "intelligence") {
+  if (row.validation_kind !== ValidationKind.INTELLIGENCE) {
     throw new TorgimaError("VALIDATION_ERROR", `Validation ${row.id} is ${row.validation_kind}, not intelligence`);
   }
 
-  const payloadCheck = validatePayload("intelligence", row.intelligence_payload);
+  const payloadCheck = validatePayload(ValidationKind.INTELLIGENCE, row.intelligence_payload);
   if (!payloadCheck.success) {
     throw new TorgimaError(
       "VALIDATION_PAYLOAD_CORRUPT",
@@ -154,8 +155,8 @@ export const ValidationService = {
       .values({
         blueprint_id: params.blueprintId,
         user_id: params.userId,
-        status: "queued",
-        validation_kind: "intelligence",
+        status: ValidationStatus.QUEUED,
+        validation_kind: ValidationKind.INTELLIGENCE,
         payload_version: 1,
         tier: params.tier ?? null,
       })
@@ -178,7 +179,7 @@ export const ValidationService = {
       idempotencyKey: `validation_start:${params.blueprintId}:${inserted.id}`,
     });
 
-    return { sessionId: inserted.id, status: "queued" };
+    return { sessionId: inserted.id, status: ValidationStatus.QUEUED };
   },
 
   async getValidationStatus(validationId: string, userId: string) {
@@ -216,9 +217,9 @@ export const ValidationService = {
     if (!bp) throw new TorgimaError("NOT_FOUND", "Blueprint not found");
 
     if (
-      bp.status !== "path_selection" &&
-      bp.status !== "awaiting_selection" &&
-      bp.status !== "draft"
+      bp.status !== BlueprintStatus.PATH_SELECTION &&
+      bp.status !== BlueprintStatus.AWAITING_SELECTION &&
+      bp.status !== BlueprintStatus.DRAFT
     ) {
       throw new TorgimaError("STALE_STATE", `Blueprint is not in path selection state (current: ${bp.status})`);
     }
@@ -232,7 +233,7 @@ export const ValidationService = {
             and(
               eq(validations.contract_id, params.validationContractId),
               eq(validations.blueprint_id, params.blueprintId),
-              eq(validations.validation_kind, "intelligence"),
+              eq(validations.validation_kind, ValidationKind.INTELLIGENCE),
             ),
           )
           .limit(1)
@@ -242,8 +243,8 @@ export const ValidationService = {
           .where(
             and(
               eq(validations.blueprint_id, params.blueprintId),
-              eq(validations.validation_kind, "intelligence"),
-              eq(validations.status, "complete"),
+              eq(validations.validation_kind, ValidationKind.INTELLIGENCE),
+              eq(validations.status, ValidationStatus.COMPLETE),
             ),
           )
           .orderBy(desc(validations.created_at))
@@ -351,8 +352,8 @@ export const ValidationService = {
       .where(
         and(
           eq(validations.blueprint_id, params.blueprintId),
-          eq(validations.validation_kind, "intelligence"),
-          eq(validations.status, "complete"),
+          eq(validations.validation_kind, ValidationKind.INTELLIGENCE),
+          eq(validations.status, ValidationStatus.COMPLETE),
         ),
       )
       .orderBy(desc(validations.created_at))

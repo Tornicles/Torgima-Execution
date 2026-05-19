@@ -5,6 +5,7 @@ import { TorgimaError } from "../lib/errors.js";
 import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
 import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { ValidationService } from "./ValidationService.js";
+import { BlueprintStatus } from "@workspace/state-machine";
 
 export type LaunchPathType = "current" | "adjusted" | "alternative";
 
@@ -35,7 +36,7 @@ export const BlueprintLaunchService = {
     }
 
     const blueprint = await BlueprintRepository.findById(input.blueprintId, input.userId);
-    if (blueprint.status === "active") {
+    if (blueprint.status === BlueprintStatus.ACTIVE) {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
 

@@ -5,11 +5,11 @@ import { and, eq, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { runPrimaryLoop } from "../engines/execution-loop/runPrimaryLoop.js";
-import { runDailyLoop } from "../engines/execution-loop/runDailyLoopUser.js";
-import { generateNextTask } from "../engines/execution-loop/generateNextTask.js";
 import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { routeTrigger } from "../bhudhi/TriggerRouter.js";
 import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
+import { ExecutionLoopService } from "../services/ExecutionLoopService.js";
+import { BlueprintStatus, OrderStatus } from "../types/stateMachine.js";
 
 const router = Router();
 
@@ -62,16 +62,20 @@ router.post("/execution/feedback", async (req, res) => {
 router.get("/execution/active-order", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    const daily = await runDailyLoop(auth.userId);
-    const order = daily.activeOrder;
-    const injection =
-      order?.command_context &&
-      typeof order.command_context === "object" &&
-      "knowledgeInjection" in (order.command_context as object)
-        ? (order.command_context as { knowledgeInjection?: unknown }).knowledgeInjection
-        : null;
+    const result = await ExecutionLoopService.getActiveOrder(auth.userId);
 
-    success(res, { order, knowledgeInjection: injection, morningReport: daily.morningReport });
+    if (!result?.order) {
+      failure(res, "NOT_FOUND", "No active order. Blueprint may be empty or paused.", 404);
+      return;
+    }
+
+    success(res, {
+      order: result.order,
+      knowledgeInjection: result.knowledgeInjection,
+      morningReport: result.morningReport,
+      currentCondition: result.currentCondition,
+      enforcementPackageId: result.enforcementPackageId,
+    });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -82,12 +86,18 @@ router.post("/execution/next-task", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprintId =
-      typeof req.body?.blueprintId === "string" ? req.body.blueprintId : undefined;
+      typeof req.body?.blueprint_id === "string" ? req.body.blueprint_id
+      : typeof req.body?.blueprintId === "string" ? req.body.blueprintId
+      : undefined;
 
-    const result = await generateNextTask(auth.userId, {
+    if (!blueprintId) {
+      failure(res, "VALIDATION_ERROR", "blueprint_id required", 400);
+      return;
+    }
+
+    const result = await ExecutionLoopService.generateNextTask({
       blueprintId,
-      reason: "MANUAL_REQUEST",
-      generationMode: "post_feedback",
+      userId: auth.userId,
     });
 
     success(res, result);
@@ -184,7 +194,7 @@ router.get("/execution/loop-status", async (req, res) => {
     const [bp] = await db
       .select({ id: blueprints.id })
       .from(blueprints)
-      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
+      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true), eq(blueprints.status, BlueprintStatus.ACTIVE)))
       .limit(1);
 
     let activeCount = 0;
@@ -195,7 +205,7 @@ router.get("/execution/loop-status", async (req, res) => {
         .where(
           and(
             eq(orders.blueprint_id, bp.id),
-            inArray(orders.status, ["pending", "active", "pre_generated"]),
+            inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE, OrderStatus.PRE_GENERATED]),
           ),
         );
       activeCount = rows.length;

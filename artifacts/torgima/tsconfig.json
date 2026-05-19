@@ -16,6 +16,9 @@
   },
   "references": [
     {
+      "path": "../../lib/state-machine"
+    },
+    {
       "path": "../../lib/api-client-react"
     }
   ]

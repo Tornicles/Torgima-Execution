@@ -103,6 +103,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/state-machine':
+        specifier: workspace:*
+        version: link:../../lib/state-machine
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -331,6 +334,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/state-machine':
+        specifier: workspace:*
+        version: link:../../lib/state-machine
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -424,6 +430,9 @@ importers:
 
   lib/db:
     dependencies:
+      '@workspace/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
@@ -452,6 +461,8 @@ importers:
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
+
+  lib/state-machine: {}
 
   scripts:
     dependencies:

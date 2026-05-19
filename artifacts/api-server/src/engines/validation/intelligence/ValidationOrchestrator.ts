@@ -21,6 +21,7 @@ import { buildValidationTabs } from "./buildValidationTabs.js";
 import { buildValidationToBlueprintContract } from "./ValidationToBlueprintBridge.js";
 import { applyTierDepthToResult } from "./applyTierDepth.js";
 import type { FullValidationResult, ReadinessState, ValidationIntelligencePayload } from "./validation-intelligence-types.js";
+import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
 export async function runFullValidation(params: {
   blueprintId: string;
@@ -198,7 +199,7 @@ export async function runFullValidation(params: {
   const aiSummary = buildSummary(verdict, reasoning, scores.overall);
   const usedFallback = !params.aiEnabled || eis.source === "EIS+fallback";
 
-  const payloadCheck = validatePayload("intelligence", intelligence);
+  const payloadCheck = validatePayload(ValidationKind.INTELLIGENCE, intelligence);
   if (!payloadCheck.success) {
     throw new TorgimaError(
       "VALIDATION_PAYLOAD_CORRUPT",
@@ -226,8 +227,8 @@ export async function runFullValidation(params: {
     path_current: paths.current as unknown as Record<string, unknown>,
     path_adjusted: paths.adjusted as unknown as Record<string, unknown>,
     path_alternative: paths.alternative as unknown as Record<string, unknown>,
-    status: "complete",
-    validation_kind: "intelligence" as const,
+    status: ValidationStatus.COMPLETE,
+    validation_kind: ValidationKind.INTELLIGENCE,
     payload_version: 1,
     tier,
     intelligence_payload: intelligence as unknown as Record<string, unknown>,

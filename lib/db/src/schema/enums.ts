@@ -1,4 +1,16 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import {
+  ActionTypeValues,
+  BlueprintStatusValues,
+  ConditionStateValues,
+  EventStatusValues,
+  OrderStatusValues,
+  PhaseStatusValues,
+  PlanStatusValues,
+  ProjectStatusValues,
+  TargetStatusValues,
+  ValidationKindValues,
+} from "@workspace/state-machine";
 
 // GROUP 1 — USER & SYSTEM
 export const userModeEnum = pgEnum("user_mode", ["individual", "team"]);
@@ -6,16 +18,7 @@ export const userTierEnum = pgEnum("user_tier", ["starter", "growth", "ultimate"
 export const commitmentLevelEnum = pgEnum("commitment_level", ["low", "medium", "high", "full"]);
 
 // GROUP 2 — BLUEPRINT & EXECUTION
-export const blueprintStatusEnum = pgEnum("blueprint_status", [
-  "draft",
-  "validating",
-  "awaiting_selection",
-  "path_selection",
-  "active",
-  "paused",
-  "complete",
-  "abandoned",
-]);
+export const blueprintStatusEnum = pgEnum("blueprint_status", BlueprintStatusValues);
 export const intelligenceDepthEnum = pgEnum("intelligence_depth", [
   "guided",
   "operational",
@@ -46,39 +49,23 @@ export const validationReadinessEnum = pgEnum("validation_readiness", [
   "ready_with_adjustment",
   "blocked_pivot",
 ]);
-export const validationKindEnum = pgEnum("validation_kind", [
-  "legacy",
-  "intelligence",
-  "erector",
-  "readiness",
-  "path_selection",
-  "unknown",
-]);
+export const validationKindEnum = pgEnum("validation_kind", ValidationKindValues);
 export const domainEnum = pgEnum("domain", [
   "genesis", "market", "delivery", "operations", "people", "growth", "continuity",
 ]);
 export const seasonNameEnum = pgEnum("season_name", ["ignition", "foundation", "traction", "scale"]);
-export const planStatusEnum = pgEnum("plan_status", ["pending", "active", "complete", "skipped"]);
+export const planStatusEnum = pgEnum("plan_status", PlanStatusValues);
 export const targetTypeEnum = pgEnum("target_type", [
   "major", "primary", "vital", "operating", "production", "conditional",
 ]);
-export const targetStatusEnum = pgEnum("target_status", [
-  "pending", "active", "on_track", "at_risk", "complete", "failed", "skipped",
-]);
+export const targetStatusEnum = pgEnum("target_status", TargetStatusValues);
 export const phaseNameEnum = pgEnum("phase_name", ["initiation", "development", "completion"]);
-export const phaseStatusEnum = pgEnum("phase_status", [
-  "pending", "active", "gated", "blocked", "complete", "skipped",
-]);
+export const phaseStatusEnum = pgEnum("phase_status", PhaseStatusValues);
 export const projectTypeEnum = pgEnum("project_type", [
   "setup", "execution", "analysis", "optimization", "recovery",
 ]);
-export const projectStatusEnum = pgEnum("project_status", [
-  "pending", "active", "blocked", "complete", "failed", "skipped",
-]);
-export const actionTypeEnum = pgEnum("action_type", [
-  "create", "replicate", "analyze", "improve", "standardize", "recover",
-  "test", "publish", "validate", "measure", "build",
-]);
+export const projectStatusEnum = pgEnum("project_status", ProjectStatusValues);
+export const actionTypeEnum = pgEnum("action_type", ActionTypeValues);
 
 // GROUP 3 — ORDER (TASK)
 export const taskTypeEnum = pgEnum("task_type", [
@@ -89,15 +76,10 @@ export const difficultyEnum = pgEnum("difficulty", [
   "very_easy", "easy", "moderate", "hard", "very_hard",
 ]);
 export const proofTypeEnum = pgEnum("proof_type", ["link", "file", "text", "image", "none"]);
-export const orderStatusEnum = pgEnum("order_status", [
-  "pending", "active", "paused", "blocked", "needs_feedback",
-  "needs_proof", "completed", "failed", "skipped", "cancelled", "pre_generated",
-]);
+export const orderStatusEnum = pgEnum("order_status", OrderStatusValues);
 
 // GROUP 4 — SIGNAL & CONDITION
-export const conditionEnum = pgEnum("condition", [
-  "nothingness", "danger", "urgency", "stability", "power", "affluence", "power_change",
-]);
+export const conditionEnum = pgEnum("condition", ConditionStateValues);
 export const signalTrendEnum = pgEnum("signal_trend", [
   "rising", "stable", "declining", "recovering", "volatile",
 ]);
@@ -117,9 +99,7 @@ export const uiModeEnum = pgEnum("ui_mode", [
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high", "critical"]);
 
 // GROUP 5 — EVENT SYSTEM
-export const eventStatusEnum = pgEnum("event_status", [
-  "pending", "claimed", "processed", "retry_pending", "dead_lettered", "cancelled",
-]);
+export const eventStatusEnum = pgEnum("event_status", EventStatusValues);
 export const eventLogResultEnum = pgEnum("event_log_result", [
   "success", "retry", "failed", "dead_lettered", "noop_duplicate",
 ]);

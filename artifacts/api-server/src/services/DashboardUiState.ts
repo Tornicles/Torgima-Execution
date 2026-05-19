@@ -1,3 +1,5 @@
+import { BlueprintStatus, ConditionState, OrderStatus } from "@workspace/state-machine";
+
 export type DashboardUiState =
   | "NO_BLUEPRINT"
   | "READY"
@@ -43,15 +45,15 @@ export function deriveDashboardUiState(params: {
   if (
     params.recoveryRequired ||
     recoveryTask ||
-    (cond === "danger" && !params.hasPendingOrActiveTask)
+    (cond === ConditionState.DANGER && !params.hasPendingOrActiveTask)
   ) {
     return "RECOVERY";
   }
 
-  if (params.currentActionStatus === "active") return "IN_PROGRESS";
-  if (params.currentActionStatus === "pending") return "READY";
+  if (params.currentActionStatus === OrderStatus.ACTIVE) return "IN_PROGRESS";
+  if (params.currentActionStatus === OrderStatus.PENDING) return "READY";
 
-  if (params.hasBlueprint && params.blueprintStatus === "active" && !params.hasPendingOrActiveTask) {
+  if (params.hasBlueprint && params.blueprintStatus === BlueprintStatus.ACTIVE && !params.hasPendingOrActiveTask) {
     return "PENDING_SYNC";
   }
 

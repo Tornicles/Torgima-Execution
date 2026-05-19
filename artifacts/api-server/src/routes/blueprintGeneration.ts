@@ -10,9 +10,6 @@ import {
 import { generateInterpretation } from "../bhudhi/agents/BlueprintAgent.js";
 import { getBlueprintStructure } from "../engines/blueprint/BlueprintStructureService.js";
 import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
-import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
-import { db, orders } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -98,56 +95,6 @@ router.get("/blueprint/:id/interpret", async (req, res) => {
     await BlueprintRepository.findById(req.params.id, auth.userId);
     const interpretation = await generateInterpretation(req.params.id, auth.userId);
     success(res, { interpretation });
-  } catch (err) {
-    handleError(req, res, err);
-  }
-});
-
-router.post("/execution/next-task", async (req, res) => {
-  try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const body = z.object({ blueprintId: z.string().uuid().optional() }).parse(req.body ?? {});
-    let targetBlueprintId = body.blueprintId;
-    if (!targetBlueprintId) {
-      const rows = await BlueprintRepository.listForUser(auth.userId);
-      targetBlueprintId = rows.find(r => r.active)?.id;
-    }
-
-    if (!targetBlueprintId) {
-      failure(res, "NOT_FOUND", "No active blueprint", 404);
-      return;
-    }
-
-    await writeEvent({
-      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
-      entityType: "blueprint",
-      entityId: targetBlueprintId,
-      userId: auth.userId,
-      blueprintId: targetBlueprintId,
-      payload: { trigger: "execution_next_task" },
-      idempotencyKey: `next_task:${targetBlueprintId}:${Date.now()}`,
-    });
-
-    success(res, { queued: true, blueprintId: targetBlueprintId });
-  } catch (err) {
-    handleError(req, res, err);
-  }
-});
-
-router.get("/execution/active-order", async (req, res) => {
-  try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const blueprintId = typeof req.query.blueprintId === "string" ? req.query.blueprintId : undefined;
-    const activeOrders = await db
-      .select()
-      .from(orders)
-      .where(
-        blueprintId
-          ? and(eq(orders.user_id, auth.userId), eq(orders.blueprint_id, blueprintId), eq(orders.status, "active"))
-          : and(eq(orders.user_id, auth.userId), eq(orders.status, "active")),
-      )
-      .limit(1);
-    success(res, { order: activeOrders[0] ?? null });
   } catch (err) {
     handleError(req, res, err);
   }

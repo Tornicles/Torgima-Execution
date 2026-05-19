@@ -11,6 +11,9 @@
       "path": "../../lib/db"
     },
     {
+      "path": "../../lib/state-machine"
+    },
+    {
       "path": "../../lib/api-zod"
     }
   ]

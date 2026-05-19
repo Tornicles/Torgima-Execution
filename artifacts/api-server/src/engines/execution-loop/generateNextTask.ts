@@ -7,6 +7,7 @@ import { getLatestBurnoutRecord, getBurnoutAdjustment } from "../burnout/Burnout
 import { assessMotivationState } from "../../bhudhi/agents/PsychologyAgent.js";
 import { selectPackage, packageToInjection } from "../../bhudhi/agents/KnowledgeAgent.js";
 import { logger } from "../../lib/logger.js";
+import { BlueprintStatus, OrderStatus } from "@workspace/state-machine";
 
 export interface GenerateNextTaskOptions {
   condition?: string;
@@ -38,13 +39,14 @@ export async function generateNextTask(
             eq(blueprints.id, options.blueprintId),
             eq(blueprints.user_id, userId),
             eq(blueprints.active, true),
+            eq(blueprints.status, BlueprintStatus.ACTIVE),
           ),
         )
         .limit(1)
     : await db
         .select()
         .from(blueprints)
-        .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true)))
+        .where(and(eq(blueprints.user_id, userId), eq(blueprints.active, true), eq(blueprints.status, BlueprintStatus.ACTIVE)))
         .limit(1);
 
   if (!bp) {
@@ -73,7 +75,7 @@ export async function generateNextTask(
       and(
         eq(orders.blueprint_id, bp.id),
         eq(orders.user_id, userId),
-        inArray(orders.status, ["pending", "active", "pre_generated"]),
+        inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE, OrderStatus.PRE_GENERATED]),
       ),
     );
 

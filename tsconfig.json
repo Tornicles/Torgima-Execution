@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/state-machine"
+    },
+    {
       "path": "./lib/db"
     },
     {

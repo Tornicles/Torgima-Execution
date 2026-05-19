@@ -7,6 +7,7 @@ import { db, users, blueprints, featureFlags, validations } from "@workspace/db"
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { checkSchemaHealth } from "../lib/verifySchema.js";
+import { BlueprintStatus } from "../types/stateMachine.js";
 
 const router = Router();
 
@@ -133,10 +134,10 @@ router.post("/onboarding/goal", async (req, res) => {
 
     const existing = existingRows.find(
       (b) =>
-        b.status === "draft" ||
-        b.status === "validating" ||
-        b.status === "awaiting_selection" ||
-        b.status === "path_selection",
+        b.status === BlueprintStatus.DRAFT ||
+        b.status === BlueprintStatus.VALIDATING ||
+        b.status === BlueprintStatus.AWAITING_SELECTION ||
+        b.status === BlueprintStatus.PATH_SELECTION,
     );
 
     let blueprintId: string;

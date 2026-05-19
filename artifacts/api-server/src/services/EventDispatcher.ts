@@ -3,6 +3,7 @@ import { events, eventLogs } from "@workspace/db";
 import { eq, and, lte, inArray } from "drizzle-orm";
 import { getBoss } from "../lib/queue.js";
 import { logger } from "../lib/logger.js";
+import { EventStatus } from "@workspace/state-machine";
 
 // Queue names mapped from event types
 const EVENT_QUEUE_MAP: Record<string, string> = {
@@ -62,7 +63,7 @@ export async function dispatchPendingEvents(): Promise<number> {
     const pending = await tx
       .select()
       .from(events)
-      .where(and(eq(events.status, "pending"), lte(events.process_after, new Date())))
+      .where(and(eq(events.status, EventStatus.PENDING), lte(events.process_after, new Date())))
       .orderBy(events.created_at)
       .limit(DISPATCH_BATCH_SIZE);
 
@@ -133,7 +134,7 @@ export async function dispatchPendingEvents(): Promise<number> {
       // Return to pending for retry
       await db
         .update(events)
-        .set({ status: "pending", retry_count: event.retry_count + 1 })
+        .set({ status: EventStatus.PENDING, retry_count: event.retry_count + 1 })
         .where(eq(events.id, event.id))
         .catch(() => null);
     }

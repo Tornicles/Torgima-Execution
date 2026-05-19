@@ -3,6 +3,7 @@ import { Info, TrendingUp } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { useBlueprintStore } from "@/store/blueprintStore";
+import { ConditionState } from "@workspace/state-machine";
 
 const CONDITIONS = ["Nothingness", "Danger", "Stability", "Power", "Affluence"];
 
@@ -15,11 +16,11 @@ const CONDITION_ICONS: Record<string, string> = {
 };
 
 function spectrumIndex(raw: string): number {
-  const keys = ["nothingness", "danger", "stability", "power", "affluence"];
+  const keys: string[] = [ConditionState.NOTHINGNESS, ConditionState.DANGER, ConditionState.STABILITY, ConditionState.POWER, ConditionState.AFFLUENCE];
   const i = keys.indexOf(raw);
   if (i >= 0) return i;
-  if (raw === "urgency") return 1;
-  if (raw === "power_change") return 3;
+  if (raw === ConditionState.URGENCY) return 1;
+  if (raw === ConditionState.POWER_CHANGE) return 3;
   return 2;
 }
 
@@ -92,7 +93,7 @@ export default function SignalsPage() {
     (sig?.assignedCondition as string) ??
     (condObj?.condition as string) ??
     (sig?.condition as string) ??
-    "stability"
+    ConditionState.STABILITY
   ).toLowerCase();
   const conditionDisplay = conditionRaw.replace(/_/g, " ");
   const activeConditionIdx = spectrumIndex(conditionRaw);
@@ -173,7 +174,7 @@ export default function SignalsPage() {
               <span className={`text-3xl font-bold uppercase ${cfg.textColor}`}>{conditionDisplay}</span>
               <div
                 className={`w-2.5 h-2.5 rounded-full ${
-                  conditionRaw === "stability" || conditionRaw === "power" || conditionRaw === "affluence"
+                  conditionRaw === ConditionState.STABILITY || conditionRaw === ConditionState.POWER || conditionRaw === ConditionState.AFFLUENCE
                     ? "bg-green-500"
                     : "bg-orange-500"
                 } animate-pulse`}

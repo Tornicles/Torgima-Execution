@@ -6,6 +6,7 @@ import { runFullValidation } from "./intelligence/ValidationOrchestrator.js";
 import { logValidationStage } from "./ValidationEventLogService.js";
 import { recordVerdictEvolution } from "./VerdictEvolutionService.js";
 import type { BlueprintTier } from "../blueprint/infrastructure/blueprint-types.js";
+import { ValidationStatus } from "@workspace/state-machine";
 
 const STAGES = ["CIS", "IIS", "EIS", "SIS", "PIS"] as const;
 
@@ -59,7 +60,7 @@ export async function runValidationPipeline(params: {
 
   await db
     .update(validations)
-    .set({ status: "running" })
+    .set({ status: ValidationStatus.RUNNING })
     .where(eq(validations.id, params.validationId));
 
   for (const stage of STAGES) {
@@ -108,8 +109,8 @@ export async function runValidationPipeline(params: {
             userId: params.userId,
             stage,
             status:
-              prog === "complete" ? "COMPLETED"
-              : prog === "running" ? "RUNNING"
+              prog === ValidationStatus.COMPLETE ? "COMPLETED"
+              : prog === ValidationStatus.RUNNING ? "RUNNING"
               : "PENDING",
             confidence: result.scores.overall,
           });
@@ -131,14 +132,14 @@ export async function runValidationPipeline(params: {
 
     await db
       .update(validations)
-      .set({ status: "complete" })
+      .set({ status: ValidationStatus.COMPLETE })
       .where(eq(validations.id, params.validationId));
 
-    return { status: "complete", validationId: params.validationId };
+    return { status: ValidationStatus.COMPLETE, validationId: params.validationId };
   } catch (err) {
     await db
       .update(validations)
-      .set({ status: "failed" })
+      .set({ status: ValidationStatus.FAILED })
       .where(eq(validations.id, params.validationId));
 
     await logValidationStage({

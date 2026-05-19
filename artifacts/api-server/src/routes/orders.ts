@@ -20,6 +20,7 @@ import {
   requireExplicitIdempotencyKey,
 } from "../lib/route-helpers.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { OrderStatus } from "../types/stateMachine.js";
 
 const router = Router();
 
@@ -293,7 +294,7 @@ router.post("/orders/:id/start", async (req, res) => {
     const [pending] = await db
       .select({ id: orders.id })
       .from(orders)
-      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, "pending")))
+      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, OrderStatus.PENDING)))
       .limit(1);
 
     if (!pending) {
@@ -303,7 +304,7 @@ router.post("/orders/:id/start", async (req, res) => {
 
     await db
       .update(orders)
-      .set({ status: "active", started_at: new Date() })
+      .set({ status: OrderStatus.ACTIVE, started_at: new Date() })
       .where(eq(orders.id, id));
 
     success(res, { started: true, orderId: id });
@@ -478,7 +479,7 @@ router.post("/orders/:id/unblock", async (req, res) => {
     const [order] = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, "blocked")))
+      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, OrderStatus.BLOCKED)))
       .limit(1);
 
     if (!order) {
@@ -489,7 +490,7 @@ router.post("/orders/:id/unblock", async (req, res) => {
     await db
       .update(orders)
       .set({
-        status: "active",
+        status: OrderStatus.ACTIVE,
         blocker_type: null,
         blocker_description: null,
         dependency_reference: null,
@@ -512,7 +513,7 @@ router.post("/orders/:id/pause", async (req, res) => {
     const [order] = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, "active")))
+      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, OrderStatus.ACTIVE)))
       .limit(1);
 
     if (!order) {
@@ -537,7 +538,7 @@ router.post("/orders/:id/resume", async (req, res) => {
     const [order] = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, "paused")))
+      .where(and(eq(orders.id, id), eq(orders.user_id, auth.userId), eq(orders.status, OrderStatus.PAUSED)))
       .limit(1);
 
     if (!order) {
@@ -545,7 +546,7 @@ router.post("/orders/:id/resume", async (req, res) => {
       return;
     }
 
-    await db.update(orders).set({ status: "active" }).where(eq(orders.id, id));
+    await db.update(orders).set({ status: OrderStatus.ACTIVE }).where(eq(orders.id, id));
     success(res, { resumed: true, orderId: id });
   } catch (e) {
     handleRouteError(req, res, e);
