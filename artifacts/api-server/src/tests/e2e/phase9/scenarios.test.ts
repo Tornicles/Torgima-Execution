@@ -120,6 +120,8 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       await ValidationService.validateGoal({
         blueprintId,
         userId,
+        tier: "growth",
+        mode: "individual",
         input: {
           goal: structured.cleanedGoal,
           purpose: structured.purpose,

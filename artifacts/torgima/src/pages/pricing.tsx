@@ -9,7 +9,7 @@ const freeFeatures = [
   "Basic cached intelligence",
   "Academy and capability gap detection",
   "Dashboard with condition, signals, blueprint health",
-  "Standard task knowledge injection",
+  "Standard execution knowledge injection",
 ];
 
 const intelligenceFeatures = [

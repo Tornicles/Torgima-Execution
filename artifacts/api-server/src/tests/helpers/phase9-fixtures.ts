@@ -229,6 +229,13 @@ export async function seedPhase9Fixture(name: Phase9FixtureName): Promise<Phase9
         .values({
           user_id: user.id,
           blueprint_id: bp.id,
+          raw_goal: "Pivot validation fixture goal",
+          purpose: "Exercise pivot validation state",
+          timeframe: "90 days",
+          timeframe_days: 90,
+          commitment_level: "medium",
+          selected_blueprint_tier: "starter",
+          selected_blueprint_mode: "individual",
           status: "complete",
           verdict: "pivot",
           launch_blocked: true,

@@ -65,20 +65,22 @@ jobs:
     needs: verify
     services:
       postgres:
-        image: postgres:16
+        image: postgres:15
         env:
-          POSTGRES_USER: torgima
-          POSTGRES_PASSWORD: torgima
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: torgima_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U torgima -d torgima_test"
+          --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://torgima:torgima@localhost:5432/torgima_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/torgima_test
       TORGIMA_INTEGRATION: "true"
     steps:
       - uses: actions/checkout@v4
@@ -91,11 +93,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Apply migrations
-        run: |
-          for f in scripts/migrations/*.sql; do
-            psql "$DATABASE_URL" -f "$f" || true
-          done
+      - name: Apply database schema to test database
+        run: pnpm -F @workspace/db run push-force
       - name: Phase 9 scenario suite
         run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts
 

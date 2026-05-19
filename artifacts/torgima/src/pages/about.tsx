@@ -26,7 +26,7 @@ export default function AboutPage() {
           </p>
           <p>
             Torgima is not a planner. Not a motivational tool. It is an execution operating system. It converts your
-            goal into the next correct task, and the one after that, until the goal is complete. It measures your
+            goal into the next correct move, and the one after that, until the goal is complete. It measures your
             reality. It adapts to your behavior. It works while you sleep.
           </p>
           <p>

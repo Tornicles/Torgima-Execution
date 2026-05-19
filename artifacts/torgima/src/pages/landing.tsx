@@ -19,7 +19,7 @@ export default function LandingPage() {
               The execution system that never stops working for you.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-600">
-              Enter a goal. Get a blueprint. Torgima generates your next task, and the one after that, until your goal
+              Enter a goal. Get a blueprint. Torgima generates your next execution move, and the one after that, until your goal
               is complete. Even while you sleep.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -40,7 +40,7 @@ export default function LandingPage() {
           {[
             ["Plan overwhelm", "The goal becomes a pile of possible work instead of one correct next step."],
             ["Execution gap", "People know what they want, but not what today’s concrete move should be."],
-            ["Empty accountability", "A task list records intention. It does not adapt when reality changes."],
+            ["Empty accountability", "A static list records intention. It does not adapt when reality changes."],
           ].map(([title, copy]) => (
             <div key={title} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
               <p className="text-lg font-bold">{title}</p>
@@ -54,8 +54,8 @@ export default function LandingPage() {
         <div className="grid gap-5 md:grid-cols-3">
           {[
             [Target, "Enter your goal", "Give Torgima the outcome, timeframe, and reason. It checks reality before structure."],
-            [ClipboardList, "Get your blueprint", "The system turns the goal into plans, phases, projects, actions, and tasks."],
-            [Moon, "Wake up with context", "Your next task is always ready, with intelligence refreshed overnight when enabled."],
+            [ClipboardList, "Get your blueprint", "The system turns the goal into plans, phases, projects, actions, and execution moves."],
+            [Moon, "Wake up with context", "Your next execution move is always ready, with intelligence refreshed overnight when enabled."],
           ].map(([Icon, title, copy]) => (
             <div key={String(title)} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
               <Icon className="h-6 w-6 text-[#0EA5E9]" />
@@ -71,7 +71,7 @@ export default function LandingPage() {
           <div>
             <p className="text-lg leading-8 text-gray-600">
               When you wake up, your morning report shows competitor gaps, platform signals, trend velocity, and the
-              execution context that matters for today’s task.
+              execution context that matters for today’s move.
             </p>
             <Link href="/pricing" className="mt-8 inline-flex rounded-full bg-[#0A0F1E] px-6 py-3 text-sm font-bold text-white">
               See full pricing
@@ -84,9 +84,9 @@ export default function LandingPage() {
       <MarketingSection title="What Torgima is not" eyebrow="Positioning">
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            ["Not a task manager", "It is a system that keeps turning a goal into the next correct task."],
+            ["Not a static work manager", "It is a system that keeps turning a goal into the next correct move."],
             ["Not an AI chatbot", "It is a controlled execution intelligence governed by real signals."],
-            ["Not a planner", "It is a loop that adapts after each task, report, and condition change."],
+            ["Not a planner", "It is a loop that adapts after each completed move, report, and condition change."],
           ].map(([not, is]) => (
             <div key={not} className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
               <p className="text-sm text-gray-400 line-through">{not}</p>
@@ -102,7 +102,7 @@ export default function LandingPage() {
           {[
             "Validates goals against execution reality",
             "Builds structured blueprints",
-            "Generates the next task continuously",
+            "Generates the next execution move continuously",
             "Reads market and platform context overnight",
             "Detects burnout and capability gaps",
             "Surfaces strategic outlook and signal narratives",
@@ -118,7 +118,7 @@ export default function LandingPage() {
       <MarketingSection title="Free to execute. Upgrade when you want the full intelligence layer." eyebrow="Pricing preview">
         <div className="grid gap-5 md:grid-cols-2">
           {[
-            ["Execution", "Free", "Goal validation, blueprints, tasks, feedback, signals, conditions, Academy, and dashboard basics."],
+            ["Execution", "Free", "Goal validation, blueprints, execution moves, feedback, signals, conditions, Academy, and dashboard basics."],
             ["Intelligence", "TBD", "Everything in free, plus overnight intelligence, morning reports, strategic outlook, and full signal history."],
           ].map(([name, price, copy]) => (
             <div key={name} className="rounded-3xl border border-[#E5E7EB] bg-white p-8">

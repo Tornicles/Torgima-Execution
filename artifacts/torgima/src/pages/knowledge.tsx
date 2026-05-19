@@ -69,19 +69,19 @@ export default function KnowledgePage() {
             {(data?.tasks ?? []).length === 0 ? (
               <p className="text-sm text-gray-500">No active capability development orders.</p>
             ) : (
-              (data?.tasks ?? []).map((task) => (
+              (data?.tasks ?? []).map((capabilityOrder) => (
                 <AcademyOrderCard
-                  key={task.id}
+                  key={capabilityOrder.id}
                   order={{
-                    id: task.order_id,
-                    title: task.title,
-                    instruction: task.description,
-                    status: task.status,
+                    id: capabilityOrder.order_id,
+                    title: capabilityOrder.title,
+                    instruction: capabilityOrder.description,
+                    status: capabilityOrder.status,
                   }}
-                  lessonNumber={task.lesson_number}
+                  lessonNumber={capabilityOrder.lesson_number}
                   totalLessons={activePath?.total_lessons}
-                  skillCategory={task.skill_category}
-                  masteryDefinition={task.mastery_definition}
+                  skillCategory={capabilityOrder.skill_category}
+                  masteryDefinition={capabilityOrder.mastery_definition}
                 />
               ))
             )}

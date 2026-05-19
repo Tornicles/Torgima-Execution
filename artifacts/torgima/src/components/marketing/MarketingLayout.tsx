@@ -57,7 +57,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           <div>
             <p className="text-lg font-bold">Torgima</p>
             <p className="mt-2 max-w-md text-sm leading-6 text-gray-300">
-              The execution operating system that converts goals into the next correct task.
+              The execution operating system that converts goals into the next correct move.
             </p>
           </div>
           <div className="grid gap-2 text-sm text-gray-300 sm:grid-cols-2 sm:gap-x-8">
@@ -117,7 +117,7 @@ export function ProductFrame({ title = "Morning Intelligence Report" }: { title?
           ))}
         </div>
         <div className="mt-4 rounded-2xl bg-[#0A0F1E] p-4 text-white">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Recommended next task</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Recommended next move</p>
           <p className="mt-2 text-sm leading-6">Create one proof-of-work artifact tied to your active blueprint.</p>
         </div>
       </div>

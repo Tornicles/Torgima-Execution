@@ -41,7 +41,12 @@ export async function createTestBlueprint(userId: string, overrides: Partial<typ
     .values({
       user_id: userId,
       goal: "Test goal: Launch a product with 100 paying customers in 90 days",
+      raw_goal: "Test goal: Launch a product with 100 paying customers in 90 days",
       purpose: "Build a revenue-generating business",
+      timeframe_days: 90,
+      commitment_level: "medium",
+      tier: "starter",
+      mode: "individual",
       status: "active",
       active: true,
       state_version: 1,

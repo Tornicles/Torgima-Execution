@@ -98,7 +98,7 @@ describe("Prompt 14 — Marketing pages", () => {
     for (const shipped of [
       "Goal validation",
       "Execution blueprint generation",
-      "Continuous task loop",
+      "Continuous execution loop",
       "Academy and capability development",
       "Morning Intelligence Report",
       "Dashboard intelligence panels",

@@ -20,7 +20,7 @@ export default function HowItWorksPage() {
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#0EA5E9]">How it works</p>
           <h1 className="mt-6 text-5xl font-bold leading-tight tracking-[-0.03em]">A loop that runs until your goal is complete.</h1>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            Torgima is not a to-do list. It is a structured execution loop: each task creates evidence, evidence updates
+            Torgima is not a static list. It is a structured execution loop: each execution move creates evidence, evidence updates
             signals, and signals shape what the system generates next.
           </p>
         </div>
@@ -38,10 +38,10 @@ export default function HowItWorksPage() {
         <p className="mt-6 text-lg leading-8 text-gray-600">This loop runs during the day and refreshes intelligence overnight.</p>
       </MarketingSection>
 
-      <MarketingSection title="The blueprint" eyebrow="Not a task list">
+      <MarketingSection title="The blueprint" eyebrow="Not a static list">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-3xl border border-[#E5E7EB] bg-white p-7">
-            {["Plan: Build the audience engine", "Phase: Proof of value", "Project: Publish weekly proof assets", "Action: Create one artifact", "Task: Ship today’s proof-of-work post"].map((item) => (
+            {["Plan: Build the audience engine", "Phase: Proof of value", "Project: Publish weekly proof assets", "Action: Create one artifact", "Execution move: Ship today’s proof-of-work post"].map((item) => (
               <div key={item} className="mb-3 rounded-2xl bg-[#FAFAFA] p-4 text-sm font-medium">
                 {item}
               </div>
@@ -64,7 +64,7 @@ export default function HowItWorksPage() {
             ))}
           </div>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            Torgima measures execution reality, not intentions. Conditions adjust task difficulty, count, and intensity
+            Torgima measures execution reality, not intentions. Conditions adjust work difficulty, count, and intensity
             based on the signals generated from real feedback.
           </p>
         </div>

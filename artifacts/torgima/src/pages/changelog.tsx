@@ -27,7 +27,7 @@ export default function ChangelogPage() {
             {[
               "Goal validation with reality checks",
               "Execution blueprint generation",
-              "Continuous task loop",
+              "Continuous execution loop",
               "7 execution conditions with adaptive control",
               "Academy and capability development",
               "Overnight intelligence for paid tier",

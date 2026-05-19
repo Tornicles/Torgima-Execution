@@ -408,6 +408,8 @@ void (async () => {
     const validationResult = await E.ValidationService.validateGoal({
       blueprintId,
       userId,
+      tier: "starter",
+      mode: "individual",
       input: {
         goal: structured.cleanedGoal,
         purpose: structured.purpose,
@@ -1261,6 +1263,8 @@ void (async () => {
       await E.ValidationService.validateGoal({
         blueprintId: lawBp,
         userId,
+        tier: "starter",
+        mode: "individual",
         input: {
           goal: "Law-complete-probe-with-minimum-scope",
           purpose: "completion law",
