@@ -31,6 +31,7 @@ import { buildTierAwareBlueprintChain } from "./BlueprintChainGenerator.js";
 import { recordBlueprintVersion } from "./infrastructure/BlueprintVersioningService.js";
 import {
   assertSelectionComplete,
+  getModeRules,
   getTierRules,
   intelligenceDepthForTier,
   parseMode,
@@ -57,6 +58,17 @@ function dayOneOrderCount(tier: BlueprintTier): number {
   if (tier === "starter") return 2;
   if (tier === "growth") return 3;
   return 4;
+}
+
+function allowedActionsForTier(tier: BlueprintTier): string[] {
+  if (tier === "starter") return ["create", "analyze"];
+  return ["create", "replicate", "analyze", "improve"];
+}
+
+function restrictedActionsForTier(tier: BlueprintTier): string[] {
+  if (tier === "starter") return ["replicate", "improve", "scaling", "optimization", "expansion"];
+  if (tier === "growth") return ["predictive_scaling", "strategic_reallocation"];
+  return [];
 }
 
 function instructionForAction(actionName: string): string {
@@ -143,14 +155,24 @@ export class BlueprintEngine {
         intelligence_depth: depth,
         selection_confirmed_at: now,
         blueprint_config: {
+          masterBlueprint: "TORGIMA_COMPLETE_MASTER_BLUEPRINT_REFINED",
+          structuralLaw: "structure_fixed_tier_depth_mode_distribution",
           featureManifest: getClientFeatureManifest(tier, mode),
           tierRules: {
             allowedSystems: tierRules.allowedSystems,
             lockedSystems: tierRules.lockedSystems,
             maxDailyOrders: tierRules.maxDailyOrders,
             validationDepth: tierRules.validationDepth,
+            planCount: tierRules.planCount,
+            seasonCount: tierRules.seasonCount,
+            targetCount: tierRules.targetCount,
+            projectsPerActivePhase: tierRules.projectsPerActivePhase,
+            actionsPerProject: tierRules.actionsPerProject,
+            signalComplexity: tierRules.signalComplexity,
+            policyEnforcement: tierRules.policyEnforcement,
           },
           mode,
+          modeRules: getModeRules(mode),
           intelligenceDepth: depth,
         },
         status: nextStatus,
@@ -213,10 +235,13 @@ export class BlueprintEngine {
           current_domain: resolvedDomain,
           current_condition: CONDITIONS.NOTHINGNESS,
           metadata: {
+            masterBlueprint: "TORGIMA_COMPLETE_MASTER_BLUEPRINT_REFINED",
+            structuralLaw: "plans_targets_phases_projects_actions_orders_never_skipped",
             launchCompleted: true,
             selectedBlueprintLevel: tier,
             selectedMode: mode,
             initializedCondition: CONDITIONS.NOTHINGNESS,
+            aiRule: "AI assists; rules control; signals define truth; condition regulates execution.",
           },
           state_version: 1,
         })
@@ -346,8 +371,8 @@ export class BlueprintEngine {
 
       // 6. Initial enforcement package — nothingness defaults: minimum
       //    viable execution. Real package generator runs in Prompt 7+.
-      const allowedActions = ["setup", "initial_action", "first_output"];
-      const restrictedActions = ["scaling", "optimization", "expansion"];
+      const allowedActions = allowedActionsForTier(tier);
+      const restrictedActions = restrictedActionsForTier(tier);
       const taskLimits = { taskLimit: { min: 1, max: tier === "starter" ? 2 : tier === "growth" ? 3 : 4 } };
       const [enforcementPackage] = await tx.insert(enforcementPackages).values({
         blueprint_id:        blueprintId,
@@ -444,6 +469,16 @@ export class BlueprintEngine {
             source: "launch_initialization",
             selectedPath: valRow?.selected_path ?? null,
             selectedBlueprintLevel: tier,
+            traceChain: {
+              orderFrom: "action",
+              actionId: action.id,
+              projectId: action.project_id,
+              phaseId: chain.phaseId,
+              planId: chain.planId,
+              targetId: action.target_id,
+              goal: chainGoal,
+            },
+            aiBoundary: "AI may explain and adapt inside rules; signals and condition remain authoritative.",
           },
           trace_metadata: {
             layer: "order",
@@ -452,6 +487,11 @@ export class BlueprintEngine {
             tier,
             mode,
             generationReason: "blueprint_launch_initial_order",
+            targetId: action.target_id,
+            projectId: action.project_id,
+            phaseId: chain.phaseId,
+            planId: chain.planId,
+            assignedUserId: userId,
           },
         });
       }
@@ -467,6 +507,10 @@ export class BlueprintEngine {
           activePlanIndex: 0,
           activePhaseIndex: 0,
           launchCompleted: true,
+            tier,
+            mode,
+            intelligenceDepth: intelligenceDepthForTier(tier),
+            teamDistributionEnabled: mode === "team",
         },
         last_event:       "blueprint_launched",
         duration_days:    0,

@@ -1,16 +1,19 @@
-import { db, feedback, orders } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { enterLoop } from "./ExecutionLoopEngine.js";
+import { processFeedback } from "../feedback/FeedbackProcessingEngine.js";
 import { generateNextTask } from "./generateNextTask.js";
-import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 
 export interface FeedbackSubmission {
   userId: string;
   blueprintId: string;
   orderId: string;
-  completionStatus: string;
+  completionStatus: "completed" | "partial" | "failed" | "skipped";
   feedbackText?: string;
   score?: number;
+  proofJson?: Record<string, unknown>;
+  blockerJson?: Record<string, unknown>;
+  durationMinutes?: number;
+  frictionScore?: number;
+  confidenceScore?: number;
+  idempotencyKey?: string;
 }
 
 export interface PrimaryLoopResult {
@@ -18,11 +21,14 @@ export interface PrimaryLoopResult {
   queued: boolean;
   nextOrderId?: string;
   generationMs?: number;
+  requiresInterrogation?: boolean;
+  interrogationQuestion?: string;
+  verdictStatus?: "accepted" | "needs_interrogation" | "rejected";
 }
 
 /**
- * Primary loop entry (Prompt 5): persist feedback, enqueue signal chain, attempt immediate next task.
- * Event workers handle signal → condition → control; generateNextTask provides synchronous fallback.
+ * Primary loop entry (Prompt 5): persist feedback via FeedbackProcessingEngine,
+ * let event workers run signal → condition → control, attempt immediate next task.
  */
 export async function runPrimaryLoop(
   userId: string,
@@ -30,47 +36,31 @@ export async function runPrimaryLoop(
 ): Promise<PrimaryLoopResult> {
   const start = Date.now();
 
-  const [fb] = await db
-    .insert(feedback)
-    .values({
-      user_id: userId,
-      blueprint_id: data.blueprintId,
-      order_id: data.orderId,
-      completion_status: data.completionStatus as typeof feedback.$inferInsert.completion_status,
-      reflection: data.feedbackText ?? "",
-      score: data.score,
-    })
-    .returning({ id: feedback.id });
-
-  await db
-    .update(orders)
-    .set({
-      status: data.completionStatus === "completed" ? "completed" : "failed",
-      finished_at: new Date(),
-    })
-    .where(eq(orders.id, data.orderId));
-
-  const eventId = await writeEvent({
-    eventType: EVENT_TYPES.FEEDBACK_SUBMITTED,
-    entityType: "feedback",
-    entityId: fb?.id ?? data.orderId,
+  const result = await processFeedback({
+    orderId: data.orderId,
     userId,
     blueprintId: data.blueprintId,
-    payload: {
-      feedback_id: fb?.id,
-      order_id: data.orderId,
-      completion_status: data.completionStatus,
-    },
-    idempotencyKey: `feedback:${fb?.id ?? data.orderId}`,
+    completionStatus: data.completionStatus,
+    score: data.score ?? 7,
+    reflection: data.feedbackText?.trim() || "Execution feedback submitted for this order.",
+    proofJson: data.proofJson,
+    blockerJson: data.blockerJson,
+    durationMinutes: data.durationMinutes,
+    frictionScore: data.frictionScore,
+    confidenceScore: data.confidenceScore,
+    idempotencyKey: data.idempotencyKey ?? `primary-loop:${data.orderId}:${Date.now()}`,
   });
 
-  await enterLoop({
-    blueprintId: data.blueprintId,
-    userId,
-    trigger: "feedback_submitted",
-    generationMode: "post_feedback",
-    causationEventId: eventId,
-  });
+  if (result.requiresInterrogation) {
+    return {
+      feedbackId: result.feedbackId,
+      queued: true,
+      requiresInterrogation: true,
+      interrogationQuestion: result.interrogationQuestion,
+      verdictStatus: result.verdictStatus,
+      generationMs: Date.now() - start,
+    };
+  }
 
   const next = await generateNextTask(userId, {
     blueprintId: data.blueprintId,
@@ -79,9 +69,10 @@ export async function runPrimaryLoop(
   });
 
   return {
-    feedbackId: fb?.id,
+    feedbackId: result.feedbackId,
     queued: true,
     nextOrderId: next.order?.id,
+    verdictStatus: result.verdictStatus,
     generationMs: Date.now() - start,
   };
 }

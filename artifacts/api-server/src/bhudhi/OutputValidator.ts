@@ -242,6 +242,15 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       if (!d["alignmentWithBlueprint"]) errors.push("eis_opportunity_synthesis: missing alignmentWithBlueprint");
       break;
 
+    case "eis_synthesis":
+      if (!Array.isArray(d["trendingTopics"])) errors.push("eis_synthesis: trendingTopics must be array");
+      if (!Array.isArray(d["platformSignals"])) errors.push("eis_synthesis: platformSignals must be array");
+      if (!Array.isArray(d["opportunities"])) errors.push("eis_synthesis: opportunities must be array");
+      if (!d["todayRecommendation"]) errors.push("eis_synthesis: missing todayRecommendation");
+      if (!Array.isArray(d["competitorInsights"])) errors.push("eis_synthesis: competitorInsights must be array");
+      if (!Array.isArray(d["knowledgeUpdates"])) errors.push("eis_synthesis: knowledgeUpdates must be array");
+      break;
+
     case "strategic_outlook":
       if (!d["executionForecast"]) errors.push("strategic_outlook: missing executionForecast");
       if (!Array.isArray(d["riskFactors"])) errors.push("strategic_outlook: riskFactors must be array");
@@ -253,6 +262,14 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       if (!d["insightType"]) errors.push("behavioral_insight: missing insightType");
       if (!d["insightText"]) errors.push("behavioral_insight: missing insightText");
       if (!d["evidenceSummary"]) errors.push("behavioral_insight: missing evidenceSummary");
+      break;
+
+    case "identity_update":
+      if (!d["identityStage"]) errors.push("identity_update: missing identityStage");
+      if (typeof d["confidenceDelta"] !== "number") errors.push("identity_update: missing confidenceDelta");
+      if (typeof d["purposeAlignment"] !== "number") errors.push("identity_update: missing purposeAlignment");
+      if (!d["keyInsight"]) errors.push("identity_update: missing keyInsight");
+      if (typeof d["milestoneProximity"] !== "boolean") errors.push("identity_update: missing milestoneProximity");
       break;
 
     case "signal_narrative":

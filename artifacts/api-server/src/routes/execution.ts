@@ -19,6 +19,12 @@ const feedbackBodySchema = z.object({
   completionStatus: z.enum(["completed", "failed", "skipped", "partial"]),
   feedbackText: z.string().optional(),
   score: z.number().int().min(1).max(10).optional(),
+  proofJson: z.record(z.string(), z.unknown()).optional(),
+  blockerJson: z.record(z.string(), z.unknown()).optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  frictionScore: z.number().int().min(1).max(5).optional(),
+  confidenceScore: z.number().int().min(1).max(5).optional(),
+  idempotencyKey: z.string().min(1).optional(),
 });
 
 // POST /api/execution/feedback — Primary Loop
@@ -38,6 +44,12 @@ router.post("/execution/feedback", async (req, res) => {
       completionStatus: parsed.data.completionStatus,
       feedbackText: parsed.data.feedbackText,
       score: parsed.data.score,
+      proofJson: parsed.data.proofJson,
+      blockerJson: parsed.data.blockerJson,
+      durationMinutes: parsed.data.durationMinutes,
+      frictionScore: parsed.data.frictionScore,
+      confidenceScore: parsed.data.confidenceScore,
+      idempotencyKey: parsed.data.idempotencyKey,
     });
 
     success(res, result);

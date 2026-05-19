@@ -1031,7 +1031,7 @@ registry.set("EIS_SYNTHESIS", {
   maxTokens:    1200,
   temperature:  0.28,
   memoryAllowed: true,
-  fallbackKey:  "reality_intelligence_deterministic",
+  fallbackKey:  "fallback.eis_synthesis",
   systemPrompt:
     STANDARD_SYSTEM_HEADER +
     `\nSynthesize overnight EIS briefing from supplied search results only.` +

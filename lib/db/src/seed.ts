@@ -1,5 +1,16 @@
-import { db, pool } from "./index.js";
-import { featureFlags, users, capabilityProfiles, knowledgeObjects } from "./schema/index.js";
+import dotenv from "dotenv";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, "..", "..", "..");
+dotenv.config({ path: join(repoRoot, ".env.local") });
+dotenv.config({ path: join(repoRoot, ".env") });
+dotenv.config({ path: join(repoRoot, "artifacts/api-server/.env") });
+process.env.DATABASE_URL = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+
+const { db, pool } = await import("./index.js");
+const { featureFlags, users, capabilityProfiles, knowledgeObjects } = await import("./schema/index.js");
 
 async function seedFeatureFlags() {
   const flags = [

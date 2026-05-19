@@ -423,6 +423,24 @@ const realityIntelFallbackFn: FallbackFn = (ctx, sv) => {
 fallbacks.set("fallback.reality_intelligence", realityIntelFallbackFn);
 fallbacks.set("reality_intelligence_deterministic", realityIntelFallbackFn);
 
+fallbacks.set("fallback.eis_synthesis", (_ctx, sv) => ({
+  outputType: "eis_synthesis",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    trendingTopics: [],
+    platformSignals: [],
+    opportunities: [],
+    todayRecommendation: "Complete your highest-priority active order and capture proof.",
+    competitorInsights: ["Competitive scan unavailable — focus on proof milestones today."],
+    knowledgeUpdates: [],
+  },
+  missingFields: [],
+  warnings: ["EIS synthesis unavailable — deterministic daily recommendation used"],
+  forbiddenActionRequested: false,
+}));
+
 function getMissingGoalFields(ctx: Record<string, unknown>): string[] {
   const missing: string[] = [];
   const raw = ctx["rawGoal"] as string | undefined;

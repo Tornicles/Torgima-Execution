@@ -9,12 +9,16 @@
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import { sql, eq } from "drizzle-orm";
+const __dirnameEarly = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirnameEarly, "..", "..");
+dotenv.config({ path: join(repoRoot, ".env.local") });
+dotenv.config({ path: join(repoRoot, ".env") });
+dotenv.config({ path: join(repoRoot, "artifacts/api-server/.env") });
+process.env.DATABASE_URL = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
-import { db, pool, featureFlags, knowledgeObjects } from "@workspace/db";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(__dirname, "..", "..");
+const { db, pool, featureFlags, knowledgeObjects } = await import("@workspace/db");
 
 type Check = { name: string; passed: boolean; detail: string };
 

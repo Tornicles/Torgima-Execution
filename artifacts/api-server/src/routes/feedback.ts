@@ -315,11 +315,11 @@ router.post("/feedback/:id/interrogation", async (req, res) => {
 // GET /api/feedback/:id/interrogation
 router.get("/feedback/:id/interrogation", async (req, res) => {
   try {
-    const user = UserService.getDemoUser();
+    const auth = await requireAuth(req, "USER_SESSION");
     const result = await trigger({
       sourceEngine: "feedback",
       triggerType: "CLARIFICATION_PROMPT",
-      userId: user.id,
+      userId: auth.userId,
       stateVersion: 0,
       idempotencyKey: `interrogation:${req.params.id}:${Date.now()}`,
       facts: {

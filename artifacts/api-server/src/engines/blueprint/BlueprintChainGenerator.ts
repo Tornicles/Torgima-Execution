@@ -55,9 +55,49 @@ const TARGET_TYPES = [
   "conditional",
 ] as const;
 
+const PROJECT_TYPES = ["setup", "execution", "analysis", "optimization"] as const;
+
+const ACTION_TEMPLATES = [
+  {
+    name: "Create the first customer segment",
+    type: "create" as const,
+    category: "market_definition",
+  },
+  {
+    name: "Analyze proof-of-demand evidence",
+    type: "analyze" as const,
+    category: "validation",
+  },
+  {
+    name: "Replicate the strongest outreach pattern",
+    type: "replicate" as const,
+    category: "distribution",
+  },
+  {
+    name: "Improve the offer promise",
+    type: "improve" as const,
+    category: "offer_optimization",
+  },
+];
+
+function targetTypesForTier(tier: BlueprintTier): Array<(typeof TARGET_TYPES)[number]> {
+  if (tier === "starter") return ["major", "primary", "production"];
+  return [...TARGET_TYPES];
+}
+
+function projectTypesForTier(tier: BlueprintTier): typeof PROJECT_TYPES[number][] {
+  if (tier === "starter") return ["setup", "execution"];
+  return [...PROJECT_TYPES];
+}
+
+function actionTemplatesForTier(tier: BlueprintTier): typeof ACTION_TEMPLATES {
+  if (tier === "starter") return ACTION_TEMPLATES.filter((a) => a.type === "create" || a.type === "analyze") as typeof ACTION_TEMPLATES;
+  return ACTION_TEMPLATES;
+}
+
 function pickTargetType(index: number, tier: BlueprintTier): (typeof TARGET_TYPES)[number] {
-  if (tier === "starter") return TARGET_TYPES[index % 5] ?? "primary";
-  return TARGET_TYPES[Math.min(index, TARGET_TYPES.length - 1)] ?? "primary";
+  const tierTargetTypes = targetTypesForTier(tier);
+  return tierTargetTypes[index % tierTargetTypes.length] ?? "primary";
 }
 
 export async function buildTierAwareBlueprintChain(
@@ -67,6 +107,8 @@ export async function buildTierAwareBlueprintChain(
   const tierRules = getBlueprintTypeConfig(params.tier);
   const modeRules = getModeRules(params.mode);
   const goalShort = params.goal.slice(0, 60);
+  const tierTargetTypes = targetTypesForTier(params.tier);
+  const targetsPerPlan = tierTargetTypes.length;
 
   const contractedSkeleton =
     params.validationContract ?
@@ -132,7 +174,7 @@ export async function buildTierAwareBlueprintChain(
     contractedSkeleton?.targets?.length ?
       contractedSkeleton.targets.slice(0, tierRules.targetCount)
     : Array.from({ length: tierRules.targetCount }, (_, i) => ({
-        name: `${pickTargetType(i, params.tier)} target: ${params.goal.slice(0, 70)}`,
+        name: `${pickTargetType(i, params.tier)} target for ${params.goal.slice(0, 70)}`,
         type: pickTargetType(i, params.tier),
       }));
 
@@ -153,7 +195,7 @@ export async function buildTierAwareBlueprintChain(
       .insert(targets)
       .values({
         blueprint_id: params.blueprintId,
-        plan_id: insertedPlans[Math.floor(t / 5) % insertedPlans.length]!.id,
+        plan_id: insertedPlans[Math.floor(t / targetsPerPlan) % insertedPlans.length]!.id,
         user_id: params.userId,
         owner_id: params.userId,
         contributor_ids: contributorIds,
@@ -162,17 +204,28 @@ export async function buildTierAwareBlueprintChain(
         description: t === 0 ? params.goal : def.name,
         type: validType,
         target_type: validType,
-        metric_name: "execution_proof",
+        metric_name:
+          validType === "major" ? "outcome_progress"
+          : validType === "primary" ? "primary_progress"
+          : validType === "production" ? "proof_outputs"
+          : validType === "conditional" ? "risk_control"
+          : "execution_progress",
         order_index: t + 1,
         status: t === 0 ? "active" : "pending",
-        trace_metadata: buildTraceMetadata({
-          layer: "target",
-          parentId: insertedPlans[Math.floor(t / 5) % insertedPlans.length]!.id,
-          parentLayer: "plan",
-          tier: params.tier,
-          mode: params.mode,
-          generationReason: `tier_${params.tier}_mode_${params.mode}_target_${t}`,
-        }),
+        trace_metadata: {
+          ...buildTraceMetadata({
+            layer: "target",
+            parentId: insertedPlans[Math.floor(t / targetsPerPlan) % insertedPlans.length]!.id,
+            parentLayer: "plan",
+            tier: params.tier,
+            mode: params.mode,
+            generationReason: `tier_${params.tier}_mode_${params.mode}_target_${t}`,
+          }),
+          targetDistribution:
+            params.mode === "team" ?
+              { ownerId: params.userId, contributorIds, distributionLayer: "target_owner_execution" }
+            : { ownerId: params.userId, contributorIds: [], distributionLayer: "individual_execution" },
+        },
       })
       .returning({ id: targets.id, name: targets.name, type: targets.type });
     if (!target) throw new TorgimaError("INTERNAL_ERROR", "Failed to create target");
@@ -200,7 +253,7 @@ export async function buildTierAwareBlueprintChain(
   const insertedPhases: { id: string; name: string; planId: string }[] = [];
   for (const plan of insertedPlans) {
     const planTarget =
-      insertedTargets.find((_, index) => insertedPlans[Math.floor(index / 5) % insertedPlans.length]?.id === plan.id) ??
+      insertedTargets.find((_, index) => insertedPlans[Math.floor(index / targetsPerPlan) % insertedPlans.length]?.id === plan.id) ??
       primaryTarget;
     for (const def of phaseDefinitions) {
       const activeFirstPhase = plan.id === primaryPlan.id && def.name === "initiation";
@@ -249,16 +302,8 @@ export async function buildTierAwareBlueprintChain(
     insertedPhases.find((p) => p.name === "initiation" && p.planId === primaryPlan.id) ?? insertedPhases[0]!;
 
   let actionCount = 0;
-  const projectTypes = ["setup", "execution", "analysis", "optimization"] as const;
-  const actionTemplates = [
-    { name: "Define scope and success criteria", type: "analyze" as const },
-    { name: "Identify immediate first steps", type: "create" as const },
-    { name: "Establish baseline metrics", type: "measure" as const },
-    { name: "Optimize execution leverage", type: "improve" as const },
-    { name: "Write the first offer promise", type: "create" as const },
-    { name: "List the first ten target customers", type: "analyze" as const },
-    { name: "Create one proof-of-demand action", type: "test" as const },
-  ];
+  const projectTypes = projectTypesForTier(params.tier);
+  const actionTemplates = actionTemplatesForTier(params.tier);
 
   for (let pi = 0; pi < tierRules.projectsPerActivePhase; pi++) {
     const [project] = await tx
@@ -284,14 +329,20 @@ export async function buildTierAwareBlueprintChain(
         order_index: pi + 1,
         status: pi === 0 ? "active" : "pending",
         started_at: pi === 0 ? new Date() : null,
-        trace_metadata: buildTraceMetadata({
-          layer: "project",
-          parentId: initiationPhase.id,
-          parentLayer: "phase",
-          tier: params.tier,
-          mode: params.mode,
-          generationReason: `project_${pi}`,
-        }),
+        trace_metadata: {
+          ...buildTraceMetadata({
+            layer: "project",
+            parentId: initiationPhase.id,
+            parentLayer: "phase",
+            tier: params.tier,
+            mode: params.mode,
+            generationReason: `project_${pi}`,
+          }),
+          roleDistribution:
+            params.mode === "team" ?
+              { assigneeIds: [params.userId], container: "multi_user_project" }
+            : { assigneeIds: [params.userId], container: "single_user_project" },
+        },
       })
       .returning({ id: projects.id });
     if (!project) throw new TorgimaError("INTERNAL_ERROR", "Failed to create project");
@@ -309,18 +360,24 @@ export async function buildTierAwareBlueprintChain(
         description: def.name,
         type: def.type,
         action_type: def.type,
-        expected_output: `Completed artifact for: ${def.name}`,
-        knowledge_category: params.tier === "starter" ? "execution" : "execution",
+        expected_output: `Completed ${def.type} output for: ${def.name}`,
+        knowledge_category: def.category,
         order_index: ai + 1,
         status: "pending",
-        trace_metadata: buildTraceMetadata({
-          layer: "action",
-          parentId: project.id,
-          parentLayer: "project",
-          tier: params.tier,
-          mode: params.mode,
-          generationReason: `action_${def.type}`,
-        }),
+        trace_metadata: {
+          ...buildTraceMetadata({
+            layer: "action",
+            parentId: project.id,
+            parentLayer: "project",
+            tier: params.tier,
+            mode: params.mode,
+            generationReason: `action_${def.type}`,
+          }),
+          roleLink:
+            params.mode === "team" ?
+              { assignedUserId: params.userId, roleLinkedWork: true }
+            : { assignedUserId: params.userId, roleLinkedWork: false },
+        },
       });
       actionCount++;
     }
