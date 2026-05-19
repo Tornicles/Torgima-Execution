@@ -67,9 +67,14 @@ export interface OnboardingGoalInput {
   purpose?:         string;
   timeframe?:       string;
   commitmentLevel?: "low" | "medium" | "high" | "full";
+  domain?:          string;
   currentContext?:  string;
   successSignal?:   string;
   knownBlockers?:   string;
+  locationContext?: string;
+  realityContext?:  string;
+  selectedBlueprintTier?: "starter" | "growth" | "ultimate";
+  selectedBlueprintMode?: "individual" | "team";
   domainHints?:     string[];
   idempotencyKey:   string;
 }

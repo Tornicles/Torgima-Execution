@@ -79,8 +79,10 @@ export const users = pgTable("users", {
   commitment_level: commitmentLevelEnum("commitment_level"),
   timezone: text("timezone").notNull().default("UTC"),
   onboarding_complete: boolean("onboarding_complete").notNull().default(false),
+  active_blueprint_id: uuid("active_blueprint_id"),
   civilization_context: jsonb("civilization_context"),
   communication_profile: jsonb("communication_profile"),
+  metadata: jsonb("metadata"),
   active: boolean("active").notNull().default(true),
   notification_preferences: jsonb("notification_preferences")
     .notNull()
@@ -102,11 +104,31 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     token_hash: text("token_hash").notNull().unique(),
+    token: text("token").unique(),
     expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     last_used_at: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("idx_sessions_user_id").on(t.user_id), index("idx_sessions_expires_at").on(t.expires_at)],
+);
+
+export const magicLinkTokens = pgTable(
+  "magic_link_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    token: text("token").notNull().unique(),
+    used: boolean("used").notNull().default(false),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_magic_link_tokens_user_id").on(t.user_id),
+    index("idx_magic_link_tokens_email").on(t.email),
+  ],
 );
 
 // ── GROUP 2 — BLUEPRINT CHAIN ───────────────────────────────────────────────
@@ -121,7 +143,25 @@ export const validations = pgTable(
     user_id: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    raw_goal: text("raw_goal"),
+    purpose: text("purpose"),
+    timeframe: text("timeframe"),
+    timeframe_days: integer("timeframe_days"),
+    domain: text("domain"),
+    current_context: text("current_context"),
+    success_signal: text("success_signal"),
+    location_context: text("location_context"),
+    reality_context: text("reality_context"),
+    selected_blueprint_tier: userTierEnum("selected_blueprint_tier").default("starter"),
+    selected_blueprint_mode: userModeEnum("selected_blueprint_mode").default("individual"),
     verdict: validationVerdictEnum("verdict"),
+    overall_score: integer("overall_score"),
+    scores: jsonb("scores"),
+    key_insights: jsonb("key_insights"),
+    potential_risks: jsonb("potential_risks"),
+    path_options: jsonb("path_options"),
+    recommendation: text("recommendation"),
+    intelligence: jsonb("intelligence"),
     ai_summary: text("ai_summary"),
     feasibility_score: doublePrecision("feasibility_score"),
     clarity_score: doublePrecision("clarity_score"),
@@ -179,6 +219,10 @@ export const validations = pgTable(
     recommended_blueprint_level: text("recommended_blueprint_level"),
     validation_stage: text("validation_stage").notNull().default("pending"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
   },
   (t) => [
     index("idx_validations_blueprint_id").on(t.blueprint_id),
@@ -285,6 +329,9 @@ export const blueprints = pgTable(
     goal: text("goal").notNull(),
     raw_goal: text("raw_goal"),
     purpose: text("purpose"),
+    current_context: text("current_context"),
+    success_signal: text("success_signal"),
+    known_blockers: text("known_blockers"),
     timeframe_days: integer("timeframe_days"),
     timeframe_start: timestamp("timeframe_start", { withTimezone: true }),
     timeframe_end: timestamp("timeframe_end", { withTimezone: true }),
@@ -632,6 +679,9 @@ export const enforcementPackages = pgTable(
     risk_level: riskLevelEnum("risk_level"),
     override_flags: jsonb("override_flags").notNull().default(sql`'{}'::jsonb`),
     cognitive_load_score: doublePrecision("cognitive_load_score"),
+    recovery_required: boolean("recovery_required").notNull().default(false),
+    progression_allowed: boolean("progression_allowed").notNull().default(true),
+    state_version: integer("state_version").notNull().default(0),
     is_current: boolean("is_current").notNull().default(true),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -652,6 +702,9 @@ export const orders = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     action_id: uuid("action_id").references(() => actions.id),
+    plan_id: uuid("plan_id").references(() => plans.id),
+    phase_id: uuid("phase_id").references(() => phases.id),
+    project_id: uuid("project_id").references(() => projects.id),
     linked_plan_id: uuid("linked_plan_id").references(() => plans.id),
     linked_season_id: uuid("linked_season_id").references(() => seasons.id),
     linked_target_id: uuid("linked_target_id").references(() => targets.id),
@@ -669,6 +722,7 @@ export const orders = pgTable(
     time_estimate_minutes: integer("time_estimate_minutes"),
     time_estimate_mins: integer("time_estimate_mins"),
     content_hash: text("content_hash"),
+    knowledge_links: jsonb("knowledge_links"),
     /** Server-computed + optional Bhudhi copy: trace, proof wording, AI prompt hints (never authority). */
     command_context: jsonb("command_context").notNull().default(sql`'{}'::jsonb`),
     proof_required: boolean("proof_required").notNull().default(false),
@@ -803,6 +857,7 @@ export const events = pgTable(
     retry_count: integer("retry_count").notNull().default(0),
     max_retries: integer("max_retries").notNull().default(3),
     process_after: timestamp("process_after", { withTimezone: true }).notNull().defaultNow(),
+    processed_at: timestamp("processed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -833,6 +888,13 @@ export const signalSnapshots = pgTable(
     confidence: signalConfidenceEnum("confidence").notNull().default("insufficient_data"),
     blocker_ratio: doublePrecision("blocker_ratio").notNull().default(0),
     skip_ratio: doublePrecision("skip_ratio").notNull().default(0),
+    consistency: doublePrecision("consistency").notNull().default(0),
+    velocity: doublePrecision("velocity").notNull().default(0),
+    streak_days: integer("streak_days").notNull().default(0),
+    window_days: integer("window_days").notNull().default(7),
+    data_points: integer("data_points").notNull().default(0),
+    computed_at: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+    state_version: integer("state_version").notNull().default(0),
     /** Deterministic operational mathematics (10+ scores, formulas, thresholds) — Prompt / Phase 2 core. */
     operational_mathematics_json: jsonb("operational_mathematics_json").notNull().default(sql`'{}'::jsonb`),
     assigned_condition: conditionEnum("assigned_condition"),
@@ -874,6 +936,32 @@ export const conditions = pgTable(
   (t) => [
     index("idx_conditions_blueprint_id").on(t.blueprint_id),
     index("idx_conditions_blueprint_current").on(t.blueprint_id, t.is_current),
+  ],
+);
+
+export const conditionRecords = pgTable(
+  "condition_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    is_current: boolean("is_current").notNull().default(false),
+    condition: conditionEnum("condition").notNull().default("nothingness"),
+    previous_condition: conditionEnum("previous_condition"),
+    escalation_level: integer("escalation_level").notNull().default(0),
+    duration_days: doublePrecision("duration_days").notNull().default(0),
+    recovery_required: boolean("recovery_required").notNull().default(false),
+    transitioned_at: timestamp("transitioned_at", { withTimezone: true }).notNull().defaultNow(),
+    state_version: integer("state_version").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_condition_records_blueprint_id").on(t.blueprint_id),
+    index("idx_condition_records_blueprint_current").on(t.blueprint_id, t.is_current),
   ],
 );
 
@@ -1026,6 +1114,7 @@ export const capabilityProfiles = pgTable("capability_profiles", {
     .references(() => users.id, { onDelete: "cascade" }),
   blueprint_id: uuid("blueprint_id").references(() => blueprints.id),
   level: capabilityLevelEnum("level").notNull().default("beginner"),
+  current_level: text("current_level").notNull().default("beginner"),
   consistency_score: doublePrecision("consistency_score").notNull().default(0),
   execution_quality: doublePrecision("execution_quality").notNull().default(0),
   throughput: throughputEnum("throughput").notNull().default("low"),
@@ -1035,8 +1124,11 @@ export const capabilityProfiles = pgTable("capability_profiles", {
   tasks_completed: integer("tasks_completed").notNull().default(0),
   tasks_failed: integer("tasks_failed").notNull().default(0),
   streak_current: integer("streak_current").notNull().default(0),
+  streak_count: integer("streak_count").notNull().default(0),
   streak_best: integer("streak_best").notNull().default(0),
   identity_type: text("identity_type"),
+  metadata: jsonb("metadata"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
@@ -1576,6 +1668,8 @@ export const stateMemory = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     condition: text("condition").notNull(),
+    state_version: integer("state_version").notNull().default(0),
+    payload: jsonb("payload"),
     current_state: jsonb("current_state").notNull().default(sql`'{}'::jsonb`),
     last_event: text("last_event"),
     entered_at: timestamp("entered_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1689,6 +1783,33 @@ export const taskGenerationLog = pgTable(
   (t) => [
     index("idx_task_generation_log_blueprint_id").on(t.blueprint_id),
     index("idx_task_generation_log_trigger").on(t.generation_trigger),
+  ],
+);
+
+export const taskGenerationLogs = pgTable(
+  "task_generation_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    order_id: uuid("order_id"),
+    generation_mode: text("generation_mode").notNull(),
+    generation_trigger: text("generation_trigger"),
+    task_type: text("task_type"),
+    difficulty: text("difficulty"),
+    bhudhi_used: boolean("bhudhi_used").notNull().default(false),
+    fallback_used: boolean("fallback_used").notNull().default(false),
+    result: text("result").notNull().default("success"),
+    error_message: text("error_message"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_task_generation_logs_blueprint_id").on(t.blueprint_id),
+    index("idx_task_generation_logs_user_id").on(t.user_id),
   ],
 );
 

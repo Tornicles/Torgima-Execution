@@ -3,13 +3,25 @@ import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
 import { ValidationService } from "../services/ValidationService.js";
-import { db, users, blueprints, featureFlags } from "@workspace/db";
+import { db, users, blueprints, featureFlags, validations } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { ensureSchemaPatches } from "../lib/ensureSchema.js";
-import { verifyOnboardingSchema } from "../lib/verifySchema.js";
+import { checkSchemaHealth } from "../lib/verifySchema.js";
 
 const router = Router();
+
+function parseTimeframeDays(timeframe: string): number | null {
+  const directDays = timeframe.match(/(\d+)\s*(day|days)/i);
+  if (directDays?.[1]) return Number(directDays[1]);
+  const weeks = timeframe.match(/(\d+)\s*(week|weeks)/i);
+  if (weeks?.[1]) return Number(weeks[1]) * 7;
+  const months = timeframe.match(/(\d+)\s*(month|months)/i);
+  if (months?.[1]) return Number(months[1]) * 30;
+  const years = timeframe.match(/(\d+)\s*(year|years)/i);
+  if (years?.[1]) return Number(years[1]) * 365;
+  return null;
+}
 
 // GET /api/onboarding/status
 router.get("/onboarding/status", async (req, res) => {
@@ -59,17 +71,22 @@ router.post("/onboarding/goal", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
-      rawGoal:         z.string().min(5).max(2000),
-      purpose:         z.string().max(1000).optional(),
-      timeframe:       z.string().max(200).optional(),
-      commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional(),
-      currentContext:  z.string().max(1000).optional(),
-      successSignal:   z.string().max(500).optional(),
-      knownBlockers:   z.string().max(500).optional(),
-      domainHints:     z.array(z.string()).optional(),
-      idempotencyKey:  z.string().min(1),
-      tier:            z.enum(["starter", "growth", "ultimate"]).optional(),
-      mode:            z.enum(["individual", "team"]).optional(),
+      rawGoal:               z.string().min(5).max(2000),
+      purpose:               z.string().min(5).max(1000),
+      timeframe:             z.string().min(2).max(200),
+      commitmentLevel:       z.enum(["low", "medium", "high", "full"]),
+      domain:                z.string().max(120).optional(),
+      currentContext:        z.string().max(1000).optional(),
+      successSignal:         z.string().max(500).optional(),
+      knownBlockers:         z.string().max(500).optional(),
+      locationContext:       z.string().max(1000).optional(),
+      realityContext:        z.string().max(2000).optional(),
+      selectedBlueprintTier: z.enum(["starter", "growth", "ultimate"]).optional().default("starter"),
+      selectedBlueprintMode: z.enum(["individual", "team"]).optional().default("individual"),
+      idempotencyKey:        z.string().min(1),
+      domainHints:           z.array(z.string()).optional(),
+      tier:                  z.enum(["starter", "growth", "ultimate"]).optional(),
+      mode:                  z.enum(["individual", "team"]).optional(),
     });
 
     const parsed = schema.safeParse(req.body);
@@ -80,21 +97,29 @@ router.post("/onboarding/goal", async (req, res) => {
 
     const input = parsed.data;
 
-    let schemaCheck = await verifyOnboardingSchema();
-    if (!schemaCheck.ok) {
+    let schemaHealth = await checkSchemaHealth();
+    if (!schemaHealth.ok) {
       await ensureSchemaPatches();
-      schemaCheck = await verifyOnboardingSchema();
+      schemaHealth = await checkSchemaHealth();
     }
-    if (!schemaCheck.ok) {
-      failure(
-        res,
-        "SERVICE_UNAVAILABLE",
-        "Database schema is missing required validation columns. Run scripts/migrations/*.sql on your Postgres database, then redeploy the API.",
-        503,
-        { retryable: true },
-      );
+    if (!schemaHealth.ok) {
+      res.status(503).json({
+        ok: false,
+        error: {
+          code: "SCHEMA_OUTDATED",
+          message: "Database schema is out of date. Run: pnpm -F @workspace/db push",
+          missing: schemaHealth.missing,
+          details: schemaHealth.missing.join(", "),
+        },
+        meta: { timestamp: new Date().toISOString() },
+      });
       return;
     }
+
+    const selectedTier = input.selectedBlueprintTier ?? input.tier ?? "starter";
+    const selectedMode = input.selectedBlueprintMode ?? input.mode ?? "individual";
+    const domainHint = input.domain ?? input.domainHints?.[0] ?? null;
+    const timeframeDays = parseTimeframeDays(input.timeframe);
 
     // AI feature flag
     const aiRows = await db
@@ -126,12 +151,31 @@ router.post("/onboarding/goal", async (req, res) => {
     } else {
       const { blueprintId: id } = await BlueprintService.create(auth.userId, {
         goal:            input.rawGoal,
-        purpose:         input.purpose ?? null,
-        domainHint:      input.domainHints?.[0] ?? null,
-        commitmentLevel: input.commitmentLevel ?? null,
+        purpose:         input.purpose,
+        timeframeDays,
+        domainHint,
+        commitmentLevel: input.commitmentLevel,
       });
       blueprintId = id;
     }
+
+    await db
+      .update(blueprints)
+      .set({
+        raw_goal: input.rawGoal,
+        purpose: input.purpose,
+        timeframe_days: timeframeDays,
+        commitment_level: input.commitmentLevel,
+        domain_hint: domainHint,
+        domain: domainHint,
+        current_context: input.currentContext ?? null,
+        success_signal: input.successSignal ?? null,
+        known_blockers: input.knownBlockers ?? null,
+        selected_blueprint_level: selectedTier,
+        tier: selectedTier,
+        mode: selectedMode,
+      })
+      .where(eq(blueprints.id, blueprintId));
 
     // Structure goal
     const structured = await ValidationService.structureGoal({
@@ -165,19 +209,12 @@ router.post("/onboarding/goal", async (req, res) => {
       return;
     }
 
-    if (input.tier && input.mode) {
-      await db
-        .update(blueprints)
-        .set({ tier: input.tier, mode: input.mode })
-        .where(eq(blueprints.id, blueprintId));
-    }
-
     // Run full validation (5 intelligence systems)
     const validationResult = await ValidationService.validateGoal({
       blueprintId,
       userId: auth.userId,
-      tier: input.tier,
-      mode: input.mode,
+      tier: selectedTier,
+      mode: selectedMode,
       input: {
         goal:            structured.cleanedGoal,
         purpose:         structured.purpose,
@@ -186,9 +223,32 @@ router.post("/onboarding/goal", async (req, res) => {
         currentContext:  structured.currentContext,
         successSignal:   structured.successSignals[0],
         knownBlockers:   structured.blockers[0],
-        domainHint:      input.domainHints?.[0] ?? null,
+        domainHint,
       },
     });
+
+    await db
+      .update(validations)
+      .set({
+        raw_goal: input.rawGoal,
+        purpose: input.purpose,
+        timeframe: input.timeframe,
+        timeframe_days: timeframeDays,
+        commitment_level: input.commitmentLevel,
+        domain: domainHint,
+        current_context: input.currentContext ?? null,
+        success_signal: input.successSignal ?? null,
+        known_blockers: input.knownBlockers ? [input.knownBlockers] : [],
+        location_context: input.locationContext ?? null,
+        reality_context: input.realityContext ?? null,
+        selected_blueprint_tier: selectedTier,
+        selected_blueprint_mode: selectedMode,
+        overall_score: validationResult.scores.overall,
+        scores: validationResult.scores as unknown as Record<string, unknown>,
+        path_options: validationResult.paths as unknown as Record<string, unknown>,
+        intelligence: validationResult.intelligence ?? null,
+      })
+      .where(eq(validations.id, validationResult.validationId));
 
     // Update user commitment level
     if (structured.commitmentLevel) {

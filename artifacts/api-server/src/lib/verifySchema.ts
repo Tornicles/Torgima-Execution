@@ -168,6 +168,11 @@ export type SchemaVerifyResult = {
   detail?: string;
 };
 
+export type SchemaHealthResult = {
+  ok: boolean;
+  missing: string[];
+};
+
 async function hasTable(table: string): Promise<boolean> {
   const r = await pool.query(
     `SELECT 1 FROM information_schema.tables
@@ -241,4 +246,55 @@ export async function verifyOnboardingSchema(): Promise<SchemaVerifyResult> {
 
 export async function verifyBlueprintLaunchSchema(): Promise<SchemaVerifyResult> {
   return verifySchemaRequirements(BLUEPRINT_LAUNCH_TABLES, BLUEPRINT_LAUNCH_COLUMNS, BLUEPRINT_LAUNCH_INDEXES);
+}
+
+export async function checkSchemaHealth(): Promise<SchemaHealthResult> {
+  const missing: string[] = [];
+
+  const requiredTables = [
+    "users",
+    "sessions",
+    "magic_link_tokens",
+    "validations",
+    "blueprints",
+    "plans",
+    "targets",
+    "phases",
+    "projects",
+    "actions",
+    "orders",
+    "feedback",
+    "signal_snapshots",
+    "condition_records",
+    "enforcement_packages",
+    "state_memory",
+    "events",
+    "capability_profiles",
+    "task_generation_logs",
+    "notification_logs",
+    "bhudhi_logs",
+  ];
+
+  for (const table of requiredTables) {
+    if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
+  }
+
+  const columnChecks: RequiredColumn[] = [
+    { table: "validations", column: "selected_blueprint_tier" },
+    { table: "validations", column: "selected_blueprint_mode" },
+    { table: "validations", column: "location_context" },
+    { table: "validations", column: "reality_context" },
+    { table: "blueprints", column: "tier" },
+    { table: "blueprints", column: "mode" },
+    { table: "blueprints", column: "state_version" },
+    { table: "orders", column: "command_context" },
+    { table: "orders", column: "content_hash" },
+  ];
+
+  for (const { table, column } of columnChecks) {
+    if (!(await hasTable(table))) continue;
+    if (!(await hasColumn(table, column))) missing.push(`Missing column: ${table}.${column}`);
+  }
+
+  return { ok: missing.length === 0, missing };
 }
