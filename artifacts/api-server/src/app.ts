@@ -28,6 +28,29 @@ const ALLOWED_ORIGINS = [
 
 const app: Express = express();
 
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (origin.endsWith(".vercel.app")) return callback(null, true);
+    if (origin.includes("localhost")) return callback(null, true);
+    if (origin.startsWith("http://127.0.0.1:")) return callback(null, true);
+    console.warn("[CORS] Blocked origin:", origin);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-internal-auth",
+    "x-expected-state-version",
+    "idempotency-key",
+    "Cookie",
+  ],
+  exposedHeaders: ["Set-Cookie"],
+};
+
 app.use(
   pinoHttp({
     logger,
@@ -48,32 +71,11 @@ app.use(
   }),
 );
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-      if (origin.endsWith(".vercel.app")) return callback(null, true);
-      if (origin.includes("localhost")) return callback(null, true);
-      if (origin.startsWith("http://127.0.0.1:")) return callback(null, true);
-      console.warn("[CORS] Blocked origin:", origin);
-      callback(new Error(`CORS blocked: ${origin}`));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "x-internal-auth",
-      "x-expected-state-version",
-      "idempotency-key",
-      "Cookie",
-    ],
-    exposedHeaders: ["Set-Cookie"],
-  }),
-);
+app.use(cors(corsOptions));
 
-app.options("/{*splat}", cors());
+// Ensure preflight requests always receive the same CORS configuration.
+// Express route patterns differ across versions; "*" is the most reliable.
+app.options("*", cors(corsOptions));
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
