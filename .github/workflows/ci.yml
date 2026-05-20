@@ -94,6 +94,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Install Postgres client tools
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Wait for Postgres readiness
         run: |
           for i in {1..30}; do
@@ -103,7 +105,9 @@ jobs:
           echo "Postgres did not become ready" >&2
           exit 1
       - name: Apply database schema to test database
-        run: pnpm -F @workspace/db run push-force
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          pnpm -F @workspace/db run push-force
       - name: Wait for Railway API and onboarding schema readiness
         run: |
           if [ -z "$RAILWAY_API_URL" ]; then
@@ -144,7 +148,7 @@ jobs:
           if [ "$PREVIEW_URL" = "http://127.0.0.1:4173" ]; then
             pnpm -F @workspace/torgima exec vite preview --port 4173 --host 127.0.0.1 &
           fi
-          pnpm -F @workspace/scripts run wait:url -- --url "$PREVIEW_URL" --method HEAD --label "frontend preview" --timeout-ms 120000 --interval-ms 3000
+          pnpm -F @workspace/scripts run wait:url -- --url "$PREVIEW_URL" --method GET --label "frontend preview" --timeout-ms 120000 --interval-ms 3000
           curl -I "$PREVIEW_URL"
           if [ -n "$RAILWAY_API_URL" ]; then
             pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/healthz" --label "Railway healthz" --timeout-ms 120000 --interval-ms 3000

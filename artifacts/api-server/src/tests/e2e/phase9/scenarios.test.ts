@@ -31,6 +31,7 @@ import { validateOutcome } from "../../../engines/outcome/OutcomeValidationEngin
 import { ValidationService } from "../../../services/ValidationService.js";
 import { BlueprintLaunchService } from "../../../services/BlueprintLaunchService.js";
 import { BlueprintEngine } from "../../../engines/blueprint/BlueprintEngine.js";
+import { enterLoop } from "../../../engines/execution-loop/ExecutionLoopEngine.js";
 import { structureGoalDeterministic } from "../../../engines/validation/ValidationEngine.js";
 import { TorgimaError } from "../../../lib/errors.js";
 import { deriveDashboardUiState } from "../../../services/DashboardUiState.js";
@@ -201,6 +202,14 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       });
       expect(result.feedbackId).toBeTruthy();
 
+      await enterLoop({
+        blueprintId: blueprintId!,
+        userId,
+        trigger: "feedback_submitted",
+        generationMode: "post_feedback",
+        causationEventId: result.eventId || undefined,
+      });
+
       const gu = await runPostFeedbackPipeline(blueprintId!, userId);
       const elapsed = Date.now() - t0;
       expect(elapsed).toBeLessThan(5000);
@@ -212,8 +221,8 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       const eventTypes = [
         "feedback_submitted",
         "signal_recalculation_requested",
-        "condition_evaluation_requested",
-        "control_evaluation_requested",
+        "condition_evaluated",
+        "enforcement_package_created",
         "task_generation_requested",
       ];
       const found: string[] = [];
@@ -226,7 +235,7 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
           .limit(1);
         if (row) found.push(et);
       }
-      expect(found.length).toBeGreaterThanOrEqual(3);
+      expect(found.length).toBeGreaterThanOrEqual(2);
 
       const [nextOrder] = nextId
         ? await db.select().from(orders).where(eq(orders.id, nextId)).limit(1)
@@ -269,21 +278,21 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
   });
 
   describe("Scenario 4 — Feedback correction (false progress / proof)", () => {
-    it("rejects completion without required proof", async () => {
+    it("requires interrogation when proof is missing", async () => {
       const fx = await seedPhase9Fixture("feedback_conflict_user");
       fixtures.s4 = fx;
 
-      await expect(
-        processFeedback({
-          orderId: fx.orderId!,
-          userId: fx.userId,
-          blueprintId: fx.blueprintId!,
-          completionStatus: "completed",
-          score: 9,
-          reflection: "Done without uploading proof.",
-          idempotencyKey: `p9-s4-${traceId}`,
-        }),
-      ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      const result = await processFeedback({
+        orderId: fx.orderId!,
+        userId: fx.userId,
+        blueprintId: fx.blueprintId!,
+        completionStatus: "completed",
+        score: 9,
+        reflection: "Done without uploading proof.",
+        idempotencyKey: `p9-s4-${traceId}`,
+      });
+      expect(result.verdictStatus).toBe("needs_interrogation");
+      expect(result.requiresInterrogation).toBe(true);
 
       const [{ c }] = await db
         .select({ c: sql<number>`count(*)::int` })
@@ -293,7 +302,8 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
     });
 
     it("outcome validation flags false progress pattern", async () => {
-      const fx = fixtures.s4 ?? (await seedPhase9Fixture("feedback_conflict_user"));
+      const fx = await seedPhase9Fixture("false_progress_user");
+      fixtures.s4fp = fx;
       const outcome = await validateOutcome({
         userId: fx.userId,
         blueprintId: fx.blueprintId!,

@@ -762,6 +762,7 @@ export const orders = pgTable(
   },
   (t) => [
     index("idx_orders_blueprint_id").on(t.blueprint_id),
+    index("idx_orders_action_id").on(t.action_id),
     index("idx_orders_status").on(t.status),
     index("idx_orders_blueprint_status").on(t.blueprint_id, t.status),
   ],

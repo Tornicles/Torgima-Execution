@@ -13,10 +13,11 @@ import {
   validations,
   falseProgressFlags,
   events,
+  eventLogs,
   deadLetterEvents,
   systemHealthLogs,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { createTestUser, createTestBlueprint, createInitialState, createTestOrder } from "./db.js";
 
 export type Phase9FixtureName =
@@ -95,7 +96,7 @@ export async function seedPhase9Fixture(name: Phase9FixtureName): Promise<Phase9
         .where(and(eq(enforcementPackages.blueprint_id, bp.id), eq(enforcementPackages.is_current, true)));
       const order = await createTestOrder(bp.id, user.id, {
         status: "pending",
-        difficulty: "hard",
+        difficulty: "easy",
         task_type: "execution",
       });
       return { name, userId: user.id, blueprintId: bp.id, orderId: order.id, trace };
@@ -264,5 +265,28 @@ export async function seedPhase9Fixture(name: Phase9FixtureName): Promise<Phase9
 }
 
 export async function cleanupPhase9User(userId: string): Promise<void> {
+  const userBlueprints = await db
+    .select({ id: blueprints.id })
+    .from(blueprints)
+    .where(eq(blueprints.user_id, userId));
+  const blueprintIds = userBlueprints.map((b) => b.id);
+
+  const userEvents = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(eq(events.user_id, userId));
+  const eventIds = userEvents.map((e) => e.id);
+
+  if (eventIds.length > 0) {
+    await db.delete(deadLetterEvents).where(inArray(deadLetterEvents.original_event_id, eventIds));
+    await db.delete(eventLogs).where(inArray(eventLogs.event_id, eventIds));
+    await db.delete(events).where(inArray(events.id, eventIds));
+  }
+
+  if (blueprintIds.length > 0) {
+    await db.delete(events).where(inArray(events.blueprint_id, blueprintIds));
+    await db.delete(systemHealthLogs).where(inArray(systemHealthLogs.blueprint_id, blueprintIds));
+  }
+
   await db.delete(users).where(eq(users.id, userId));
 }

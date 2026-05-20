@@ -8,13 +8,28 @@ type Args = {
   label: string;
 };
 
+function cliArgv(): string[] {
+  const raw = process.argv.slice(2);
+  const dashDash = raw.indexOf("--");
+  if (dashDash >= 0) return raw.slice(dashDash + 1);
+  const scriptIdx = raw.findIndex((a) => a.endsWith("wait-for-url.ts") || a.includes("wait-for-url"));
+  return scriptIdx >= 0 ? raw.slice(scriptIdx + 1) : raw;
+}
+
 function readArgs(): Args {
   const args = new Map<string, string>();
-  for (let i = 2; i < process.argv.length; i += 2) {
-    const key = process.argv[i];
-    const value = process.argv[i + 1];
-    if (!key?.startsWith("--") || value === undefined) continue;
-    args.set(key.slice(2), value);
+  const argv = cliArgv();
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (!token?.startsWith("--")) continue;
+    const key = token.slice(2);
+    const next = argv[i + 1];
+    if (next !== undefined && !next.startsWith("--")) {
+      args.set(key, next);
+      i += 1;
+    } else {
+      args.set(key, "true");
+    }
   }
 
   const url = args.get("url");
