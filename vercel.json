@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/torgima build",
+  "buildCommand": "pnpm --filter @workspace/state-machine build && pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/torgima build",
   "outputDirectory": "artifacts/torgima/dist",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
