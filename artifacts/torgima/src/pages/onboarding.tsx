@@ -412,7 +412,9 @@ export default function OnboardingPage() {
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
     const launchValidation = await resolveValidationContractId(validation);
-    if (!launchValidation.validationContractId) {
+    const blueprintId = launchValidation.blueprintId;
+    const validationContractId = launchValidation.validationContractId;
+    if (!blueprintId || !validationContractId) {
       setError("Validation contract is missing. Re-run validation before launch.");
       return;
     }
@@ -424,7 +426,7 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     try {
-      const saved = await saveBlueprintSelection(launchValidation.blueprintId);
+      const saved = await saveBlueprintSelection(blueprintId);
       if (!saved) return;
 
       if (launchValidation.validationId) {
@@ -444,9 +446,9 @@ export default function OnboardingPage() {
         }
       }
 
-      await activateBlueprint(launchValidation.blueprintId, {
-        validationContractId: launchValidation.validationContractId,
-        validation_contract_id: launchValidation.validationContractId,
+      await activateBlueprint(blueprintId, {
+        validationContractId,
+        validation_contract_id: validationContractId,
         selectedPath,
         selected_path_type: selectedPath,
         selectedBlueprintLevel: selectedTier,
