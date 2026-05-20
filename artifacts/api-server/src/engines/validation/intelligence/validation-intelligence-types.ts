@@ -147,6 +147,10 @@ export interface ValidationIntelligencePayload {
   cis: CISContext;
   iis: StructuredGoalDraft;
   eis: EISIntelligence;
+  /** B4 — advisory EIS scores for deterministic verdict context (not authoritative). */
+  eis_demand_score?: number | null;
+  eis_saturation_score?: number | null;
+  eis_industry_context?: string | null;
   industryPanel: IndustryIntelligencePanel;
   tabs: ValidationTabContent;
   paths: {

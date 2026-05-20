@@ -25,6 +25,7 @@ import {
   deriveSignalBlueprintBridgeLines,
 } from "../lib/operationalDerivation.js";
 import { BlueprintStatus, OrderStatus, PivotReviewStatus, SystemHealthStatus } from "@workspace/state-machine";
+import { fetchDashboardIntelligence } from "../bhudhi/AdvancedIntelligenceBridge.js";
 
 export const DashboardService = {
   async getDashboardState(userId: string) {
@@ -395,6 +396,33 @@ export const DashboardService = {
       openFalseProgressCount,
     });
 
+    let intelligence: {
+      headline: string;
+      bodyText: string | null;
+      nextActionSuggestion: string | null;
+      fallbackUsed: boolean;
+    } = {
+      headline: "Execution active.",
+      bodyText: null,
+      nextActionSuggestion: null,
+      fallbackUsed: true,
+    };
+
+    if (blueprintId && activeBlueprint) {
+      intelligence = await fetchDashboardIntelligence({
+        userId,
+        blueprintId,
+        stateVersion,
+        condition: condEffective.condition,
+        completionRate: signalProjection?.completionRate ?? signals.consistency,
+        momentum: signalProjection?.momentum ?? signals.streak,
+        trend: signalProjection?.trend ?? "stable",
+        goal: activeBlueprint.rawGoal ?? activeBlueprint.title ?? "",
+        activeOrderTitle: primaryTask?.title,
+        conditionDuration: condEffective.durationDays,
+      });
+    }
+
     return {
       user,
       signals,
@@ -422,6 +450,7 @@ export const DashboardService = {
       dashboardUiState,
       pendingSync: dashboardUiState === "PENDING_SYNC",
       alerts,
+      intelligence,
     };
   },
 };

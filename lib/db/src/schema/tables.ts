@@ -1872,13 +1872,20 @@ export const bhudhiMemory = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     blueprint_id: uuid("blueprint_id").references(() => blueprints.id),
     memory_type: text("memory_type").notNull(),
-    content_json: jsonb("content_json").notNull(),
+    /** B3: summarized text for prompts (never raw DB dumps). */
+    content: text("content"),
+    content_json: jsonb("content_json").notNull().default(sql`'{}'::jsonb`),
+    scope: text("scope"),
+    source_type: text("source_type"),
+    source_id: uuid("source_id"),
     confidence: doublePrecision("confidence").notNull().default(0.5),
+    relevance_score: doublePrecision("relevance_score").notNull().default(0.5),
     reinforcement_count: integer("reinforcement_count").notNull().default(1),
     last_reinforced_at: timestamp("last_reinforced_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
     expires_at: timestamp("expires_at", { withTimezone: true }),
+    disabled_at: timestamp("disabled_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
     is_compressed: boolean("is_compressed").notNull().default(false),
     source_event_id: text("source_event_id"),

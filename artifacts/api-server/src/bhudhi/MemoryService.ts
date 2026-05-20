@@ -1,10 +1,12 @@
 import { db, bhudhiMemory } from "@workspace/db";
 import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
-
-const MAX_MEMORY_RECORDS = 5;
-const MAX_MEMORY_CHARS   = 800;
+import { MemoryWriter } from "./MemoryWriter.js";
+import {
+  allowedMemoryTypesForTrigger,
+  MAX_MEMORY_ITEMS_PER_CALL,
+  MIN_RELEVANCE_SCORE,
+} from "./memoryPolicy.js";
 
 type MemoryType =
   | "USER_PREFERENCE"
@@ -18,59 +20,22 @@ type MemoryType =
   | "KNOWLEDGE_ACCESSED"
   | "PROMPT_SUMMARY";
 
-const TRIGGER_MEMORY_MAP: Record<BhudhiTriggerType, MemoryType[]> = {
-  GOAL_STRUCTURING:         ["GOAL_CONTEXT", "USER_PREFERENCE"],
-  REALITY_INTELLIGENCE:     ["GOAL_CONTEXT"],
-  EIS_INDUSTRY_RESEARCH:    ["GOAL_CONTEXT"],
-  TASK_DRAFTING:            ["USER_PREFERENCE", "CAPABILITY_NOTE"],
-  FEEDBACK_CLASSIFICATION:  ["FRICTION_PATTERN"],
-  CLARIFICATION_PROMPT:     [],
-  RECOVERY_COPY:            ["RECOVERY_CONTEXT", "FRICTION_PATTERN"],
-  STATE_EXPLANATION:        ["EXECUTION_PATTERN", "GOAL_CONTEXT"],
-  INACTIVITY_RESTART:       ["RECOVERY_CONTEXT", "EXECUTION_PATTERN"],
-  ACADEMY_SUPPORT:          ["CAPABILITY_NOTE", "SKILL_PROGRESSION"],
-  ACADEMY_SKILL_ASSESSMENT: ["SKILL_PROGRESSION", "CAPABILITY_NOTE"],
-  ACADEMY_GAP_SEVERITY:     ["CAPABILITY_NOTE", "SKILL_PROGRESSION"],
-  OUTCOME_EVIDENCE_SUMMARY: ["GOAL_CONTEXT"],
-  ROOT_CAUSE_ASSIST:        ["EXECUTION_PATTERN", "FRICTION_PATTERN"],
-  DIRECTION_ANALYSIS:       ["GOAL_CONTEXT", "EXECUTION_PATTERN", "KNOWLEDGE_ACCESSED"],
-  BEHAVIORAL_INSIGHT:       ["EXECUTION_PATTERN", "FRICTION_PATTERN", "RECOVERY_CONTEXT"],
-  SIGNAL_NARRATIVE:         ["EXECUTION_PATTERN", "GOAL_CONTEXT"],
-  BLUEPRINT_GENERATION:     ["GOAL_CONTEXT", "EXECUTION_PATTERN"],
-  BLUEPRINT_INTERPRETATION: ["GOAL_CONTEXT", "EXECUTION_PATTERN"],
-  DOMAIN_RESOLUTION:        ["GOAL_CONTEXT"],
-  EXECUTION_SUPPORT:        ["CAPABILITY_NOTE", "KNOWLEDGE_ACCESSED"],
-  BEHAVIORAL_ANALYSIS:      ["EXECUTION_PATTERN", "FRICTION_PATTERN", "RECOVERY_CONTEXT"],
-  EIS_COMPETITOR_INTELLIGENCE: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  EIS_NARRATIVE_INTELLIGENCE: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  EIS_OPPORTUNITY_SYNTHESIS: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  EIS_SYNTHESIS:            ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  ERECTOR_ARCHETYPE_NARRATIVE: ["GOAL_CONTEXT"],
-  ERECTOR_PURPOSE_DECOMPOSE: ["GOAL_CONTEXT"],
-  ERECTOR_INDUSTRY_ANALYZE: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  ERECTOR_MARKET_ANALYZE: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  ERECTOR_COMPETITORS_IDENTIFY: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  ERECTOR_ECONOMY_BRIEFING: ["GOAL_CONTEXT", "KNOWLEDGE_ACCESSED"],
-  ERECTOR_PAIN_ANALYZE: ["GOAL_CONTEXT"],
-  ERECTOR_SIMULATE_TIMEFRAMES: ["GOAL_CONTEXT", "EXECUTION_PATTERN"],
-  ERECTOR_PATHS_GENERATE: ["GOAL_CONTEXT", "EXECUTION_PATTERN"],
-  ERECTOR_FIRST_WEEK: ["GOAL_CONTEXT", "EXECUTION_PATTERN"],
-};
+const MAX_MEMORY_CHARS = 800;
 
-function memoryText(contentJson: unknown): string {
-  if (typeof contentJson === "object" && contentJson !== null && "text" in contentJson) {
-    return String((contentJson as { text: unknown }).text ?? "");
+function memoryText(row: { content: string | null; content_json: unknown }): string {
+  if (row.content?.trim()) return row.content.trim();
+  if (typeof row.content_json === "object" && row.content_json !== null && "text" in row.content_json) {
+    return String((row.content_json as { text: unknown }).text ?? "");
   }
-  return typeof contentJson === "string" ? contentJson : JSON.stringify(contentJson);
+  return typeof row.content_json === "string" ? row.content_json : JSON.stringify(row.content_json);
 }
 
 export async function retrieveMemory(params: {
-  userId:      string;
+  userId: string;
   blueprintId?: string;
   triggerType: BhudhiTriggerType;
 }): Promise<string> {
-
-  const allowedTypes = TRIGGER_MEMORY_MAP[params.triggerType] ?? [];
+  const allowedTypes = allowedMemoryTypesForTrigger(params.triggerType);
   if (allowedTypes.length === 0) return "";
 
   const scopeOr = params.blueprintId
@@ -78,80 +43,66 @@ export async function retrieveMemory(params: {
     : sql`true`;
 
   const records = await db
-    .select()
+    .select({
+      memory_type: bhudhiMemory.memory_type,
+      content: bhudhiMemory.content,
+      content_json: bhudhiMemory.content_json,
+    })
     .from(bhudhiMemory)
     .where(
       and(
         eq(bhudhiMemory.user_id, params.userId),
         inArray(bhudhiMemory.memory_type, allowedTypes),
         eq(bhudhiMemory.active, true),
+        isNull(bhudhiMemory.disabled_at),
+        gt(bhudhiMemory.relevance_score, MIN_RELEVANCE_SCORE),
         or(isNull(bhudhiMemory.expires_at), gt(bhudhiMemory.expires_at, new Date())),
         scopeOr,
       ),
     )
-    .orderBy(desc(bhudhiMemory.confidence), desc(bhudhiMemory.created_at))
-    .limit(MAX_MEMORY_RECORDS);
+    .orderBy(desc(bhudhiMemory.relevance_score), desc(bhudhiMemory.confidence))
+    .limit(MAX_MEMORY_ITEMS_PER_CALL);
 
   if (records.length === 0) return "";
 
-  const summary = records
-    .map(r => `[${r.memory_type}] ${memoryText(r.content_json)}`)
-    .join("\n");
-
+  const summary = records.map((r) => memoryText(r)).join(" | ");
   if (summary.length > MAX_MEMORY_CHARS) {
-    throw new Error("[MemoryService] Memory context exceeds 800 characters");
+    return summary.slice(0, MAX_MEMORY_CHARS);
   }
-
   return summary;
 }
 
+/** @deprecated Prefer MemoryWriter.write from approved engines. */
 export async function writeMemory(params: {
-  userId:       string;
+  userId: string;
   blueprintId?: string;
-  memoryType:   MemoryType;
-  scope:        "USER" | "BLUEPRINT" | "ORDER" | "SESSION";
-  content:      string;
-  sourceType:   string;
-  sourceId?:    string;
-  confidence:   "LOW" | "MEDIUM" | "HIGH";
+  memoryType: MemoryType;
+  scope: "USER" | "BLUEPRINT" | "ORDER" | "SESSION";
+  content: string;
+  sourceType: string;
+  sourceId?: string;
+  confidence: "LOW" | "MEDIUM" | "HIGH";
   expiresInDays?: number;
+  relevanceScore?: number;
 }): Promise<void> {
-
-  const forbidden = ["password", "token", "secret", "api_key", "credential"];
-  if (forbidden.some(f => params.content.toLowerCase().includes(f))) {
-    logger.warn("[MemoryService] Rejected sensitive content in memory write");
-    return;
-  }
-
-  const conf =
-    params.confidence === "LOW" ? 0.35 : params.confidence === "MEDIUM" ? 0.6 : 0.85;
-
-  const expiresAt = params.expiresInDays
-    ? new Date(Date.now() + params.expiresInDays * 24 * 3600000)
-    : undefined;
-
-  const payload = {
-    text: params.content.slice(0, 1000),
+  await MemoryWriter.write({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    memoryType: params.memoryType,
     scope: params.scope,
-    source_type: params.sourceType,
-    source_id: params.sourceId ?? null,
-  };
-
-  await db.insert(bhudhiMemory).values({
-    user_id:       params.userId,
-    blueprint_id:  params.blueprintId,
-    memory_type:   params.memoryType,
-    content_json:  payload,
-    confidence:    conf,
-    expires_at:    expiresAt,
-    active:        true,
+    content: params.content,
+    sourceType: params.sourceType,
+    sourceId: params.sourceId,
+    confidence: params.confidence,
+    relevanceScore: params.relevanceScore,
+    expiresInDays: params.expiresInDays,
   });
 }
 
 export async function expireMemory(userId: string, blueprintId?: string): Promise<void> {
   await db
     .update(bhudhiMemory)
-    .set({ active: false, updated_at: new Date() })
+    .set({ active: false, disabled_at: new Date(), updated_at: new Date() })
     .where(
       and(
         eq(bhudhiMemory.user_id, userId),
@@ -160,10 +111,12 @@ export async function expireMemory(userId: string, blueprintId?: string): Promis
     );
 }
 
-/** Deactivate all blueprint-scoped Bhudhi rows after completion / pivot (spec Prompt 12). */
-export async function deactivateBlueprintBhudhiMemory(userId: string, blueprintId: string): Promise<void> {
+export async function deactivateBlueprintBhudhiMemory(
+  userId: string,
+  blueprintId: string,
+): Promise<void> {
   await db
     .update(bhudhiMemory)
-    .set({ active: false, updated_at: new Date() })
+    .set({ active: false, disabled_at: new Date(), updated_at: new Date() })
     .where(and(eq(bhudhiMemory.user_id, userId), eq(bhudhiMemory.blueprint_id, blueprintId)));
 }

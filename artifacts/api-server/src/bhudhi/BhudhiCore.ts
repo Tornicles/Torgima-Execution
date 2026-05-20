@@ -8,11 +8,18 @@ import {
   type BhudhiTriggerRequest,
   type BhudhiTriggerResult,
 } from "../types/bhudhi.js";
-import { getContract } from "./PromptRegistry.js";
+import { getContract, PromptRegistry } from "./PromptRegistry.js";
+import type { BhudhiMode } from "../types/bhudhi.js";
 import { getFallback } from "./FallbackLibrary.js";
 import { validateOutput } from "./OutputValidator.js";
 import { retrieveMemory } from "./MemoryService.js";
-import { checkUsageAllowed, getTimeout, logUsage, updateBhudhiLog } from "./UsageController.js";
+import {
+  checkUsageAllowed,
+  getMaxTokensForTrigger,
+  getTimeout,
+  logUsage,
+  updateBhudhiLog,
+} from "./UsageController.js";
 import { reviewOutput } from "./agents/CriticAgent.js";
 import { logFallbackUsage } from "./fallbackUsageLog.js";
 import {
@@ -39,8 +46,20 @@ export type BhudhiPipelineDeps = {
 
 // ── GOVERNED PIPELINE (TriggerRouter-only entry) ─────────────────────────────
 
+function resolvePromptContract(request: BhudhiTriggerRequest & { requestedMode?: string }) {
+  if (request.requestedMode) {
+    return (
+      PromptRegistry.lookup(request.triggerType, request.requestedMode) ??
+      getContract(request.triggerType)
+    );
+  }
+  return getContract(request.triggerType);
+}
+
+type PipelineRequest = BhudhiTriggerRequest & { requestedMode?: BhudhiMode };
+
 export async function runBhudhiPipeline<T = unknown>(
-  request: BhudhiTriggerRequest,
+  request: PipelineRequest,
   deps: BhudhiPipelineDeps,
 ): Promise<BhudhiTriggerResult<T>> {
 
@@ -52,7 +71,23 @@ export async function runBhudhiPipeline<T = unknown>(
   if (!chain.allowed) {
     await breakCircuit(chainId, "Agent chain depth exceeded");
     exitAgentChain(chainId);
-    return { ok: false, fallbackUsed: true, logId: "", failureReason: "Circuit breaker" };
+    const contractEarly = getContract(request.triggerType);
+    let logId = "";
+    if (contractEarly) {
+      logId = await logUsage({
+        userId: request.userId,
+        blueprintId: request.blueprintId,
+        triggerType: request.triggerType,
+        promptName: contractEarly.name,
+        promptVersion: contractEarly.version,
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: Date.now() - startTime,
+        status: "rejected",
+        fallbackReason: "agent_chain_depth_exceeded",
+      }).catch(() => "");
+    }
+    return { ok: false, fallbackUsed: true, logId, failureReason: "Circuit breaker" };
   }
 
   const stabilityCheck = await checkTriggerAllowed(request.triggerType, request.userId);
@@ -91,7 +126,7 @@ export async function runBhudhiPipeline<T = unknown>(
     return { ok: false, fallbackUsed: true, logId: "", failureReason: stabilityCheck.reason };
   }
 
-  const contract = getContract(request.triggerType);
+  const contract = resolvePromptContract(request);
   if (!contract) {
     exitAgentChain(chainId);
     logger.warn({ triggerType: request.triggerType }, "[BhudhiCore] Unregistered trigger type");
@@ -234,10 +269,12 @@ export async function runBhudhiPipeline<T = unknown>(
       throw new Error("BHUDHI_NO_API_KEY");
     }
 
+    const maxTokens = Math.min(contract.maxTokens, getMaxTokensForTrigger(request.triggerType));
+
     const modelResult = await deps.invokeModel({
       systemPrompt: contract.systemPrompt,
       userPrompt,
-      maxTokens: contract.maxTokens,
+      maxTokens,
       temperature: contract.temperature,
       timeoutMs: timeout,
     });

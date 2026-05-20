@@ -29,6 +29,20 @@
       "when": 1779225000000,
       "tag": "0003_normalize_blueprint_status_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0004_add_bhudhi_memory_b3_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0005_add_failure_classifications",
+      "breakpoints": true
     }
   ]
 }

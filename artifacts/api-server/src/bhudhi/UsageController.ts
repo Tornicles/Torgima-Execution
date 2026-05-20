@@ -4,9 +4,25 @@ import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { mapBhudhiTriggerToDbEnum } from "./bhudhiLogMapping.js";
 
+const DAILY_TOKEN_LIMIT = parseInt(process.env.BHUDHI_DAILY_TOKEN_LIMIT ?? "100000", 10);
+
+const TRIGGER_MAX_TOKENS: Record<string, number> = {
+  GOAL_STRUCTURING: 600,
+  TASK_DRAFTING: 500,
+  TASK_CLARIFICATION: 300,
+  RECOVERY_COPY: 400,
+  FEEDBACK_CLASSIFICATION: 300,
+  STATE_EXPLANATION: 600,
+  OUTCOME_EVIDENCE_SUMMARY: 500,
+  ACADEMY_SUPPORT: 700,
+  ROOT_CAUSE_ASSIST: 500,
+  CLARIFICATION_PROMPT: 300,
+  INACTIVITY_RESTART: 400,
+};
+
 const DAILY_CAPS: Record<string, number> = {
-  starter:  20,
-  growth:   50,
+  starter: 20,
+  growth: 50,
   ultimate: 200,
 };
 
@@ -17,10 +33,52 @@ function estimatedCostUsd(inputTokens: number, outputTokens: number): number {
   return inputTokens * 0.000003 + outputTokens * 0.000015;
 }
 
+export function getMaxTokensForTrigger(triggerType: string): number {
+  return TRIGGER_MAX_TOKENS[triggerType] ?? 500;
+}
+
+export async function checkTokenBudget(userId: string): Promise<boolean> {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  try {
+    const [{ total }] = await db
+      .select({
+        total: sql<number>`coalesce(sum(${bhudhiLogs.token_count_in}), 0)::int`,
+      })
+      .from(bhudhiLogs)
+      .where(and(eq(bhudhiLogs.user_id, userId), gte(bhudhiLogs.created_at, todayStart)));
+
+    return Number(total ?? 0) < DAILY_TOKEN_LIMIT;
+  } catch {
+    return true;
+  }
+}
+
+export const UsageController = {
+  check: (userId: string, _triggerType?: string) => checkTokenBudget(userId),
+  getMaxTokens: getMaxTokensForTrigger,
+  async record(
+    _userId: string,
+    _triggerType: string,
+    _usage: { inputTokens: number; outputTokens: number; latencyMs: number },
+  ): Promise<void> {
+    // Logged via logUsage / updateBhudhiLog in BhudhiCore.
+  },
+};
+
 export async function checkUsageAllowed(params: {
-  userId:      string;
+  userId: string;
   triggerType: string;
 }): Promise<{ allowed: boolean; reason?: string }> {
+  const tokenOk = await checkTokenBudget(params.userId);
+  if (!tokenOk) {
+    logger.warn({ userId: params.userId }, "[UsageController] Daily token budget exhausted");
+    return {
+      allowed: false,
+      reason: `Daily token budget exhausted (${DAILY_TOKEN_LIMIT} input tokens)`,
+    };
+  }
 
   let tier = "starter";
   try {
@@ -34,8 +92,7 @@ export async function checkUsageAllowed(params: {
     return { allowed: true };
   }
 
-  const tierResolved = tier;
-  const dailyCap  = DAILY_CAPS[tierResolved] ?? DAILY_CAPS.starter;
+  const dailyCap = DAILY_CAPS[tier] ?? DAILY_CAPS.starter;
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -51,8 +108,14 @@ export async function checkUsageAllowed(params: {
   }
 
   if (todayCount >= dailyCap) {
-    logger.warn({ userId: params.userId, tier: tierResolved, cap: dailyCap, used: todayCount }, "[UsageController] Daily cap reached");
-    return { allowed: false, reason: `Daily AI call limit reached (${dailyCap} calls for ${tierResolved} tier)` };
+    logger.warn(
+      { userId: params.userId, tier, cap: dailyCap, used: todayCount },
+      "[UsageController] Daily call cap reached",
+    );
+    return {
+      allowed: false,
+      reason: `Daily AI call limit reached (${dailyCap} calls for ${tier} tier)`,
+    };
   }
 
   void params.triggerType;
@@ -61,45 +124,45 @@ export async function checkUsageAllowed(params: {
 
 export function getTimeout(triggerType: string): number {
   if (triggerType === "TASK_DRAFTING") return TASK_TIMEOUT_MS;
-  if (triggerType === "REALITY_INTELLIGENCE" || triggerType === "EIS_INDUSTRY_RESEARCH") return 75_000;
+  if (triggerType === "REALITY_INTELLIGENCE" || triggerType === "EIS_INDUSTRY_RESEARCH")
+    return 75_000;
   return TIMEOUT_MS;
 }
 
 export async function logUsage(params: {
-  userId:          string;
-  blueprintId?:    string;
-  triggerType:     BhudhiTriggerType | string;
-  promptName:      string;
-  promptVersion:   string;
-  inputTokens:     number;
-  outputTokens:    number;
-  latencyMs:       number;
-  status:          "success" | "fallback" | "error" | "rejected" | "pending";
+  userId: string;
+  blueprintId?: string;
+  triggerType: BhudhiTriggerType | string;
+  promptName: string;
+  promptVersion: string;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+  status: "success" | "fallback" | "error" | "rejected" | "pending";
   fallbackReason?: string;
-  errorCode?:      string;
+  errorCode?: string;
 }): Promise<string> {
-
   const cost = estimatedCostUsd(params.inputTokens, params.outputTokens);
 
   const [row] = await db
     .insert(bhudhiLogs)
     .values({
-      user_id:        params.userId,
-      blueprint_id:   params.blueprintId,
-      request_type:   "other",
-      trigger_type:   mapBhudhiTriggerToDbEnum(params.triggerType as BhudhiTriggerType),
-      input_json:     {
-        promptName:   params.promptName,
-        status:       params.status,
+      user_id: params.userId,
+      blueprint_id: params.blueprintId,
+      request_type: "other",
+      trigger_type: mapBhudhiTriggerToDbEnum(params.triggerType as BhudhiTriggerType),
+      input_json: {
+        promptName: params.promptName,
+        status: params.status,
         fallbackReason: params.fallbackReason,
-        errorCode:    params.errorCode,
+        errorCode: params.errorCode,
       },
       prompt_version: params.promptVersion,
-      model_used:     process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514",
+      model_used: process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514",
       token_count_in: params.inputTokens,
       token_count_out: params.outputTokens,
-      latency_ms:     params.latencyMs,
-      output_json:    { estimated_cost_usd: cost },
+      latency_ms: params.latencyMs,
+      output_json: { estimated_cost_usd: cost },
       validation_status: params.status,
       validation_notes: params.fallbackReason ?? params.errorCode,
     })
@@ -110,24 +173,28 @@ export async function logUsage(params: {
 }
 
 export async function updateBhudhiLog(params: {
-  logId:           string;
-  inputTokens?:    number;
-  outputTokens?:   number;
-  latencyMs?:      number;
-  status:          "success" | "fallback" | "error" | "rejected";
+  logId: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  latencyMs?: number;
+  status: "success" | "fallback" | "error" | "rejected";
   fallbackReason?: string;
-  errorCode?:      string;
-  outputJson?:     Record<string, unknown>;
+  errorCode?: string;
+  outputJson?: Record<string, unknown>;
 }): Promise<void> {
   const cost = estimatedCostUsd(params.inputTokens ?? 0, params.outputTokens ?? 0);
   const patch: Record<string, unknown> = {
     validation_status: params.status,
     validation_notes: params.fallbackReason ?? params.errorCode,
+    fallback_used: params.status === "fallback" || params.status === "error",
   };
   if (params.inputTokens !== undefined) patch["token_count_in"] = params.inputTokens;
   if (params.outputTokens !== undefined) patch["token_count_out"] = params.outputTokens;
   if (params.latencyMs !== undefined) patch["latency_ms"] = params.latencyMs;
   patch["output_json"] = params.outputJson ?? { estimated_cost_usd: cost };
 
-  await db.update(bhudhiLogs).set(patch as typeof bhudhiLogs.$inferInsert).where(eq(bhudhiLogs.id, params.logId));
+  await db
+    .update(bhudhiLogs)
+    .set(patch as typeof bhudhiLogs.$inferInsert)
+    .where(eq(bhudhiLogs.id, params.logId));
 }

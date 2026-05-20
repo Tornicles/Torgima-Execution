@@ -1,9 +1,10 @@
 /**
  * Prompt 7 §4 — Per-feedback outcome validation + false progress records.
  */
-import { db, feedback, orders, outcomeValidationRecords } from "@workspace/db";
+import { db, feedback, orders, outcomeValidationRecords, blueprints } from "@workspace/db";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { getBasicProfile } from "../../bhudhi/agents/BehavioralAgent.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 
 export type ValidationVerdict = "VALID" | "WEAK" | "INSUFFICIENT" | "SUSPICIOUS";
 export type FalseProgressRisk = "NONE" | "LOW" | "MEDIUM" | "HIGH";
@@ -124,6 +125,54 @@ export async function validateFeedbackOutcome(
     validationVerdict === "SUSPICIOUS" ||
     (priorSuspicious.length >= 1 && validationVerdict === "INSUFFICIENT");
 
+  let evidenceSummary = `${validationVerdict} — proof quality ${Math.round(pq * 100)}%`;
+  const proofText =
+    typeof fb.proof_json === "object" && fb.proof_json !== null && "text" in fb.proof_json
+      ? String((fb.proof_json as { text: unknown }).text ?? "")
+      : "";
+
+  if (proofText.length > 10) {
+    try {
+      const [bp] = await db
+        .select({ state_version: blueprints.state_version })
+        .from(blueprints)
+        .where(eq(blueprints.id, order.blueprint_id))
+        .limit(1);
+
+      const bhudhi = await routeBhudhiRequest({
+        sourceEngine: "OUTCOME_VALIDATION",
+        triggerType: "OUTCOME_EVIDENCE_SUMMARY",
+        requestedMode: "INTERPRET",
+        userId: input.userId,
+        blueprintId: order.blueprint_id,
+        stateVersion: bp?.state_version ?? 0,
+        idempotencyKey: `outcome_evidence:${input.feedbackId}`,
+        facts: {
+          proofText,
+          reflection: fb.reflection ?? "",
+          completionStatus: fb.completion_status,
+        },
+      });
+
+      const summary = (bhudhi.output?.data as { summary?: string } | undefined)?.summary;
+      if (summary?.trim()) {
+        evidenceSummary = summary.trim().slice(0, 500);
+      }
+    } catch {
+      /* deterministic summary retained */
+    }
+
+    await db
+      .update(feedback)
+      .set({
+        proof_json: {
+          ...(fb.proof_json as Record<string, unknown>),
+          outcomeEvidenceSummary: evidenceSummary,
+        },
+      })
+      .where(eq(feedback.id, input.feedbackId));
+  }
+
   await db.insert(outcomeValidationRecords).values({
     user_id: input.userId,
     order_id: input.orderId,
@@ -151,7 +200,7 @@ export async function validateFeedbackOutcome(
     validationVerdict,
     missingCriteria,
     proofRequirementAdjusted,
-    evidenceSummary: `${validationVerdict} — proof quality ${Math.round(pq * 100)}%`,
+    evidenceSummary,
   };
 }
 

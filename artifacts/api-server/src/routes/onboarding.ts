@@ -175,8 +175,9 @@ router.post("/onboarding/goal", async (req, res) => {
 
     // Structure goal
     const structured = await ValidationService.structureGoal({
-      userId:    auth.userId,
-      input:     { ...input, idempotencyKey: input.idempotencyKey },
+      userId:      auth.userId,
+      blueprintId,
+      input:       { ...input, idempotencyKey: input.idempotencyKey },
       aiEnabled,
     });
 

@@ -60,6 +60,7 @@ export interface StructuredGoalDraft {
   domainHints:           string[];
   missingRequiredFields: string[];
   ambiguityFlags:        string[];
+  suggestedClarifyingQuestion?: string | null;
   validationVerdict:     "VALID" | "NEEDS_CLARIFICATION" | "INVALID";
 }
 

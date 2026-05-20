@@ -47,6 +47,8 @@ import {
 } from "../academy/CapabilityGapEngine.js";
 import { getBasicProfile } from "../../bhudhi/agents/BehavioralAgent.js";
 import { selectPackage, packageToInjection } from "../../bhudhi/agents/KnowledgeAgent.js";
+import { fetchRecoveryCoachingCopy } from "../../bhudhi/AdvancedIntelligenceBridge.js";
+import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -1158,7 +1160,84 @@ export async function generate(params: {
     "blocker_resolution",
   ]);
 
-  if (aiFlag?.enabled && bhudhiEligibleTypes.has(taskType)) {
+  if (taskType === "recovery" && aiFlag?.enabled) {
+    try {
+      const failureReason =
+        ctx.latest_feedback?.completion_status === "failed"
+          ? JSON.stringify(ctx.latest_feedback.blocker_json ?? {})
+          : undefined;
+      const [bpRow] = await db
+        .select({ state_version: blueprints.state_version })
+        .from(blueprints)
+        .where(eq(blueprints.id, params.blueprintId))
+        .limit(1);
+      const coaching = await fetchRecoveryCoachingCopy({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        stateVersion: bpRow?.state_version ?? 0,
+        goal: ctx.blueprint.goal,
+        currentCondition:
+          ctx.enforcement.condition_code ?? ctx.blueprint.current_condition ?? "stability",
+        failureReason,
+      });
+      content = {
+        ...content,
+        title: coaching.title,
+        instruction: coaching.instruction,
+        expected_output: coaching.expectedOutput,
+      };
+      if (coaching.usedBhudhi) usedBhudhi = true;
+      if (coaching.fallbackUsed) usedFallback = true;
+
+      await MemoryWriter.write({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        memoryType: "RECOVERY_CONTEXT",
+        scope: "BLUEPRINT",
+        content: coaching.instruction.slice(0, 400),
+        sourceType: "FEEDBACK",
+        confidence: "MEDIUM",
+        relevanceScore: 0.7,
+        expiresInDays: 14,
+      }).catch(() => null);
+    } catch {
+      usedFallback = true;
+    }
+  } else if (taskType === "academy" && aiFlag?.enabled) {
+    try {
+      const [bpRow] = await db
+        .select({ state_version: blueprints.state_version })
+        .from(blueprints)
+        .where(eq(blueprints.id, params.blueprintId))
+        .limit(1);
+      const academy = await routeBhudhiRequest({
+        sourceEngine: "TaskGenerationEngine",
+        triggerType: "ACADEMY_SUPPORT",
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        stateVersion: bpRow?.state_version ?? 0,
+        idempotencyKey: `academy_task:${params.blueprintId}:${Date.now()}`,
+        facts: {
+          goal: ctx.blueprint.goal,
+          skillCategory: requiredSkill ?? "execution",
+          capabilityGap: requiredSkill ?? "execution",
+          currentSkillLevel: ctx.capability.level,
+        },
+      });
+      if (academy.ok && academy.output?.data) {
+        const d = academy.output.data as Record<string, unknown>;
+        content = {
+          ...content,
+          title: String(d.title ?? content.title).slice(0, 200),
+          instruction: String(d.instruction ?? content.instruction).slice(0, 800),
+        };
+        usedBhudhi = !academy.fallbackUsed;
+        if (academy.fallbackUsed) usedFallback = true;
+      }
+    } catch {
+      usedFallback = true;
+    }
+  } else if (aiFlag?.enabled && bhudhiEligibleTypes.has(taskType)) {
     try {
       const enriched = await Promise.race([
         enrichWithBhudhi({

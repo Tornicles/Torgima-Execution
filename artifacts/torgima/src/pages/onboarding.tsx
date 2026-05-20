@@ -51,6 +51,23 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Ensure validationContractId is present (API may omit it on older poll payloads). */
+async function resolveValidationContractId(
+  payload: ValidationPayload,
+): Promise<ValidationPayload> {
+  if (payload.validationContractId || !payload.validationId || !API_BASE_URL) {
+    return payload;
+  }
+  const res = await fetchWithRetry(`${API_BASE_URL}/api/validation/${payload.validationId}/status`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as { ok?: boolean; data?: { validationContractId?: string } };
+  if (json.ok && json.data?.validationContractId) {
+    return { ...payload, validationContractId: json.data.validationContractId };
+  }
+  return payload;
+}
+
 async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, attempts = 3): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
@@ -320,14 +337,18 @@ export default function OnboardingPage() {
       let payload: ValidationPayload | null = d;
       if (d.validationId && d.status !== "validated" && !d.blueprintId) {
         const polled = await pollValidationUntilReady(d.validationId);
-        if (polled) payload = polled;
+        if (polled) payload = { ...polled, status: polled.status ?? "validated" };
         else {
           setError("Validation is taking longer than expected. Try again in a moment.");
           return;
         }
       }
 
-      if (payload?.status === "validated" && payload.blueprintId) {
+      if (
+        payload?.blueprintId &&
+        (payload.status === "validated" || payload.validationContractId)
+      ) {
+        payload = await resolveValidationContractId(payload);
         const erectorRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/run`, {
           method: "POST",
           credentials: "include",
@@ -390,7 +411,8 @@ export default function OnboardingPage() {
 
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
-    if (!validation.validationContractId) {
+    const launchValidation = await resolveValidationContractId(validation);
+    if (!launchValidation.validationContractId) {
       setError("Validation contract is missing. Re-run validation before launch.");
       return;
     }
@@ -402,17 +424,17 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     try {
-      const saved = await saveBlueprintSelection(validation.blueprintId);
+      const saved = await saveBlueprintSelection(launchValidation.blueprintId);
       if (!saved) return;
 
-      if (validation.validationId) {
-        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${validation.validationId}/select-path`, {
+      if (launchValidation.validationId) {
+        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${launchValidation.validationId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             selectedPath,
-            confirmAdjusted: validation.verdict === "adjust" && selectedPath === "adjusted",
+            confirmAdjusted: launchValidation.verdict === "adjust" && selectedPath === "adjusted",
           }),
         });
         const pathData = (await pathRes.json()) as { ok?: boolean; error?: { message?: string } };
@@ -422,9 +444,9 @@ export default function OnboardingPage() {
         }
       }
 
-      await activateBlueprint(validation.blueprintId, {
-        validationContractId: validation.validationContractId,
-        validation_contract_id: validation.validationContractId,
+      await activateBlueprint(launchValidation.blueprintId, {
+        validationContractId: launchValidation.validationContractId,
+        validation_contract_id: launchValidation.validationContractId,
         selectedPath,
         selected_path_type: selectedPath,
         selectedBlueprintLevel: selectedTier,

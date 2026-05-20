@@ -20,6 +20,7 @@ import { determineIntelligenceVerdict } from "./VerdictEngine.js";
 import { buildValidationTabs } from "./buildValidationTabs.js";
 import { buildValidationToBlueprintContract } from "./ValidationToBlueprintBridge.js";
 import { applyTierDepthToResult } from "./applyTierDepth.js";
+import { buildEisExecutionFields } from "../../../bhudhi/AdvancedIntelligenceBridge.js";
 import type { FullValidationResult, ReadinessState, ValidationIntelligencePayload } from "./validation-intelligence-types.js";
 import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
@@ -172,10 +173,13 @@ export async function runFullValidation(params: {
     : verdict === "adjust" ? "ready_with_adjustment"
     : "ready_proceed";
 
+  const eisExecutionFields = buildEisExecutionFields(eis);
+
   const intelligence: ValidationIntelligencePayload = {
     cis,
     iis,
     eis,
+    ...eisExecutionFields,
     industryPanel,
     tabs,
     paths,

@@ -302,7 +302,7 @@ Classify execution blocker from user feedback. Return ONLY JSON:
   "stateVersion": ${ctx["stateVersion"] ?? 0},
   "confidence": "MEDIUM",
   "data": {
-    "blockerCategory": "DEPENDENCY|SKILL|MOTIVATION|CLARITY|RESOURCE|OTHER",
+    "blockerCategory": "DEPENDENCY|SKILL|MOTIVATION|CLARITY|RESOURCE|GAMING_SIGNAL|OTHER",
     "severity": "LOW|MEDIUM|HIGH",
     "needsDependencyResolution": false,
     "needsRecoveryTask": false,

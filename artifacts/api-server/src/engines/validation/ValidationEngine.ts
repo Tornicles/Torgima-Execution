@@ -130,6 +130,7 @@ export async function runValidation(params: {
 
   return {
     validationId: full.validationId,
+    validationContractId: full.validationContractId,
     blueprintId: full.blueprintId,
     verdict: full.verdict,
     scores: full.scores,
@@ -423,6 +424,22 @@ async function generatePathsWithBhudhi(params: {
 
 // ── GOAL STRUCTURING — BHUDHI ─────────────────────────────────────────────────
 
+function inferGoalAmbiguity(rawGoal: string, timeframe?: string): {
+  ambiguityFlags: string[];
+  suggestedClarifyingQuestion: string | null;
+} {
+  const flags: string[] = [];
+  const lower = rawGoal.toLowerCase();
+  if (/\b(something|anything|profitable|soon|someday)\b/.test(lower)) flags.push("goal_scope_vague");
+  if (lower.split(/\s+/).length < 8) flags.push("goal_too_brief");
+  if (timeframe === "soon" || timeframe === "asap") flags.push("timeframe_imprecise");
+  const question =
+    flags.length > 0
+      ? "What specific product, service, or measurable outcome are you building in tech, and by what date?"
+      : null;
+  return { ambiguityFlags: flags, suggestedClarifyingQuestion: question };
+}
+
 export async function structureGoalWithBhudhi(raw: {
   rawGoal:          string;
   purpose?:         string;
@@ -432,6 +449,7 @@ export async function structureGoalWithBhudhi(raw: {
   successSignal?:   string;
   knownBlockers?:   string;
   userId?:          string;
+  blueprintId?:     string;
 }): Promise<StructuredGoalDraft> {
   if (!raw.userId) {
     logger.warn("[ValidationEngine] structureGoalWithBhudhi without userId — using deterministic fallback");
@@ -442,8 +460,9 @@ export async function structureGoalWithBhudhi(raw: {
     sourceEngine:   "ValidationEngine",
     triggerType:    "GOAL_STRUCTURING",
     userId:         raw.userId,
+    blueprintId:    raw.blueprintId,
     stateVersion:   0,
-    idempotencyKey: `goal_structure:${Date.now()}`,
+    idempotencyKey: `goal_structure:${raw.blueprintId ?? raw.userId}:${Date.now()}`,
     facts: {
       rawGoal:         raw.rawGoal,
       purpose:         raw.purpose,
@@ -467,6 +486,15 @@ export async function structureGoalWithBhudhi(raw: {
   const fromAi = (d["missingRequiredFields"] as string[] | undefined) ?? [];
   const deterministic = structureGoalDeterministic(raw);
   const missingRequiredFields = fromAi.length > 0 ? fromAi : deterministic.missingRequiredFields;
+  const inferred = inferGoalAmbiguity(raw.rawGoal, raw.timeframe);
+  const aiAmbiguity = (d["ambiguityFlags"] as string[] | undefined) ?? [];
+  const ambiguityFlags =
+    aiAmbiguity.length > 0 ? aiAmbiguity : inferred.ambiguityFlags.length > 0 ? inferred.ambiguityFlags : deterministic.ambiguityFlags;
+  const suggestedClarifyingQuestion =
+    (d["suggestedClarifyingQuestion"] as string | null | undefined) ??
+    inferred.suggestedClarifyingQuestion ??
+    deterministic.suggestedClarifyingQuestion ??
+    null;
 
   return {
     cleanedGoal:          String(d["cleanedGoal"] ?? raw.rawGoal),
@@ -478,7 +506,8 @@ export async function structureGoalWithBhudhi(raw: {
     blockers:             raw.knownBlockers ? [raw.knownBlockers] : [],
     domainHints:          (d["domainHints"] as string[]) ?? [],
     missingRequiredFields,
-    ambiguityFlags:       (d["ambiguityFlags"] as string[]) ?? [],
+    ambiguityFlags,
+    suggestedClarifyingQuestion,
     validationVerdict:    missingRequiredFields.length > 0 ? "NEEDS_CLARIFICATION" : "VALID",
   };
 }
@@ -500,6 +529,7 @@ export function structureGoalDeterministic(raw: {
   if (!raw.timeframe)                                 missing.push("timeframe");
   if (!raw.commitmentLevel)                           missing.push("commitment");
 
+  const inferred = inferGoalAmbiguity(raw.rawGoal, raw.timeframe);
   const verdict: "VALID" | "NEEDS_CLARIFICATION" | "INVALID" =
     missing.includes("goal") ? "INVALID" :
     missing.length > 0       ? "NEEDS_CLARIFICATION" : "VALID";
@@ -514,7 +544,8 @@ export function structureGoalDeterministic(raw: {
     blockers:              raw.knownBlockers ? [raw.knownBlockers] : [],
     domainHints:           [],
     missingRequiredFields: missing,
-    ambiguityFlags:        [],
+    ambiguityFlags:        inferred.ambiguityFlags,
+    suggestedClarifyingQuestion: inferred.suggestedClarifyingQuestion,
     validationVerdict:     verdict,
   };
 }

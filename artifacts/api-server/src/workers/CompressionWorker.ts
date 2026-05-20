@@ -41,14 +41,17 @@ export async function runCompressionCycle(userId: string): Promise<{ compressed:
         ),
       );
 
+    const summaryText = `Compressed summary of ${rows.length} ${memoryType} memories`;
     await db.insert(bhudhiMemory).values({
       user_id: userId,
       memory_type: memoryType,
+      content: summaryText,
       content_json: {
-        text: `Compressed summary of ${rows.length} ${memoryType} memories`,
+        text: summaryText,
         compressed: true,
       },
       confidence: 0.7,
+      relevance_score: 0.7,
       is_compressed: true,
       active: true,
     });

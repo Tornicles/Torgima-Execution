@@ -90,12 +90,17 @@ function assertIntelligencePayload(row: typeof validations.$inferSelect): Valida
 export const ValidationService = {
   async structureGoal(params: {
     userId: string;
+    blueprintId?: string;
     input: OnboardingGoalInput;
     aiEnabled?: boolean;
   }): Promise<StructuredGoalDraft> {
     const aiEnabled = params.aiEnabled ?? (await getAiEnabled());
     if (aiEnabled) {
-      return structureGoalWithBhudhi({ ...params.input, userId: params.userId });
+      return structureGoalWithBhudhi({
+        ...params.input,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+      });
     }
     return structureGoalDeterministic(params.input);
   },

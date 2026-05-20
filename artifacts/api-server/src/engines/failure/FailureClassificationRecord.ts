@@ -1,13 +1,14 @@
 /**
  * Prompt 7 §5 — Persist multi-hypothesis failure classifications.
  */
-import { db, failureClassifications } from "@workspace/db";
+import { db, failureClassifications, blueprints } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   classifyFailure,
   type ClassificationResult,
   FAILURE_CATEGORIES,
 } from "./FailureClassificationEngine.js";
-import { routeTrigger } from "../../bhudhi/TriggerRouter.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { runDebate } from "../../bhudhi/DebateEngine.js";
 
 const PROMPT7_CATEGORIES = [
@@ -21,6 +22,10 @@ const PROMPT7_CATEGORIES = [
   "SCOPE_MISALIGNMENT",
   "OVERLOAD",
 ] as const;
+
+function safeLikelihood(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
 
 function mapToPrompt7Category(primary: string, reflection: string): string {
   const r = reflection.toLowerCase();
@@ -52,21 +57,30 @@ export async function classifyFailureWithRecord(params: {
   const base = await classifyFailure(params);
   const reflection = params.reflection ?? "";
 
-  const bhudhi = await routeTrigger({
+  const [bp] = await db
+    .select({ state_version: blueprints.state_version })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+
+  const bhudhi = await routeBhudhiRequest({
+    sourceEngine: "FAILURE_CLASSIFICATION",
+    triggerType: "ROOT_CAUSE_ASSIST",
+    requestedMode: "INTERPRET",
     userId: params.userId,
     blueprintId: params.blueprintId,
-    orderId: params.orderId,
-    feedbackId: params.feedbackId,
-    triggerType: "ROOT_CAUSE_ASSIST",
-    payload: { reflection, primaryCategory: base.primaryCategory },
-    worldStateVersion: 0,
-    currentCondition: "stability",
-    priority: "MEDIUM",
+    stateVersion: bp?.state_version ?? 0,
+    idempotencyKey: `root_cause:${params.feedbackId}`,
+    facts: {
+      reflection,
+      primaryCategory: base.primaryCategory,
+      failureContext: reflection.slice(0, 500),
+    },
   }).catch(() => null);
 
   const candidates =
-    (bhudhi?.contextPacket as { data?: { candidates?: Array<{ category: string; likelihood: number }> } })
-      ?.data?.candidates ?? [];
+    (bhudhi?.output?.data as { candidates?: Array<{ category: string; likelihood: number }> } | undefined)
+      ?.candidates ?? [];
 
   let primary = mapToPrompt7Category(base.primaryCategory, reflection);
   let primaryLikelihood =
@@ -98,22 +112,32 @@ export async function classifyFailureWithRecord(params: {
 
   const systemAction = systemActionFor(primary);
 
-  const [record] = await db
-    .insert(failureClassifications)
-    .values({
-      user_id: params.userId,
-      order_id: params.orderId,
-      feedback_id: params.feedbackId,
-      primary_candidate: primary,
-      primary_likelihood: primaryLikelihood,
-      secondary_candidate: secondary,
-      secondary_likelihood: Math.max(0.1, primaryLikelihood - 0.2),
+  let record: (typeof failureClassifications.$inferSelect) | undefined;
+  try {
+    const [row] = await db
+      .insert(failureClassifications)
+      .values({
+        user_id: params.userId,
+        order_id: params.orderId,
+        feedback_id: params.feedbackId,
+        primary_candidate: primary,
+        primary_likelihood: primaryLikelihood,
+        secondary_candidate: secondary,
+      secondary_likelihood: safeLikelihood(primaryLikelihood - 0.2, 0.35),
       tertiary_candidate: tertiary,
-      tertiary_likelihood: Math.max(0.05, primaryLikelihood - 0.35),
-      evidence_citations: [{ source: "reflection", excerpt: reflection.slice(0, 200) }],
-      system_action: systemAction,
-    })
-    .returning();
+      tertiary_likelihood: safeLikelihood(primaryLikelihood - 0.35, 0.2),
+        evidence_citations: [{ source: "reflection", excerpt: reflection.slice(0, 200) }],
+        system_action: systemAction,
+      })
+      .returning();
+    record = row;
+  } catch (err) {
+    const { logger } = await import("../../lib/logger.js");
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err), feedbackId: params.feedbackId },
+      "[FailureClassificationRecord] Insert failed",
+    );
+  }
 
   if (primary === "CAPABILITY_GAP") {
     const { routeCapabilityGapToAcademy } = await import("../academy/AcademyOrchestrator.js");

@@ -5,6 +5,7 @@ import {
   events,
   capabilityProfiles,
   capabilityHistory,
+  blueprints,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { OrderStatus } from "@workspace/state-machine";
@@ -13,6 +14,11 @@ import { TorgimaError } from "../../lib/errors.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { recordOperatingLoopStage } from "../../services/OperatingLoopRecorder.js";
 import { scoreProofForOrder } from "./ProofScoringEngine.js";
+import { runFeedbackCriticCheck } from "../../bhudhi/AdvancedIntelligenceBridge.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
+import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
+import { runPsychologyPostFeedback } from "../psychology/PsychologyPipeline.js";
+import { classifyFailureWithRecord } from "../failure/FailureClassificationRecord.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -113,7 +119,43 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
   }
 
   if (order.proof_required && (!input.proofJson || Object.keys(input.proofJson).length === 0)) {
-    throw new TorgimaError("VALIDATION_ERROR", "This task requires proof of completion", false);
+    const [bp] = await db
+      .select({ state_version: blueprints.state_version })
+      .from(blueprints)
+      .where(eq(blueprints.id, input.blueprintId))
+      .limit(1);
+
+    let clarificationQuestion =
+      "This task requires proof of completion. What evidence can you provide?";
+    try {
+      const clarification = await routeBhudhiRequest({
+        sourceEngine: "FEEDBACK_PROCESSING",
+        triggerType: "CLARIFICATION_PROMPT",
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        stateVersion: bp?.state_version ?? 0,
+        idempotencyKey: `clarification:${input.orderId}:${input.idempotencyKey}`,
+        facts: {
+          missingContext: "proof of completion",
+          requiredField: "proof",
+          taskTitle: order.title ?? "active task",
+        },
+      });
+      const q = (clarification.output?.data as { question?: string } | undefined)?.question;
+      if (q?.trim()) clarificationQuestion = q.trim();
+    } catch {
+      /* default question */
+    }
+
+    return {
+      feedbackId: "",
+      verdictStatus: "needs_interrogation",
+      weightedScore: 0,
+      confidence: "low",
+      requiresInterrogation: true,
+      interrogationQuestion: clarificationQuestion,
+      eventId: "",
+    };
   }
 
   const ref = input.reflection.trim();
@@ -147,12 +189,52 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
 
   const confidence = weight >= 0.9 ? "high" : weight >= 0.7 ? "medium" : "low";
 
-  const requiresInterrogation = confidence === "low" && input.completionStatus === "completed";
-  const interrogationQuestion = requiresInterrogation
+  let requiresInterrogation = confidence === "low" && input.completionStatus === "completed";
+  let interrogationQuestion: string | undefined = requiresInterrogation
     ? input.score >= 8
       ? "Your reflection was brief. What specifically did you produce that justifies this score?"
       : "Your reflection was brief. What was the actual output of this task?"
     : undefined;
+
+  if (input.score >= 8 && ref.length < 60) {
+    const [bp] = await db
+      .select({ state_version: blueprints.state_version })
+      .from(blueprints)
+      .where(eq(blueprints.id, input.blueprintId))
+      .limit(1);
+
+    await routeBhudhiRequest({
+      sourceEngine: "FEEDBACK_PROCESSING",
+      triggerType: "FEEDBACK_CLASSIFICATION",
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      stateVersion: bp?.state_version ?? input.expectedStateVersion ?? 0,
+      idempotencyKey: `feedback_classify:${input.orderId}:${input.idempotencyKey}`,
+      facts: {
+        feedbackText: ref,
+        score: input.score,
+        taskTitle: order.title ?? "active task",
+      },
+    }).catch(() => null);
+
+    const critic = await runFeedbackCriticCheck({
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      feedbackId: `${input.orderId}:${input.idempotencyKey}`,
+      score: input.score,
+      reflection: ref,
+      stateVersion: bp?.state_version ?? input.expectedStateVersion ?? 0,
+    });
+
+    if (critic.requiresInterrogation) {
+      requiresInterrogation = true;
+      interrogationQuestion = critic.interrogationQuestion ?? interrogationQuestion;
+      if (critic.gamingSignal) {
+        flagged = true;
+        gamingReason = gamingReason ?? "High score with weak reflection (critic)";
+      }
+    }
+  }
 
   const newOrderStatus =
     input.completionStatus === "failed"
@@ -252,6 +334,86 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     score: input.score,
     difficulty: order.difficulty,
   }).catch(() => null);
+
+  if (input.completionStatus === "failed") {
+    await MemoryWriter.write({
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      memoryType: "FRICTION_PATTERN",
+      scope: "BLUEPRINT",
+      content: `Failed execution: ${ref.slice(0, 200)}`,
+      sourceType: "FEEDBACK",
+      sourceId: feedbackIdOut,
+      confidence: "MEDIUM",
+      relevanceScore: 0.65,
+      expiresInDays: 30,
+    }).catch(() => null);
+
+    await classifyFailureWithRecord({
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      orderId: input.orderId,
+      feedbackId: feedbackIdOut,
+      reflection: ref,
+    }).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), feedbackId: feedbackIdOut },
+        "[FeedbackEngine] Failure classification failed",
+      );
+    });
+  }
+
+  if (
+    input.completionStatus === "completed" &&
+    input.score >= 8 &&
+    ref.length < 60 &&
+    requiresInterrogation
+  ) {
+    const { bhudhiLogs } = await import("@workspace/db");
+    const { mapBhudhiTriggerToDbEnum } = await import("../../bhudhi/bhudhiLogMapping.js");
+    const dbTrigger = mapBhudhiTriggerToDbEnum("FEEDBACK_CLASSIFICATION");
+    const [existingLog] = await db
+      .select({ id: bhudhiLogs.id })
+      .from(bhudhiLogs)
+      .where(
+        and(
+          eq(bhudhiLogs.user_id, input.userId),
+          eq(bhudhiLogs.trigger_type, dbTrigger),
+        ),
+      )
+      .orderBy(desc(bhudhiLogs.created_at))
+      .limit(1);
+    if (!existingLog) {
+      await routeBhudhiRequest({
+        sourceEngine: "FEEDBACK_PROCESSING",
+        triggerType: "FEEDBACK_CLASSIFICATION",
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        stateVersion: input.expectedStateVersion ?? 0,
+        idempotencyKey: `feedback_classify_ensure:${feedbackIdOut}`,
+        facts: { feedbackText: ref, score: input.score, ensureLog: true },
+      }).catch(() => null);
+    }
+  }
+
+  if (
+    input.completionStatus === "failed" ||
+    input.completionStatus === "completed" ||
+    input.completionStatus === "partial"
+  ) {
+    await runPsychologyPostFeedback({
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      orderId: input.orderId,
+      feedbackId: feedbackIdOut,
+      completionStatus: input.completionStatus,
+    }).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), feedbackId: feedbackIdOut },
+        "[FeedbackEngine] Post-feedback psychology failed",
+      );
+    });
+  }
 
   logger.info(
     {
