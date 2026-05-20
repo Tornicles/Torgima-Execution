@@ -1,5 +1,6 @@
 import type { BhudhiOutputEnvelope, BhudhiOutputType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
+import { getContractByName, PromptRegistry } from "./PromptRegistry.js";
 
 export interface ValidationResult {
   ok:     boolean;
@@ -304,3 +305,53 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
 
   return { ok: true, errors: [] };
 }
+
+function stripMarkdownJson(rawText: string): string {
+  return rawText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
+function resolveContract(contractName: string) {
+  return getContractByName(contractName) ?? PromptRegistry.resolveByName(contractName);
+}
+
+/** B2 — validate raw model text against a named prompt contract's Zod schema. */
+export function validateFromContract<T = unknown>(
+  rawText: string,
+  contractName: string,
+): { ok: boolean; data?: T; errors?: string[] } {
+  const contract = resolveContract(contractName);
+  if (!contract) {
+    return { ok: false, errors: [`Contract not found: ${contractName}`] };
+  }
+
+  const cleaned = stripMarkdownJson(rawText);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return { ok: false, errors: ["Not valid JSON"] };
+  }
+
+  if (contract.outputSchema) {
+    const result = contract.outputSchema.safeParse(parsed);
+    if (!result.success) {
+      return {
+        ok: false,
+        errors: result.error.issues.map((i) => i.message),
+      };
+    }
+    return { ok: true, data: result.data as T };
+  }
+
+  const envelope = parsed as BhudhiOutputEnvelope;
+  const legacy = validateOutput(parsed, contract.outputType, envelope.stateVersion ?? 0);
+  return legacy.ok
+    ? { ok: true, data: parsed as T }
+    : { ok: false, errors: legacy.errors };
+}
+
+/** B2 spec alias. */
+export const OutputValidator = {
+  validate: validateFromContract,
+  validateEnvelope: validateOutput,
+};

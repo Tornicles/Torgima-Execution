@@ -247,6 +247,16 @@ export async function runBhudhiPipeline<T = unknown>(
 
     const cleaned = modelResult.text.replace(/```json|```/g, "").trim();
     rawOutput = JSON.parse(cleaned) as unknown;
+
+    if (contract.outputSchema) {
+      const zodParsed = contract.outputSchema.safeParse(rawOutput);
+      if (!zodParsed.success) {
+        throw new Error(
+          `Schema validation failed: ${zodParsed.error.issues.map((i) => i.message).join(", ")}`,
+        );
+      }
+      rawOutput = zodParsed.data;
+    }
   } catch (error) {
     const errMsg  = error instanceof Error ? error.message : String(error);
     const latency = Date.now() - startTime;

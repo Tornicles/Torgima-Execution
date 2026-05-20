@@ -1,4 +1,7 @@
+import type { z } from "zod";
 import type { BhudhiTriggerType, BhudhiMode, BhudhiOutputType } from "../types/bhudhi.js";
+import { bootstrapPromptRegistry } from "./promptRegistryBootstrap.js";
+import { OUTPUT_ENVELOPE_SCHEMAS } from "./schemas/outputSchemas.js";
 
 export interface PromptContract {
   name:            string;
@@ -8,10 +11,13 @@ export interface PromptContract {
   outputType:      BhudhiOutputType;
   maxTokens:       number;
   temperature:     number;
+  timeoutMs?:      number;
+  allowedSources?: string[];
   systemPrompt:    string;
   buildUserPrompt: (ctx: Record<string, unknown>) => string;
   fallbackKey:     string;
   memoryAllowed:   boolean;
+  outputSchema?:   z.ZodTypeAny;
 }
 
 const STANDARD_SYSTEM_HEADER = `You are Bhudhi inside Torgima — a controlled execution intelligence system.
@@ -22,6 +28,8 @@ You must NOT change state, approve proof, override enforcement, decide condition
 Return ONLY the required JSON format. No markdown. No explanation outside JSON. No preamble.`;
 
 const registry = new Map<BhudhiTriggerType, PromptContract>();
+const modeRegistry = new Map<string, PromptContract>();
+const byName = new Map<string, PromptContract>();
 
 registry.set("GOAL_STRUCTURING", {
   name:         "goal.structure.v1",
@@ -1122,10 +1130,44 @@ Return ONLY JSON:
   });
 }
 
+bootstrapPromptRegistry({ registry, modeRegistry, byName });
+
 export function getContract(triggerType: BhudhiTriggerType): PromptContract | null {
   return registry.get(triggerType) ?? null;
+}
+
+export function getContractByName(name: string): PromptContract | null {
+  return byName.get(name) ?? null;
 }
 
 export function getAllContracts(): Map<BhudhiTriggerType, PromptContract> {
   return registry;
 }
+
+/** B2 — governed registry API (triggerType + mode + named contracts). */
+export const PromptRegistry = {
+  register(contract: PromptContract): void {
+    registry.set(contract.triggerType, contract);
+    modeRegistry.set(`${contract.triggerType}/${contract.mode}`, contract);
+    byName.set(contract.name, contract);
+    if (!contract.outputSchema) {
+      contract.outputSchema = OUTPUT_ENVELOPE_SCHEMAS[contract.outputType];
+    }
+  },
+  lookup(triggerType: string, mode: string): PromptContract | null {
+    const keyed = modeRegistry.get(`${triggerType}/${mode}`);
+    if (keyed) return keyed;
+    const primary = registry.get(triggerType as BhudhiTriggerType);
+    if (primary && primary.mode === mode) return primary;
+    return null;
+  },
+  resolveByName(name: string): PromptContract | null {
+    return byName.get(name) ?? null;
+  },
+  list(): string[] {
+    const keys = new Set<string>();
+    for (const k of modeRegistry.keys()) keys.add(k);
+    for (const c of registry.values()) keys.add(`${c.triggerType}/${c.mode}`);
+    return [...keys];
+  },
+};

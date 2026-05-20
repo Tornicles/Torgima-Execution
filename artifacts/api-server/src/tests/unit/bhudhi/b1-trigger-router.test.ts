@@ -145,7 +145,7 @@ describe("B1 TriggerRouter — provider failure fallback (T4)", () => {
 
       const stability = await import("../../../engines/stability/StabilityEngine.js");
       vi.spyOn(stability, "checkTriggerAllowed").mockResolvedValue({ allowed: true });
-      vi.spyOn(stability, "enterAgentChain").mockReturnValue({ allowed: true });
+      vi.spyOn(stability, "enterAgentChain").mockReturnValue({ allowed: true, depth: 0 });
       vi.spyOn(stability, "exitAgentChain").mockImplementation(() => undefined);
 
       const { routeBhudhiRequest } = await import("../../../bhudhi/TriggerRouter.js");

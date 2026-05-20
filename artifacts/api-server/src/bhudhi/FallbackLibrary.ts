@@ -1,4 +1,6 @@
 import type { BhudhiOutputEnvelope } from "../types/bhudhi.js";
+import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { getContract } from "./PromptRegistry.js";
 
 type FallbackFn = (ctx: Record<string, unknown>, stateVersion: number) => BhudhiOutputEnvelope;
 
@@ -560,6 +562,23 @@ for (const item of ERECTOR_FALLBACKS) {
 export function hasFallbackKey(key: string): boolean {
   return fallbacks.has(key);
 }
+
+/** B2 — deterministic fallback by trigger type (same envelope shape as AI output). */
+export function getByTriggerType<T = unknown>(
+  triggerType: string,
+  ctx: Record<string, unknown> = {},
+  stateVersion = 0,
+): T {
+  const contract = getContract(triggerType as BhudhiTriggerType);
+  const key = contract?.fallbackKey ?? `fallback.${triggerType.toLowerCase()}`;
+  const envelope = getFallback(key, ctx, stateVersion);
+  return envelope.data as T;
+}
+
+export const FallbackLibrary = {
+  get: getByTriggerType,
+  getByKey: getFallback,
+};
 
 export function getFallback(key: string, ctx: Record<string, unknown>, stateVersion: number): BhudhiOutputEnvelope {
   const fn = fallbacks.get(key);
