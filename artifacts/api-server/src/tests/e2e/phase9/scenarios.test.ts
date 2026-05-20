@@ -135,11 +135,12 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
         },
       });
       if (!validation.validationContractId) throw new Error("validation contract missing");
+      const selectedPathType = validation.verdict === "adjust" ? "adjusted" : "current";
       await BlueprintLaunchService.launch({
         blueprintId,
         userId,
         validationContractId: validation.validationContractId,
-        selectedPathType: "current",
+        selectedPathType,
         selectedBlueprintLevel: "growth",
       });
     });
