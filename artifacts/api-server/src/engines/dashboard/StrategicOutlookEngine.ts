@@ -8,7 +8,7 @@ import {
   strategicOutlookRecords,
 } from "@workspace/db";
 import { and, desc, eq, gte } from "drizzle-orm";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
 
 export type MomentumTrajectory = "ACCELERATING" | "STABLE" | "DECELERATING" | "REVERSING";
@@ -126,7 +126,7 @@ export async function generateStrategicOutlook(userId: string): Promise<Strategi
   });
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "StrategicOutlookEngine",
       triggerType: "DIRECTION_ANALYSIS",
       userId,

@@ -12,7 +12,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { FeedbackService } from "../services/FeedbackService.js";
 import { UserService } from "../services/UserService.js";
-import { trigger } from "../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../bhudhi/TriggerRouter.js";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { handleRouteError } from "../lib/route-helpers.js";
@@ -316,7 +316,7 @@ router.post("/feedback/:id/interrogation", async (req, res) => {
 router.get("/feedback/:id/interrogation", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "feedback",
       triggerType: "CLARIFICATION_PROMPT",
       userId: auth.userId,

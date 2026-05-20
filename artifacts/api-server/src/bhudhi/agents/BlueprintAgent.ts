@@ -1,6 +1,6 @@
 import { db, blueprintHealthRecords, blueprintInterpretations, orders } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { trigger } from "../BhudhiCore.js";
+import { routeBhudhiRequest } from "../TriggerRouter.js";
 import { validateOutputLayers } from "../OutputValidatorLayers.js";
 import { getBlueprintStructure } from "../../engines/blueprint/BlueprintStructureService.js";
 import { submitProposal } from "../../engines/governance/GovernanceService.js";
@@ -157,7 +157,7 @@ export async function analyzeBlueprint(input: BlueprintAnalysisInput): Promise<B
   let resolvedConfidence: "HIGH" | "MEDIUM" | "LOW" = confidenceTier;
   let agentAssessment = `Blueprint health scan (${input.triggerReason}): ${gaps.length} gap(s) detected.`;
 
-  const bhudhi = await trigger({
+  const bhudhi = await routeBhudhiRequest({
     sourceEngine: "BlueprintAgent",
     triggerType: "BLUEPRINT_GENERATION",
     userId: input.userId,
@@ -270,7 +270,7 @@ export async function generateInterpretation(
   }
 
   const structure = await getBlueprintStructure(blueprintId);
-  const result = await trigger({
+  const result = await routeBhudhiRequest({
     sourceEngine: "BlueprintAgent",
     triggerType: "BLUEPRINT_INTERPRETATION",
     userId,

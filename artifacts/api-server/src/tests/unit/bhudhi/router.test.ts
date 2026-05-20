@@ -285,10 +285,10 @@ describe("bhudhi module exports", () => {
   );
 
   it(
-    "BhudhiCore exports trigger and explainState",
+    "TriggerRouter exports routeBhudhiRequest and explainState",
     async () => {
-      const { trigger, explainState } = await import("../../../bhudhi/BhudhiCore.js");
-      expect(typeof trigger).toBe("function");
+      const { routeBhudhiRequest, explainState } = await import("../../../bhudhi/TriggerRouter.js");
+      expect(typeof routeBhudhiRequest).toBe("function");
       expect(typeof explainState).toBe("function");
     },
     importTimeout,

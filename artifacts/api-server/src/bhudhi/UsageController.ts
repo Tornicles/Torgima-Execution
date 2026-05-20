@@ -22,27 +22,37 @@ export async function checkUsageAllowed(params: {
   triggerType: string;
 }): Promise<{ allowed: boolean; reason?: string }> {
 
-  const [user] = await db
-    .select({ tier: users.tier })
-    .from(users)
-    .where(eq(users.id, params.userId))
-    .limit(1);
+  let tier = "starter";
+  try {
+    const [user] = await db
+      .select({ tier: users.tier })
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1);
+    tier = user?.tier ?? "starter";
+  } catch {
+    return { allowed: true };
+  }
 
-  const tier      = user?.tier ?? "starter";
-  const dailyCap  = DAILY_CAPS[tier] ?? DAILY_CAPS.starter;
+  const tierResolved = tier;
+  const dailyCap  = DAILY_CAPS[tierResolved] ?? DAILY_CAPS.starter;
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(bhudhiLogs)
-    .where(and(eq(bhudhiLogs.user_id, params.userId), gte(bhudhiLogs.created_at, todayStart)));
-
-  const todayCount = count ?? 0;
+  let todayCount = 0;
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bhudhiLogs)
+      .where(and(eq(bhudhiLogs.user_id, params.userId), gte(bhudhiLogs.created_at, todayStart)));
+    todayCount = count ?? 0;
+  } catch {
+    return { allowed: true };
+  }
 
   if (todayCount >= dailyCap) {
-    logger.warn({ userId: params.userId, tier, cap: dailyCap, used: todayCount }, "[UsageController] Daily cap reached");
-    return { allowed: false, reason: `Daily AI call limit reached (${dailyCap} calls for ${tier} tier)` };
+    logger.warn({ userId: params.userId, tier: tierResolved, cap: dailyCap, used: todayCount }, "[UsageController] Daily cap reached");
+    return { allowed: false, reason: `Daily AI call limit reached (${dailyCap} calls for ${tierResolved} tier)` };
   }
 
   void params.triggerType;

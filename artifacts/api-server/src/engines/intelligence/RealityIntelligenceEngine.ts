@@ -4,7 +4,7 @@ import {
   normalizeRealityIntelligenceData,
   type RealityIntelligenceData,
 } from "../../types/reality-intelligence.js";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 
 export type RealityIntelligence = RealityIntelligenceData;
 
@@ -170,7 +170,7 @@ export class RealityIntelligenceEngine {
     }
 
     try {
-      const result = await trigger<Record<string, unknown>>({
+      const result = await routeBhudhiRequest<Record<string, unknown>>({
         sourceEngine: "RealityIntelligenceEngine",
         triggerType: "REALITY_INTELLIGENCE",
         userId: params.userId,

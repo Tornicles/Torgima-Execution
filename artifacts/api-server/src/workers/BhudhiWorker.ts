@@ -1,6 +1,6 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob, type WorkerJobData } from "./BaseWorkerHandler.js";
-import { trigger } from "../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../bhudhi/TriggerRouter.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
 
@@ -19,7 +19,7 @@ workerRegistry.register({
         const triggerType = payload?.["trigger_type"] as BhudhiTriggerType | undefined;
         if (!triggerType) return { success: false, retryable: false, reason: "Missing trigger_type" };
 
-        const result = await trigger({
+        const result = await routeBhudhiRequest({
           sourceEngine:   String(payload?.["source_engine"] ?? "worker"),
           triggerType,
           userId,

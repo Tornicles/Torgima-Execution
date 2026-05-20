@@ -1,6 +1,6 @@
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { trigger } from "../../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../../bhudhi/TriggerRouter.js";
 import type {
   CISContext,
   CompetitorInsight,
@@ -98,7 +98,7 @@ async function fetchEISViaBhudhi(params: {
     .where(eq(blueprints.id, params.blueprintId))
     .limit(1);
 
-  const result = await trigger({
+  const result = await routeBhudhiRequest({
     sourceEngine: "validation_eis",
     triggerType: "EIS_INDUSTRY_RESEARCH",
     userId: params.userId,

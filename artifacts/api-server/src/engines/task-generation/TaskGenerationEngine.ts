@@ -24,7 +24,7 @@ import {
 import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { RealityIntelligenceEngine } from "../intelligence/RealityIntelligenceEngine.js";
 import {
   CommandOrderIntelligenceEngine,
@@ -890,7 +890,7 @@ async function enrichWithBhudhi(params: {
     userId,
   });
 
-  const result = await trigger({
+  const result = await routeBhudhiRequest({
     sourceEngine:   "TaskGenerationEngine",
     triggerType:    "TASK_DRAFTING",
     userId,

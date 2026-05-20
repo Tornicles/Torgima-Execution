@@ -7,7 +7,7 @@ import {
 import { eq, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import type {
   ValidationVerdict,
   ValidationScores,
@@ -365,7 +365,7 @@ export async function generateValidationPathsWithBhudhi(params: {
     .filter(Boolean)
     .join("\n");
 
-  const struct = await trigger({
+  const struct = await routeBhudhiRequest({
     sourceEngine:   "validation",
     triggerType:    "GOAL_STRUCTURING",
     userId:         params.userId,
@@ -438,7 +438,7 @@ export async function structureGoalWithBhudhi(raw: {
     return structureGoalDeterministic(raw);
   }
 
-  const result = await trigger({
+  const result = await routeBhudhiRequest({
     sourceEngine:   "ValidationEngine",
     triggerType:    "GOAL_STRUCTURING",
     userId:         raw.userId,

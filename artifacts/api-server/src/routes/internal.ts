@@ -14,7 +14,7 @@ import { validateOutcome, resolveFlag } from "../engines/outcome/OutcomeValidati
 import { evaluateReward } from "../engines/reward/RewardEngine.js";
 import { evaluateIdentity } from "../engines/identity/IdentityEngine.js";
 import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
-import { trigger } from "../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../bhudhi/TriggerRouter.js";
 import { getContract } from "../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
@@ -264,7 +264,7 @@ router.post("/internal/bhudhi/trigger", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Unknown triggerType", 400);
       return;
     }
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine:   parsed.data.sourceEngine,
       triggerType,
       userId:         parsed.data.userId,

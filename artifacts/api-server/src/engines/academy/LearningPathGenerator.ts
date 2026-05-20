@@ -16,7 +16,7 @@ import {
   sanitizeAcademyLanguage,
 } from "./CapabilityGapEngine.js";
 import { selectAcademyKnowledge } from "../../bhudhi/agents/KnowledgeAgent.js";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { logger } from "../../lib/logger.js";
 
 export type PracticeType = "EXPLANATION" | "DEMONSTRATION" | "PRACTICE" | "ASSESSMENT";
@@ -179,7 +179,7 @@ async function createAcademyOrder(params: {
   let title = params.lesson.taskTitle;
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "academy_learning_path",
       triggerType: "ACADEMY_SUPPORT",
       userId: params.userId,

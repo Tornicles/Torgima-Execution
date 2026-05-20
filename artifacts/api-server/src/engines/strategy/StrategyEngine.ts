@@ -11,7 +11,7 @@ import {
 import { eq, and, sql, gte } from "drizzle-orm";
 import { BlueprintStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { CONDITIONS } from "../../constants/conditions.js";
 
 const NOTHINGNESS = CONDITIONS.NOTHINGNESS;
@@ -154,7 +154,7 @@ export async function generatePivotPathOptions(params: {
   let pathOptions: unknown[] = [];
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "StrategyEngine",
       triggerType: "ROOT_CAUSE_ASSIST",
       userId: params.userId,

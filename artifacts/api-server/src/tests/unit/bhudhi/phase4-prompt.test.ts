@@ -340,11 +340,11 @@ describe("Prompt 4 — Fallback registry", () => {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
 
-    const { trigger } = await import("../../../bhudhi/BhudhiCore.js");
+    const { routeBhudhiRequest } = await import("../../../bhudhi/TriggerRouter.js");
     const { createTestUser, cleanupTestUser } = await import("../../helpers/db.js");
     const user = await createTestUser();
 
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       userId: user.id,
       triggerType: "TASK_DRAFTING",
       stateVersion: 0,

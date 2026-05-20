@@ -1,6 +1,6 @@
 import { db, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { createBhudhiMessage, BHUDHI_MODEL } from "../lib/anthropic.js";
+import { BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
 import {
   FORBIDDEN_MODES,
@@ -24,17 +24,24 @@ import {
 } from "../engines/stability/StabilityEngine.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
 
-function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
-  return response.content
-    .filter((b): b is { type: "text"; text: string } => b.type === "text" && typeof b.text === "string")
-    .map(b => b.text)
-    .join("");
-}
+/** Sole Anthropic transport — implemented only in TriggerRouter (Bhudhi B1). */
+export type BhudhiModelInvoker = (params: {
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  timeoutMs: number;
+}) => Promise<{ text: string; inputTokens: number; outputTokens: number }>;
 
-// ── TRIGGER ROUTER ────────────────────────────────────────────────────────────
+export type BhudhiPipelineDeps = {
+  invokeModel: BhudhiModelInvoker;
+};
 
-export async function trigger<T = unknown>(
+// ── GOVERNED PIPELINE (TriggerRouter-only entry) ─────────────────────────────
+
+export async function runBhudhiPipeline<T = unknown>(
   request: BhudhiTriggerRequest,
+  deps: BhudhiPipelineDeps,
 ): Promise<BhudhiTriggerResult<T>> {
 
   const startTime = Date.now();
@@ -130,13 +137,19 @@ export async function trigger<T = unknown>(
     };
   }
 
-  const [aiFlag] = await db
-    .select({ enabled: featureFlags.enabled })
-    .from(featureFlags)
-    .where(eq(featureFlags.feature_name, "ai_enabled"))
-    .limit(1);
+  let aiEnabled = true;
+  try {
+    const [aiFlag] = await db
+      .select({ enabled: featureFlags.enabled })
+      .from(featureFlags)
+      .where(eq(featureFlags.feature_name, "ai_enabled"))
+      .limit(1);
+    aiEnabled = aiFlag?.enabled ?? true;
+  } catch {
+    aiEnabled = true;
+  }
 
-  if (!aiFlag?.enabled) {
+  if (!aiEnabled) {
     logId = await logUsage({
       userId:        request.userId,
       blueprintId:   request.blueprintId,
@@ -172,8 +185,8 @@ export async function trigger<T = unknown>(
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logger.error({ msg }, "[BhudhiCore] Memory retrieval hard failure");
-      return { ok: false, fallbackUsed: false, logId: "", failureReason: msg };
+      logger.warn({ msg }, "[BhudhiCore] Memory retrieval failed — continuing without memory");
+      memoryContext = "";
     }
   }
 
@@ -213,7 +226,7 @@ export async function trigger<T = unknown>(
   let outputTokens = 0;
 
   try {
-    const userPrompt  = contract.buildUserPrompt(facts);
+    const userPrompt = contract.buildUserPrompt(facts);
     const apiKey =
       process.env["ANTHROPIC_API_KEY"]?.trim() ||
       process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
@@ -221,23 +234,18 @@ export async function trigger<T = unknown>(
       throw new Error("BHUDHI_NO_API_KEY");
     }
 
-    const response = await Promise.race([
-      createBhudhiMessage({
-        model:       BHUDHI_MODEL,
-        max_tokens:  contract.maxTokens,
-        temperature: contract.temperature,
-        system:      contract.systemPrompt,
-        messages:    [{ role: "user", content: userPrompt }],
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), timeout)),
-    ]);
+    const modelResult = await deps.invokeModel({
+      systemPrompt: contract.systemPrompt,
+      userPrompt,
+      maxTokens: contract.maxTokens,
+      temperature: contract.temperature,
+      timeoutMs: timeout,
+    });
 
-    const text = extractTextBlocks(response);
-    inputTokens  = response.usage?.input_tokens  ?? 0;
-    outputTokens = response.usage?.output_tokens ?? 0;
+    inputTokens = modelResult.inputTokens;
+    outputTokens = modelResult.outputTokens;
 
-    const cleaned = text.replace(/```json|```/g, "").trim();
+    const cleaned = modelResult.text.replace(/```json|```/g, "").trim();
     rawOutput = JSON.parse(cleaned) as unknown;
   } catch (error) {
     const errMsg  = error instanceof Error ? error.message : String(error);
@@ -371,54 +379,11 @@ export async function trigger<T = unknown>(
   };
 }
 
-export async function explainState(params: {
-  userId:               string;
-  blueprintId?:        string;
-  stateVersion:         number;
-  condition:            string;
-  completionRate:       number;
-  weightedScore:        number;
-  momentum:             number;
-  trend:                string;
-  goal:                 string;
-  currentTaskTitle?:    string;
-  conditionDuration?:   number;
-  /** Grounding slice of persisted operational math — interpretation only. */
-  operationalMathematicsExcerpt?: Record<string, unknown> | null;
-}): Promise<BhudhiTriggerResult> {
-  return trigger({
-    sourceEngine:   "dashboard",
-    triggerType:    "STATE_EXPLANATION",
-    userId:         params.userId,
-    blueprintId:    params.blueprintId,
-    stateVersion:   params.stateVersion,
-    idempotencyKey: `explain:${params.blueprintId ?? params.userId}:${Date.now()}`,
-    facts: {
-      condition:         params.condition,
-      conditionDuration: params.conditionDuration ?? 0,
-      completionRate:    params.completionRate,
-      weightedScore:     params.weightedScore,
-      momentum:          params.momentum,
-      trend:             params.trend,
-      goal:              params.goal,
-      currentTaskTitle:  params.currentTaskTitle,
-      governance:
-        "Bhudhi interprets ONLY from facts below; MUST NOT change condition, locks, dependencies, or invent signal values.",
-      operationalMathExcerpt:
-        params.operationalMathematicsExcerpt ??
-        ({
-          absent: true,
-          note:   "No operational mathematics payload on signal snapshot — stay qualitative.",
-        } as Record<string, unknown>),
-    },
-  });
-}
-
-/** @deprecated Prefer {@link trigger}. Legacy adapter for older routes. */
+/** @deprecated Prefer {@link routeBhudhiRequest} from TriggerRouter. Legacy adapter for older routes. */
 export class BhudhiCore {
   async call(req: import("../types/bhudhi.js").BhudhiRequest): Promise<import("../types/bhudhi.js").BhudhiResponse> {
     const start = Date.now();
-    logger.warn({ trigger: req.trigger }, "[BhudhiCore.call] deprecated — use trigger()");
+    logger.warn({ trigger: req.trigger }, "[BhudhiCore.call] deprecated — use routeBhudhiRequest()");
     return {
       trigger:      req.trigger,
       output:       {},

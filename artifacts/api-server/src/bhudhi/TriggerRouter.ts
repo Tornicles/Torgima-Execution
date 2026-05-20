@@ -1,13 +1,98 @@
-import { BhudhiCore, trigger as bhudhiTrigger } from "./BhudhiCore.js";
+import Anthropic from "@anthropic-ai/sdk";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/index.mjs";
+import { BhudhiCore } from "./BhudhiCore.js";
+import { runBhudhiPipeline } from "./BhudhiCore.js";
 import { buildContextPacket } from "./ContextBuilder.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
 import { getContract } from "./PromptRegistry.js";
-import { checkUsageAllowed } from "./UsageController.js";
+import { getFallback } from "./FallbackLibrary.js";
+import { checkUsageAllowed, logUsage } from "./UsageController.js";
 import { validateOutputLayers } from "./OutputValidatorLayers.js";
 import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
 import { checkTriggerAllowed } from "../engines/stability/StabilityEngine.js";
 import { shouldTriggerDebate, runDebate } from "./DebateEngine.js";
-import type { BhudhiTrigger, BhudhiResponse, BhudhiTriggerType } from "../types/bhudhi.js";
+import { BHUDHI_MODEL } from "../lib/anthropic.js";
+import { logger } from "../lib/logger.js";
+import {
+  FORBIDDEN_MODES,
+  type BhudhiMode,
+  type BhudhiTrigger,
+  type BhudhiResponse,
+  type BhudhiTriggerRequest,
+  type BhudhiTriggerResult,
+  type BhudhiTriggerType,
+  type BhudhiOutputEnvelope,
+} from "../types/bhudhi.js";
+
+// ── Anthropic SDK — sole allowed site (Bhudhi B1) ─────────────────────────────
+
+const globalForAnthropic = globalThis as unknown as { bhudhiAnthropic: Anthropic | undefined };
+
+function getAnthropicClient(): Anthropic {
+  if (globalForAnthropic.bhudhiAnthropic) return globalForAnthropic.bhudhiAnthropic;
+
+  const baseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
+  const apiKey =
+    process.env["ANTHROPIC_API_KEY"]?.trim() ||
+    process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
+
+  if (!apiKey) {
+    logger.warn(
+      "ANTHROPIC_API_KEY (or legacy AI_INTEGRATIONS_ANTHROPIC_API_KEY) not set — Bhudhi will use fallbacks",
+    );
+  }
+
+  const client = new Anthropic({
+    apiKey: apiKey ?? "placeholder",
+    ...(baseURL ? { baseURL } : {}),
+  });
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForAnthropic.bhudhiAnthropic = client;
+  }
+
+  return client;
+}
+
+function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
+  return response.content
+    .filter((b): b is { type: "text"; text: string } => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("");
+}
+
+/** Only TriggerRouter invokes the Anthropic Messages API. */
+export async function invokeAnthropicModel(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  timeoutMs: number;
+}): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+  const client = getAnthropicClient();
+  const body: MessageCreateParamsNonStreaming = {
+    model: BHUDHI_MODEL,
+    max_tokens: params.maxTokens,
+    temperature: params.temperature,
+    system: params.systemPrompt,
+    messages: [{ role: "user", content: params.userPrompt }],
+  };
+
+  const response = await Promise.race([
+    client.messages.create(body),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
+    ),
+  ]);
+
+  return {
+    text: extractTextBlocks(response),
+    inputTokens: response.usage?.input_tokens ?? 0,
+    outputTokens: response.usage?.output_tokens ?? 0,
+  };
+}
+
+// ── Governed entry points ─────────────────────────────────────────────────────
 
 export type Prompt1TriggerType =
   | "USER_GOAL_TRIGGER"
@@ -48,7 +133,13 @@ export interface TriggerResult {
   contextPacket: Record<string, unknown>;
   useFallback: boolean;
   bhudhiResponse?: BhudhiResponse;
+  logId?: string;
 }
+
+export type BhudhiRouteRequest = BhudhiTriggerRequest & {
+  requestedMode?: BhudhiMode;
+  currentCondition?: string;
+};
 
 const TRIGGER_TO_CANONICAL: Partial<Record<Prompt1TriggerType, BhudhiTriggerType>> = {
   USER_GOAL_TRIGGER: "GOAL_STRUCTURING",
@@ -73,6 +164,122 @@ function mapToCanonical(triggerType: string): BhudhiTriggerType | null {
   return contract ? (triggerType as BhudhiTriggerType) : null;
 }
 
+function rejectBannedMode(
+  requestedMode: BhudhiMode | undefined,
+  contractMode: BhudhiMode,
+): string | null {
+  if (requestedMode && FORBIDDEN_MODES.includes(requestedMode)) {
+    return `Mode ${requestedMode} is banned in Phase 1`;
+  }
+  if (FORBIDDEN_MODES.includes(contractMode)) {
+    return `Mode ${contractMode} is banned in Phase 1`;
+  }
+  return null;
+}
+
+/**
+ * Canonical governed Bhudhi entry — all engines and routes must use this (not BhudhiCore directly).
+ */
+export async function routeBhudhiRequest<T = unknown>(
+  request: BhudhiRouteRequest,
+): Promise<BhudhiTriggerResult<T>> {
+  const contract = getContract(request.triggerType);
+  if (!contract) {
+    return { ok: false, fallbackUsed: true, logId: "", failureReason: "Unregistered trigger type" };
+  }
+
+  const modeReject = rejectBannedMode(request.requestedMode, contract.mode);
+  if (modeReject) {
+    return { ok: false, fallbackUsed: true, logId: "", failureReason: modeReject };
+  }
+
+  let currentWorldVersion = 0;
+  try {
+    const world = await getWorldModel(request.userId);
+    currentWorldVersion = world?.stateVersion ?? 0;
+  } catch {
+    currentWorldVersion = request.stateVersion;
+  }
+
+  if (request.stateVersion > 0 && request.stateVersion < currentWorldVersion) {
+    const fallback = getFallback(
+      contract.fallbackKey,
+      request.facts ?? {},
+      currentWorldVersion,
+    ) as BhudhiOutputEnvelope<T>;
+    const logId = await logUsage({
+      userId: request.userId,
+      blueprintId: request.blueprintId,
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      promptVersion: contract.version,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: 0,
+      status: "rejected",
+      fallbackReason: "stale_state_version",
+    }).catch(() => "");
+    return {
+      ok: true,
+      output: fallback,
+      fallbackUsed: true,
+      logId: logId ?? "",
+      failureReason: "stale_state_version",
+    };
+  }
+
+  const stateVersion =
+    request.stateVersion > 0 ? request.stateVersion : currentWorldVersion;
+
+  return runBhudhiPipeline<T>(
+    { ...request, stateVersion },
+    { invokeModel: invokeAnthropicModel },
+  );
+}
+
+export async function explainState(params: {
+  userId: string;
+  blueprintId?: string;
+  stateVersion: number;
+  condition: string;
+  completionRate: number;
+  weightedScore: number;
+  momentum: number;
+  trend: string;
+  goal: string;
+  currentTaskTitle?: string;
+  conditionDuration?: number;
+  operationalMathematicsExcerpt?: Record<string, unknown> | null;
+}): Promise<BhudhiTriggerResult> {
+  return routeBhudhiRequest({
+    sourceEngine: "DASHBOARD",
+    triggerType: "STATE_EXPLANATION",
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    stateVersion: params.stateVersion,
+    requestedMode: "EXPLAIN",
+    idempotencyKey: `explain:${params.blueprintId ?? params.userId}:${Date.now()}`,
+    facts: {
+      condition: params.condition,
+      conditionDuration: params.conditionDuration ?? 0,
+      completionRate: params.completionRate,
+      weightedScore: params.weightedScore,
+      momentum: params.momentum,
+      trend: params.trend,
+      goal: params.goal,
+      currentTaskTitle: params.currentTaskTitle,
+      governance:
+        "Bhudhi interprets ONLY from facts below; MUST NOT change condition, locks, dependencies, or invent signal values.",
+      operationalMathExcerpt:
+        params.operationalMathematicsExcerpt ??
+        ({
+          absent: true,
+          note: "No operational mathematics payload on signal snapshot — stay qualitative.",
+        } as Record<string, unknown>),
+    },
+  });
+}
+
 export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> {
   const canonical = mapToCanonical(ctx.triggerType);
   if (!canonical) {
@@ -87,13 +294,24 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
   }
 
   const contract = getContract(canonical);
-
   if (!contract) {
     return {
       allowed: false,
       denialReason: `Unregistered trigger: ${ctx.triggerType}`,
       selectedAgents: [],
       promptContract: "",
+      contextPacket: {},
+      useFallback: true,
+    };
+  }
+
+  const modeReject = rejectBannedMode(undefined, contract.mode);
+  if (modeReject) {
+    return {
+      allowed: false,
+      denialReason: modeReject,
+      selectedAgents: [],
+      promptContract: contract.name,
       contextPacket: {},
       useFallback: true,
     };
@@ -129,7 +347,7 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
     }).catch(() => null);
   }
 
-  const usage = await checkUsageAllowed({ userId: ctx.userId, triggerType: canonical as BhudhiTriggerType });
+  const usage = await checkUsageAllowed({ userId: ctx.userId, triggerType: canonical });
   if (!usage.allowed) {
     return {
       allowed: false,
@@ -155,7 +373,18 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
   const world = await getWorldModel(ctx.userId);
   const stateVersion = world?.stateVersion ?? ctx.worldStateVersion;
 
-  const result = await bhudhiTrigger({
+  if (ctx.worldStateVersion > 0 && ctx.worldStateVersion < stateVersion) {
+    return {
+      allowed: false,
+      denialReason: "stale_state_version",
+      selectedAgents: agents,
+      promptContract: contract.name,
+      contextPacket: contextPacket as unknown as Record<string, unknown>,
+      useFallback: true,
+    };
+  }
+
+  const result = await runBhudhiPipeline({
     sourceEngine: "TriggerRouter",
     triggerType: canonical,
     userId: ctx.userId,
@@ -164,7 +393,7 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
     userInput: typeof ctx.payload["userInput"] === "string" ? ctx.payload["userInput"] : undefined,
     facts: { ...ctx.payload, currentCondition: ctx.currentCondition },
     idempotencyKey: `${ctx.triggerType}:${ctx.userId}:${Date.now()}`,
-  });
+  }, { invokeModel: invokeAnthropicModel });
 
   if (result.output) {
     const validation = await validateOutputLayers({
@@ -182,6 +411,7 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
         promptContract: contract.name,
         contextPacket: contextPacket as unknown as Record<string, unknown>,
         useFallback: true,
+        logId: result.logId,
       };
     }
   }
@@ -192,11 +422,12 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
     promptContract: contract.name,
     contextPacket: contextPacket as unknown as Record<string, unknown>,
     useFallback: result.fallbackUsed,
+    logId: result.logId,
     bhudhiResponse: result.output
       ? {
           trigger: canonical as unknown as BhudhiTrigger,
           output: result.output as unknown as Record<string, unknown>,
-          model: process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514",
+          model: BHUDHI_MODEL,
           tokensUsed: 0,
           latencyMs: 0,
           valid: true,
@@ -206,11 +437,16 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
   };
 }
 
-/** Legacy wrapper — prefer {@link routeTrigger}. */
+/** B1 spec alias — prefer {@link routeBhudhiRequest} or {@link routeTrigger}. */
 export class TriggerRouter {
   private core = new BhudhiCore();
 
-  async route(
+  async route<T>(request: BhudhiRouteRequest): Promise<BhudhiTriggerResult<T>> {
+    return routeBhudhiRequest<T>(request);
+  }
+
+  /** @deprecated Legacy shape — use route() with BhudhiTriggerRequest. */
+  async routeLegacy(
     triggerName: BhudhiTrigger,
     userId: string,
     context: Record<string, unknown>,

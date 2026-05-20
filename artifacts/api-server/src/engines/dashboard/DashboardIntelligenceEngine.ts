@@ -10,7 +10,7 @@ import {
   burnoutRecords,
 } from "@workspace/db";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
-import { trigger as bhudhiTrigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { getWorldModel } from "../world-model/WorldModelEngine.js";
 import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
 import { generateStrategicOutlook, type StrategicOutlook } from "./StrategicOutlookEngine.js";
@@ -137,7 +137,7 @@ export async function generateBehavioralInsightRecord(
   });
 
   try {
-    const result = await bhudhiTrigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "DashboardIntelligenceEngine",
       triggerType: "BEHAVIORAL_INSIGHT",
       userId,

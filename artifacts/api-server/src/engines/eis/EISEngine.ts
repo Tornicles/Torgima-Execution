@@ -11,7 +11,7 @@ import {
   platformAlgorithmSignals,
 } from "@workspace/db";
 import { and, desc, eq, gte } from "drizzle-orm";
-import { trigger } from "../../bhudhi/BhudhiCore.js";
+import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { logger } from "../../lib/logger.js";
 
 const WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -284,7 +284,7 @@ export async function runCompetitorIntelligence(
   let intel = deterministicCompetitorIntelligence(context, "WEB_SEARCH");
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "eis_competitor",
       triggerType: "EIS_COMPETITOR_INTELLIGENCE",
       userId,
@@ -437,7 +437,7 @@ export async function runNarrativeIntelligence(
   let intel = deterministicNarrativeIntelligence(context, "WEB_SEARCH");
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "eis_narrative",
       triggerType: "EIS_NARRATIVE_INTELLIGENCE",
       userId,
@@ -548,7 +548,7 @@ export async function synthesizeOpportunityWindows(input: {
   ];
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "eis_opportunity",
       triggerType: "EIS_OPPORTUNITY_SYNTHESIS",
       userId: input.userId ?? "system",
@@ -724,7 +724,7 @@ export async function runCoreResearch(
   let briefing: FullEISBriefing | null = null;
 
   try {
-    const result = await trigger({
+    const result = await routeBhudhiRequest({
       sourceEngine: "eis_overnight",
       triggerType: "EIS_SYNTHESIS",
       userId,
