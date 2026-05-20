@@ -557,7 +557,7 @@ export async function synthesizeOpportunityWindows(input: {
       idempotencyKey: `eis_opportunity:${input.userId ?? "system"}:${new Date().toISOString().slice(0, 10)}`,
       facts: input,
     });
-    if (result.ok && result.output?.data) {
+    if (result.ok && result.output?.data && !result.fallbackUsed) {
       const d = result.output.data as Record<string, unknown>;
       opportunities = (d.opportunities as OpportunityWindow[]) ?? opportunities;
     }
