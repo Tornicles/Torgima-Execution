@@ -24,8 +24,10 @@ async function bootstrap(): Promise<void> {
     process.exit(1);
   }
 
-  server = app.listen(PORT, () => {
-    console.log(`[SERVER] Running on port ${PORT}`);
+  // Railway/Docker must listen on 0.0.0.0 — binding only to localhost breaks the edge proxy (502 + ~15s timeout).
+  const HOST = process.env.HOST ?? "0.0.0.0";
+  server = app.listen(PORT, HOST, () => {
+    console.log(`[SERVER] Running on http://${HOST}:${PORT}`);
     console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`[SERVER] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
 
