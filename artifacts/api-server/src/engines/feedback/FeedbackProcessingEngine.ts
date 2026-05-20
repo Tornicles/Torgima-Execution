@@ -7,6 +7,7 @@ import {
   capabilityHistory,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { OrderStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
@@ -89,7 +90,13 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     );
   }
 
-  if (!["pending", "active", "needs_feedback", "blocked"].includes(order.status)) {
+  const feedbackEligibleStatuses = [
+    OrderStatus.PENDING,
+    OrderStatus.ACTIVE,
+    OrderStatus.NEEDS_FEEDBACK,
+    OrderStatus.BLOCKED,
+  ] as const;
+  if (!feedbackEligibleStatuses.includes(order.status as (typeof feedbackEligibleStatuses)[number])) {
     throw new TorgimaError(
       "VALIDATION_ERROR",
       `Cannot submit feedback for order in status: ${order.status}`,

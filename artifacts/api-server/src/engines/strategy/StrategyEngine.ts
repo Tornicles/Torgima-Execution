@@ -9,6 +9,7 @@ import {
   stateMemory,
 } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
+import { BlueprintStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { trigger } from "../../bhudhi/BhudhiCore.js";
 import { CONDITIONS } from "../../constants/conditions.js";
@@ -32,7 +33,7 @@ export async function evaluatePivotEligibility(params: {
     )
     .limit(1);
 
-  if (!blueprint || blueprint.status !== "active") {
+  if (!blueprint || blueprint.status !== BlueprintStatus.ACTIVE) {
     return { eligible: false, blockedReason: "Blueprint not active" };
   }
 

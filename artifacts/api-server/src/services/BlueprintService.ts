@@ -12,20 +12,20 @@ import type { Order } from "../types/order.js";
 import { db, orders, pivotReviews, blueprints as blueprintsTable } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { checkCompletionEligibility } from "../engines/lifecycle/CompletionEngine.js";
-import { PhaseStatus, PivotReviewStatus } from "@workspace/state-machine";
+import { ApiOrderStatus, OrderStatus, PhaseStatus, PivotReviewStatus } from "@workspace/state-machine";
 
 function mapDbOrderRow(row: typeof orders.$inferSelect): Order {
   const statusMap: Record<string, Order["status"]> = {
-    pending:        "queued",
-    active:         "active",
-    paused:         "paused",
-    blocked:        "blocked",
-    needs_feedback: "in_progress",
-    needs_proof:    "in_progress",
-    completed:      "complete",
-    failed:         "cancelled",
-    skipped:        "cancelled",
-    cancelled:      "cancelled",
+    [OrderStatus.PENDING]: ApiOrderStatus.QUEUED,
+    [OrderStatus.ACTIVE]: ApiOrderStatus.ACTIVE,
+    [OrderStatus.PAUSED]: ApiOrderStatus.PAUSED,
+    [OrderStatus.BLOCKED]: ApiOrderStatus.BLOCKED,
+    [OrderStatus.NEEDS_FEEDBACK]: ApiOrderStatus.IN_PROGRESS,
+    [OrderStatus.NEEDS_PROOF]: ApiOrderStatus.IN_PROGRESS,
+    [OrderStatus.COMPLETED]: ApiOrderStatus.COMPLETE,
+    [OrderStatus.FAILED]: ApiOrderStatus.CANCELLED,
+    [OrderStatus.SKIPPED]: ApiOrderStatus.CANCELLED,
+    [OrderStatus.CANCELLED]: ApiOrderStatus.CANCELLED,
   };
   return {
     id:               row.id,
@@ -34,7 +34,7 @@ function mapDbOrderRow(row: typeof orders.$inferSelect): Order {
     title:            row.title,
     description:      row.instruction,
     type:             row.task_type as Order["type"],
-    status:           statusMap[row.status] ?? "active",
+    status:           statusMap[row.status] ?? ApiOrderStatus.ACTIVE,
     priority:         row.priority,
     estimatedMinutes: row.time_estimate_minutes,
     instructions:     row.instruction,
@@ -113,7 +113,7 @@ export const BlueprintService = {
           and(
             eq(orders.blueprint_id, id),
             eq(orders.user_id, userId),
-            inArray(orders.status, ["pending", "active"]),
+            inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
           ),
         )
         .orderBy(desc(orders.priority)),

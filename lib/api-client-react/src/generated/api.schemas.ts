@@ -5,6 +5,15 @@
  * Torgima — Deterministic Execution Operating System API
  * OpenAPI spec version: 0.1.0
  */
+import {
+  BlueprintStatus,
+  ApiOrderStatus,
+} from "@workspace/state-machine";
+
+export { BlueprintStatus, ApiOrderStatus as OrderStatus };
+
+type OrderStatus = (typeof ApiOrderStatus)[keyof typeof ApiOrderStatus];
+
 export interface HealthStatus {
   status: string;
 }
@@ -258,20 +267,6 @@ export interface ValidationResultP5 {
   createdAt: string;
 }
 
-export type BlueprintStatus =
-  (typeof BlueprintStatus)[keyof typeof BlueprintStatus];
-
-export const BlueprintStatus = {
-  draft: "draft",
-  validating: "validating",
-  awaiting_selection: "awaiting_selection",
-  path_selection: "path_selection",
-  active: "active",
-  paused: "paused",
-  complete: "complete",
-  abandoned: "abandoned",
-} as const;
-
 export interface Blueprint {
   id: string;
   userId: string;
@@ -322,18 +317,6 @@ export interface BlueprintActivateResult {
 export interface ExecutionCommandCenter {
   [key: string]: unknown;
 }
-
-export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
-
-export const OrderStatus = {
-  queued: "queued",
-  active: "active",
-  in_progress: "in_progress",
-  paused: "paused",
-  blocked: "blocked",
-  complete: "complete",
-  cancelled: "cancelled",
-} as const;
 
 export interface Order {
   id: string;

@@ -1,3 +1,4 @@
+import { BlueprintStatus, ConditionState } from "@workspace/state-machine";
 import type { BlueprintOperationalState } from "./blueprint-types.js";
 
 export interface FailureStateContract {
@@ -64,11 +65,11 @@ export function deriveOperationalState(params: {
   momentum: number;
   completionRate: number;
 }): BlueprintOperationalState {
-  if (params.blueprintStatus === "complete" || params.blueprintStatus === "abandoned") {
+  if (params.blueprintStatus === BlueprintStatus.COMPLETE || params.blueprintStatus === BlueprintStatus.ABANDONED) {
     return "ARCHIVED";
   }
-  if (params.blueprintStatus === "paused") return "RECOVERY";
-  if (params.condition === "danger" || params.condition === "nothingness") return "RECOVERY";
+  if (params.blueprintStatus === BlueprintStatus.PAUSED) return "RECOVERY";
+  if (params.condition === ConditionState.DANGER || params.condition === ConditionState.NOTHINGNESS) return "RECOVERY";
   if (params.momentum < 10 && params.completionRate < 0.15) return "COLLAPSED";
   if (params.momentum < 25) return "STALLED";
   if (params.completionRate < 0.4 && params.momentum < 45) return "DEGRADED";

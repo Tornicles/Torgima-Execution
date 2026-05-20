@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779222061381,
+      "tag": "0000_recovery_schema_sync_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779222680919,
+      "tag": "0001_add_validation_kind_and_contract_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779222989365,
+      "tag": "0002_add_blueprint_intel_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779225000000,
+      "tag": "0003_normalize_blueprint_status_enum",
+      "breakpoints": true
+    }
+  ]
+}

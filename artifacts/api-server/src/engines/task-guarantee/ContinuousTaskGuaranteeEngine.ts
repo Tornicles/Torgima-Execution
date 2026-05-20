@@ -3,6 +3,7 @@ import {
   db,
   blueprints,
   orders,
+  feedback,
   pivotReviews,
   systemHealthLogs,
   deadLetterEvents,
@@ -12,6 +13,7 @@ import {
   conditions,
 } from "@workspace/db";
 import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
+import { BlueprintStatus, ConditionState, OrderStatus, PivotReviewStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { generate } from "../task-generation/TaskGenerationEngine.js";
 
@@ -47,13 +49,13 @@ export async function guaranteeTask(params: {
     .limit(1);
 
   if (!blueprint || !blueprint.active) return { state: "SYSTEM_LOCKED" };
-  if (blueprint.status === "complete") return { state: "SYSTEM_LOCKED" };
-  if (blueprint.status === "paused") return { state: "SYSTEM_LOCKED" };
+  if (blueprint.status === BlueprintStatus.COMPLETE) return { state: "SYSTEM_LOCKED" };
+  if (blueprint.status === BlueprintStatus.PAUSED) return { state: "SYSTEM_LOCKED" };
 
   const [openPivot] = await db
     .select({ id: pivotReviews.id })
     .from(pivotReviews)
-    .where(and(eq(pivotReviews.blueprint_id, blueprintId), eq(pivotReviews.status, "open")))
+    .where(and(eq(pivotReviews.blueprint_id, blueprintId), eq(pivotReviews.status, PivotReviewStatus.OPEN)))
     .limit(1);
 
   if (openPivot) {
@@ -65,8 +67,10 @@ export async function guaranteeTask(params: {
     return { state: "PIVOT_REVIEW", orderId: existing };
   }
 
+  const mode = params.generationMode ?? "post_feedback";
+
   const existingOrder = await findActionableOrder(blueprintId, userId);
-  if (existingOrder) {
+  if (existingOrder && (await shouldSatisfyExistingOrder(blueprintId, userId, existingOrder, mode))) {
     logger.info({ blueprintId, orderId: existingOrder }, "[Guarantee] SATISFIED — task already exists");
     return { state: "SATISFIED", orderId: existingOrder };
   }
@@ -85,7 +89,6 @@ export async function guaranteeTask(params: {
 
   if (criticalHealth) return { state: "SYSTEM_LOCKED" };
 
-  const mode = params.generationMode ?? "post_feedback";
   const trigger = params.generationTrigger ?? "guarantee_check";
 
   try {
@@ -174,6 +177,41 @@ export async function guaranteeTask(params: {
   }
 }
 
+const RECOVERY_TASK_TYPES = ["recovery", "blocker_resolution"] as const;
+
+async function shouldSatisfyExistingOrder(
+  blueprintId: string,
+  userId: string,
+  orderId: string,
+  generationMode: string,
+): Promise<boolean> {
+  const [order] = await db
+    .select({ task_type: orders.task_type })
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.blueprint_id, blueprintId), eq(orders.user_id, userId)))
+    .limit(1);
+
+  if (!order) return false;
+
+  const taskType = order.task_type ?? "execution";
+  if (generationMode === "recovery") {
+    return RECOVERY_TASK_TYPES.includes(taskType as (typeof RECOVERY_TASK_TYPES)[number]);
+  }
+
+  const [latestFb] = await db
+    .select({ completion_status: feedback.completion_status })
+    .from(feedback)
+    .where(and(eq(feedback.blueprint_id, blueprintId), eq(feedback.user_id, userId)))
+    .orderBy(desc(feedback.created_at))
+    .limit(1);
+
+  if (latestFb?.completion_status === "failed") {
+    return RECOVERY_TASK_TYPES.includes(taskType as (typeof RECOVERY_TASK_TYPES)[number]);
+  }
+
+  return true;
+}
+
 async function findActionableOrder(blueprintId: string, userId: string): Promise<string | null> {
   const [order] = await db
     .select({ id: orders.id })
@@ -182,7 +220,7 @@ async function findActionableOrder(blueprintId: string, userId: string): Promise
       and(
         eq(orders.blueprint_id, blueprintId),
         eq(orders.user_id, userId),
-        inArray(orders.status, ["pending", "active"]),
+        inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
       ),
     )
     .orderBy(desc(orders.priority))
@@ -225,7 +263,7 @@ async function insertEmergencyRecoveryOrder(params: {
       proof_required: false,
       difficulty: "very_easy",
       priority: 3,
-      status: "pending",
+      status: OrderStatus.PENDING,
       generation_reason: "guarantee_hold_task",
       domain: "delivery",
     })
@@ -273,7 +311,7 @@ export async function diagnoseExecutionBlock(
     .limit(1);
 
   const c = String(cond?.condition ?? "stability").toLowerCase();
-  if (c === "danger" || c === "nothingness") return "CONDITION_BLOCKS_NORMAL";
+  if (c === ConditionState.DANGER || c === ConditionState.NOTHINGNESS) return "CONDITION_BLOCKS_NORMAL";
 
   return "UNKNOWN";
 }

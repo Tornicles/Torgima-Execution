@@ -1,5 +1,6 @@
 import { db, blueprints } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { BlueprintStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 
@@ -66,12 +67,12 @@ export async function enterLoop(params: LoopEntryParams): Promise<void> {
     return;
   }
 
-  if (blueprint.status === "paused") {
+  if (blueprint.status === BlueprintStatus.PAUSED) {
     logger.info({ blueprintId }, "[ExecutionLoop] Blueprint paused — skipping");
     return;
   }
 
-  if (blueprint.status === "complete" || blueprint.status === "abandoned") {
+  if (blueprint.status === BlueprintStatus.COMPLETE || blueprint.status === BlueprintStatus.ABANDONED) {
     logger.info({ blueprintId }, "[ExecutionLoop] Blueprint terminal — skipping");
     return;
   }

@@ -1,4 +1,4 @@
-import { BlueprintStatus } from "@workspace/api-client-react";
+import { BlueprintStatus } from "@workspace/state-machine";
 import { CompletionScreen } from "@/components/dashboard/CompletionScreen";
 import { PausedOverlay } from "@/components/dashboard/PausedOverlay";
 import { PivotReviewScreen } from "@/components/dashboard/PivotReviewScreen";
@@ -25,14 +25,14 @@ export function ConditionalScreen({ state }: { state: DashboardState }) {
     return <PivotReviewScreen blueprintId={bpId} reviewId={state.pivotReviewId} pivot={state.pivotReview} />;
   }
 
-  if (bp?.status === BlueprintStatus.paused) {
+  if (bp?.status === BlueprintStatus.PAUSED) {
     return <PausedOverlay blueprintId={bp.id} blueprint={bp} />;
   }
 
   const completionId =
-    bp?.status === BlueprintStatus.complete
+    bp?.status === BlueprintStatus.COMPLETE
       ? bp.id
-      : state.recentCompletionBlueprint?.id && state.recentCompletionBlueprint.status === BlueprintStatus.complete
+      : state.recentCompletionBlueprint?.id && state.recentCompletionBlueprint.status === BlueprintStatus.COMPLETE
         ? state.recentCompletionBlueprint.id
         : null;
 

@@ -70,7 +70,7 @@ export async function dispatchPendingEvents(): Promise<number> {
     if (pending.length === 0) return [];
 
     const ids = pending.map((e) => e.id);
-    await tx.update(events).set({ status: "claimed" }).where(inArray(events.id, ids));
+    await tx.update(events).set({ status: EventStatus.CLAIMED }).where(inArray(events.id, ids));
 
     return pending;
   });
@@ -148,7 +148,7 @@ export async function getEventSystemHealth(): Promise<{
   unresolved_dead_letters: number;
 }> {
   const pendingResult = await pool.query<{ count: string }>(
-    "SELECT COUNT(*) as count FROM events WHERE status = 'pending'",
+    `SELECT COUNT(*) as count FROM events WHERE status = '${EventStatus.PENDING}'`,
   );
   const dlResult = await pool.query<{ count: string }>(
     "SELECT COUNT(*) as count FROM dead_letter_events WHERE resolved = false",
@@ -160,7 +160,7 @@ export async function getEventSystemHealth(): Promise<{
 }
 
 async function markEventProcessed(eventId: string, result: "success" | "noop_duplicate"): Promise<void> {
-  await db.update(events).set({ status: "processed" }).where(eq(events.id, eventId)).catch(() => null);
+  await db.update(events).set({ status: EventStatus.PROCESSED }).where(eq(events.id, eventId)).catch(() => null);
   await db
     .insert(eventLogs)
     .values({ event_id: eventId, result, processed_at: new Date() })

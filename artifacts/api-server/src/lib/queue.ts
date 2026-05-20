@@ -1,5 +1,5 @@
 import { PgBoss } from "pg-boss";
-import { resolvePgSsl } from "@workspace/db";
+import { resolvePgSsl, stripSslModeFromConnectionString } from "@workspace/db";
 import { logger } from "./logger.js";
 
 const globalForBoss = globalThis as unknown as {
@@ -13,7 +13,7 @@ export function createBoss(): PgBoss {
   }
 
   return new PgBoss({
-    connectionString,
+    connectionString: stripSslModeFromConnectionString(connectionString),
     ssl: resolvePgSsl(connectionString),
     max: 5,
     monitorIntervalSeconds: 30,

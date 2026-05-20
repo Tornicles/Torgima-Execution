@@ -10,6 +10,7 @@ import {
   phases,
   plans,
   orders,
+  feedback,
   knowledgeObjects,
   orderKnowledgeLinks,
   taskGenerationLog,
@@ -200,6 +201,16 @@ async function loadContext(params: {
       ),
     );
 
+  const [latestFeedback] = await db
+    .select({
+      completion_status: feedback.completion_status,
+      blocker_json: feedback.blocker_json,
+    })
+    .from(feedback)
+    .where(and(eq(feedback.blueprint_id, blueprintId), eq(feedback.user_id, userId)))
+    .orderBy(desc(feedback.created_at))
+    .limit(1);
+
   const activeHabitRows = await db
     .select()
     .from(habits)
@@ -289,6 +300,7 @@ async function loadContext(params: {
     habit_checkin_due: habitCheckinDue,
     has_active_habits: activeHabitRows.length > 0,
     false_progress_flag: falseProgressFlag,
+    latest_feedback: latestFeedback ?? null,
   };
 }
 
@@ -345,6 +357,17 @@ function allowedAction(ctx: Awaited<ReturnType<typeof loadContext>>, key: string
 
 function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
   const { enforcement, phase, action, generation_mode } = ctx;
+
+  const latestFb = ctx.latest_feedback as {
+    completion_status?: string;
+    blocker_json?: Record<string, unknown> | null;
+  } | null;
+  if (latestFb?.completion_status === "failed") {
+    const blocker = (latestFb.blocker_json ?? {}) as Record<string, unknown>;
+    const hasBlocker = Boolean(blocker.had_blocker || blocker.blocker_type);
+    if (hasBlocker || (ctx.blocked_open_count ?? 0) > 0) return "blocker_resolution";
+    if (generation_mode === "recovery" || generation_mode === "post_feedback") return "recovery";
+  }
 
   const fp = ctx.false_progress_flag as {
     detection_type?: string;

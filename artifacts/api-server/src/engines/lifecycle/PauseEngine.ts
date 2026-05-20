@@ -1,12 +1,13 @@
 import { db, blueprints, inactivityRecords, pivotReviews } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+import { BlueprintStatus, ConditionState } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { notifyBlueprintPaused } from "../../services/notification/LifecycleNotificationWiring.js";
 
-const NOTHINGNESS = "nothingness";
+const NOTHINGNESS = ConditionState.NOTHINGNESS;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -32,13 +33,13 @@ export async function pauseBlueprint(params: {
   if (!blueprint) {
     throw new TorgimaError("NOT_FOUND", "No active blueprint found", false);
   }
-  if (blueprint.status === "paused") {
+  if (blueprint.status === BlueprintStatus.PAUSED) {
     throw new TorgimaError("BLUEPRINT_PAUSED", "Blueprint is already paused", false);
   }
-  if (blueprint.status === "complete") {
+  if (blueprint.status === BlueprintStatus.COMPLETE) {
     throw new TorgimaError("BLUEPRINT_COMPLETE", "Cannot pause a completed blueprint", false);
   }
-  if (blueprint.status !== "active") {
+  if (blueprint.status !== BlueprintStatus.ACTIVE) {
     throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", "Blueprint must be active to pause", false);
   }
 

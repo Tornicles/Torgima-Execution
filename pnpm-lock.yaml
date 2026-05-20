@@ -415,6 +415,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.21(react@19.1.0)
+      '@workspace/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
 
   lib/api-spec:
     devDependencies:
@@ -424,6 +427,9 @@ importers:
 
   lib/api-zod:
     dependencies:
+      '@workspace/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
       zod:
         specifier: 'catalog:'
         version: 3.25.76

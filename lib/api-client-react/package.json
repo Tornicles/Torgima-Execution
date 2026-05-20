@@ -13,7 +13,8 @@
     }
   },
   "dependencies": {
-    "@tanstack/react-query": "catalog:"
+    "@tanstack/react-query": "catalog:",
+    "@workspace/state-machine": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18"
