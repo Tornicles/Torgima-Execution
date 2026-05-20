@@ -74,8 +74,8 @@ app.use(
 app.use(cors(corsOptions));
 
 // Ensure preflight requests always receive the same CORS configuration.
-// Express route patterns differ across versions; "*" is the most reliable.
-app.options("*", cors(corsOptions));
+// Use a regex (not a string glob) to avoid path-to-regexp incompatibilities in Express/router.
+app.options(/.*/, cors(corsOptions));
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
