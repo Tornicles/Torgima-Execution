@@ -1,0 +1,1029 @@
+TORGIMA
+THE ERECTOR — REALITY INTELLIGENCE VALIDATION SYSTEM
+CURSOR BUILD PROMPT
+30-Economy Civilization Intelligence Architecture
+Aligned to Post-Recovery Torgima Architecture (R1–IL5 Series)
+HOW TO USE THIS PROMPT IN CURSOR
+BEFORE STARTING: Run the TORGIMA_POST_RECOVERY_VERIFICATION_PROMPT through Cursor and confirm all Phase 2 gates are OPEN. Do not run this Erector build until all 10 Phase 2 readiness gates pass.
+Step 1 — Open Cursor. Open the Torgima-Execution project folder.
+Confirm the active branch is main (or the branch Vercel is deploying from).
+Confirm you can see the Drizzle schema file — NOT prisma/schema.prisma. The actual stack uses Drizzle ORM, not Prisma. Find and read the correct schema file before proceeding.
+Confirm src/types/stateMachine.ts exists — created in recovery prompt R5.
+Confirm src/engines/bhudhi/TriggerRouter.ts exists — created in Bhudhi activation prompt B1.
+Step 2 — Start a new Cursor chat.
+Attach this prompt document AND the spec file TORGIMA_ERECTOR_VALIDATION_SYSTEM_COMPLETE.docx to the same message.
+Paste the full prompt text starting at Section A below into the chat message.
+Send.
+Step 3 — Do not interrupt Cursor mid-build.
+The build runs in 14 steps. Let Cursor complete each step fully.
+Only intervene if Cursor explicitly asks a clarifying question or hits a verification gate failure.
+Step 4 — After build completes, run the 6 acceptance tests in Section 15 before deploying.
+A — SYSTEM CONTEXT (READ FIRST — BUILD NOTHING YET)
+A.1 — Stack Reality (Critical — Read Before Any Code)
+This codebase is NOT Next.js 14. It is NOT Prisma. The stack has diverged from the original specification documents. Before touching any file, confirm the actual stack by reading the actual files.
+Layer
+Current Reality — Confirm by Reading the Actual Files
+Frontend
+Vite SPA — not Next.js App Router. Confirm by reading vite.config.ts.
+API
+Express.js server — not Next.js API routes. Confirm by reading server/index.ts or app.ts.
+ORM
+Drizzle ORM — not Prisma. Confirm by reading drizzle.config.ts and the schema file.
+Database
+PostgreSQL — Railway or Supabase. Read DATABASE_URL from .env.
+Schema file
+Find the Drizzle schema file. It is NOT prisma/schema.prisma. Search for schema.ts.
+Migrations
+drizzle-kit — not prisma migrate. Run: npx drizzle-kit check before adding tables.
+Package manager
+pnpm — always use pnpm. Never npm or yarn.
+AI calls
+All Anthropic API calls go through TriggerRouter.ts. Zero ad-hoc calls allowed.
+State enums
+src/types/stateMachine.ts is the single enum source. Import from it everywhere.
+Event names
+src/types/eventContracts.ts is the single event name source. Import from it everywhere.
+A.2 — What Already Exists (DO NOT Break or Remove)
+The recovery series (R1-R6), Bhudhi activation (B1-B5), gap infrastructure (G1-G9), and intelligence layer (IL1-IL5) prompts have all been executed. These systems are live. Read every relevant file before modifying anything.
+Drizzle schema file — 42+ tables already exist including validations table with existing columns. EXTEND, never replace.
+validations table — already has: id, blueprint_id, validation_kind (enum), contract_id, intelligence_payload, selected_path_type, status. The validation_kind enum includes: legacy, intelligence, erector, readiness, path_selection, unknown.
+src/engines/bhudhi/TriggerRouter.ts — all Bhudhi calls route through this. Read it before adding any new Bhudhi trigger types.
+src/engines/bhudhi/PromptRegistry.ts — all prompts registered here. Add Erector prompts to this registry.
+src/engines/bhudhi/FallbackLibrary.ts — fallbacks for all trigger types. Add Erector fallbacks here.
+src/types/stateMachine.ts — all status enums live here. Add ErectorValidationStage and BlueprintLevel enums here.
+src/types/eventContracts.ts — all event names live here. Add ERECTOR_VALIDATION_COMPLETE and PATH_SELECTED events here.
+services/blueprint/BlueprintLaunchService.ts — blueprint launch consolidated here in R3. Erector validation must feed into this service.
+Onboarding screens — existing flow: goal input → validation → path selection → launch. Erector adds the Reality Context screen and upgrades the validation running / results screens.
+GET /api/dashboard — already returns intelligence.headline from Bhudhi. Economy intelligence panel adds to this.
+All workers registered in WorkerRegistry.ts — add ErectorValidationWorker here.
+A.3 — System Identity (Never Confuse These)
+System
+Role
+What It Controls
+Bhudhi
+AI intelligence layer. All Anthropic API calls. Runs INSIDE the engines.
+Interpretation, narrative generation, structured analysis. Never scores. Never decides launch.
+The Erector
+The validation system you are building in this prompt.
+Tests reality, maps economy, scores probability, recommends paths. BEFORE blueprint launches.
+Torgima
+The execution operating system. Already built and verified through IL5.
+Executes the validated blueprint. Generates tasks. Runs the signal → condition → control → task loop.
+B — CORE LAWS (NON-NEGOTIABLE)
+These laws apply to every file you create or modify in this build. Violating any one of them breaks the system.
+LAW 1 — READ BEFORE TOUCHING. Read the Drizzle schema file completely before adding tables. Read every existing engine file before creating new engines. Read TriggerRouter.ts before adding Bhudhi calls. Read stateMachine.ts before adding enums. No exceptions.
+LAW 2 — EXTEND, NEVER REPLACE. The existing validations table gets new columns added via Drizzle migration. The existing onboarding flow gets new screens inserted. The existing validation route gets upgraded. Nothing existing is deleted.
+LAW 3 — ALL SCHEMA CHANGES GO THROUGH DRIZZLE MIGRATIONS. Never use runtime schema patching (ensureSchema was deleted in R1). Every new table and column gets a drizzle-kit generate migration. Run npx drizzle-kit check after applying. Zero drift is the standard.
+LAW 4 — ALL BHUDHI CALLS GO THROUGH TriggerRouter. Every Anthropic API call in the Erector engines must call TriggerRouter.route() with a registered trigger type, mode, stateVersion, and idempotencyKey. Direct anthropic.messages.create calls are forbidden.
+LAW 5 — RULE ENGINE SCORES. BHUDHI NARRATES. The scoring engine (Step 9) calculates all 11 scores deterministically without any AI involvement. Bhudhi provides narrative context and structured analysis. Bhudhi never sets a score value. Bhudhi never decides if a blueprint can launch.
+LAW 6 — ERECTOR VALIDATION ROWS USE validation_kind = &apos;erector&apos;. The validations table was repaired in R2 to prevent payload type confusion. All Erector validation rows must write validation_kind = &apos;erector&apos;. ValidationService.selectValidationPath() filters by validation_kind = &apos;intelligence&apos; — Erector rows must not interfere.
+LAW 7 — STATE MUTATIONS GO THROUGH StateMutationService. Any engine that updates blueprint state must use StateMutationService.mutate() from G4 — not direct db.update(). This maintains state_version integrity and writes blueprint_versions audit records.
+LAW 8 — ALL STATE STRINGS FROM stateMachine.ts. Never hardcode &apos;active&apos;, &apos;pending&apos;, &apos;erector&apos;, &apos;starter&apos;, &apos;growth&apos;, &apos;ultimate&apos; as string literals. Import from src/types/stateMachine.ts. Add ErectorValidationStage and BlueprintLevel to that file.
+LAW 9 — ALL EVENT NAMES FROM eventContracts.ts. Never hardcode &apos;erector_validation_complete&apos; or &apos;path_selected&apos; as strings. Add them to src/types/eventContracts.ts. Import everywhere.
+LAW 10 — IDEMPOTENCY ENFORCED. Every validation run checks idempotency_key before processing. Duplicate submissions return the existing result. Every emitEvent call for Erector events includes idempotency_key.
+LAW 11 — NO PROMISES. No language in any UI copy or Bhudhi output may promise a specific outcome. Use: probability, estimated, likely, projected. Never: guaranteed, will achieve, you will.
+LAW 12 — EXECUTION LANGUAGE THROUGHOUT. No motivational fluff. No &apos;Great goal!&apos;, &apos;Amazing choice!&apos;, &apos;You&apos;ve got this!&apos;. Direct operational language only. Example: &apos;Validation complete. Reality Score: 6.8/10. Adjusted path recommended.&apos; Not: &apos;Awesome! Your goal looks amazing!&apos;
+C — ARCHITECTURE INTEGRATION POINTS
+The Erector must connect to Torgima&apos;s existing systems at specific points. Read each integration point before building the corresponding engine.
+C.1 — Validation Row Integration (R2 Recovery)
+The validations table was restructured in recovery prompt R2. The Erector must respect this structure:
+Field
+R2 Requirement
+Erector Behaviour
+validation_kind
+Required on every row. Enum: legacy, intelligence, erector, readiness, path_selection, unknown.
+Write &apos;erector&apos; for all Erector validation rows.
+contract_id
+UUID. Used by blueprint launch to identify the exact row.
+Erector populates this. BlueprintLaunchService reads it.
+selected_path_type
+Which path the user chose.
+Set when user selects path: current, adjusted, or alternative.
+intelligence_payload
+JSON. Used for intelligence-type rows only.
+Do NOT put Erector output in intelligence_payload. Use the new erector_payload column.
+Add a new erector_payload JSONB column to the validations table via Drizzle migration. This stores the full Erector output without polluting intelligence_payload. ValidationService.selectValidationPath() filters by validation_kind=&apos;intelligence&apos; and never reads erector rows — this isolation must be preserved.
+C.2 — Blueprint Launch Integration (R3 Recovery)
+BlueprintLaunchService.ts is the single authority for blueprint activation. The Erector must feed into it, not bypass it:
+// BlueprintLaunchService.launch() already requires:
+// { blueprint_id, user_id, validation_contract_id, selected_path_type }
+// Erector integration: when user selects path, update the validation row:
+// - set selected_path_type = user&apos;s selection
+// - set validation_kind = &apos;erector&apos; (already set from run)
+// - contract_id already populated from validation run
+// The path selection screen calls POST /api/v1/validation/:id/select-path
+// which sets selected_path_type on the validation row.
+// The blueprint level selection screen then calls BlueprintLaunchService.launch()
+// passing the validation row&apos;s contract_id as validation_contract_id.
+// IMPORTANT: BlueprintLaunchService validates the contract belongs to the blueprint.
+// Erector validation rows must have blueprint_id populated from the start.
+C.3 — Bhudhi TriggerRouter Integration (B1-B2 Recovery)
+Nine Bhudhi calls exist in the Erector. All nine must be registered in PromptRegistry and use TriggerRouter.route():
+Erector Bhudhi Call
+Trigger Type to Register
+Mode
+structure_goal
+GOAL_STRUCTURING
+STRUCTURE
+resolve_archetype
+GOAL_STRUCTURING (extended — new prompt version)
+INTERPRET
+decompose_purpose
+GOAL_STRUCTURING (extended)
+INTERPRET
+analyze_industry
+GOAL_STRUCTURING (extended)
+INTERPRET
+analyze_market
+GOAL_STRUCTURING (extended)
+INTERPRET
+identify_competitors
+GOAL_STRUCTURING (extended)
+INTERPRET
+generate_economy_briefing
+STATE_EXPLANATION (extended)
+EXPLAIN
+simulate_timeframes
+STATE_EXPLANATION (extended)
+SUGGEST
+generate_paths
+GOAL_STRUCTURING (paths)
+SUGGEST
+generate_first_week
+TASK_DRAFTING (extended)
+DRAFT
+The existing 9 core trigger types in PromptRegistry are: GOAL_STRUCTURING, TASK_DRAFTING, CLARIFICATION_PROMPT, RECOVERY_COPY, FEEDBACK_CLASSIFICATION, STATE_EXPLANATION, OUTCOME_EVIDENCE_SUMMARY, ACADEMY_SUPPORT, ROOT_CAUSE_ASSIST. Erector prompts extend existing trigger types with new prompt versions — they do not add new trigger type names. This preserves the TriggerRouter&apos;s 9-type architecture from B2.
+C.4 — State Version Integration (G4 Gap Prompt)
+Blueprint state_version must be incremented when Erector validation completes and when path is selected. Use StateMutationService:
+// When Erector validation completes:
+await stateMutationService.mutate({
+blueprintId: input.blueprintDraftId,
+userId: input.userId,
+expectedVersion: blueprint.state_version,
+mutationName: &apos;erector_validation_complete&apos;,
+mutationFn: async (tx) =&gt; {
+await tx.update(blueprints).set({
+status: BlueprintStatus.PATH_SELECTION, // from stateMachine.ts
+erector_validation_id: validation.id,
+}).where(eq(blueprints.id, input.blueprintDraftId));
+}
+});
+C.5 — Event Chain Integration (G1-G2 Gap Prompts)
+Erector events must use EventTypes from eventContracts.ts and include idempotency_key. Add these two events to EventTypes:
+// Add to src/types/eventContracts.ts:
+ERECTOR_VALIDATION_STARTED:   &apos;erector_validation_started&apos;,
+ERECTOR_VALIDATION_COMPLETE:  &apos;erector_validation_complete&apos;,
+ERECTOR_PATH_SELECTED:        &apos;erector_path_selected&apos;,
+// Emit on validation completion:
+await emitEvent({
+event_type: EventTypes.ERECTOR_VALIDATION_COMPLETE,
+entity_type: &apos;validation&apos;, entity_id: validation.id,
+user_id: input.userId, blueprint_id: input.blueprintDraftId,
+idempotency_key: `erector_complete:${validation.id}`,
+payload: { reality_score: scores.realityScore, verdict: scores.verdict, contract_id: validation.contract_id },
+});
+C.6 — Dashboard Integration
+The dashboard GET /api/dashboard already returns an intelligence object (from B4). Add economy intelligence to it:
+// In GET /api/dashboard — add to existing intelligence object:
+const erectorValidation = await db.select()
+.from(validations)
+.where(and(
+eq(validations.blueprint_id, blueprint.id),
+eq(validations.validation_kind, &apos;erector&apos;),
+eq(validations.status, &apos;complete&apos;)
+))
+.orderBy(desc(validations.created_at))
+.limit(1).then(r =&gt; r[0]);
+// Add to response — extends existing intelligence object:
+intelligence: {
+headline: dashboardIntelligence.data?.headline, // existing from B4
+bodyText: dashboardIntelligence.data?.bodyText, // existing from B4
+economy: erectorValidation ? {
+archetypeName: erectorValidation.erector_payload?.primaryArchetype?.name,
+realityScore: erectorValidation.reality_score,
+selectedPath: erectorValidation.selected_path_type,
+blueprintLevel: erectorValidation.recommended_blueprint_level,
+} : null,
+}
+D — TYPE DEFINITIONS (CREATE FIRST)
+Create src/types/erector.ts as the first file. All Erector types live here.
+// src/types/erector.ts
+// All Erector type definitions. Import from here — never define locally.
+export interface EconomicArchetypeProfile {
+archetypeId: number;
+name: string;
+countries: string[];
+institutionalStrength: number;       // 1-10
+corruptionIndex: number;             // 1-10
+infrastructureQuality: number;       // 1-10
+digitalAdoption: number;             // 1-10
+consumerPurchasingPower: number;     // 1-10
+startupEcosystemMaturity: number;    // 1-10
+regulatoryOpenness: number;          // 1-10
+politicalStability: number;          // 1-10
+laborMarketFlexibility: number;      // 1-10
+marketCompetitionDensity: number;    // 1-10
+consumerBehaviorPatterns: string[];
+typicalResistancePatterns: string[];
+survivorBehaviorPatterns: string[];
+culturalBusinessNorms: string[];
+primaryRiskFactors: Array&lt;{name:string;description:string;severity:string;}&gt;;
+primaryOpportunityFactors: Array&lt;{name:string;description:string;}&gt;;
+timeframePressureMultiplier: number;
+executionIntensityMultiplier: number;
+blueprintDifficultyAdjustment: number;
+}
+export interface ErectorValidationInput {
+userId: string;
+blueprintDraftId: string;
+idempotencyKey: string;
+rawGoal: string;
+purpose: string;
+timeframe: &apos;30d&apos; | &apos;90d&apos; | &apos;6m&apos; | &apos;1yr&apos; | &apos;custom&apos;;
+customTimeframeDays?: number;
+commitmentLevel: &apos;LOW&apos; | &apos;MEDIUM&apos; | &apos;HIGH&apos; | &apos;INTENSE&apos;;
+desiredOutcome: string;
+location: { country: string; city?: string; };
+businessType: &apos;online&apos; | &apos;offline&apos; | &apos;hybrid&apos;;
+businessModel: string;
+budgetAvailable: number;
+currency: string;
+currentResources: string[];
+targetCustomer: string;
+knownBlockers?: string[];
+successSignal?: string;
+currentContext: string;
+}
+export interface ErectorScores {
+marketScore: number;
+executionScore: number;
+timingScore: number;
+competitionScore: number;
+scalabilityScore: number;
+localEconomyScore: number;
+resourceScore: number;
+blueprintDifficultyScore: number;
+riskScore: number;
+momentumPotential: number;
+trustBuildingScore: number;
+realityScore: number;               // composite 0-10
+verdict: &apos;proceed&apos; | &apos;adjust&apos; | &apos;pivot&apos;;
+recommendedBlueprintLevel: &apos;starter&apos; | &apos;growth&apos; | &apos;ultimate&apos;;
+}
+export interface ValidationPathOutput {
+pathType: &apos;current&apos; | &apos;adjusted&apos; | &apos;alternative&apos;;
+description: string;
+modifications: string[];
+expectedDifficulty: string;
+probabilityOfSuccess: number;       // 0-1
+timelineAdjustment: string;
+blueprintLevelRecommendation: &apos;starter&apos; | &apos;growth&apos; | &apos;ultimate&apos;;
+keyRisks: string[];
+keyAdvantages: string[];
+firstWeekActionsPreview: string[];
+}
+export interface TimeSimulationOutput {
+timeframe: string;
+dailyTaskCount: { min: number; max: number; average: number; };
+weeklyOutputRequirements: string[];
+estimatedRevenueTimeline: string;
+requiredCapitalBurn: number;
+executionIntensityLabel: &apos;extreme&apos;|&apos;very_high&apos;|&apos;high&apos;|&apos;moderate&apos;|&apos;sustainable&apos;;
+probabilityOfReachingGoal: number;
+majorRiskPoints: string[];
+criticalSuccessFactors: string[];
+}
+// Add to stateMachine.ts (not here — import from there):
+// BlueprintLevel: starter | growth | ultimate
+// ErectorValidationStage: pending | running | complete | failed
+E — BUILD SEQUENCE (14 STEPS IN STRICT ORDER)
+Complete each step fully before starting the next. Do not parallelise steps. Each step has a verification gate.
+STEP 1 — READ THE CODEBASE AND SPEC FILE
+Before writing a single line of code, read the following in full:
+The attached spec file: TORGIMA_ERECTOR_VALIDATION_SYSTEM_COMPLETE.docx — all 15 sections.
+The Drizzle schema file (search for schema.ts in packages/db/src/ or src/db/) — all 42+ tables and the existing validations table fields.
+Existing onboarding screen files — count them, understand the current flow.
+src/routes/ or equivalent — find the existing validation route.
+src/engines/bhudhi/TriggerRouter.ts — understand the routing pattern.
+src/engines/bhudhi/PromptRegistry.ts — understand how prompts are registered.
+src/engines/bhudhi/FallbackLibrary.ts — understand fallback structure.
+src/types/stateMachine.ts — read all existing enums.
+src/types/eventContracts.ts — read all existing event names.
+services/blueprint/BlueprintLaunchService.ts — understand the launch() method signature.
+src/services/StateMutationService.ts — understand the mutate() method.
+STEP 1 GATE: You can state the exact Drizzle schema file path, list the validations table&apos;s existing columns, and describe the TriggerRouter.route() call signature before proceeding.
+STEP 2 — DRIZZLE SCHEMA MIGRATION
+Add new tables and extend the validations table in a single Drizzle migration. Read the existing schema first.
+2a. Add these new columns to stateMachine.ts first (imports required by schema):
+export const BlueprintLevel = {
+STARTER: &apos;starter&apos;, GROWTH: &apos;growth&apos;, ULTIMATE: &apos;ultimate&apos;
+} as const;
+export type BlueprintLevel = typeof BlueprintLevel[keyof typeof BlueprintLevel];
+export const ErectorValidationStage = {
+PENDING: &apos;pending&apos;, RUNNING: &apos;running&apos;, COMPLETE: &apos;complete&apos;, FAILED: &apos;failed&apos;
+} as const;
+export type ErectorValidationStage = typeof ErectorValidationStage[keyof typeof ErectorValidationStage];
+2b. Add to Drizzle schema — economic_archetypes table:
+export const economicArchetypes = pgTable(&apos;economic_archetypes&apos;, {
+id: uuid(&apos;id&apos;).primaryKey().defaultRandom(),
+archetype_number: integer(&apos;archetype_number&apos;).notNull().unique(),
+name: text(&apos;name&apos;).notNull(),
+countries: text(&apos;countries&apos;).array().notNull(),
+institutional_strength: real(&apos;institutional_strength&apos;).notNull(),
+corruption_index: real(&apos;corruption_index&apos;).notNull(),
+infrastructure_quality: real(&apos;infrastructure_quality&apos;).notNull(),
+digital_adoption: real(&apos;digital_adoption&apos;).notNull(),
+consumer_purchasing_power: real(&apos;consumer_purchasing_power&apos;).notNull(),
+startup_ecosystem_maturity: real(&apos;startup_ecosystem_maturity&apos;).notNull(),
+regulatory_openness: real(&apos;regulatory_openness&apos;).notNull(),
+political_stability: real(&apos;political_stability&apos;).notNull(),
+labor_market_flexibility: real(&apos;labor_market_flexibility&apos;).notNull(),
+market_competition_density: real(&apos;market_competition_density&apos;).notNull(),
+consumer_behavior_patterns: jsonb(&apos;consumer_behavior_patterns&apos;).default([]),
+typical_resistance_patterns: jsonb(&apos;typical_resistance_patterns&apos;).default([]),
+survivor_behavior_patterns: jsonb(&apos;survivor_behavior_patterns&apos;).default([]),
+cultural_business_norms: jsonb(&apos;cultural_business_norms&apos;).default([]),
+primary_risk_factors: jsonb(&apos;primary_risk_factors&apos;).default([]),
+primary_opportunity_factors: jsonb(&apos;primary_opportunity_factors&apos;).default([]),
+timeframe_pressure_multiplier: real(&apos;timeframe_pressure_multiplier&apos;).default(1.0),
+execution_intensity_multiplier: real(&apos;execution_intensity_multiplier&apos;).default(1.0),
+blueprint_difficulty_adjustment: real(&apos;blueprint_difficulty_adjustment&apos;).default(0.0),
+created_at: timestamp(&apos;created_at&apos;).defaultNow(),
+updated_at: timestamp(&apos;updated_at&apos;).defaultNow(),
+});
+2c. Add validation_archetype_maps table:
+export const validationArchetypeMaps = pgTable(&apos;validation_archetype_maps&apos;, {
+id: uuid(&apos;id&apos;).primaryKey().defaultRandom(),
+validation_id: uuid(&apos;validation_id&apos;).notNull().references(() =&gt; validations.id, { onDelete: &apos;cascade&apos; }),
+archetype_id: uuid(&apos;archetype_id&apos;).notNull().references(() =&gt; economicArchetypes.id),
+is_primary: boolean(&apos;is_primary&apos;).default(false),
+created_at: timestamp(&apos;created_at&apos;).defaultNow(),
+});
+2d. Extend the existing validations table — ADD these columns (do not remove any existing columns):
+// Erector intake fields (new):
+location_country: text(&apos;location_country&apos;),
+location_city: text(&apos;location_city&apos;),
+business_type: text(&apos;business_type&apos;),
+business_model: text(&apos;business_model&apos;),
+budget_available: real(&apos;budget_available&apos;),
+currency: text(&apos;currency&apos;),
+current_resources: jsonb(&apos;current_resources&apos;),
+target_customer: text(&apos;target_customer&apos;),
+desired_outcome: text(&apos;desired_outcome&apos;),
+known_blockers: jsonb(&apos;known_blockers&apos;),
+commitment_level: text(&apos;commitment_level&apos;),
+// Erector scores (all nullable):
+market_score: real(&apos;market_score&apos;),
+execution_score: real(&apos;execution_score&apos;),
+timing_score: real(&apos;timing_score&apos;),
+competition_score: real(&apos;competition_score&apos;),
+scalability_score: real(&apos;scalability_score&apos;),
+local_economy_score: real(&apos;local_economy_score&apos;),
+resource_score: real(&apos;resource_score&apos;),
+blueprint_difficulty_score: real(&apos;blueprint_difficulty_score&apos;),
+risk_score: real(&apos;risk_score&apos;),
+momentum_potential: real(&apos;momentum_potential&apos;),
+trust_building_score: real(&apos;trust_building_score&apos;),
+reality_score: real(&apos;reality_score&apos;),
+// Erector engine outputs — SEPARATE from intelligence_payload:
+erector_payload: jsonb(&apos;erector_payload&apos;), // full Erector output JSON
+erector_validation_stage: text(&apos;erector_validation_stage&apos;).default(&apos;pending&apos;),
+recommended_blueprint_level: text(&apos;recommended_blueprint_level&apos;),
+2e. Generate and apply the migration:
+npx drizzle-kit generate --name=add_erector_validation_system
+# Review the generated SQL before applying
+npx drizzle-kit migrate
+npx drizzle-kit check # Must show zero drift
+STEP 2 GATE: npx drizzle-kit check returns zero drift. validations table has erector_payload column. economic_archetypes table exists.
+STEP 3 — SEED ALL 30 ECONOMIC ARCHETYPES
+Create scripts/seedArchetypes.ts with the complete data for all 30 archetypes from the spec file. The archetype data is the intelligence foundation of the entire Erector system. Do not simplify it.
+// scripts/seedArchetypes.ts
+// Read TORGIMA_ERECTOR_VALIDATION_SYSTEM_COMPLETE.docx section 1 for all 30 archetypes
+// Include full profiles: all 10 numeric dimensions, all behavioral arrays
+const ARCHETYPES: Omit&lt;typeof economicArchetypes.$inferInsert, &apos;id&apos; | &apos;created_at&apos; | &apos;updated_at&apos;&gt;[] = [
+{
+archetype_number: 1,
+name: &apos;Consumer Capitalist Economy&apos;,
+countries: [&apos;USA&apos;, &apos;Canada&apos;, &apos;Australia&apos;, &apos;New Zealand&apos;],
+institutional_strength: 8.5,
+corruption_index: 2.0,
+infrastructure_quality: 8.0,
+digital_adoption: 9.0,
+consumer_purchasing_power: 9.0,
+startup_ecosystem_maturity: 9.5,
+regulatory_openness: 7.5,
+political_stability: 8.0,
+labor_market_flexibility: 7.0,
+market_competition_density: 9.5,
+consumer_behavior_patterns: [&apos;brand-dependent trust&apos;, &apos;convenience-first&apos;, &apos;reviews-driven&apos;, &apos;subscription tolerance&apos;],
+typical_resistance_patterns: [&apos;high CAC in saturated markets&apos;, &apos;fast trend cycles&apos;, &apos;brand loyalty barriers&apos;],
+survivor_behavior_patterns: [&apos;differentiated positioning&apos;, &apos;content-led acquisition&apos;, &apos;retention over acquisition&apos;],
+cultural_business_norms: [&apos;contract-first&apos;, &apos;legal enforcement reliable&apos;, &apos;professional email culture&apos;],
+primary_risk_factors: [{ name:&apos;Market Saturation&apos;, description:&apos;Crowded in most categories&apos;, severity:&apos;HIGH&apos; }],
+primary_opportunity_factors: [{ name:&apos;Large Consumer Base&apos;, description:&apos;High purchasing power at scale&apos; }],
+timeframe_pressure_multiplier: 1.0,
+execution_intensity_multiplier: 1.2,
+blueprint_difficulty_adjustment: 0.5,
+},
+// ... all 30 archetypes following this pattern
+// Read section 1 of spec file for each archetype&apos;s characteristics
+];
+// Run: npx tsx scripts/seedArchetypes.ts
+Country-to-archetype mapping:
+Create src/data/countryArchetypeMap.ts with a lookup table mapping every country name to its primary archetype number(s). The spec file section 1.1 lists the country mappings for all 30 archetypes.
+STEP 3 GATE: Query returns 30 rows: SELECT archetype_number, name FROM economic_archetypes ORDER BY archetype_number. Country lookup for &apos;United States&apos; returns archetype 1. Country lookup for &apos;Nigeria&apos; returns archetypes 7, 14, 27.
+STEP 4 — ARCHETYPE RESOLUTION ENGINE
+Create src/services/validation/archetypeResolutionEngine.ts. This is the first engine called. It maps the user&apos;s location to Economic Archetypes and loads the full civilization intelligence profile.
+// src/services/validation/archetypeResolutionEngine.ts
+export class ArchetypeResolutionEngine {
+async resolve(input: { country: string; city?: string; businessType: string; businessModel: string }): Promise&lt;ArchetypeResolutionOutput&gt; {
+// 1. Load country-archetype map
+const archetypeNumbers = COUNTRY_ARCHETYPE_MAP[input.country.toLowerCase()];
+if (!archetypeNumbers || archetypeNumbers.length === 0) {
+// Unknown country — use best-guess from context or return UNKNOWN
+return this.getFallbackArchetype(input.country);
+}
+// 2. Load archetype profiles from database
+const archetypes = await db.select().from(economicArchetypes)
+.where(inArray(economicArchetypes.archetype_number, archetypeNumbers));
+const primary = archetypes[0];
+const secondary = archetypes.slice(1);
+// 3. Call Bhudhi for narrative — through TriggerRouter
+const narrative = await triggerRouter.route&lt;{archetypeNarrative: string; economyWarnings: string[]; economyOpportunities: string[]}&gt;({
+sourceEngine: &apos;ONBOARDING&apos;,
+triggerType: &apos;GOAL_STRUCTURING&apos;,
+userId: &apos;system&apos;, // archetype resolution is pre-user context
+requestedMode: &apos;INTERPRET&apos;,
+stateVersion: 0,
+input: JSON.stringify({ country: input.country, archetypeName: primary.name, businessModel: input.businessModel }),
+idempotencyKey: `archetype:${input.country}:${primary.archetype_number}:${input.businessModel}`,
+});
+return {
+primaryArchetype: this.toProfile(primary),
+secondaryArchetypes: secondary.map(a =&gt; this.toProfile(a)),
+resolvedCountry: input.country,
+resolvedCity: input.city,
+timeframePressureMultiplier: primary.timeframe_pressure_multiplier,
+executionIntensityMultiplier: primary.execution_intensity_multiplier,
+blueprintDifficultyAdjustment: primary.blueprint_difficulty_adjustment,
+economySpecificWarnings: narrative.data?.economyWarnings ?? this.getDefaultWarnings(primary),
+economySpecificOpportunities: narrative.data?.economyOpportunities ?? this.getDefaultOpportunities(primary),
+bhudhiArchetypeNarrative: narrative.data?.archetypeNarrative ?? `Economy: ${primary.name}. Operating in this economy requires understanding local market dynamics.`,
+};
+}
+}
+STEP 4 GATE: archetypeResolutionEngine.resolve({ country: &apos;Germany&apos; }) returns archetype #2 as primary, archetype #5 as secondary. archetypeResolutionEngine.resolve({ country: &apos;Unknown Country&apos; }) returns a fallback without crashing.
+STEP 5 — REGISTER ERECTOR BHUDHI PROMPTS
+Create all 9 Erector prompt files and register them in PromptRegistry. They must follow the exact same pattern as existing prompts in lib/bhudhi/prompts/.
+// Create these files (read spec file section 8 for each prompt&apos;s contract):
+src/engines/bhudhi/prompts/erector/resolveArchetype.ts
+src/engines/bhudhi/prompts/erector/decomposePurpose.ts
+src/engines/bhudhi/prompts/erector/analyzeIndustry.ts
+src/engines/bhudhi/prompts/erector/analyzeMarket.ts
+src/engines/bhudhi/prompts/erector/identifyCompetitors.ts
+src/engines/bhudhi/prompts/erector/generateEconomyBriefing.ts
+src/engines/bhudhi/prompts/erector/simulateTimeframes.ts
+src/engines/bhudhi/prompts/erector/generatePaths.ts
+src/engines/bhudhi/prompts/erector/generateFirstWeek.ts
+Each file must export a prompt contract object matching the PromptContract interface from PromptRegistry.ts. Register each in PromptRegistry using PromptRegistry.register(). Add Zod output schemas for each.
+Add fallbacks for each to FallbackLibrary.ts. Erector fallbacks must produce structured outputs that allow validation to complete even if all 9 Bhudhi calls fail:
+// In FallbackLibrary.ts — add to the fallbacks record:
+ERECTOR_ARCHETYPE_RESOLUTION: { primaryArchetype: { name: &apos;Unknown Economy&apos;, archetypeId: 0 }, secondaryArchetypes: [] },
+ERECTOR_PURPOSE_DECOMPOSITION: { problemClaim: &apos;Not determined&apos;, clarityScore: 5, purposeStrength: &apos;moderate&apos; },
+ERECTOR_INDUSTRY_INTELLIGENCE: { industryState: &apos;STABLE&apos;, trendDirection: &apos;growing&apos;, saturationLevel: &apos;moderate&apos; },
+ERECTOR_MARKET_ANALYSIS: { demandScore: 5, competitionScore: 5, profitabilityScore: 5, accessibilityScore: 5 },
+ERECTOR_COMPETITOR_ANALYSIS: { competitors: [], strategicGaps: [&apos;Analysis unavailable — manual research required&apos;] },
+ERECTOR_ECONOMY_BRIEFING: { briefingText: &apos;Economy analysis unavailable. Proceed with caution.&apos; },
+ERECTOR_TIME_SIMULATIONS: [{ timeframe: &apos;90d&apos;, probabilityOfReachingGoal: 0.4 }],
+ERECTOR_PATHS: { current: null, adjusted: null, alternative: null },
+ERECTOR_FIRST_WEEK: { actions: [&apos;Research your target market&apos;, &apos;Validate your idea with 5 potential customers&apos;, &apos;Define your first revenue milestone&apos;] },
+STEP 5 GATE: PromptRegistry.list() returns at least 21 entries (12 existing + 9 new erector prompts). Each new entry has a Zod output schema. FallbackLibrary.get(&apos;ERECTOR_PATHS&apos;) returns a non-null object.
+STEP 6 — SCORING ENGINE (DETERMINISTIC — NO BHUDHI)
+Create src/services/validation/scoringEngine.ts. This engine calculates all 11 scores and the composite Reality Score without any AI involvement. Read the spec file section 6 for scoring logic.
+// src/services/validation/scoringEngine.ts
+// NO Bhudhi calls in this file. Zero. All math.
+export class ScoringEngine {
+calculateScores(engines: {
+archetype: ArchetypeResolutionOutput;
+purpose: PurposeDecompositionOutput;
+industry: IndustryIntelligenceOutput;
+market: MarketAnalysisOutput;
+competitors: CompetitorAnalysis[];
+executionDifficulty: ExecutionDifficultyOutput;
+customerPain: CustomerPainOutput;
+timing: TimingEngineOutput;
+}, input: ErectorValidationInput): ErectorScores {
+// Each score is 0-10. Apply archetype adjustment to relevant scores.
+const adj = engines.archetype.primaryArchetype.blueprintDifficultyAdjustment;
+const marketScore       = this.scoreMarket(engines.market) + adj;
+const executionScore    = this.scoreExecution(engines.executionDifficulty, input.commitmentLevel);
+const timingScore       = this.scoreTiming(engines.timing, engines.industry);
+const competitionScore  = this.scoreCompetition(engines.competitors, engines.market);
+const scalabilityScore  = this.scoreScalability(engines.market, engines.archetype);
+const localEconomyScore = this.scoreLocalEconomy(engines.archetype.primaryArchetype);
+const resourceScore     = this.scoreResources(input, engines.archetype);
+const blueprintDiffScore = this.scoreBlueprintDifficulty(engines.executionDifficulty, engines.archetype);
+const riskScore         = this.scoreRisk(engines);
+const momentumPotential = this.scoreMomentum(engines.industry, engines.market);
+const trustBuildingScore = this.scoreTrust(engines.archetype, engines.competitors);
+const clamp = (v: number) =&gt; Math.max(0, Math.min(10, v));
+const scores = {
+marketScore: clamp(marketScore),
+executionScore: clamp(executionScore),
+timingScore: clamp(timingScore),
+competitionScore: clamp(competitionScore),
+scalabilityScore: clamp(scalabilityScore),
+localEconomyScore: clamp(localEconomyScore),
+resourceScore: clamp(resourceScore),
+blueprintDifficultyScore: clamp(blueprintDiffScore),
+riskScore: clamp(riskScore),
+momentumPotential: clamp(momentumPotential),
+trustBuildingScore: clamp(trustBuildingScore),
+};
+// Weighted composite Reality Score
+const realityScore = clamp(
+scores.marketScore * 0.20 +
+scores.executionScore * 0.15 +
+scores.timingScore * 0.10 +
+scores.competitionScore * 0.10 +
+scores.scalabilityScore * 0.10 +
+scores.localEconomyScore * 0.15 +
+scores.resourceScore * 0.10 +
+scores.riskScore * 0.05 +
+scores.momentumPotential * 0.05
+);
+// Deterministic verdict thresholds
+const verdict = realityScore &gt;= 6.0 ? &apos;proceed&apos; : realityScore &gt;= 3.5 ? &apos;adjust&apos; : &apos;pivot&apos;;
+// Blueprint level recommendation
+const base = realityScore &gt;= 7.0 ? &apos;ultimate&apos; : realityScore &gt;= 5.0 ? &apos;growth&apos; : &apos;starter&apos;;
+const level = this.applyBlueprintAdjustments(base, input, engines.archetype);
+return { ...scores, realityScore, verdict, recommendedBlueprintLevel: level };
+}
+private applyBlueprintAdjustments(base: string, input: ErectorValidationInput, archetype: ArchetypeResolutionOutput): &apos;starter&apos; | &apos;growth&apos; | &apos;ultimate&apos; {
+let level = base;
+if (input.commitmentLevel === &apos;LOW&apos;) level = &apos;starter&apos;;
+if (archetype.primaryArchetype.blueprintDifficultyAdjustment &gt; 1.5 &amp;&amp; level === &apos;ultimate&apos;) level = &apos;growth&apos;;
+return level as &apos;starter&apos; | &apos;growth&apos; | &apos;ultimate&apos;;
+}
+}
+STEP 6 GATE: ScoringEngine.calculateScores() with mock engine outputs returns all 11 scores populated. realityScore is the weighted composite. verdict is correct for score above 6.0 (proceed), 4.0-6.0 (adjust), below 4.0 (pivot). No Bhudhi imports in this file.
+STEP 7 — REMAINING 8 VALIDATION ENGINES
+Build the remaining 8 engines. Read the spec file sections 3-5 for each engine&apos;s complete specification. Each engine calls TriggerRouter. Each receives the archetype profile as context.
+Engine File
+Bhudhi Trigger
+Archetype Injection
+Output Shape
+purposeDecompositionEngine.ts
+decomposePurpose prompt
+archetype profile injected into context
+PurposeDecompositionOutput with contradictions[]
+industryIntelligenceEngine.ts
+analyzeIndustry prompt
+archetype determines industry behavior
+IndustryIntelligenceOutput with state enum
+marketAnalysisEngine.ts
+analyzeMarket prompt
+archetype adjusts all 6 market layers
+MarketAnalysisOutput with 6 layer scores
+competitorRealityEngine.ts
+identifyCompetitors prompt
+archetype filters competitor patterns
+CompetitorAnalysis[] — minimum 5 entries
+economyBriefingEngine.ts
+generateEconomyBriefing prompt
+archetype IS the primary input
+EconomyBriefingOutput with plain-language narrative
+customerPainEngine.ts
+analyzeCustomerPain prompt
+archetype shapes pain severity + WTP
+CustomerPainOutput with willingness_to_pay
+executionDifficultyEngine.ts
+analyzeExecution prompt
+archetype multipliers applied to 8 dimensions
+ExecutionDifficultyOutput with 8 dimension scores
+timeSimulationEngine.ts
+simulateTimeframes prompt
+archetype multipliers applied to task counts
+TimeSimulationOutput[] for 90d, 6m, 1yr
+After all 8 engines are built, create src/services/validation/erectorOrchestrationService.ts as the coordinator that runs all 9 engines in sequence and calls the ScoringEngine and PathEngine:
+// src/services/validation/erectorOrchestrationService.ts
+export class ErectorOrchestrationService {
+async run(input: ErectorValidationInput): Promise&lt;{ validationId: string; scores: ErectorScores; paths: {...}; }&gt; {
+// Check idempotency
+const existing = await this.checkIdempotency(input.idempotencyKey);
+if (existing) return existing;
+// Create validation row with validation_kind = &apos;erector&apos;
+const validation = await db.insert(validations).values({
+id: crypto.randomUUID(),
+blueprint_id: input.blueprintDraftId,
+user_id: input.userId,
+validation_kind: &apos;erector&apos;,          // R2 requirement
+contract_id: crypto.randomUUID(),     // stable reference for launch
+status: &apos;running&apos;,
+erector_validation_stage: ErectorValidationStage.RUNNING,
+payload_version: 1,
+// Intake fields:
+location_country: input.location.country,
+budget_available: input.budgetAvailable,
+commitment_level: input.commitmentLevel,
+// ... other intake fields
+}).returning().then(r =&gt; r[0]);
+// Step 1: Archetype resolution (required — all other engines depend on it)
+const archetype = await archetypeResolutionEngine.resolve(input);
+// Steps 2-8: Engines run in dependency order
+const purpose     = await purposeDecompositionEngine.run(input, archetype);
+const industry    = await industryIntelligenceEngine.run(input, archetype);
+const market      = await marketAnalysisEngine.run(input, archetype, industry);
+const competitors = await competitorRealityEngine.run(input, archetype, industry);
+const economy     = await economyBriefingEngine.run(input, archetype);
+const pain        = await customerPainEngine.run(input, archetype);
+const difficulty  = await executionDifficultyEngine.run(input, archetype);
+const simulations = await timeSimulationEngine.run(input, archetype, difficulty);
+// Step 9: Scoring (deterministic)
+const scores = scoringEngine.calculateScores({ archetype, purpose, industry, market, competitors, executionDifficulty: difficulty, customerPain: pain, timing: industry }, input);
+// Step 10: Path generation (Bhudhi-assisted)
+const paths = await pathEngine.generate(input, archetype, scores, simulations);
+// Save complete Erector payload
+await db.update(validations).set({
+erector_payload: { archetype, purpose, industry, market, competitors, economy, pain, difficulty, simulations, paths },
+erector_validation_stage: ErectorValidationStage.COMPLETE,
+status: &apos;complete&apos;,
+reality_score: scores.realityScore,
+recommended_blueprint_level: scores.recommendedBlueprintLevel,
+...flattenScores(scores),
+}).where(eq(validations.id, validation.id));
+// Emit event — using EventTypes from eventContracts.ts
+await emitEvent({
+event_type: EventTypes.ERECTOR_VALIDATION_COMPLETE,
+entity_type: &apos;validation&apos;, entity_id: validation.id,
+user_id: input.userId, blueprint_id: input.blueprintDraftId,
+idempotency_key: `erector_complete:${validation.id}`,
+payload: { contract_id: validation.contract_id, reality_score: scores.realityScore, verdict: scores.verdict },
+});
+// Mutate blueprint state via StateMutationService
+const blueprint = await db.select().from(blueprints).where(eq(blueprints.id, input.blueprintDraftId)).limit(1).then(r=&gt;r[0]);
+if (blueprint) {
+await stateMutationService.mutate({
+blueprintId: input.blueprintDraftId, userId: input.userId,
+expectedVersion: blueprint.state_version,
+mutationName: &apos;erector_validation_complete&apos;,
+mutationFn: async (tx) =&gt; {
+await tx.update(blueprints).set({ status: BlueprintStatus.PATH_SELECTION }).where(eq(blueprints.id, input.blueprintDraftId));
+}
+});
+}
+return { validationId: validation.id, scores, paths };
+}
+}
+STEP 7 GATE: erectorOrchestrationService.run() with valid input returns validationId, all 11 scores populated, three paths generated. erector_validation_stage = &apos;complete&apos; in the database row. All engine calls have BhudhiLog rows.
+STEP 8 — API ROUTES
+Create or upgrade all Erector API routes. Use the existing Express route pattern from the codebase.
+Route
+Method — File
+Integration Points
+POST /api/v1/validation/run
+UPGRADE existing route — add Erector fields to request schema and call ErectorOrchestrationService
+Calls ErectorOrchestrationService.run(). Returns validation_id, scores, paths, contract_id.
+POST /api/v1/validation/:id/select-path
+NEW route
+Sets selected_path_type on validation row. Emits ERECTOR_PATH_SELECTED event. Returns { blueprint_id, validation_contract_id, selected_path_type } ready for BlueprintLaunchService.launch().
+GET /api/v1/validation/:id/first-week
+NEW route — calls pathEngine.generateFirstWeek()
+Only called after path selection. Returns archetype-specific 7-day action plan.
+GET /api/v1/validation/archetypes
+NEW route
+Returns all 30 archetypes. Cached. Used for frontend archetype preview on country selection.
+GET /api/v1/validation/:id
+Confirm existing route returns all new fields
+Includes erector_payload, all scores, paths, economy briefing.
+The select-path route must set selected_path_type on the validation row AND must prepare the validation_contract_id for BlueprintLaunchService.launch(). The frontend path selection screen reads back the contract_id and passes it to the launch call. This is the R2/R3 integration — the contract_id chain must not break.
+STEP 8 GATE: POST /api/v1/validation/run returns 200 with validation_id and scores. POST /api/v1/validation/:id/select-path sets selected_path_type. GET /api/v1/validation/:id/first-week returns 7 actions. GET /api/v1/validation/archetypes returns 30 archetypes.
+STEP 9 — ONBOARDING SCREEN UPGRADES
+Add the Reality Context input screen and upgrade the validation running and results screens. Read the existing onboarding screen files completely before adding any new screens.
+Screen
+Type
+Position in Flow
+Reality Context Input
+NEW screen — collects location, business type, model, budget, resources, target customer
+After goal/purpose/timeframe input. Before validation runs.
+Validation Running (upgraded)
+UPGRADE existing — show 9 engine progress steps
+Shows: &apos;Mapping your economy&apos;, &apos;Analyzing your market&apos;, &apos;Identifying competitors in your economy&apos;, &apos;Simulating your execution timeline&apos;...
+Economy Reality Briefing
+NEW screen — archetype narrative first
+SHOWN BEFORE score dashboard. Non-negotiable order.
+Scores Dashboard
+NEW screen — all 11 scores displayed
+After economy briefing. Visual score display.
+Path Selection
+NEW screen — user consciously chooses path
+Three path cards. Current / Adjusted / Alternative. User MUST select before launch is enabled.
+Blueprint Level Selection
+NEW screen — final selection before launch
+Three blueprint cards with archetype-adjusted characteristics. Calls BlueprintLaunchService.launch() on selection.
+STEP 9 GATE: Full UI flow works from Reality Context input through to Blueprint Level selection. Economy Briefing screen appears before Scores Dashboard. Path Selection screen blocks launch until a path is selected.
+STEP 10 — PATH ENGINE
+Create src/services/validation/pathEngine.ts. Generates three paths and the first-week plan.
+// Path engine generates three paths from scores, archetype, simulations.
+// Low reality score rules:
+// - realityScore &lt; 4.0: current path is shown but flagged as &apos;not recommended&apos;
+// - realityScore &lt; 2.5: current path is disabled, only adjusted/alternative shown
+// - All paths go through Bhudhi via generatePaths prompt
+// - First week plan generated separately via generateFirstWeek prompt
+// - First week plan called AFTER user selects path — not before
+STEP 10 GATE: pathEngine.generate() with realityScore=7.0 returns all three paths. pathEngine.generate() with realityScore=2.0 returns adjusted and alternative paths with current path flagged.
+STEP 11 — DASHBOARD ECONOMY INTELLIGENCE PANEL
+Create src/components/dashboard/EconomyIntelligencePanel.tsx. This panel appears on the dashboard after an Erector validation is complete. It is optional — if no Erector validation exists, the panel does not appear.
+Shows: archetype name, reality score, selected path type, blueprint level.
+Reads from GET /api/dashboard intelligence.economy field (added in C.6).
+Does not re-run validation — display only.
+Operational language throughout. No motivational copy.
+STEP 11 GATE: Dashboard loads after blueprint activation with Erector validation. EconomyIntelligencePanel shows correct archetype name and reality score.
+STEP 12 — BHUDHI PROMPTS REGISTRATION CONFIRMATION
+Confirm all 9 Erector prompts are registered. Run this check:
+// Add to a test script or run in Cursor:
+const registry = PromptRegistry.list();
+const erectorPrompts = registry.filter(k =&gt; k.includes(&apos;erector&apos;) || k.includes(&apos;ERECTOR&apos;));
+console.log(&apos;Erector prompts registered:&apos;, erectorPrompts.length);
+// Expected: 9
+// Also verify all fallbacks:
+const erectorFallbackTypes = [&apos;ERECTOR_ARCHETYPE_RESOLUTION&apos;, &apos;ERECTOR_PURPOSE_DECOMPOSITION&apos;, ...];
+erectorFallbackTypes.forEach(t =&gt; {
+const fb = FallbackLibrary.get(t);
+console.log(t, typeof fb === &apos;object&apos; ? &apos;OK&apos; : &apos;MISSING&apos;);
+});
+STEP 12 GATE: 9 Erector prompts in registry. 9 Erector fallbacks return non-null objects.
+STEP 13 — FULL SYSTEM INTEGRITY CHECK
+After all builds are complete, run a full system integrity check before acceptance tests:
+# Schema drift check:
+npx drizzle-kit check
+# Expected: zero drift
+# TypeScript compilation:
+npx tsc --noEmit
+# Expected: zero errors
+# No ad-hoc Anthropic calls:
+grep -rn &apos;anthropic.messages.create\|new Anthropic(&apos; src --include=&apos;*.ts&apos; -l
+# Expected: Only TriggerRouter.ts
+# No hardcoded state strings:
+grep -rn &quot;=== &apos;starter&apos;\|=== &apos;growth&apos;\|=== &apos;ultimate&apos;\|=== &apos;erector&apos;&quot; src --include=&apos;*.ts&apos;
+# Expected: Zero results
+# No hardcoded event strings:
+grep -rn &quot;&apos;erector_validation_complete&apos;\|&apos;erector_path_selected&apos;&quot; src --include=&apos;*.ts&apos; -l
+# Expected: Only eventContracts.ts
+# Existing execution loop still works:
+# Submit feedback → confirm next task generated within 5 seconds
+# GET /api/dashboard still returns intelligence.headline
+# All 9 Bhudhi trigger types still have bhudhi_logs rows
+STEP 13 GATE: All 5 integrity checks pass. Existing execution loop produces next task in under 5 seconds. No regressions in core loop.
+STEP 14 — END-TO-END TEST
+Run one complete Erector flow with a real user and confirm every step works from Reality Context input to blueprint activation and first task.
+Test goal: &apos;Launch a freelance UX design service&apos;
+Test location: United Kingdom
+Test business type: online
+Test commitment: HIGH
+Test timeframe: 6m
+Test budget: 500
+Expected:
+Archetype resolved: #2 (Welfare Industrial Economy) as primary
+Economy briefing mentions: regulatory compliance, trust-building timeline
+Reality score: 6.0-8.0 (experienced-market goal with clear path)
+Verdict: proceed
+All three paths generated
+User selects adjusted path
+Blueprint level: growth
+BlueprintLaunchService.launch() called with validation_contract_id
+Blueprint status: active
+First task generated within 10 seconds
+GET /execution/active-order returns task
+Task instruction references UX design context
+STEP 14 GATE: All expected outcomes above are confirmed. Blueprint is active. First task is available. Execution loop continues normally.
+F — FILE STRUCTURE (ALL NEW FILES TO CREATE)
+Create these files. Do not rename or move any existing files.
+File Path
+Purpose
+src/types/erector.ts
+All Erector TypeScript interfaces (Step 4)
+src/data/countryArchetypeMap.ts
+Country → archetype number lookup (Step 3)
+scripts/seedArchetypes.ts
+Seed all 30 archetypes with full profiles (Step 3)
+src/services/validation/archetypeResolutionEngine.ts
+Engine 1 (Step 4)
+src/services/validation/purposeDecompositionEngine.ts
+Engine 2 (Step 7)
+src/services/validation/industryIntelligenceEngine.ts
+Engine 3 (Step 7)
+src/services/validation/marketAnalysisEngine.ts
+Engine 4 (Step 7)
+src/services/validation/competitorRealityEngine.ts
+Engine 5 (Step 7)
+src/services/validation/economyBriefingEngine.ts
+Engine 6 (Step 7)
+src/services/validation/customerPainEngine.ts
+Engine 7 (Step 7)
+src/services/validation/executionDifficultyEngine.ts
+Engine 8 (Step 7)
+src/services/validation/timeSimulationEngine.ts
+Engine 9 (Step 7)
+src/services/validation/scoringEngine.ts
+Deterministic scoring — no Bhudhi (Step 6)
+src/services/validation/pathEngine.ts
+Path generation — Bhudhi-assisted (Step 10)
+src/services/validation/erectorOrchestrationService.ts
+Main coordinator (Step 7)
+src/engines/bhudhi/prompts/erector/resolveArchetype.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/decomposePurpose.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/analyzeIndustry.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/analyzeMarket.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/identifyCompetitors.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/generateEconomyBriefing.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/simulateTimeframes.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/generatePaths.ts
+Bhudhi prompt (Step 5)
+src/engines/bhudhi/prompts/erector/generateFirstWeek.ts
+Bhudhi prompt (Step 5)
+src/components/dashboard/EconomyIntelligencePanel.tsx
+Dashboard panel (Step 11)
+Files to MODIFY (extend, not replace):
+Existing File
+What to Add
+Drizzle schema file
+economic_archetypes, validation_archetype_maps tables. New columns on validations.
+src/types/stateMachine.ts
+BlueprintLevel enum. ErectorValidationStage enum.
+src/types/eventContracts.ts
+ERECTOR_VALIDATION_STARTED, ERECTOR_VALIDATION_COMPLETE, ERECTOR_PATH_SELECTED events.
+src/engines/bhudhi/PromptRegistry.ts
+Register all 9 Erector prompts.
+src/engines/bhudhi/FallbackLibrary.ts
+Add 9 Erector fallbacks.
+Existing validation run route
+Add Erector fields to request schema. Call ErectorOrchestrationService.
+GET /api/dashboard route
+Add intelligence.economy field from erector validation row.
+SECTION 15 — ACCEPTANCE TESTS (RUN AFTER BUILD)
+Run all 6 tests after Cursor completes the build. All must pass before deploying.
+TEST 1 — Economy Differentiation Test
+Submit two identical goals with different locations. Verify outputs differ significantly.
+Check
+United States
+Nigeria
+Archetype resolved
+Consumer Capitalist (#1)
+Rapid Urbanization (#7) + Informal Cash (#14)
+Economy briefing mentions
+Brand differentiation, paid ads, content CAC
+WhatsApp as channel, relationship-first, mobile money
+Reality score difference
+Should differ by at least 1.5 points for same goal
+—
+Competitor analysis
+US-based operators mentioned
+Nigerian/African operators mentioned
+Execution multiplier applied
+1.0x-1.2x (standard)
+1.4x-1.6x (higher execution intensity)
+TEST 2 — Sanctions and Corruption Economy Test
+Verify specific economy warnings appear for challenging archetypes:
+Location: Iran → Economy briefing must contain payment system restriction warning. Archetype: Sanctioned Economy (#23).
+Location: Russia → Economy briefing must contain sanctions warning and corruption navigation guidance. Archetype: Sanctioned (#23) + Corruption-Heavy (#16).
+Location: Zimbabwe → Economy briefing must contain hyperinflation and institutional weakness warnings. Archetype: Post-Collapse (#24) or Corruption-Heavy (#16).
+TEST 3 — Low Reality Score Blocking Test
+Submit a goal designed to produce a very low Reality Score:
+Goal: &apos;Build a $10M SaaS product in 30 days with $0 budget&apos;
+Location: Chad
+Expected: Reality Score &lt; 4.0
+Expected: Verdict = &apos;pivot&apos;
+Expected: Current path card shows &apos;Not recommended&apos; flag or disabled state
+Expected: Blueprint launch button is NOT accessible from the current path
+Expected: User must select adjusted or alternative path to proceed
+Expected: Reality Score &lt; 2.5 blocks launch from current path entirely
+TEST 4 — Idempotency Test
+Submit the same validation run twice with the same idempotency_key value
+Expected: Second submission returns the same validation_id as the first
+Expected: Only 1 row in validations with that contract_id
+Expected: BhudhiLog shows engine calls for first submission only — zero additional calls for second
+TEST 5 — Full End-to-End Loop Test
+The most important test. Confirms Erector does not break the execution loop.
+Complete the full Erector flow: Reality Context input → Validation Running → Economy Briefing screen → Scores Dashboard → Path Selection → Blueprint Level → Launch
+Confirm: Blueprint status = &apos;active&apos;. erector_validation_id populated on blueprint row.
+Confirm: First task generated within 10 seconds of blueprint activation. GET /execution/active-order returns task.
+Confirm: Submit task feedback → signal updates → condition updates → new task generated. The execution loop runs normally after Erector completion.
+Confirm: GET /api/dashboard returns intelligence.economy object with archetypeName and realityScore.
+Confirm: intelligence.headline from Bhudhi (B4) still works alongside intelligence.economy.
+TEST 6 — Bhudhi Fallback Test
+Set ANTHROPIC_API_KEY to an invalid value
+Submit a full validation run
+Expected: Each of the 9 Erector Bhudhi calls uses its deterministic fallback
+Expected: Validation still completes — erector_validation_stage = &apos;complete&apos;
+Expected: All 11 scores are populated (from ScoringEngine — deterministic)
+Expected: Paths are generated using fallback path templates
+Expected: BhudhiLog rows show status = &apos;provider_failed&apos; or &apos;fallback_used&apos; for all 9 Erector calls
+Expected: Execution loop continues to work normally after Erector with fallbacks
+Restore ANTHROPIC_API_KEY after test
+FINAL REPORT FORMAT
+When the build is complete, report in exactly this format. No other format is acceptable.
+═══════════════════════════════════════════════
+ERECTOR VALIDATION SYSTEM — BUILD REPORT
+═══════════════════════════════════════════════
+MIGRATIONS:
+[ ] add_erector_validation_system — applied
+[ ] npx drizzle-kit check: ZERO DRIFT
+[ ] Total tables now: __ (was 42+)
+[ ] validation_kind = &apos;erector&apos; rows isolated from &apos;intelligence&apos; rows: CONFIRMED
+SEED:
+[ ] Archetypes seeded: 30 / 30
+[ ] Country mappings: __ countries mapped
+NEW ENUM ADDITIONS:
+[ ] BlueprintLevel added to stateMachine.ts
+[ ] ErectorValidationStage added to stateMachine.ts
+[ ] EventTypes.ERECTOR_VALIDATION_COMPLETE added
+[ ] EventTypes.ERECTOR_PATH_SELECTED added
+ENGINES BUILT:
+[ ] Archetype Resolution Engine
+[ ] Purpose Decomposition Engine
+[ ] Industry Intelligence Engine
+[ ] Market Analysis Engine
+[ ] Competitor Reality Engine
+[ ] Economy Briefing Engine
+[ ] Customer Pain Engine
+[ ] Execution Difficulty Engine
+[ ] Scoring Engine (deterministic — zero Bhudhi)
+[ ] Time Simulation Engine
+[ ] Path Engine
+[ ] Erector Orchestration Service
+BHUDHI PROMPTS REGISTERED: __ / 9
+Each: [ ] Prompt contract [ ] Zod schema [ ] Fallback [ ] Logged to BhudhiLog
+Total registry entries now: __ (was 12+)
+API ROUTES:
+[ ] POST /api/v1/validation/run (upgraded)
+[ ] POST /api/v1/validation/:id/select-path (new)
+[ ] GET  /api/v1/validation/:id/first-week (new)
+[ ] GET  /api/v1/validation/archetypes (new)
+SCREENS:
+[ ] Reality Context input screen (new — onboarding step before validation runs)
+[ ] Validation Running screen (upgraded — 9 engine progress)
+[ ] Economy Briefing screen (new — shown BEFORE scores)
+[ ] Scores Dashboard screen (new)
+[ ] Path Selection screen (new — blocks launch until path chosen)
+[ ] Blueprint Level Selection screen (new — calls BlueprintLaunchService)
+[ ] Dashboard Economy Intelligence Panel (new — conditional)
+SYSTEM INTEGRITY:
+[ ] npx drizzle-kit check: ZERO DRIFT
+[ ] npx tsc --noEmit: ZERO ERRORS
+[ ] No ad-hoc Anthropic API calls: CONFIRMED
+[ ] No hardcoded state strings: CONFIRMED
+[ ] No hardcoded event name strings: CONFIRMED
+[ ] StateMutationService used for blueprint state changes: CONFIRMED
+[ ] validation_kind=&apos;erector&apos; on all Erector rows: CONFIRMED
+[ ] ValidationService.selectValidationPath() unchanged: CONFIRMED
+EXISTING SYSTEMS NOT BROKEN:
+[ ] Execution loop produces next task within 5 seconds
+[ ] All 9 Bhudhi trigger types still logged
+[ ] GET /api/dashboard still returns intelligence.headline
+[ ] R6 12-step loop verification: ALL 12 STEPS PASS
+ACCEPTANCE TESTS:
+[ ] Test 1 (Economy differentiation): PASS
+[ ] Test 2 (Sanctions/corruption warnings): PASS
+[ ] Test 3 (Low score blocking): PASS
+[ ] Test 4 (Idempotency): PASS
+[ ] Test 5 (Full loop): PASS
+[ ] Test 6 (Bhudhi fallback): PASS
+END-TO-END TEST RESULT:
+Test goal: [what you tested]
+Test location: [country]
+Archetype resolved: [name and number]
+Reality score: [X.X]
+Verdict: [proceed/adjust/pivot]
+Blueprint level: [starter/growth/ultimate]
+All 9 engines ran: [YES / NO]
+Blueprint activated: [YES / NO]
+First task generated: [YES / NO]
+Execution loop continued: [YES / NO]
+ISSUES:
+[List any issues found with resolution applied]
+═══════════════════════════════════════════════
+ERECTOR BUILD COMPLETE — PHASE 1 VALIDATION LAYER LIVE
+═══════════════════════════════════════════════
+FINAL SYSTEM TRUTH
+The Erector does not validate ideas. It validates whether a specific person, with specific resources, in a specific economy, at a specific moment in time, under real civilizational conditions, has a realistic path to achieving their goal — and what executing that path would actually cost them.
+System
+Responsibility
+Boundary
+The Erector
+Validate reality. Map civilization. Score probability. Recommend paths.
+Cannot launch blueprints. Cannot generate execution tasks. Cannot override user choice.
+Bhudhi
+Intelligence inside The Erector. Interprets, structures, analyzes, narrates. Routes through TriggerRouter. Logged to BhudhiLog.
+Cannot score deterministically. Cannot bypass validation engines. Cannot fabricate market data. Cannot override scores.
+Torgima
+Execute the validated blueprint. Generate tasks. Run the signal loop. Systems verified through G9 + IL5.
+Cannot launch without completed Erector validation and path selection. Cannot modify validation scores.
+TORGIMA — THE ERECTOR — POWERED BY BHUDHI — 30-ECONOMY CIVILIZATION ARCHITECTURE — POST-RECOVERY ARCHITECTURE — PHASE 1 INDIVIDUAL SYSTEM
