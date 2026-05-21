@@ -48,7 +48,7 @@ function erectorFacts(
   };
 }
 
-async function callErectorTrigger(
+export async function callErectorTrigger(
   triggerType: BhudhiTriggerType,
   params: {
     input: ErectorValidationInput;

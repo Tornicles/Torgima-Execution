@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 
 interface InfrastructureView {
   operationalState: string;
@@ -18,13 +18,10 @@ export function BlueprintCivilizationStrip({ blueprintId }: { blueprintId: strin
   const [data, setData] = useState<InfrastructureView | null>(null);
 
   useEffect(() => {
-    if (!API_BASE_URL || !blueprintId) return;
-    void fetch(`${API_BASE_URL}/api/blueprints/${blueprintId}/infrastructure`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
-      .then((body: { ok?: boolean; data?: InfrastructureView }) => {
-        if (body.ok && body.data) setData(body.data);
+    if (!blueprintId) return;
+    void apiGet<InfrastructureView>(`/api/blueprints/${blueprintId}/infrastructure`)
+      .then((body) => {
+        if (body) setData(body);
       })
       .catch(() => null);
   }, [blueprintId]);

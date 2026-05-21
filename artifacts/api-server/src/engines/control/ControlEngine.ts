@@ -5,6 +5,7 @@ import {
   orders,
   enforcementPackages,
   cognitiveLoadScores,
+  signalSnapshots,
 } from "@workspace/db";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -436,6 +437,31 @@ export async function generateEnforcementPackage(params: {
     },
     "[ControlEngine] Enforcement package created",
   );
+
+  const { traceControlOutput, getBlueprintStateVersion } = await import(
+    "../decision-trace/DecisionTraceSystem.js"
+  );
+  let signalMomentum: number | null = null;
+  if (params.signalSnapshotId) {
+    const [snap] = await db
+      .select({ momentum: signalSnapshots.momentum })
+      .from(signalSnapshots)
+      .where(eq(signalSnapshots.id, params.signalSnapshotId))
+      .limit(1);
+    signalMomentum = snap?.momentum != null ? Number(snap.momentum) : null;
+  }
+
+  await traceControlOutput({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    packageId,
+    condition: params.condition,
+    signalMomentum,
+    taskMin: rules.taskMin,
+    taskMax: rules.taskMax,
+    difficultyCap: rules.difficultyCap,
+    stateVersion: await getBlueprintStateVersion(params.blueprintId),
+  });
 
   return { packageId };
 }

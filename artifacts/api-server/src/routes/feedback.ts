@@ -18,6 +18,11 @@ import { success, failure } from "../lib/utils.js";
 import { handleRouteError } from "../lib/route-helpers.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { BlueprintEngine } from "../engines/blueprint/BlueprintEngine.js";
+import {
+  outcomeValidationEngine,
+  assertPhaseAdvancementAllowed,
+} from "../engines/outcome/OutcomeValidationEngine.js";
+import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { answerInterrogation } from "../engines/feedback/InterrogationService.js";
 
 const router = Router();
@@ -112,6 +117,16 @@ router.post("/feedback/weekly-review", async (req, res) => {
     }
 
     await writeEvent({
+      eventType: EVENT_TYPES.OUTCOME_VALIDATION_REQUESTED,
+      entityType: "weekly_review",
+      entityId: review.id,
+      userId: auth.userId,
+      blueprintId: input.blueprintId,
+      payload: { trigger: "weekly_review", phase: "weekly" },
+      idempotencyKey: `outcome_validation:weekly:${review.id}`,
+    });
+
+    await writeEvent({
       eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
       entityType: "weekly_review",
       entityId: review.id,
@@ -126,6 +141,10 @@ router.post("/feedback/weekly-review", async (req, res) => {
 
     success(res, { reviewId: review.id, submitted: true });
   } catch (e) {
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
     handleRouteError(req, res, e);
   }
 });
@@ -167,14 +186,36 @@ router.post("/feedback/phase-checkpoint", async (req, res) => {
       })
       .returning({ id: phaseCheckpoints.id });
 
+    const [phaseRow] = await db
+      .select({ name: phases.name })
+      .from(phases)
+      .where(eq(phases.id, input.phaseId))
+      .limit(1);
+
+    await writeEvent({
+      eventType: EVENT_TYPES.OUTCOME_VALIDATION_REQUESTED,
+      entityType: "phase_checkpoint",
+      entityId: checkpoint?.id ?? input.phaseId,
+      userId: auth.userId,
+      blueprintId: input.blueprintId,
+      payload: {
+        trigger: "phase_checkpoint",
+        phase: phaseRow?.name ?? input.phaseId,
+      },
+      idempotencyKey: `outcome_validation:phase:${input.phaseId}:${input.idempotencyKey}`,
+    });
+
     let phaseAdvanced = false;
     if (input.readiness === "ready") {
-      try {
-        const adv = await blueprintEngine.advanceBlueprintPosition(input.blueprintId, auth.userId);
-        phaseAdvanced = adv.advanced;
-      } catch {
-        phaseAdvanced = false;
-      }
+      await outcomeValidationEngine.validate({
+        userId: auth.userId,
+        blueprintId: input.blueprintId,
+        phase: phaseRow?.name,
+        trigger: "phase_checkpoint",
+      });
+      await assertPhaseAdvancementAllowed(input.blueprintId, auth.userId);
+      const adv = await blueprintEngine.advanceBlueprintPosition(input.blueprintId, auth.userId);
+      phaseAdvanced = adv.advanced;
 
       await writeEvent({
         eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
@@ -196,6 +237,10 @@ router.post("/feedback/phase-checkpoint", async (req, res) => {
       phaseAdvanced: input.readiness === "ready" ? phaseAdvanced : false,
     });
   } catch (e) {
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
     handleRouteError(req, res, e);
   }
 });

@@ -18,6 +18,8 @@ import type {
 
 import type {
   ActivateBlueprintInput,
+  AnswerFeedbackInterrogationBody,
+  ApiSuccessEnvelope,
   BlockInput,
   Blueprint,
   BlueprintActivateResult,
@@ -26,6 +28,7 @@ import type {
   BlueprintState,
   DashboardState,
   ExecutionCommandCenter,
+  ExecutionFeedbackInput,
   ExplainStateInput,
   Feedback,
   GetBlueprintExecutionFeed200,
@@ -39,7 +42,10 @@ import type {
   OnboardingGoalResult,
   OnboardingStatus,
   Order,
+  OrderFeedbackInput,
   PauseInput,
+  RequestExecutionHelpBody,
+  SendMagicLinkBody,
   SignalSnapshot,
   SignalState,
   StateExplanation,
@@ -2434,6 +2440,97 @@ export function useGetFeedbackInterrogation<
 }
 
 /**
+ * @summary Answer feedback interrogation question
+ */
+export const getAnswerFeedbackInterrogationUrl = (id: string) => {
+  return `/api/feedback/${id}/interrogation`;
+};
+
+export const answerFeedbackInterrogation = async (
+  id: string,
+  answerFeedbackInterrogationBody: AnswerFeedbackInterrogationBody,
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(
+    getAnswerFeedbackInterrogationUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(answerFeedbackInterrogationBody),
+    },
+  );
+};
+
+export const getAnswerFeedbackInterrogationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof answerFeedbackInterrogation>>,
+    TError,
+    { id: string; data: BodyType<AnswerFeedbackInterrogationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof answerFeedbackInterrogation>>,
+  TError,
+  { id: string; data: BodyType<AnswerFeedbackInterrogationBody> },
+  TContext
+> => {
+  const mutationKey = ["answerFeedbackInterrogation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof answerFeedbackInterrogation>>,
+    { id: string; data: BodyType<AnswerFeedbackInterrogationBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return answerFeedbackInterrogation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnswerFeedbackInterrogationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof answerFeedbackInterrogation>>
+>;
+export type AnswerFeedbackInterrogationMutationBody =
+  BodyType<AnswerFeedbackInterrogationBody>;
+export type AnswerFeedbackInterrogationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Answer feedback interrogation question
+ */
+export const useAnswerFeedbackInterrogation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof answerFeedbackInterrogation>>,
+    TError,
+    { id: string; data: BodyType<AnswerFeedbackInterrogationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof answerFeedbackInterrogation>>,
+  TError,
+  { id: string; data: BodyType<AnswerFeedbackInterrogationBody> },
+  TContext
+> => {
+  return useMutation(getAnswerFeedbackInterrogationMutationOptions(options));
+};
+
+/**
  * @summary Submit weekly review feedback
  */
 export const getSubmitWeeklyReviewUrl = () => {
@@ -2914,6 +3011,741 @@ export const useExplainState = <
   TContext
 > => {
   return useMutation(getExplainStateMutationOptions(options));
+};
+
+/**
+ * @summary Get active execution order for current user
+ */
+export const getGetExecutionActiveOrderUrl = () => {
+  return `/api/execution/active-order`;
+};
+
+export const getExecutionActiveOrder = async (
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getGetExecutionActiveOrderUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExecutionActiveOrderQueryKey = () => {
+  return [`/api/execution/active-order`] as const;
+};
+
+export const getGetExecutionActiveOrderQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExecutionActiveOrder>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExecutionActiveOrder>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetExecutionActiveOrderQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExecutionActiveOrder>>
+  > = ({ signal }) => getExecutionActiveOrder({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExecutionActiveOrder>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExecutionActiveOrderQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExecutionActiveOrder>>
+>;
+export type GetExecutionActiveOrderQueryError = ErrorType<void>;
+
+/**
+ * @summary Get active execution order for current user
+ */
+
+export function useGetExecutionActiveOrder<
+  TData = Awaited<ReturnType<typeof getExecutionActiveOrder>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExecutionActiveOrder>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExecutionActiveOrderQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit feedback via primary execution loop
+ */
+export const getSubmitExecutionFeedbackUrl = () => {
+  return `/api/execution/feedback`;
+};
+
+export const submitExecutionFeedback = async (
+  executionFeedbackInput: ExecutionFeedbackInput,
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getSubmitExecutionFeedbackUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(executionFeedbackInput),
+  });
+};
+
+export const getSubmitExecutionFeedbackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitExecutionFeedback>>,
+    TError,
+    { data: BodyType<ExecutionFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitExecutionFeedback>>,
+  TError,
+  { data: BodyType<ExecutionFeedbackInput> },
+  TContext
+> => {
+  const mutationKey = ["submitExecutionFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitExecutionFeedback>>,
+    { data: BodyType<ExecutionFeedbackInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitExecutionFeedback(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitExecutionFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitExecutionFeedback>>
+>;
+export type SubmitExecutionFeedbackMutationBody =
+  BodyType<ExecutionFeedbackInput>;
+export type SubmitExecutionFeedbackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit feedback via primary execution loop
+ */
+export const useSubmitExecutionFeedback = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitExecutionFeedback>>,
+    TError,
+    { data: BodyType<ExecutionFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitExecutionFeedback>>,
+  TError,
+  { data: BodyType<ExecutionFeedbackInput> },
+  TContext
+> => {
+  return useMutation(getSubmitExecutionFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Request next task in execution loop
+ */
+export const getRequestNextExecutionTaskUrl = () => {
+  return `/api/execution/next-task`;
+};
+
+export const requestNextExecutionTask = async (
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getRequestNextExecutionTaskUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRequestNextExecutionTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestNextExecutionTask>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestNextExecutionTask>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["requestNextExecutionTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestNextExecutionTask>>,
+    void
+  > = () => {
+    return requestNextExecutionTask(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestNextExecutionTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestNextExecutionTask>>
+>;
+
+export type RequestNextExecutionTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request next task in execution loop
+ */
+export const useRequestNextExecutionTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestNextExecutionTask>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestNextExecutionTask>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRequestNextExecutionTaskMutationOptions(options));
+};
+
+/**
+ * @summary Request contextual execution help
+ */
+export const getRequestExecutionHelpUrl = () => {
+  return `/api/execution/help`;
+};
+
+export const requestExecutionHelp = async (
+  requestExecutionHelpBody: RequestExecutionHelpBody,
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getRequestExecutionHelpUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestExecutionHelpBody),
+  });
+};
+
+export const getRequestExecutionHelpMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestExecutionHelp>>,
+    TError,
+    { data: BodyType<RequestExecutionHelpBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestExecutionHelp>>,
+  TError,
+  { data: BodyType<RequestExecutionHelpBody> },
+  TContext
+> => {
+  const mutationKey = ["requestExecutionHelp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestExecutionHelp>>,
+    { data: BodyType<RequestExecutionHelpBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestExecutionHelp(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestExecutionHelpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestExecutionHelp>>
+>;
+export type RequestExecutionHelpMutationBody =
+  BodyType<RequestExecutionHelpBody>;
+export type RequestExecutionHelpMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request contextual execution help
+ */
+export const useRequestExecutionHelp = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestExecutionHelp>>,
+    TError,
+    { data: BodyType<RequestExecutionHelpBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestExecutionHelp>>,
+  TError,
+  { data: BodyType<RequestExecutionHelpBody> },
+  TContext
+> => {
+  return useMutation(getRequestExecutionHelpMutationOptions(options));
+};
+
+/**
+ * @summary Get current condition state
+ */
+export const getGetCurrentConditionUrl = () => {
+  return `/api/condition/current`;
+};
+
+export const getCurrentCondition = async (
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getGetCurrentConditionUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCurrentConditionQueryKey = () => {
+  return [`/api/condition/current`] as const;
+};
+
+export const getGetCurrentConditionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCurrentCondition>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentCondition>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCurrentConditionQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCurrentCondition>>
+  > = ({ signal }) => getCurrentCondition({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentCondition>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCurrentConditionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCurrentCondition>>
+>;
+export type GetCurrentConditionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current condition state
+ */
+
+export function useGetCurrentCondition<
+  TData = Awaited<ReturnType<typeof getCurrentCondition>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCurrentCondition>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCurrentConditionQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit feedback for an order
+ */
+export const getSubmitOrderFeedbackUrl = (id: string) => {
+  return `/api/orders/${id}/feedback`;
+};
+
+export const submitOrderFeedback = async (
+  id: string,
+  orderFeedbackInput: OrderFeedbackInput,
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getSubmitOrderFeedbackUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(orderFeedbackInput),
+  });
+};
+
+export const getSubmitOrderFeedbackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitOrderFeedback>>,
+    TError,
+    { id: string; data: BodyType<OrderFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitOrderFeedback>>,
+  TError,
+  { id: string; data: BodyType<OrderFeedbackInput> },
+  TContext
+> => {
+  const mutationKey = ["submitOrderFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitOrderFeedback>>,
+    { id: string; data: BodyType<OrderFeedbackInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return submitOrderFeedback(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitOrderFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitOrderFeedback>>
+>;
+export type SubmitOrderFeedbackMutationBody = BodyType<OrderFeedbackInput>;
+export type SubmitOrderFeedbackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit feedback for an order
+ */
+export const useSubmitOrderFeedback = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitOrderFeedback>>,
+    TError,
+    { id: string; data: BodyType<OrderFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitOrderFeedback>>,
+  TError,
+  { id: string; data: BodyType<OrderFeedbackInput> },
+  TContext
+> => {
+  return useMutation(getSubmitOrderFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Mark onboarding complete
+ */
+export const getCompleteOnboardingUrl = () => {
+  return `/api/onboarding/complete`;
+};
+
+export const completeOnboarding = async (
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getCompleteOnboardingUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCompleteOnboardingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeOnboarding>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["completeOnboarding"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    void
+  > = () => {
+    return completeOnboarding(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteOnboardingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeOnboarding>>
+>;
+
+export type CompleteOnboardingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark onboarding complete
+ */
+export const useCompleteOnboarding = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboarding>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeOnboarding>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCompleteOnboardingMutationOptions(options));
+};
+
+/**
+ * @summary Get current auth session
+ */
+export const getGetAuthSessionUrl = () => {
+  return `/api/auth/session`;
+};
+
+export const getAuthSession = async (
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getGetAuthSessionUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAuthSessionQueryKey = () => {
+  return [`/api/auth/session`] as const;
+};
+
+export const getGetAuthSessionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAuthSession>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthSession>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAuthSessionQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthSession>>> = ({
+    signal,
+  }) => getAuthSession({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthSession>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAuthSessionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAuthSession>>
+>;
+export type GetAuthSessionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current auth session
+ */
+
+export function useGetAuthSession<
+  TData = Awaited<ReturnType<typeof getAuthSession>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthSession>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAuthSessionQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send magic link login email
+ */
+export const getSendMagicLinkUrl = () => {
+  return `/api/auth/send-magic-link`;
+};
+
+export const sendMagicLink = async (
+  sendMagicLinkBody: SendMagicLinkBody,
+  options?: RequestInit,
+): Promise<ApiSuccessEnvelope> => {
+  return customFetch<ApiSuccessEnvelope>(getSendMagicLinkUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendMagicLinkBody),
+  });
+};
+
+export const getSendMagicLinkMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendMagicLink>>,
+    TError,
+    { data: BodyType<SendMagicLinkBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendMagicLink>>,
+  TError,
+  { data: BodyType<SendMagicLinkBody> },
+  TContext
+> => {
+  const mutationKey = ["sendMagicLink"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendMagicLink>>,
+    { data: BodyType<SendMagicLinkBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendMagicLink(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendMagicLinkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendMagicLink>>
+>;
+export type SendMagicLinkMutationBody = BodyType<SendMagicLinkBody>;
+export type SendMagicLinkMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send magic link login email
+ */
+export const useSendMagicLink = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendMagicLink>>,
+    TError,
+    { data: BodyType<SendMagicLinkBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendMagicLink>>,
+  TError,
+  { data: BodyType<SendMagicLinkBody> },
+  TContext
+> => {
+  return useMutation(getSendMagicLinkMutationOptions(options));
 };
 
 /**

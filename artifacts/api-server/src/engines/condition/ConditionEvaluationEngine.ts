@@ -8,10 +8,15 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, gte, ne } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
-import { incrementStateVersion } from "../../services/StateMutationService.js";
+import {
+  assertBlueprintVersion,
+  getCurrentStateVersion,
+  incrementStateVersion,
+} from "../../services/StateMutationService.js";
 import { isPowerChange } from "../signal/SignalCalculationEngine.js";
 import type { SignalState } from "../../types/signal.js";
 import type { Condition } from "../../constants/conditions.js";
+import { ensureFrameworkSignalPlaceholders } from "../signals/FrameworkSignalPlaceholders.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -46,6 +51,8 @@ export async function evaluate(params: {
   causationEventId?: string;
 }): Promise<ConditionEvaluationResult> {
   const now = new Date();
+  await ensureFrameworkSignalPlaceholders(params.blueprintId).catch(() => null);
+  const expectedStateVersion = await getCurrentStateVersion(params.blueprintId);
 
   const [currentCondition] = await db
     .select()
@@ -171,6 +178,8 @@ export async function evaluate(params: {
         if (!inserted) throw new Error("Failed to create condition record");
         idOut = inserted.id;
       }
+
+      await assertBlueprintVersion(tx, params.blueprintId, expectedStateVersion);
 
       await tx
         .update(blueprints)

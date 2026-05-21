@@ -11,6 +11,7 @@ import "./TaskGuaranteeWorker.js";
 import "./FeedbackWorker.js";
 import "./IdentityWorker.js";
 import "./RewardWorker.js";
+import "./OutcomeValidationWorker.js";
 import "./InactivityWorker.js";
 import "./NotificationWorker.js";
 import "./ProjectionWorker.js";
@@ -20,6 +21,11 @@ import "./ValidationQueueWorker.js";
 import "./PatternScanWorker.js";
 import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";
+import { startCalendarNotificationPoller } from "./CalendarNotificationWorker.js";
+import { startNotificationDeliveryPoller } from "./NotificationDeliveryWorker.js";
+import { startAnalyticsPoller } from "./AnalyticsWorker.js";
+import { startIntegrationsSyncPoller } from "./IntegrationsSyncWorker.js";
+import { startProfilePledgePoller } from "./ProfilePledgeWorker.js";
 import { startScheduledHealthChecks } from "./HealthWorker.js";
 import { startProductionSchedulers } from "../schedulers/ProductionScheduler.js";
 import { startBhudhiPhase1Schedulers } from "../schedulers/BhudhiPhase1Scheduler.js";
@@ -32,16 +38,21 @@ import {
 } from "../engines/strategy/StrategyEngine.js";
 import { createPivotReview } from "../engines/lifecycle/PivotEngine.js";
 import { processDeferredNotifications } from "../services/NotificationService.js";
-import { startDailyLoopScheduler } from "../engines/execution-loop/DailyLoopEngine.js";
+import { startExecutionContinuitySchedulers } from "../schedulers/ExecutionContinuityScheduler.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
   await workerRegistry.startAll();
 
   startScheduledHealthChecks();
-  startDailyLoopScheduler();
+  startExecutionContinuitySchedulers();
   startProductionSchedulers();
   startBhudhiPhase1Schedulers();
+  startCalendarNotificationPoller();
+  startNotificationDeliveryPoller();
+  startAnalyticsPoller();
+  startIntegrationsSyncPoller();
+  startProfilePledgePoller();
 
   setInterval(async () => {
     try {

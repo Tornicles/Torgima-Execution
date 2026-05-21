@@ -2,7 +2,7 @@ import { db, bhudhiLogs, users } from "@workspace/db";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
-import { mapBhudhiTriggerToDbEnum } from "./bhudhiLogMapping.js";
+import { mapBhudhiTriggerToDbEnum, mapBhudhiTriggerToRequestType } from "./bhudhiLogMapping.js";
 
 const DAILY_TOKEN_LIMIT = parseInt(process.env.BHUDHI_DAILY_TOKEN_LIMIT ?? "100000", 10);
 
@@ -133,6 +133,7 @@ export async function logUsage(params: {
   userId: string;
   blueprintId?: string;
   triggerType: BhudhiTriggerType | string;
+  sourceEngine?: string;
   promptName: string;
   promptVersion: string;
   inputTokens: number;
@@ -149,7 +150,9 @@ export async function logUsage(params: {
     .values({
       user_id: params.userId,
       blueprint_id: params.blueprintId,
-      request_type: "other",
+      request_type: mapBhudhiTriggerToRequestType(params.triggerType as BhudhiTriggerType, {
+        sourceEngine: params.sourceEngine,
+      }),
       trigger_type: mapBhudhiTriggerToDbEnum(params.triggerType as BhudhiTriggerType),
       input_json: {
         promptName: params.promptName,

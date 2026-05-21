@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 import { ChevronLeft } from "lucide-react";
 
 export default function SettingsSkillsPage() {
@@ -9,16 +9,11 @@ export default function SettingsSkillsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLoading(false);
-      return;
-    }
-    fetch(`${API_BASE_URL}/api/academy/skills`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { skillScores?: Record<string, number>; masteredSkills?: string[] } }) => {
-        if (d.ok && d.data) {
-          setScores(d.data.skillScores ?? {});
-          setMastered(d.data.masteredSkills ?? []);
+    apiGet<{ skillScores?: Record<string, number>; masteredSkills?: string[] }>("/api/academy/skills")
+      .then((d) => {
+        if (d) {
+          setScores(d.skillScores ?? {});
+          setMastered(d.masteredSkills ?? []);
         }
       })
       .finally(() => setLoading(false));

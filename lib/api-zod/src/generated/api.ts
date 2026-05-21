@@ -1091,6 +1091,24 @@ export const GetFeedbackInterrogationResponse = zod.object({
 });
 
 /**
+ * @summary Answer feedback interrogation question
+ */
+export const AnswerFeedbackInterrogationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const AnswerFeedbackInterrogationBody = zod.object({
+  answer: zod.string(),
+  idempotencyKey: zod.string().optional(),
+});
+
+export const AnswerFeedbackInterrogationResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
  * @summary Submit weekly review feedback
  */
 export const SubmitWeeklyReviewBody = zod.object({
@@ -1389,6 +1407,125 @@ export const ExplainStateResponse = zod.object({
   condition: zod.string(),
   recommendation: zod.string(),
   details: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Get active execution order for current user
+ */
+export const GetExecutionActiveOrderResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Submit feedback via primary execution loop
+ */
+export const submitExecutionFeedbackBodyScoreMin = 0;
+export const submitExecutionFeedbackBodyScoreMax = 10;
+
+export const SubmitExecutionFeedbackBody = zod.object({
+  orderId: zod.string().uuid(),
+  blueprintId: zod.string().uuid(),
+  completionStatus: zod.enum(["completed", "partial", "failed", "skipped"]),
+  score: zod
+    .number()
+    .min(submitExecutionFeedbackBodyScoreMin)
+    .max(submitExecutionFeedbackBodyScoreMax)
+    .optional(),
+  feedbackText: zod.string().optional(),
+  proofJson: zod.record(zod.string(), zod.unknown()).optional(),
+  blockerJson: zod.record(zod.string(), zod.unknown()).optional(),
+  idempotencyKey: zod.string().optional(),
+});
+
+export const SubmitExecutionFeedbackResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Request next task in execution loop
+ */
+export const RequestNextExecutionTaskResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Request contextual execution help
+ */
+export const RequestExecutionHelpBody = zod.record(zod.string(), zod.unknown());
+
+export const RequestExecutionHelpResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Get current condition state
+ */
+export const GetCurrentConditionResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Submit feedback for an order
+ */
+export const SubmitOrderFeedbackParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const SubmitOrderFeedbackBody = zod.object({
+  completionStatus: zod.enum(["completed", "partial", "failed", "skipped"]),
+  score: zod.number(),
+  reflection: zod.string(),
+  proofJson: zod.record(zod.string(), zod.unknown()).optional(),
+  blockerJson: zod.record(zod.string(), zod.unknown()).optional(),
+  idempotencyKey: zod.string(),
+  expectedStateVersion: zod.number().optional(),
+});
+
+export const SubmitOrderFeedbackResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Mark onboarding complete
+ */
+export const CompleteOnboardingResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Get current auth session
+ */
+export const GetAuthSessionResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Send magic link login email
+ */
+export const SendMagicLinkBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const SendMagicLinkResponse = zod.object({
+  ok: zod.literal(true),
+  data: zod.record(zod.string(), zod.unknown()).optional(),
+  meta: zod.record(zod.string(), zod.unknown()).optional(),
 });
 
 /**

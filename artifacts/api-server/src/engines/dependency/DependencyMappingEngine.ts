@@ -103,6 +103,8 @@ export async function createDependency(params: {
       blueprint_id:      params.blueprintId,
       blocking_order_id: params.blockingOrderId,
       blocked_order_id:  params.blockedOrderId,
+      dependency_type:   "SEQUENTIAL",
+      status:            "pending",
     });
   } catch (err) {
     logger.debug({ err }, "[DependencyEngine] createDependency skipped (likely duplicate)");

@@ -11,9 +11,11 @@ import { ValidationScreen, type ValidationScreenData } from "@/components/valida
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { activateBlueprint, ApiError } from "@workspace/api-client-react";
+import { apiFetchResponseWithRetry, apiPost, completeOnboarding } from "@/lib/torgima-api";
 import { ValidationStatus } from "@workspace/state-machine";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type ErectorReviewPhase = "briefing" | "scores" | "paths" | "blueprint";
 const TOTAL_STEPS = 7;
 
 const DOMAINS = [
@@ -69,6 +71,13 @@ async function resolveValidationContractId(
 }
 
 async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, attempts = 3): Promise<Response> {
+  const url =
+    typeof input === "string" ? input
+    : input instanceof URL ? input.href
+    : (input as Request).url;
+  if (url.includes("/api/")) {
+    return apiFetchResponseWithRetry(url, init, attempts);
+  }
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
@@ -117,8 +126,8 @@ const STEPS = [
   { number: 3, label: "Timeframe", sub: "When will you achieve this?" },
   { number: 4, label: "Commitment", sub: "Your level of commitment" },
   { number: 5, label: "Reality Context", sub: "Economy, resources, and market context" },
-  { number: 6, label: "Blueprint Type", sub: "Tier, mode, and execution depth" },
-  { number: 7, label: "Review", sub: "Validate path and launch" },
+  { number: 6, label: "Structure", sub: "Refine goal before validation" },
+  { number: 7, label: "Validation", sub: "Economy briefing, scores, path, launch" },
 ];
 
 type ValidationPayload = ValidationScreenData & {
@@ -134,8 +143,10 @@ export default function OnboardingPage() {
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
   const [selectedTier, setSelectedTier] = useState<TierId | null>(null);
-  const [selectedMode, setSelectedMode] = useState<ModeId | null>(null);
+  const [selectedMode, setSelectedMode] = useState<ModeId | null>("individual");
   const [goalStructured, setGoalStructured] = useState(false);
+  const [erectorPhase, setErectorPhase] = useState<ErectorReviewPhase>("briefing");
+  const [pathConfirmed, setPathConfirmed] = useState(false);
   const [, setLocation] = useLocation();
 
   const [form, setForm] = useState<FormData>({
@@ -208,13 +219,13 @@ export default function OnboardingPage() {
           form.desiredOutcome.trim(),
       );
     }
-    if (step === 6) return goalStructured && !!selectedTier && !!selectedMode;
+    if (step === 6) return goalStructured;
     return true;
   }
 
   async function saveBlueprintSelection(blueprintId: string): Promise<boolean> {
     if (!API_BASE_URL || !selectedTier || !selectedMode) return false;
-    const res = await fetch(`${API_BASE_URL}/api/blueprints/${blueprintId}/configure-selection`, {
+    const res = await apiFetchResponseWithRetry(`/api/blueprints/${blueprintId}/configure-selection`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -395,6 +406,8 @@ export default function OnboardingPage() {
         const saved = await saveBlueprintSelection(payload.blueprintId);
         if (!saved) return;
         setValidation(payload);
+        setErectorPhase("briefing");
+        setPathConfirmed(false);
       } else if (payload?.status === "needs_clarification") {
         setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
       } else if (d.status === "invalid") {
@@ -429,21 +442,23 @@ export default function OnboardingPage() {
       const saved = await saveBlueprintSelection(blueprintId);
       if (!saved) return;
 
-      if (launchValidation.validationId) {
-        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${launchValidation.validationId}/select-path`, {
+      const erectorId = launchValidation.erectorValidationId ?? launchValidation.validationId;
+      if (erectorId) {
+        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${erectorId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            selectedPath,
-            confirmAdjusted: launchValidation.verdict === "adjust" && selectedPath === "adjusted",
-          }),
+          body: JSON.stringify({ selectedPath }),
         });
         const pathData = (await pathRes.json()) as { ok?: boolean; error?: { message?: string } };
         if (!pathData.ok) {
           setError(pathData.error?.message ?? "Could not confirm path selection.");
           return;
         }
+        await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${erectorId}/first-week`, {
+          method: "POST",
+          credentials: "include",
+        });
       }
 
       await activateBlueprint(blueprintId, {
@@ -454,12 +469,7 @@ export default function OnboardingPage() {
         selectedBlueprintLevel: selectedTier,
       });
 
-      await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+      await completeOnboarding();
       setLocation("/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
@@ -1032,13 +1042,12 @@ export default function OnboardingPage() {
             )}
 
             {step === 6 && goalStructured && (
-              <BlueprintSelectionPanel
-                selectedTier={selectedTier}
-                selectedMode={selectedMode}
-                onTierChange={setSelectedTier}
-                onModeChange={setSelectedMode}
-                disabled={loading}
-              />
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 space-y-3">
+                <h2 className="text-xl font-bold text-gray-900">Ready for validation</h2>
+                <p className="text-sm text-gray-600">
+                  The Erector will map your economy, score reality, and generate paths before you choose a blueprint tier.
+                </p>
+              </div>
             )}
 
             {step === 7 && (
@@ -1078,7 +1087,7 @@ export default function OnboardingPage() {
 
                 {!loading && validated && validation && (
                   <>
-                    {validation.intelligence?.["erector"] && (
+                    {erectorPhase === "briefing" && validation.intelligence?.["erector"] && (
                       <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 space-y-4">
                         <div className="flex items-start justify-between gap-4">
                           <div>
@@ -1111,19 +1120,65 @@ export default function OnboardingPage() {
                       </div>
                     )}
 
-                    <ValidationScreen
-                      data={validation}
-                      tier={selectedTier}
-                      selectedPath={selectedPath}
-                      onSelectPath={(p: PathKey) => setSelectedPath(p)}
-                      onLaunch={() => void handleLaunch()}
-                      launching={loading}
-                      goalSummary={{
-                        goal: form.primaryGoal,
-                        purpose: form.purpose,
-                        timeframe: form.timeframe,
-                      }}
-                    />
+                    {erectorPhase === "briefing" && (
+                      <button
+                        type="button"
+                        onClick={() => setErectorPhase("scores")}
+                        className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 text-sm"
+                      >
+                        View reality scores →
+                      </button>
+                    )}
+
+                    {(erectorPhase === "scores" || erectorPhase === "paths") && (
+                      <ValidationScreen
+                        data={validation}
+                        tier={selectedTier}
+                        selectedPath={selectedPath}
+                        onSelectPath={(p: PathKey) => {
+                          setSelectedPath(p);
+                          setPathConfirmed(false);
+                        }}
+                        onLaunch={erectorPhase === "paths" && pathConfirmed ? () => setErectorPhase("blueprint") : undefined}
+                        launching={loading}
+                        goalSummary={{
+                          goal: form.primaryGoal,
+                          purpose: form.purpose,
+                          timeframe: form.timeframe,
+                        }}
+                      />
+                    )}
+
+                    {erectorPhase === "scores" && (
+                      <button
+                        type="button"
+                        onClick={() => setErectorPhase("paths")}
+                        className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 text-sm"
+                      >
+                        Choose execution path →
+                      </button>
+                    )}
+
+                    {erectorPhase === "blueprint" && (
+                      <BlueprintSelectionPanel
+                        selectedTier={selectedTier}
+                        selectedMode={selectedMode}
+                        onTierChange={setSelectedTier}
+                        onModeChange={setSelectedMode}
+                        disabled={loading}
+                      />
+                    )}
+
+                    {erectorPhase === "blueprint" && (
+                      <button
+                        type="button"
+                        onClick={() => void handleLaunch()}
+                        disabled={loading || !selectedTier || !selectedMode}
+                        className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 disabled:opacity-40 text-sm"
+                      >
+                        Launch blueprint
+                      </button>
+                    )}
 
                     {error && <p className="text-red-500 text-sm">{error}</p>}
                   </>
@@ -1184,12 +1239,12 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            {step === 7 && !loading && validated && validation && (
+            {step === 7 && !loading && validated && validation && erectorPhase === "paths" && (
               <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
                 <div>
                   <h3 className="font-bold text-gray-900 mb-1">Choose Your Path</h3>
                   <p className="text-xs text-gray-500">
-                    Select the path that best fits your current reality. You can adjust later as you progress.
+                    Select the path that best fits your current reality. Launch stays blocked until you confirm a path.
                   </p>
                 </div>
 
@@ -1249,21 +1304,18 @@ export default function OnboardingPage() {
 
                 <button
                   type="button"
-                  onClick={() => void handleLaunch()}
-                  disabled={loading || validation.launchBlocked || validation.verdict === "pivot"}
-                  className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-all text-sm flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setPathConfirmed(true);
+                    setErectorPhase("blueprint");
+                  }}
+                  disabled={
+                    loading ||
+                    (validation.launchBlocked && selectedPath === "current") ||
+                    (validation.verdict === "pivot" && selectedPath === "current")
+                  }
+                  className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-all text-sm"
                 >
-                  {loading ? (
-                    <>
-                      <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" /> Building...
-                    </>
-                  ) : validation.launchBlocked || validation.verdict === "pivot" ?
-                    <>Launch Blocked</>
-                  : (
-                    <>
-                      <span>🚀</span> Launch Blueprint
-                    </>
-                  )}
+                  Confirm path and choose blueprint tier →
                 </button>
 
                 <button

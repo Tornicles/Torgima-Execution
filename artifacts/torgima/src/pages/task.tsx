@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet, getOrder, getExecutionActiveOrder, startOrder, blockOrder } from "@/lib/torgima-api";
 import { KnowledgeInjectionAccordion, type KnowledgeInjection } from "@/components/execution/KnowledgeInjectionAccordion";
 import { ExecutionHelpPanel } from "@/components/execution/ExecutionHelpPanel";
 import { AcademyOrderCard } from "@/components/execution/AcademyOrderCard";
@@ -48,25 +48,21 @@ export default function TaskPage() {
   const [knowledgeInjection, setKnowledgeInjection] = useState<KnowledgeInjection | null>(null);
 
   useEffect(() => {
-    if (!orderId || !API_BASE_URL) return;
-    fetch(`${API_BASE_URL}/api/orders/${orderId}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: OrderVm }) => {
-        if (d.ok && d.data) setOrder(d.data);
-      })
+    if (!orderId) return;
+    void getOrder(orderId)
+      .then((d) => setOrder(d as OrderVm))
       .finally(() => setLoading(false));
 
-    fetch(`${API_BASE_URL}/api/orders/${orderId}/decision-trace`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { summary?: string } }) => {
-        if (d.ok && d.data?.summary) setWhySummary(d.data.summary);
+    void apiGet<{ summary?: string }>(`/api/orders/${orderId}/decision-trace`)
+      .then((d) => {
+        if (d?.summary) setWhySummary(d.summary);
       })
       .catch(() => null);
 
-    fetch(`${API_BASE_URL}/api/execution/active-order`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { knowledgeInjection?: KnowledgeInjection } }) => {
-        if (d.ok && d.data?.knowledgeInjection) setKnowledgeInjection(d.data.knowledgeInjection);
+    void getExecutionActiveOrder()
+      .then((d) => {
+        const inj = (d as { knowledgeInjection?: KnowledgeInjection }).knowledgeInjection;
+        if (inj) setKnowledgeInjection(inj);
       })
       .catch(() => null);
   }, [orderId]);
@@ -78,13 +74,8 @@ export default function TaskPage() {
   }, [started]);
 
   async function handleStart() {
-    if (!orderId || !API_BASE_URL) return;
-    await fetch(`${API_BASE_URL}/api/orders/${orderId}/start`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    }).catch(() => null);
+    if (!orderId) return;
+    await startOrder(orderId, {}).catch(() => null);
     setStarted(true);
   }
 
@@ -369,16 +360,12 @@ export default function TaskPage() {
         <button
           type="button"
           onClick={async () => {
-            if (!orderId || !API_BASE_URL) return;
-            await fetch(`${API_BASE_URL}/api/orders/${orderId}/block`, {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                blockerType: "other",
-                blockerDescription: "Execution blocked from Order screen — dependency or resource gap.",
-                idempotencyKey: `block-${orderId}-${Date.now()}`,
-              }),
+            if (!orderId) return;
+            await blockOrder(orderId, {
+              blockerType: "other",
+              blockerDescription:
+                "Execution blocked from Order screen — dependency or resource gap.",
+              idempotencyKey: `block-${orderId}-${Date.now()}`,
             });
             setLocation("/dashboard");
           }}

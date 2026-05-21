@@ -1,4 +1,5 @@
 import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
+import { apiPatch } from "@/lib/torgima-api";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,14 +54,7 @@ export default function SettingsPage() {
         },
       },
     );
-    if (API_BASE_URL) {
-      await fetch(`${API_BASE_URL}/api/me/communication-profile`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(commProfile),
-      }).catch(() => null);
-    }
+    await apiPatch("/api/me/communication-profile", commProfile).catch(() => null);
   };
 
   return (
@@ -83,6 +77,16 @@ export default function SettingsPage() {
       >
         <span className="font-semibold">Execution skills</span>
         <span className="block text-xs text-indigo-700 mt-0.5">View capability scores and mastered skills</span>
+      </Link>
+
+      <Link
+        href="/settings/profile"
+        className="block rounded-2xl border border-green-100 bg-green-50/40 p-4 text-sm text-green-900 hover:bg-green-50"
+      >
+        <span className="font-semibold">Public profile</span>
+        <span className="block text-xs text-green-700 mt-0.5">
+          Privacy, shareable entries, embeddable widgets, pledges
+        </span>
       </Link>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">

@@ -8,7 +8,7 @@ import {
   orders,
   systemHealthLogs,
 } from "@workspace/db";
-import { and, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { BlueprintStatus, EventStatus, OrderStatus, SystemHealthStatus } from "@workspace/state-machine";
@@ -20,16 +20,22 @@ import { BlueprintStatus, EventStatus, OrderStatus, SystemHealthStatus } from "@
 // Spec: Prompt 6 §STEP 4, DOC_17 §6–13, §17.
 
 export type HealthArea =
+  | "DATABASE"
+  | "STATE_VERSION"
   | "EXECUTION_LOOP"
-  | "TASK_QUEUE"
   | "EVENT_SYSTEM"
-  | "PROJECTION"
+  | "TASK_QUEUE"
+  | "SIGNAL_CONDITION"
   | "SIGNAL_CHAIN"
   | "CONDITION_CHAIN"
+  | "CONTROL"
   | "CONTROL_CHAIN"
+  | "FRONTEND_SYNC"
+  | "PROJECTION"
+  | "BHUDHI"
+  | "WORKER_RUNTIME"
   | "WORKER_HEALTH"
-  | "AI_SYSTEM"
-  | "DATABASE";
+  | "AI_SYSTEM";
 
 export type HealthSeverity = "INFO" | "WARN" | "ERROR" | "CRITICAL" | "FATAL";
 
@@ -58,11 +64,12 @@ export interface HealthFinding {
 // ── INTEGRITY CHECKS ─────────────────────────────────────────────────────────
 
 export async function runIntegrityChecks(): Promise<HealthFinding[]> {
-  const findings: HealthFinding[] = [];
+  const { runIntegrityCheckerChecks } = await import(
+    "../engines/health/IntegrityChecker.js"
+  );
+  const findings: HealthFinding[] = await runIntegrityCheckerChecks();
 
   const checks = [
-    checkActiveBlueprintsHaveTasks,
-    checkEventBacklog,
     checkDeadLetterBlockers,
     checkSignalChainContinuity,
     checkProjectionFreshness,
@@ -254,13 +261,16 @@ async function checkProjectionFreshness(): Promise<HealthFinding[]> {
 export async function processFindings(findings: HealthFinding[]): Promise<void> {
   for (const finding of findings) {
     // Deduplicate against an open log for the same issueCode/blueprint
+    const openStatus =
+      finding.severity === "CRITICAL" || finding.severity === "FATAL" ? "OPEN" : "degraded";
+
     const [existing] = await db
       .select({ id: systemHealthLogs.id })
       .from(systemHealthLogs)
       .where(
         and(
           eq(systemHealthLogs.check_type, finding.issueCode),
-          eq(systemHealthLogs.status, SystemHealthStatus.DEGRADED),
+          inArray(systemHealthLogs.status, ["OPEN", SystemHealthStatus.DEGRADED, "IN_PROGRESS"]),
           finding.blueprintId
             ? eq(systemHealthLogs.blueprint_id, finding.blueprintId)
             : sql`${systemHealthLogs.blueprint_id} is null`,
@@ -270,12 +280,20 @@ export async function processFindings(findings: HealthFinding[]): Promise<void> 
 
     if (existing) continue;
 
+    const message = `${finding.expected} — ${finding.actual}`;
+
     await db
       .insert(systemHealthLogs)
       .values({
-        blueprint_id: finding.blueprintId as unknown as undefined,
+        area: finding.area,
+        severity: finding.severity,
+        blueprint_id: finding.blueprintId,
+        user_id: finding.userId,
+        entity_type: finding.entityType,
+        entity_id: finding.entityId,
         check_type: finding.issueCode,
-        status: "degraded",
+        message,
+        status: openStatus,
         details_json: finding as unknown as Record<string, unknown>,
         issues_detected: [finding.issueCode],
       })
@@ -395,8 +413,11 @@ export async function getUserFacingHealthState(userId: string): Promise<{
     .from(systemHealthLogs)
     .where(
       and(
-        eq(systemHealthLogs.status, SystemHealthStatus.DEGRADED),
-        inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
+        inArray(systemHealthLogs.status, ["OPEN", SystemHealthStatus.DEGRADED]),
+        or(
+          inArray(systemHealthLogs.severity, ["CRITICAL", "FATAL"]),
+          inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
+        ),
       ),
     );
 

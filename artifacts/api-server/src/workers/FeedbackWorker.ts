@@ -2,10 +2,14 @@ import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { db, feedback, orders } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { isVerifiedFeedbackEvidence } from "../engines/intelligence/IdentityContinuityEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { acquireBlueprintLock, releaseBlueprintLock } from "../engines/orchestration/OrchestrationLock.js";
+import { Workflows } from "../engines/orchestration/WorkflowDefinitions.js";
+import { WorkerQueues } from "../types/eventContracts.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { validateOutcome } from "../engines/outcome/OutcomeValidationEngine.js";
-import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { classifyFailureWithRecord } from "../engines/failure/FailureClassificationRecord.js";
 import { runPsychologyPostFeedback } from "../engines/psychology/PsychologyPipeline.js";
 import { recordCompulsionLoopStage } from "../engines/intelligence/CompulsionLoopEngine.js";
 import { logger } from "../lib/logger.js";
@@ -17,7 +21,7 @@ import { logger } from "../lib/logger.js";
 //
 // Spec: Prompt 6 §STEP 3 (FeedbackWorker), DOC_04 §5.
 
-export const FEEDBACK_QUEUE = "feedback_processing_requested";
+export const FEEDBACK_QUEUE = WorkerQueues.FEEDBACK_PROCESSING;
 
 workerRegistry.register({
   name: "FeedbackWorker",
@@ -35,6 +39,17 @@ workerRegistry.register({
           return { success: false, retryable: false, reason: "Missing blueprintId or userId" };
         }
 
+        const workflowName = Workflows.FEEDBACK_COMPLETION.name;
+        const locked = await acquireBlueprintLock(blueprintId, workflowName);
+        if (!locked) {
+          logger.info(
+            { blueprintId, workflowName },
+            "[FeedbackWorker] Blueprint lock held — skipping concurrent feedback loop",
+          );
+          return { success: true };
+        }
+
+        try {
         const requiresInterrogation = Boolean(
           (payload as Record<string, unknown> | undefined)?.["requires_interrogation"],
         );
@@ -97,7 +112,7 @@ workerRegistry.register({
             evidenceText: fb?.reflection ?? undefined,
             sourceType: "feedback",
             sourceId: feedbackId,
-          }).catch(() => null);
+          });
 
           await recordCompulsionLoopStage({
             blueprintId,
@@ -107,9 +122,57 @@ workerRegistry.register({
             entityId: feedbackId,
             causationEventId: data.eventId,
           });
+
+          if (orderId) {
+            const { markOrderDependenciesSatisfied } = await import(
+              "../engines/execution-loop/DependencyEngine.js"
+            );
+            await markOrderDependenciesSatisfied(orderId);
+          }
         }
 
-        await scanPatterns({ userId, blueprintId, windowDays: 7 }).catch(() => null);
+        if (
+          feedbackId &&
+          orderId &&
+          (completionStatus === "failed" || completionStatus === "skipped")
+        ) {
+          const [fbRow] = await db
+            .select({ reflection: feedback.reflection })
+            .from(feedback)
+            .where(eq(feedback.id, feedbackId))
+            .limit(1);
+
+          await classifyFailureWithRecord({
+            userId,
+            blueprintId,
+            orderId,
+            feedbackId,
+            reflection: fbRow?.reflection ?? "",
+          });
+        }
+
+        if (feedbackId) {
+          const { frictionDetectionEngine } = await import(
+            "../engines/friction/FrictionDetectionEngine.js"
+          );
+          await frictionDetectionEngine.detect({
+            userId,
+            blueprintId,
+            feedbackId,
+          });
+        }
+
+        await writeEvent({
+          eventType: EVENT_TYPES.PATTERN_SCAN_REQUESTED,
+          entityType: "blueprint",
+          entityId: blueprintId,
+          userId,
+          blueprintId,
+          payload: { trigger_feedback_id: feedbackId, window_days: 14 },
+          idempotencyKey: `pattern_scan:${blueprintId}:feedback:${feedbackId ?? Date.now()}`,
+          causationEventId: data.eventId,
+        });
+
         const { refreshDashboardIntelligence } = await import(
           "../engines/dashboard/DashboardIntelligenceEngine.js"
         );
@@ -136,16 +199,51 @@ workerRegistry.register({
           correlation: { feedback_id: feedbackId },
         }).catch(() => null);
 
-        await writeEvent({
-          eventType: EVENT_TYPES.IDENTITY_EVALUATION_REQUESTED,
-          entityType: "blueprint",
-          entityId: blueprintId,
-          userId,
-          blueprintId,
-          payload: { reason: "feedback_submitted", window_days: 14 },
-          idempotencyKey: `identity_eval:${blueprintId}:${Math.floor(Date.now() / 86400000)}`,
-          causationEventId: data.eventId,
-        }).catch(() => null);
+        if (feedbackId) {
+          const [fbRow] = await db
+            .select()
+            .from(feedback)
+            .where(eq(feedback.id, feedbackId))
+            .limit(1);
+
+          if (fbRow && isVerifiedFeedbackEvidence(fbRow)) {
+            await writeEvent({
+              eventType: EVENT_TYPES.IDENTITY_EVALUATION_REQUESTED,
+              entityType: "feedback",
+              entityId: feedbackId,
+              userId,
+              blueprintId,
+              payload: {
+                reason: "feedback_submitted",
+                source_feedback_id: feedbackId,
+                window_days: 14,
+              },
+              idempotencyKey: `identity:${feedbackId}`,
+              causationEventId: data.eventId,
+            });
+
+            await writeEvent({
+              eventType: EVENT_TYPES.REWARD_EVALUATION_REQUESTED,
+              entityType: "feedback",
+              entityId: feedbackId,
+              userId,
+              blueprintId,
+              payload: {
+                source_type: "FEEDBACK",
+                source_id: feedbackId,
+                source_event_id: feedbackId,
+                completion: fbRow.completion_status,
+                had_blocker:
+                  Boolean(fbRow.blocker_json) &&
+                  Object.keys((fbRow.blocker_json as Record<string, unknown>) ?? {}).length > 0,
+                state_version: 0,
+                idempotency_key: `reward:feedback:${feedbackId}`,
+              },
+              idempotencyKey: `reward:${feedbackId}`,
+              causationEventId: data.eventId,
+            });
+          }
+        }
 
         await recordCompulsionLoopStage({
           blueprintId,
@@ -155,27 +253,14 @@ workerRegistry.register({
           correlation: { feedback_id: feedbackId },
         }).catch(() => null);
 
-        await writeEvent({
-          eventType: EVENT_TYPES.REWARD_EVALUATION_REQUESTED,
-          entityType: "feedback",
-          entityId: feedbackId ?? "unknown",
-          userId,
-          blueprintId,
-          payload: {
-            source_type: "FEEDBACK",
-            source_id: feedbackId,
-            state_version: 0,
-            idempotency_key: `reward:feedback:${feedbackId ?? Date.now()}`,
-          },
-          idempotencyKey: `reward_eval:${feedbackId ?? data.eventId}`,
-          causationEventId: data.eventId,
-        }).catch(() => null);
-
         logger.info(
           { blueprintId, feedbackId },
           "[FeedbackWorker] Signal recalculation requested",
         );
         return { success: true };
+        } finally {
+          await releaseBlueprintLock(blueprintId, workflowName);
+        }
       });
     }
   },

@@ -6,7 +6,9 @@ import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
 
-export const TASK_GENERATION_QUEUE = "task_generation_requested";
+import { WorkerQueues } from "../types/eventContracts.js";
+
+export const TASK_GENERATION_QUEUE = WorkerQueues.TASK_GENERATION;
 
 workerRegistry.register({
   name: "TaskGenerationWorker",

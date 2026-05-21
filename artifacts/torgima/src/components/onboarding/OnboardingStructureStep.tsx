@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { structureGoal } from "@/lib/torgima-api";
 
 export function OnboardingStructureStep({
   goal,
@@ -25,41 +25,22 @@ export function OnboardingStructureStep({
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
   async function runStructure() {
-    if (!API_BASE_URL) {
-      setError("API not configured");
-      return;
-    }
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bhudhi/structure-goal`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rawGoal: goal,
-          purpose,
-          timeframe,
-          commitmentLevel,
-          domainHint: domain || null,
-        }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        data?: {
-          cleanedGoal?: string;
-          structured_goal?: { cleanedGoal?: string };
-          missingFields?: string[];
-          clarificationQuestions?: string[];
-          validation_status?: string;
-        };
-        error?: { message?: string };
+      const payload = (await structureGoal({
+        rawGoal: goal,
+        purpose,
+        timeframe,
+        commitmentLevel,
+        domainHint: domain || null,
+      })) as {
+        cleanedGoal?: string;
+        structured_goal?: { cleanedGoal?: string };
+        missingFields?: string[];
+        clarificationQuestions?: string[];
+        validation_status?: string;
       };
-      if (!data.ok) {
-        setError(data.error?.message ?? "Structuring failed");
-        return;
-      }
-      const payload = data.data;
       const cleaned =
         payload?.cleanedGoal ??
         payload?.structured_goal?.cleanedGoal ??

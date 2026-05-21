@@ -11,7 +11,7 @@ import {
   ChevronRight,
   RefreshCw,
 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet, apiPost, getMe } from "@/lib/torgima-api";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { useBlueprintStore } from "@/store/blueprintStore";
 
@@ -94,45 +94,35 @@ export default function IntelligencePage() {
   const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLoading(false);
-      return;
-    }
-    fetch(`${API_BASE_URL}/api/me`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { activeBlueprintId?: string | null } }) => {
-        const bid = d?.data?.activeBlueprintId;
+    void getMe()
+      .then((me) => {
+        const bid = (me as { activeBlueprintId?: string | null })?.activeBlueprintId;
         if (!bid) return null;
         setBlueprintId(bid);
-        return fetch(`${API_BASE_URL}/api/intelligence/blueprint/${bid}`, { credentials: "include" });
+        return apiGet<RealityIntelligence>(`/api/intelligence/blueprint/${bid}`);
       })
-      .then((r) => (r ? r.json() : null))
-      .then((d: { ok?: boolean; data?: RealityIntelligence } | null) => {
-        if (d?.ok && d.data) setIntel(d.data);
+      .then((intel) => {
+        if (intel) setIntel(intel);
       })
       .catch(() => null)
       .finally(() => setLoading(false));
 
-    fetch(`${API_BASE_URL}/api/intelligence/eis`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: EISIntelligence | null }) => {
-        if (d.ok && d.data) setEis(d.data);
+    void apiGet<EISIntelligence>("/api/intelligence/eis")
+      .then((d) => {
+        if (d) setEis(d);
       })
       .catch(() => null);
   }, []);
 
   async function handleRefresh() {
-    if (!blueprintId || !API_BASE_URL) return;
+    if (!blueprintId) return;
     setRefreshing(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/intelligence/blueprint/${blueprintId}/refresh`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (data.ok) setIntel(data.data as RealityIntelligence);
+      const data = await apiPost<RealityIntelligence>(
+        `/api/intelligence/blueprint/${blueprintId}/refresh`,
+        {},
+      );
+      if (data) setIntel(data);
     } finally {
       setRefreshing(false);
     }

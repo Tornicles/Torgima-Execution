@@ -29,6 +29,11 @@ workerRegistry.register({
           return { success: false, retryable: false, reason: "Missing source_type or source_id" };
         }
 
+        const sourceEventId =
+          typeof payload["source_event_id"] === "string"
+            ? (payload["source_event_id"] as string)
+            : sourceId;
+
         const result = await evaluateReward({
           userId,
           blueprintId,
@@ -36,6 +41,7 @@ workerRegistry.register({
           sourceId,
           idempotencyKey,
           stateVersion,
+          sourceEventId,
           causationEventId: data.eventId,
         });
 

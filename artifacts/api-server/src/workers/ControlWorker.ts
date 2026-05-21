@@ -5,7 +5,9 @@ import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
 
-export const CONTROL_QUEUE = "enforcement_package_requested";
+import { WorkerQueues } from "../types/eventContracts.js";
+
+export const CONTROL_QUEUE = WorkerQueues.ENFORCEMENT_PACKAGE;
 
 workerRegistry.register({
   name: "ControlWorker",

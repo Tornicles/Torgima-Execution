@@ -10,7 +10,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src/tests",
     "test:unit": "vitest run src/tests/unit",
+    "test:contracts": "vitest run src/tests/contracts",
+    "test:acceptance": "vitest run src/tests/acceptance",
     "test:integration": "vitest run src/tests/integration",
+    "seed:test-fixtures": "pnpm exec tsx ../../scripts/seedTestFixtures.ts",
     "seed:archetypes": "tsx src/engines/erector/seedArchetypes.ts",
     "workers:start": "node --enable-source-maps ./dist/workers/start.mjs"
   },

@@ -83,6 +83,8 @@ describe("Erector schema, archetypes, and contracts", () => {
     expect(migration).toContain(`${createIfMissing} economic_archetypes`);
     expect(migration).toContain(`${createIfMissing} validation_archetype_maps`);
     expect(migration).toContain(`${addColumnIfMissing} reality_score`);
+    expect(migration).toContain(`${addColumnIfMissing} erector_payload`);
+    expect(migration).toContain(`${addColumnIfMissing} erector_validation_stage`);
     expect(migration).toContain(`${addColumnIfMissing} erector_validation_id`);
   });
 

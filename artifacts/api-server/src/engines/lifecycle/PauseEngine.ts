@@ -1,9 +1,9 @@
 import { db, blueprints, inactivityRecords, pivotReviews } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { sql } from "drizzle-orm";
 import { BlueprintStatus, ConditionState } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
+import { mutate } from "../../services/StateMutationService.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { notifyBlueprintPaused } from "../../services/notification/LifecycleNotificationWiring.js";
 
@@ -64,38 +64,45 @@ export async function pauseBlueprint(params: {
   }
 
   const now = new Date();
+  const expectedVersion = blueprint.state_version;
 
-  await db.transaction(async (tx: Tx) => {
-    await tx
-      .update(blueprints)
-      .set({
-        status: "paused",
-        paused_at: now,
-        pause_reason: params.reason ?? null,
-        active: true,
-        state_version: sql`${blueprints.state_version} + 1`,
-      })
-      .where(eq(blueprints.id, params.blueprintId));
+  await mutate({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    expectedVersion,
+    mutationName: "blueprint_paused",
+    idempotencyKey: `blueprint_paused:${params.blueprintId}:${now.getTime()}`,
+    mutationFn: async (tx: Tx) => {
+      await tx
+        .update(blueprints)
+        .set({
+          status: "paused",
+          paused_at: now,
+          pause_reason: params.reason ?? null,
+          active: true,
+        })
+        .where(eq(blueprints.id, params.blueprintId));
 
-    await tx
-      .update(inactivityRecords)
-      .set({ resolved: true, resolved_at: now })
-      .where(
-        and(eq(inactivityRecords.blueprint_id, params.blueprintId), eq(inactivityRecords.resolved, false)),
+      await tx
+        .update(inactivityRecords)
+        .set({ resolved: true, resolved_at: now })
+        .where(
+          and(eq(inactivityRecords.blueprint_id, params.blueprintId), eq(inactivityRecords.resolved, false)),
+        );
+
+      await writeEventInTx(
+        {
+          eventType: EVENT_TYPES.BLUEPRINT_PAUSED,
+          entityType: "blueprint",
+          entityId: params.blueprintId,
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+          payload: { reason: params.reason ?? null, paused_at: now.toISOString() },
+          idempotencyKey: `blueprint_paused:${params.blueprintId}:${now.getTime()}`,
+        },
+        tx,
       );
-
-    await writeEventInTx(
-      {
-        eventType: EVENT_TYPES.BLUEPRINT_PAUSED,
-        entityType: "blueprint",
-        entityId: params.blueprintId,
-        userId: params.userId,
-        blueprintId: params.blueprintId,
-        payload: { reason: params.reason ?? null, paused_at: now.toISOString() },
-        idempotencyKey: `blueprint_paused:${params.blueprintId}:${now.getTime()}`,
-      },
-      tx,
-    );
+    },
   });
 
   await notifyBlueprintPaused({ userId: params.userId, blueprintId: params.blueprintId }).catch(() => null);

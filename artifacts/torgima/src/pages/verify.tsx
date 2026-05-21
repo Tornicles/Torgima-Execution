@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import { apiPost, getMe } from "@/lib/torgima-api";
 
 export default function VerifyPage() {
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
@@ -27,34 +28,28 @@ export default function VerifyPage() {
       return;
     }
 
-    fetch(`${API_BASE_URL}/api/auth/verify`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, email }),
-    })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; error?: { message?: string } }) => {
-        if (d.ok) {
-          setStatus("success");
-          fetch(`${API_BASE_URL}/api/me`, { credentials: "include" })
-            .then((r) => r.json())
-            .then((me: { ok?: boolean; data?: { onboardingComplete?: boolean } }) => {
-              if (me?.ok && me?.data?.onboardingComplete === false) {
-                setTimeout(() => setLocation("/onboarding"), 1500);
-              } else {
-                setTimeout(() => setLocation("/dashboard"), 1500);
-              }
-            })
-            .catch(() => setTimeout(() => setLocation("/dashboard"), 1500));
+    void apiPost("/api/auth/verify", { token, email })
+      .then(() => {
+        setStatus("success");
+        return getMe();
+      })
+      .then((me) => {
+        if ((me as { onboardingComplete?: boolean })?.onboardingComplete === false) {
+          setTimeout(() => setLocation("/onboarding"), 1500);
         } else {
-          setStatus("error");
-          setErrMsg(d.error?.message ?? "Verification failed or link has expired.");
+          setTimeout(() => setLocation("/dashboard"), 1500);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         setStatus("error");
-        setErrMsg("Cannot connect to the server.");
+        const msg =
+          err && typeof err === "object" && "data" in err
+            ? ((err as { data?: { error?: { message?: string } } }).data?.error?.message ??
+              "Verification failed or link has expired.")
+            : err instanceof TypeError
+              ? "Cannot connect to the server."
+              : "Verification failed or link has expired.";
+        setErrMsg(msg);
       });
   }, [search, setLocation]);
 

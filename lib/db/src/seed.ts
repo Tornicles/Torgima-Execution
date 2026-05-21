@@ -20,6 +20,14 @@ async function seedFeatureFlags() {
     { feature_name: "identity_system_enabled",       enabled: true,  description: "Identity continuity and transformation engine" },
     { feature_name: "compulsion_loop_enabled",       enabled: true,  description: "Streak tracking, milestones, reward events" },
     { feature_name: "outcome_validation_enabled",    enabled: true,  description: "Real outcome tracking and false progress detection" },
+    { feature_name: "principles_365_enabled",        enabled: true,  description: "365 Principles daily execution laws + accountability" },
+    { feature_name: "calendar_enabled",              enabled: true,  description: "Native Torgima calendar with conflict detection" },
+    { feature_name: "chat_enabled",                  enabled: true,  description: "Personal chat, voice memos, blocker logging" },
+    { feature_name: "notifications_multi_channel_enabled", enabled: true, description: "Slack, email, SMS, in-app notification delivery" },
+    { feature_name: "gamification_enabled",              enabled: true,  description: "XP, levels, streaks, achievements, avatar" },
+    { feature_name: "mobile_app_enabled",                enabled: true,  description: "Mobile app API, widgets, offline sync, health" },
+    { feature_name: "analytics_enabled",                 enabled: true,  description: "Execution, principles, academy, content analytics dashboards" },
+    { feature_name: "public_profiles_enabled",           enabled: true,  description: "Public accountability profiles, shareable entries, widgets" },
     // Phase 2 — OFF
     { feature_name: "team_mode_enabled",             enabled: false, description: "Team mode — Phase 2 only" },
     { feature_name: "community_enabled",             enabled: false, description: "Community feed and social layer — Phase 2 only" },
@@ -29,7 +37,7 @@ async function seedFeatureFlags() {
     { feature_name: "marketplace_enabled",           enabled: false, description: "Blueprint marketplace — Phase 2" },
     { feature_name: "content_engine_enabled",        enabled: false, description: "Daily content generation — Phase 2" },
     { feature_name: "predictive_signals_enabled",    enabled: false, description: "Predictive burnout and failure detection — Ultimate tier only" },
-    { feature_name: "external_integrations_enabled", enabled: false, description: "Third-party API integrations — Phase 2" },
+    { feature_name: "external_integrations_enabled", enabled: true, description: "Calendar, health, Slack/Discord, social publish, webhooks, Zapier" },
   ];
 
   for (const flag of flags) {

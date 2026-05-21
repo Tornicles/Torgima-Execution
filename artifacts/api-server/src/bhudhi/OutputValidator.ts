@@ -40,8 +40,10 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
     errors.push("FORBIDDEN: Output requested a forbidden action");
   }
 
-  if (Math.abs((envelope.stateVersion ?? 0) - expectedStateVersion) > 2) {
-    errors.push(`Stale state: output version ${String(envelope.stateVersion)}, expected ${expectedStateVersion}`);
+  if (expectedStateVersion > 0 && envelope.stateVersion !== expectedStateVersion) {
+    errors.push(
+      `Bhudhi output is stale — state has changed since call (output version ${String(envelope.stateVersion)}, expected ${expectedStateVersion})`,
+    );
   }
 
   if (!envelope.data || typeof envelope.data !== "object") {

@@ -27,6 +27,15 @@ import governanceRouter from "./governance.js";
 import blueprintGenerationRouter from "./blueprintGeneration.js";
 import communicationRouter from "./communication.js";
 import characterRouter from "./character.js";
+import principlesRouter from "./principles.js";
+import calendarRouter from "./calendar.js";
+import chatRouter from "./chat.js";
+import notificationsDeliveryRouter from "./notifications-delivery.js";
+import gamificationRouter from "./gamification.js";
+import mobileRouter from "./mobile.js";
+import analyticsRouter from "./analytics.js";
+import integrationsRouter from "./integrations.js";
+import profilesRouter from "./profiles.js";
 
 const router = Router();
 
@@ -58,5 +67,14 @@ router.use(goalsRouter);
 router.use(workersRouter);
 router.use(governanceRouter);
 router.use(blueprintGenerationRouter);
+router.use(principlesRouter);
+router.use(calendarRouter);
+router.use(chatRouter);
+router.use(notificationsDeliveryRouter);
+router.use(gamificationRouter);
+router.use(mobileRouter);
+router.use(analyticsRouter);
+router.use(integrationsRouter);
+router.use(profilesRouter);
 
 export default router;

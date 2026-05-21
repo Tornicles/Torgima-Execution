@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { requestExecutionHelp } from "@/lib/torgima-api";
 import { IntelligencePanel } from "@/components/bhudhi/IntelligencePanel";
 
 export function ExecutionHelpPanel({ orderId }: { orderId: string }) {
@@ -10,34 +10,22 @@ export function ExecutionHelpPanel({ orderId }: { orderId: string }) {
   const [tools, setTools] = useState<string[]>([]);
 
   async function loadHelp() {
-    if (!API_BASE_URL) return;
     setOpen(true);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/execution/help`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        data?: {
-          help?: { steps?: string[]; tools?: string[]; explanation?: string };
-          steps?: string[];
-          tools?: string[];
-          content?: string;
-        };
+      const json = (await requestExecutionHelp({ orderId })) as {
+        help?: { steps?: string[]; tools?: string[]; explanation?: string };
+        steps?: string[];
+        tools?: string[];
+        content?: string;
       };
-      if (json.ok && json.data) {
-        const packet = json.data.help;
-        const rawSteps = packet?.steps ?? json.data.steps ?? [];
-        setSteps(rawSteps.slice(0, 5));
-        setTools(packet?.tools ?? json.data.tools ?? []);
-        const text = packet?.explanation ?? json.data.content;
-        if (!rawSteps.length && text) {
-          setSteps(text.split(/\n+/).filter(Boolean).slice(0, 5));
-        }
+      const packet = json.help;
+      const rawSteps = packet?.steps ?? json.steps ?? [];
+      setSteps(rawSteps.slice(0, 5));
+      setTools(packet?.tools ?? json.tools ?? []);
+      const text = packet?.explanation ?? json.content;
+      if (!rawSteps.length && text) {
+        setSteps(text.split(/\n+/).filter(Boolean).slice(0, 5));
       }
     } finally {
       setLoading(false);

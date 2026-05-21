@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "codegen": "orval --config ./orval.config.ts && node ../../scripts/sync-generated-state-enums.mjs && pnpm -w run typecheck:libs",
-    "generate": "orval --config ./orval.config.ts && node ../../scripts/sync-generated-state-enums.mjs"
+    "codegen": "orval --config ./orval.config.ts && node ../../scripts/sync-generated-state-enums.mjs",
+    "generate": "orval --config ./orval.config.ts && node ../../scripts/sync-generated-state-enums.mjs",
+    "precodegen": "node ../../scripts/generateOpenApi.mjs"
   },
   "devDependencies": {
     "orval": "^8.5.2"

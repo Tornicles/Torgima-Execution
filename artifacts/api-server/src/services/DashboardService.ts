@@ -26,6 +26,10 @@ import {
 } from "../lib/operationalDerivation.js";
 import { BlueprintStatus, OrderStatus, PivotReviewStatus, SystemHealthStatus } from "@workspace/state-machine";
 import { fetchDashboardIntelligence } from "../bhudhi/AdvancedIntelligenceBridge.js";
+import {
+  getCurrentIdentityState,
+  toDashboardIdentity,
+} from "../engines/intelligence/IdentityContinuityEngine.js";
 
 export const DashboardService = {
   async getDashboardState(userId: string) {
@@ -423,8 +427,15 @@ export const DashboardService = {
       });
     }
 
+    const identityRow =
+      blueprintId != null
+        ? await getCurrentIdentityState(userId, blueprintId)
+        : null;
+    const identity = toDashboardIdentity(identityRow);
+
     return {
       user,
+      identity,
       signals,
       activeBlueprint: activeBlueprint ? { ...activeBlueprint, economyIntelligence } : activeBlueprint,
       recentCompletionBlueprint,

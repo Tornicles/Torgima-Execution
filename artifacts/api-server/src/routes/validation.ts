@@ -5,7 +5,10 @@ import { ValidationService } from "../services/ValidationService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { runErectorValidation } from "../engines/erector/ErectorOrchestrationService.js";
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
-import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { writeEvent } from "../services/EventService.js";
+import { EventTypes } from "../types/eventContracts.js";
+import { generateFirstWeek } from "../engines/erector/PathEngine.js";
+import { resolveArchetype } from "../engines/erector/ArchetypeResolutionEngine.js";
 
 const router = Router();
 
@@ -154,12 +157,12 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       })
       .where(eq(validations.id, row.id));
     await writeEvent({
-      eventType: EVENT_TYPES.VALIDATION_PATH_SELECTED,
+      eventType: EventTypes.ERECTOR_PATH_SELECTED,
       entityType: "validation",
       entityId: row.id,
       userId: auth.userId,
       blueprintId: row.blueprint_id,
-      payload: { validationId: row.id, selectedPath: selected },
+      payload: { validationId: row.id, selectedPath: selected, contract_id: row.contract_id },
       idempotencyKey: `erector_path_selected:${row.id}:${selected}`,
     }).catch(() => null);
     success(res, {
@@ -184,20 +187,33 @@ router.post("/v1/validation/:id/first-week", async (req, res) => {
       failure(res, "NOT_FOUND", "Validation not found", 404);
       return;
     }
-    const economy = row.economy_briefing as { platformRecommendations?: string[] } | null;
-    const firstWeekPlan = {
-      days: Array.from({ length: 7 }, (_, index) => ({
-        day: index + 1,
-        actions: [
-          {
-            title: index === 0 ? "Define proof target" : `Execute validation proof ${index + 1}`,
-            description: "Produce one verifiable output tied to the selected path.",
-            type: "execution",
-            economyContext: economy?.platformRecommendations?.[0] ?? "Use the strongest local trust channel.",
-          },
-        ],
-      })),
-    };
+    const selectedPath = (row.selected_path_type ?? row.selected_path ?? "adjusted") as "current" | "adjusted" | "alternative";
+    const archetypeResolution = row.archetype_resolution as import("../types/erector.js").ArchetypeResolutionOutput | null;
+    const archetype =
+      archetypeResolution ??
+      (await resolveArchetype(row.location_country ?? "Unknown", row.location_city ?? undefined));
+    const firstWeekPlan = await generateFirstWeek(
+      {
+        userId: auth.userId,
+        blueprintId: row.blueprint_id,
+        idempotencyKey: row.idempotency_key ?? `first-week:${row.id}`,
+        rawGoal: row.desired_outcome ?? "Execution goal",
+        purpose: row.desired_outcome ?? "Execution purpose",
+        timeframe: "90d",
+        commitmentLevel: row.commitment_level ?? "MEDIUM",
+        desiredOutcome: row.desired_outcome ?? "Proof and traction",
+        location: { country: row.location_country ?? "Unknown", city: row.location_city ?? undefined },
+        businessType: (row.business_type as "online" | "offline" | "hybrid") ?? "online",
+        businessModel: row.business_model ?? "Service",
+        budgetAvailable: row.budget_available ?? 0,
+        currency: row.currency ?? "USD",
+        currentResources: (row.current_resources as string[]) ?? ["Skills"],
+        targetCustomer: row.target_customer ?? "Target segment",
+      },
+      archetype,
+      row.id,
+      selectedPath,
+    );
     await db.update(validations).set({ first_week_plan: firstWeekPlan }).where(eq(validations.id, row.id));
     success(res, { first_week_plan: firstWeekPlan });
   } catch (err) {

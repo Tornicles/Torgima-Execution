@@ -3,10 +3,18 @@
  */
 
 export {
+  OutcomeValidationEngine,
+  outcomeValidationEngine,
   validateOutcome,
   resolveFlag,
+  resolveActiveFlagsForBlueprint,
   getOpenFlags,
+  assertNoActiveFalseProgress,
+  assertPhaseAdvancementAllowed,
+  hasPassedOutcomeValidation,
+  recordRealOutcome,
   type ValidationStatus,
+  type Il2ValidationResult,
 } from "../outcome/OutcomeValidationEngine.js";
 
 export {
@@ -27,17 +35,49 @@ export {
   resolvePattern,
   getActivePatterns,
   PATTERN_SPEC_LABELS,
+  PATTERN_MIN_OCCURRENCES,
+  DOC21_PATTERN_TYPES,
+  countBurnoutSignals,
+  meetsPatternThreshold,
 } from "../pattern/PatternLearningEngine.js";
 
 export { assessBurnoutRisk, type BurnoutRiskLevel } from "./BurnoutDetectionEngine.js";
 
 export {
   classifyFailure,
+  FailureClassificationEngine,
+  failureClassificationEngine,
+  correctionTypeToTaskType,
+  persistFailureClassificationOnFeedback,
   FAILURE_CATEGORIES,
   type FailureCategory,
 } from "../failure/FailureClassificationEngine.js";
 
-export { traceDecision, calculateCognitiveLoad } from "../decision-trace/DecisionTraceSystem.js";
+export {
+  traceDecision,
+  traceControlOutput,
+  traceFailureRouting,
+  tracePrioritySelection,
+  calculateCognitiveLoad,
+  getBlueprintStateVersion,
+  IL4_DECISION_TYPES,
+} from "../decision-trace/DecisionTraceSystem.js";
+
+export {
+  PriorityEngine,
+  priorityEngine,
+  scorePriorityCandidate,
+  type PriorityCandidate,
+  type PriorityContext,
+} from "../priority/PriorityEngine.js";
+
+export {
+  detectFriction,
+  detectFrictionForFeedback,
+  FrictionDetectionEngine,
+  frictionDetectionEngine,
+  FRICTION_TYPES,
+} from "../friction/FrictionDetectionEngine.js";
 
 export {
   recordValidationMemory,
@@ -51,3 +91,14 @@ export {
   markAssumptionReviewed,
   type AssumptionDriftWarning,
 } from "../validation/AssumptionMonitoringService.js";
+
+export {
+  DependencyEngine,
+  dependencyEngine,
+  resolvePublishableOrder,
+  markOrderDependenciesSatisfied,
+  checkExecutability,
+  createDependency,
+  type DependencyCheckResult,
+  type ResolutionTaskSpec,
+} from "../execution-loop/DependencyEngine.js";

@@ -658,6 +658,11 @@ export class BlueprintEngine {
       throw new TorgimaError("BLUEPRINT_NOT_ACTIVE", "Blueprint must be active to advance");
     }
 
+    const { assertNoActiveFalseProgress } = await import(
+      "../outcome/OutcomeValidationEngine.js"
+    );
+    await assertNoActiveFalseProgress(blueprintId, userId);
+
     return db.transaction(async (tx) => {
       const allPhases = await tx
         .select()

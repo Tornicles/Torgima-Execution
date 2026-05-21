@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { API_BASE_URL } from "@/lib/api-base";
+import { getExecutionActiveOrder } from "@/lib/torgima-api";
 import type { MorningReportData } from "@/components/bhudhi/MorningReport";
 
 export interface ActiveOrderSummary {
@@ -29,25 +29,18 @@ export const useExecutionStore = create<ExecutionStore>((set) => ({
   setMorningReport: (report) => set({ morningReport: report }),
   setStateExplanation: (text) => set({ stateExplanation: text }),
   refreshAll: async () => {
-    if (!API_BASE_URL) return;
     set({ isLoading: true });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/execution/active-order`, {
-        credentials: "include",
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        data?: {
-          order?: ActiveOrderSummary | null;
-          morningReport?: MorningReportData | null;
-        };
+      const data = (await getExecutionActiveOrder()) as {
+        order?: ActiveOrderSummary | null;
+        morningReport?: MorningReportData | null;
       };
-      if (json.ok && json.data) {
-        set({
-          activeOrder: json.data.order ?? null,
-          morningReport: json.data.morningReport ?? null,
-        });
-      }
+      set({
+        activeOrder: data.order ?? null,
+        morningReport: data.morningReport ?? null,
+      });
+    } catch {
+      /* no active order */
     } finally {
       set({ isLoading: false });
     }

@@ -1,7 +1,20 @@
-import { db, capabilityProfiles, feedback, orders } from "@workspace/db";
+import {
+  db,
+  capabilityProfiles,
+  capabilityHistory,
+  feedback,
+  orders,
+} from "@workspace/db";
 import { and, desc, eq, gte, sql, type InferSelectModel } from "drizzle-orm";
+import {
+  DIFFICULTY_ORDER,
+  deriveDifficultyRecommendation,
+  deriveOverallLevel,
+  overallLevelToDbLevel,
+} from "./CapabilityDifficulty.js";
+import { EVENT_TYPES } from "../../services/EventService.js";
 
-const DIFFICULTY_ORDER = ["very_easy", "easy", "moderate", "hard", "very_hard"] as const;
+export type FeedbackRow = InferSelectModel<typeof feedback>;
 
 const LEVEL_THRESHOLDS = {
   beginner: { minConsistency: 0, minQuality: 0, minTasks: 0 },
@@ -13,6 +26,144 @@ const LEVEL_THRESHOLDS = {
 type Throughput =
   "very_low" | "low" | "moderate" | "high" | "very_high";
 type FatigueRisk = "low" | "moderate" | "high" | "critical";
+
+export class CapabilityEngine {
+  /**
+   * GAP G6 LAW 1 — update capability profile after every feedback submission.
+   */
+  async updateAfterFeedback(userId: string, feedbackRow: FeedbackRow): Promise<void> {
+    let [profile] = await db
+      .select()
+      .from(capabilityProfiles)
+      .where(eq(capabilityProfiles.user_id, userId))
+      .limit(1);
+
+    if (!profile) {
+      await db.insert(capabilityProfiles).values({
+        user_id: userId,
+        blueprint_id: feedbackRow.blueprint_id,
+        level: "beginner",
+        current_level: "developing",
+        consistency_score: 0.5,
+        execution_quality: 0.5,
+        current_difficulty: "easy",
+      });
+      [profile] = await db
+        .select()
+        .from(capabilityProfiles)
+        .where(eq(capabilityProfiles.user_id, userId))
+        .limit(1);
+    }
+
+    if (!profile) return;
+
+    const recentFeedback = await db
+      .select({ ws: feedback.weighted_score, score: feedback.score })
+      .from(feedback)
+      .where(eq(feedback.user_id, userId))
+      .orderBy(desc(feedback.created_at))
+      .limit(10);
+
+    const avgScore =
+      recentFeedback.reduce((s, r) => s + (r.ws ?? r.score ?? 0), 0) /
+      (recentFeedback.length || 1);
+    const executionQuality = Math.min(1, avgScore / 10);
+
+    const twoWeeksAgo = new Date(Date.now() - 14 * 86400000);
+    const recentAll = await db
+      .select({ c: feedback.completion_status })
+      .from(feedback)
+      .where(and(eq(feedback.user_id, userId), gte(feedback.created_at, twoWeeksAgo)));
+
+    const completed = recentAll.filter(
+      (r) => r.c === "completed" || r.c === "partial",
+    ).length;
+    const consistency =
+      recentAll.length > 0 ? completed / recentAll.length : profile.consistency_score;
+
+    const difficultyRec = deriveDifficultyRecommendation(executionQuality, consistency);
+    const overall = deriveOverallLevel(executionQuality, consistency);
+    const dbLevel = overallLevelToDbLevel(overall);
+
+    const isCompleted = feedbackRow.completion_status === "completed";
+    const nextCompleted = profile.tasks_completed + (isCompleted ? 1 : 0);
+    const nextFailed =
+      profile.tasks_failed + (feedbackRow.completion_status === "failed" ? 1 : 0);
+    const nextStreak = isCompleted ? profile.streak_current + 1 : 0;
+    const nextBest =
+      isCompleted && nextStreak > profile.streak_best ? nextStreak : profile.streak_best;
+
+    const throughput: Throughput =
+      consistency >= 0.85
+        ? "very_high"
+        : consistency >= 0.7
+          ? "high"
+          : consistency >= 0.5
+            ? "moderate"
+            : consistency >= 0.3
+              ? "low"
+              : "very_low";
+
+    const failureRate =
+      recentAll.length > 0
+        ? recentAll.filter((r) => r.c === "failed").length / recentAll.length
+        : 0;
+    const fatigueScore = failureRate * 0.6;
+    const fatigueRisk: FatigueRisk =
+      fatigueScore >= 0.5 ? "high" : fatigueScore >= 0.3 ? "moderate" : "low";
+
+    const tasksPerDay = nextCompleted / Math.max(1, 14);
+    const recoveryRate =
+      feedbackRow.completion_status === "failed"
+        ? Math.max(0, profile.recovery_rate * 0.85)
+        : Math.min(1, profile.recovery_rate * 0.9 + 0.1);
+
+    await db
+      .update(capabilityProfiles)
+      .set({
+        blueprint_id: feedbackRow.blueprint_id ?? profile.blueprint_id,
+        execution_quality: executionQuality,
+        consistency_score: consistency,
+        current_difficulty: difficultyRec,
+        level: dbLevel,
+        current_level: overall,
+        throughput,
+        recovery_rate: recoveryRate,
+        fatigue_risk: fatigueRisk,
+        tasks_completed: nextCompleted,
+        tasks_failed: nextFailed,
+        streak_current: nextStreak,
+        streak_best: nextBest,
+        metadata: {
+          ...(typeof profile.metadata === "object" && profile.metadata !== null
+            ? (profile.metadata as Record<string, unknown>)
+            : {}),
+          throughput_rate: Math.min(1, tasksPerDay / 3),
+          last_feedback_id: feedbackRow.id,
+        },
+        updated_at: new Date(),
+      })
+      .where(eq(capabilityProfiles.user_id, userId));
+
+    await db
+      .insert(capabilityHistory)
+      .values({
+        user_id: userId,
+        blueprint_id: feedbackRow.blueprint_id,
+        trigger_event: EVENT_TYPES.FEEDBACK_SUBMITTED,
+        snapshot: {
+          execution_quality: executionQuality,
+          consistency_score: consistency,
+          difficulty_recommendation: difficultyRec,
+          overall_level: overall,
+          level: dbLevel,
+        },
+      })
+      .catch(() => null);
+  }
+}
+
+export const capabilityEngine = new CapabilityEngine();
 
 export async function assessCapabilityLevel(userId: string): Promise<{
   level:               string;
@@ -105,17 +256,7 @@ export async function assessCapabilityLevel(userId: string): Promise<{
   const fatigueRisk: FatigueRisk =
     fatigueScore >= 0.7 ? "critical" : fatigueScore >= 0.5 ? "high" : fatigueScore >= 0.3 ? "moderate" : "low";
 
-  const levelDifficultyCap: Record<string, string> = {
-    beginner: "easy",
-    operator: "moderate",
-    advanced: "hard",
-    lead:     "very_hard",
-  };
-  const capIdx = DIFFICULTY_ORDER.indexOf(
-    (levelDifficultyCap[level] ?? "moderate") as (typeof DIFFICULTY_ORDER)[number],
-  );
-  const sugIdx = Math.max(0, capIdx - 1);
-  const suggestedDifficulty = DIFFICULTY_ORDER[sugIdx] ?? "easy";
+  const suggestedDifficulty = deriveDifficultyRecommendation(executionQuality, consistencyScore);
 
   await db
     .update(capabilityProfiles)
@@ -125,7 +266,9 @@ export async function assessCapabilityLevel(userId: string): Promise<{
       execution_quality: executionQuality,
       throughput,
       fatigue_risk:       fatigueRisk,
-      current_difficulty: suggestedDifficulty as InferSelectModel<typeof capabilityProfiles>["current_difficulty"],
+      current_difficulty: suggestedDifficulty as InferSelectModel<
+        typeof capabilityProfiles
+      >["current_difficulty"],
     })
     .where(eq(capabilityProfiles.user_id, userId))
     .catch(() => null);

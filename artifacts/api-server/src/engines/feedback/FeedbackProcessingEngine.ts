@@ -3,11 +3,9 @@ import {
   feedback,
   orders,
   events,
-  capabilityProfiles,
-  capabilityHistory,
   blueprints,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { OrderStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
@@ -19,6 +17,8 @@ import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
 import { runPsychologyPostFeedback } from "../psychology/PsychologyPipeline.js";
 import { classifyFailureWithRecord } from "../failure/FailureClassificationRecord.js";
+import { capabilityEngine } from "../capability/CapabilityEngine.js";
+import { behaviorPatternEngine } from "../behavior/BehaviorPatternEngine.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -265,6 +265,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
         blocker_json: input.blockerJson ?? {},
         gaming_flag: flagged,
         gaming_reason: gamingReason ?? null,
+        late_penalty_applied: latePenalty,
         validity: flagged ? "flagged" : "valid",
         interrogation_json: requiresInterrogation
           ? {
@@ -328,12 +329,36 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     },
   }).catch(() => null);
 
-  await updateCapabilityFromFeedback({
-    userId: input.userId,
-    completionStatus: input.completionStatus,
-    score: input.score,
-    difficulty: order.difficulty,
-  }).catch(() => null);
+  const [feedbackRow] = await db
+    .select()
+    .from(feedback)
+    .where(eq(feedback.id, feedbackIdOut))
+    .limit(1);
+
+  if (feedbackRow) {
+    await capabilityEngine.updateAfterFeedback(input.userId, feedbackRow).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), userId: input.userId },
+        "[FeedbackEngine] Capability update failed",
+      );
+    });
+
+    const [{ count: feedbackCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(feedback)
+      .where(eq(feedback.user_id, input.userId));
+
+    if (feedbackCount > 0 && feedbackCount % 3 === 0) {
+      await behaviorPatternEngine
+        .detectPatterns(input.userId, input.blueprintId)
+        .catch((err) => {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err) },
+            "[FeedbackEngine] Behavior pattern detection failed",
+          );
+        });
+    }
+  }
 
   if (input.completionStatus === "failed") {
     await MemoryWriter.write({
@@ -435,55 +460,6 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     interrogationQuestion,
     eventId,
   };
-}
-
-async function updateCapabilityFromFeedback(params: {
-  userId: string;
-  completionStatus: string;
-  score: number;
-  difficulty: string;
-}): Promise<void> {
-  const [cap] = await db
-    .select()
-    .from(capabilityProfiles)
-    .where(eq(capabilityProfiles.user_id, params.userId))
-    .limit(1);
-
-  if (!cap) return;
-
-  const isCompleted = params.completionStatus === "completed";
-  const scoreWeight = params.score / 10;
-  const newQuality = Math.min(1.0, cap.execution_quality * 0.9 + scoreWeight * 0.1);
-  const nextCompleted = cap.tasks_completed + (isCompleted ? 1 : 0);
-  const nextFailed = cap.tasks_failed + (params.completionStatus === "failed" ? 1 : 0);
-  const nextStreak = isCompleted ? cap.streak_current + 1 : 0;
-  const nextBest =
-    isCompleted && nextStreak > cap.streak_best ? nextStreak : cap.streak_best;
-
-  await db
-    .update(capabilityProfiles)
-    .set({
-      tasks_completed: nextCompleted,
-      tasks_failed: nextFailed,
-      execution_quality: newQuality,
-      streak_current: nextStreak,
-      streak_best: nextBest,
-    })
-    .where(eq(capabilityProfiles.user_id, params.userId));
-
-  await db
-    .insert(capabilityHistory)
-    .values({
-      user_id: params.userId,
-      trigger_event: "feedback_submitted",
-      snapshot: {
-        tasks_completed: nextCompleted,
-        execution_quality: newQuality,
-        streak: nextStreak,
-        difficulty: params.difficulty,
-      },
-    })
-    .catch(() => null);
 }
 
 export class FeedbackProcessingEngine {

@@ -12,6 +12,8 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:unit": "pnpm -F @workspace/api-server exec vitest run src/tests/unit",
+    "test:contracts": "pnpm -F @workspace/api-server exec vitest run src/tests/contracts",
+    "test:acceptance": "pnpm -F @workspace/api-server exec vitest run src/tests/acceptance",
     "test:integration": "pnpm -F @workspace/api-server exec vitest run src/tests/integration",
     "test:api": "pnpm -F @workspace/api-server exec vitest run src/tests",
     "test:e2e": "pnpm -F @workspace/torgima exec playwright test",
@@ -22,7 +24,9 @@
     "db:generate": "pnpm -F @workspace/db generate",
     "db:migrate": "pnpm -F @workspace/db migrate",
     "db:check": "pnpm -F @workspace/db check",
-    "db:migrate:prod": "pnpm -F @workspace/db migrate"
+    "db:apply-manual": "pnpm -F @workspace/db exec tsx ../../scripts/apply-all-manual-migrations.mjs",
+    "db:migrate:prod": "pnpm -F @workspace/db migrate",
+    "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen"
   },
   "private": true,
   "devDependencies": {

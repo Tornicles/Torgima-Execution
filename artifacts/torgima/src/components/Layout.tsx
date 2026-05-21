@@ -12,6 +12,11 @@ import {
   BookOpen,
   Settings,
   Brain,
+  GraduationCap,
+  CalendarDays,
+  Trophy,
+  BarChart3,
+  Plug,
   ChevronRight,
   Bell,
   Sun,
@@ -25,9 +30,15 @@ import { ConditionBadge } from "@/components/ConditionBadge";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Orders", icon: ClipboardList },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/progress", label: "Progress", icon: Trophy },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/blueprint", label: "Blueprint", icon: Map },
   { href: "/signals", label: "Signals", icon: Activity },
-  { href: "/knowledge", label: "Academy", icon: BookOpen },
+  { href: "/academy", label: "Academy", icon: BookOpen },
+  { href: "/knowledge", label: "Capability", icon: GraduationCap },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

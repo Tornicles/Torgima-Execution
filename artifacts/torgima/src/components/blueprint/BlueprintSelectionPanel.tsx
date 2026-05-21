@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, Users, User, Zap, TrendingUp, Crown } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 
 export type TierId = "starter" | "growth" | "ultimate";
 export type ModeId = "individual" | "team";
@@ -60,11 +60,9 @@ export function BlueprintSelectionPanel({
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    if (!API_BASE_URL) return;
-    void fetch(`${API_BASE_URL}/api/blueprints/selection-catalog`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((body: { ok?: boolean; data?: SelectionCatalog }) => {
-        if (body.ok && body.data) setCatalog(body.data);
+    void apiGet<SelectionCatalog>("/api/blueprints/selection-catalog")
+      .then((body) => {
+        if (body) setCatalog(body);
         else setLoadError("Could not load blueprint options.");
       })
       .catch(() => setLoadError("Could not load blueprint options."));

@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, MinusCircle, SkipForward, AlertTriangle, ChevronRight } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
-import { getGetDashboardStateQueryKey } from "@workspace/api-client-react";
+import {
+  getOrder,
+  submitExecutionFeedback,
+  submitOrderFeedback,
+  answerFeedbackInterrogation,
+  getGetDashboardStateQueryKey,
+} from "@/lib/torgima-api";
 
 const STATUS_OPTIONS = [
   { value: "completed", label: "Executed", sub: "Order fully executed with proof", icon: CheckCircle2, color: "border-green-500 bg-green-50", textColor: "text-green-700" },
@@ -35,14 +40,12 @@ export default function FeedbackPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (!orderId || !API_BASE_URL) return;
-    void fetch(`${API_BASE_URL}/api/orders/${orderId}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { proofRequired?: boolean; blueprintId?: string } }) => {
-        if (d.ok && d.data) {
-          setProofRequired(Boolean(d.data.proofRequired));
-          if (d.data.blueprintId) setBlueprintId(d.data.blueprintId);
-        }
+    if (!orderId) return;
+    void getOrder(orderId)
+      .then((d) => {
+        setProofRequired(Boolean((d as { proofRequired?: boolean }).proofRequired));
+        const bp = (d as { blueprintId?: string }).blueprintId;
+        if (bp) setBlueprintId(bp);
       })
       .catch(() => null);
   }, [orderId]);
@@ -59,8 +62,8 @@ export default function FeedbackPage() {
   }
 
   async function submit() {
-    if (!orderId || !API_BASE_URL) {
-      setError("Missing order or server URL");
+    if (!orderId) {
+      setError("Missing order");
       return;
     }
     const validationError = validate();
@@ -154,20 +157,10 @@ export default function FeedbackPage() {
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/feedback/${interrogation.feedbackId}/interrogation`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answer: interrogationAnswer,
-          idempotencyKey: `interrogation-${interrogation.feedbackId}`,
-        }),
+      await answerFeedbackInterrogation(interrogation.feedbackId, {
+        answer: interrogationAnswer,
+        idempotencyKey: `interrogation-${interrogation.feedbackId}`,
       });
-      const data = await res.json();
-      if (!data.ok) {
-        setError(data.error?.message ?? "Could not submit clarification");
-        return;
-      }
       await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
       setLocation("/dashboard");
     } catch {

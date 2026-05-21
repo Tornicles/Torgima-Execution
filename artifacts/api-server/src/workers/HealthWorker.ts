@@ -6,9 +6,10 @@ import { logger } from "../lib/logger.js";
 // HealthWorker — runs full integrity sweep every time a system_health_event
 // arrives, plus on the 30-minute interval started by startScheduledHealthChecks().
 //
-// Spec: Prompt 6 §STEP 5, DOC_17 §11, §17.
+// Spec: Prompt 6 §STEP 5, DOC_17 §11, §17. GAP G3: sweep every 5 minutes.
 
 export const HEALTH_QUEUE = "system_health_event";
+export const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 workerRegistry.register({
   name: "HealthWorker",
@@ -42,23 +43,37 @@ workerRegistry.register({
 
 let scheduledTimer: ReturnType<typeof setInterval> | null = null;
 
-// Periodic integrity sweep, independent of incoming events. Runs every 30 minutes.
+// Periodic integrity sweep, independent of incoming events (GAP G3: every 5 minutes).
 export function startScheduledHealthChecks(): void {
   if (scheduledTimer) return;
 
+  const runSweep = async () => {
+    const findings = await runIntegrityChecks();
+    await processFindings(findings);
+  };
+
+  void runSweep().catch((error) => {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[HealthWorker] Initial scheduled check failed",
+    );
+  });
+
   scheduledTimer = setInterval(async () => {
     try {
-      const findings = await runIntegrityChecks();
-      await processFindings(findings);
+      await runSweep();
     } catch (error) {
       logger.error(
         { error: error instanceof Error ? error.message : String(error) },
         "[HealthWorker] Scheduled check failed",
       );
     }
-  }, 30 * 60 * 1000);
+  }, HEALTH_CHECK_INTERVAL_MS);
 
-  logger.info("[HealthWorker] Scheduled health checks started (every 30 minutes)");
+  logger.info(
+    { intervalMs: HEALTH_CHECK_INTERVAL_MS },
+    "[HealthWorker] Scheduled health checks started (every 5 minutes)",
+  );
 }
 
 export function stopScheduledHealthChecks(): void {

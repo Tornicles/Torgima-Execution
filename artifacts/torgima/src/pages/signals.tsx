@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Info, TrendingUp } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { getCurrentSignals, getSignalHistory, getCurrentCondition } from "@/lib/torgima-api";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { useBlueprintStore } from "@/store/blueprintStore";
 import { ConditionState } from "@workspace/state-machine";
@@ -48,26 +48,19 @@ export default function SignalsPage() {
   const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLoading(false);
-      return;
-    }
-    Promise.all([
-      fetch(`${API_BASE_URL}/api/signals/current`, { credentials: "include" }).then((r) => r.json()),
-      fetch(`${API_BASE_URL}/api/signals/history`, { credentials: "include" }).then((r) => r.json()),
-      fetch(`${API_BASE_URL}/api/condition/current`, { credentials: "include" }).then((r) => r.json()),
-    ])
+    Promise.all([getCurrentSignals(), getSignalHistory(), getCurrentCondition()])
       .then(([cur, hist, cond]) => {
-        if (cur.ok) setSignals(cur.data as Record<string, unknown>);
-        if (hist.ok) {
-          const snaps = (hist.data as { snapshots?: unknown[] })?.snapshots ?? [];
-          setHistory(snaps.slice(-14));
-        }
-        if (cond.ok) {
-          const payload = cond.data as { condition?: ConditionPayload; enforcement?: EnforcementPayload };
-          setConditionRow(payload.condition ?? null);
-          setEnforcement(payload.enforcement ?? null);
-        }
+        setSignals(cur as Record<string, unknown>);
+        const snaps =
+          (hist as { snapshots?: unknown[] })?.snapshots ??
+          (Array.isArray(hist) ? hist : []);
+        setHistory(snaps.slice(-14));
+        const payload = cond as {
+          condition?: ConditionPayload;
+          enforcement?: EnforcementPayload;
+        };
+        setConditionRow(payload.condition ?? null);
+        setEnforcement(payload.enforcement ?? null);
       })
       .catch(() => null)
       .finally(() => setLoading(false));

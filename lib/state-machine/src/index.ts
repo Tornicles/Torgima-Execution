@@ -35,6 +35,28 @@ export const ValidationKind = {
 export type ValidationKind = typeof ValidationKind[keyof typeof ValidationKind];
 export const ValidationKindValues = Object.values(ValidationKind) as [ValidationKind, ...ValidationKind[]];
 
+/** Erector blueprint tier recommendation (validation output). */
+export const BlueprintLevel = {
+  STARTER: "starter",
+  GROWTH: "growth",
+  ULTIMATE: "ultimate",
+} as const;
+export type BlueprintLevel = typeof BlueprintLevel[keyof typeof BlueprintLevel];
+export const BlueprintLevelValues = Object.values(BlueprintLevel) as [BlueprintLevel, ...BlueprintLevel[]];
+
+/** Erector validation run lifecycle (stored on validations.erector_validation_stage when present). */
+export const ErectorValidationStage = {
+  PENDING: "pending",
+  RUNNING: "running",
+  COMPLETE: "complete",
+  FAILED: "failed",
+} as const;
+export type ErectorValidationStage = typeof ErectorValidationStage[keyof typeof ErectorValidationStage];
+export const ErectorValidationStageValues = Object.values(ErectorValidationStage) as [
+  ErectorValidationStage,
+  ...ErectorValidationStage[],
+];
+
 export const OrderStatus = {
   PENDING: "pending",
   ACTIVE: "active",

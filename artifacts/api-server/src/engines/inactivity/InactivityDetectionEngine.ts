@@ -1,23 +1,40 @@
-import { db, blueprints, feedback, inactivityRecords, users } from "@workspace/db";
+import { db, blueprints, feedback, inactivityRecords, systemHealthLogs } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { isBlueprintExecutionLocked } from "../health/ExecutionLock.js";
+import {
+  classifyInactivity,
+  requiresRecoveryEvent,
+  INACTIVITY_DOC11_THRESHOLDS,
+  type InactivityType,
+  type InactivitySeverity,
+  type ThresholdBreached,
+} from "./InactivityThresholds.js";
 
-const INACTIVITY_THRESHOLDS: Record<string, Record<string, number>> = {
-  full: { warning: 12, soft: 24, hard: 48, critical: 96 },
-  high: { warning: 18, soft: 36, hard: 72, critical: 120 },
-  medium: { warning: 24, soft: 48, hard: 96, critical: 168 },
-  low: { warning: 36, soft: 72, hard: 120, critical: 240 },
-};
+const SKIPPED_STATUSES = ["paused", "complete", "archived"] as const;
+
+export async function isBlueprintEligibleForInactivityScan(
+  blueprintId: string,
+  status: string,
+  active: boolean,
+): Promise<boolean> {
+  if (!active) return false;
+  if (SKIPPED_STATUSES.includes(status as (typeof SKIPPED_STATUSES)[number])) return false;
+  const lock = await isBlueprintExecutionLocked(blueprintId);
+  return !lock.locked;
+}
 
 export async function scanForInactivity(): Promise<{
   scanned: number;
   detected: number;
   resolved: number;
+  skipped: number;
 }> {
   let scanned = 0;
   let detected = 0;
   let resolved = 0;
+  let skipped = 0;
 
   const rows = await db
     .select()
@@ -25,15 +42,14 @@ export async function scanForInactivity(): Promise<{
     .where(and(eq(blueprints.active, true), eq(blueprints.status, "active")));
 
   for (const bp of rows) {
+    if (!(await isBlueprintEligibleForInactivityScan(bp.id, bp.status, bp.active))) {
+      skipped++;
+      continue;
+    }
+
     scanned++;
     try {
-      const [userRow] = await db
-        .select({ commitment_level: users.commitment_level })
-        .from(users)
-        .where(eq(users.id, bp.user_id))
-        .limit(1);
-
-      const result = await scanBlueprint(bp, userRow?.commitment_level ?? "medium");
+      const result = await scanBlueprint(bp);
       if (result === "detected") detected++;
       if (result === "resolved") resolved++;
     } catch (error) {
@@ -47,16 +63,14 @@ export async function scanForInactivity(): Promise<{
     }
   }
 
-  logger.info({ scanned, detected, resolved }, "[InactivityEngine] Scan complete");
-  return { scanned, detected, resolved };
+  logger.info({ scanned, detected, resolved, skipped }, "[InactivityEngine] Scan complete");
+  return { scanned, detected, resolved, skipped };
 }
 
 async function scanBlueprint(
   blueprint: typeof blueprints.$inferSelect,
-  commitmentLevel: string,
 ): Promise<"detected" | "resolved" | "ok"> {
   const userId = blueprint.user_id;
-  const thresholds = INACTIVITY_THRESHOLDS[commitmentLevel] ?? INACTIVITY_THRESHOLDS.medium;
 
   const [lastFb] = await db
     .select({ created_at: feedback.created_at })
@@ -65,8 +79,13 @@ async function scanBlueprint(
     .orderBy(desc(feedback.created_at))
     .limit(1);
 
-  const lastActivityAt = lastFb?.created_at ?? blueprint.created_at;
-  const hoursInactive = (Date.now() - lastActivityAt.getTime()) / 3600000;
+  const lastFeedbackAt = lastFb?.created_at ?? blueprint.created_at;
+  const hoursInactive = (Date.now() - lastFeedbackAt.getTime()) / 3600000;
+
+  const classification = classifyInactivity(hoursInactive);
+  if (!classification) return "ok";
+
+  const { type, severity, thresholdBreached } = classification;
 
   const [existingRecord] = await db
     .select()
@@ -80,7 +99,7 @@ async function scanBlueprint(
     )
     .limit(1);
 
-  if (existingRecord && hoursInactive < thresholds.warning) {
+  if (existingRecord && hoursInactive < INACTIVITY_DOC11_THRESHOLDS.feedback_delay_warning) {
     await db
       .update(inactivityRecords)
       .set({ resolved: true, resolved_at: new Date() })
@@ -88,43 +107,42 @@ async function scanBlueprint(
     return "resolved";
   }
 
-  let thresholdBreached: "warning" | "soft" | "hard" | "critical" | null = null;
-  if (hoursInactive >= thresholds.critical) thresholdBreached = "critical";
-  else if (hoursInactive >= thresholds.hard) thresholdBreached = "hard";
-  else if (hoursInactive >= thresholds.soft) thresholdBreached = "soft";
-  else if (hoursInactive >= thresholds.warning) thresholdBreached = "warning";
-
-  if (!thresholdBreached) return "ok";
-
-  if (existingRecord && existingRecord.threshold_breached === thresholdBreached) {
+  if (
+    existingRecord &&
+    existingRecord.threshold_breached === thresholdBreached &&
+    existingRecord.inactivity_type === type
+  ) {
     return "ok";
   }
+
+  const recordValues = {
+    last_activity_at: lastFeedbackAt,
+    last_feedback_at: lastFeedbackAt,
+    inactivity_hours: hoursInactive,
+    inactivity_days: hoursInactive / 24,
+    inactivity_type: type,
+    severity,
+    threshold_breached: thresholdBreached,
+    response_triggered: requiresRecoveryEvent(thresholdBreached) ? "recovery_pending" : "reminder_pending",
+  };
 
   if (existingRecord) {
     await db
       .update(inactivityRecords)
-      .set({
-        threshold_breached: thresholdBreached,
-        inactivity_hours: hoursInactive,
-        inactivity_days: hoursInactive / 24,
-      })
+      .set(recordValues)
       .where(eq(inactivityRecords.id, existingRecord.id));
   } else {
     await db.insert(inactivityRecords).values({
       user_id: userId,
       blueprint_id: blueprint.id,
-      last_activity_at: lastActivityAt,
-      inactivity_hours: hoursInactive,
-      inactivity_days: hoursInactive / 24,
-      threshold_breached: thresholdBreached,
-      response_triggered: "pending",
       resolved: false,
+      ...recordValues,
     });
   }
 
   const hourBucket = Math.floor(Date.now() / 3600000);
 
-  if (thresholdBreached === "hard" || thresholdBreached === "critical") {
+  if (requiresRecoveryEvent(thresholdBreached)) {
     await writeEvent({
       eventType: EVENT_TYPES.INACTIVITY_DETECTED,
       entityType: "blueprint",
@@ -132,16 +150,31 @@ async function scanBlueprint(
       userId,
       blueprintId: blueprint.id,
       payload: {
+        inactivity_type: type,
+        severity,
         threshold_breached: thresholdBreached,
         hours_inactive: hoursInactive,
         generation_mode: "recovery",
         generation_trigger: "inactivity_detected",
       },
-      idempotencyKey: `inactivity:${blueprint.id}:${thresholdBreached}:${hourBucket}`,
+      idempotencyKey: `inactivity:${blueprint.id}:${type}:${hourBucket}`,
     });
-  }
 
-  if (thresholdBreached === "warning" || thresholdBreached === "soft") {
+    await writeEvent({
+      eventType: EVENT_TYPES.REWARD_EVALUATION_REQUESTED,
+      entityType: "blueprint",
+      entityId: blueprint.id,
+      userId,
+      blueprintId: blueprint.id,
+      payload: {
+        source_type: "INACTIVITY",
+        source_id: blueprint.id,
+        source_event_id: blueprint.id,
+        idempotency_key: `reward:inactivity:${blueprint.id}:${hourBucket}`,
+      },
+      idempotencyKey: `reward:inactivity:${blueprint.id}:${hourBucket}`,
+    }).catch(() => null);
+  } else if (thresholdBreached === "warning") {
     await writeEvent({
       eventType: EVENT_TYPES.REMINDER_REQUESTED,
       entityType: "blueprint",
@@ -149,18 +182,25 @@ async function scanBlueprint(
       userId,
       blueprintId: blueprint.id,
       payload: {
-        reason: `inactivity_${thresholdBreached}`,
-        severity: thresholdBreached,
+        inactivity_type: type,
+        severity,
+        reason: `inactivity_${type}`,
         hours: Math.round(hoursInactive),
       },
-      idempotencyKey: `reminder:${blueprint.id}:${thresholdBreached}:${hourBucket}`,
+      idempotencyKey: `reminder:${blueprint.id}:${type}:${hourBucket}`,
     });
+  }
+
+  if (severity === "CRITICAL" && type === "ABANDONED_LOOP") {
+    await recordCriticalAbandonmentHealthLog(blueprint.id, userId, hoursInactive);
   }
 
   logger.info(
     {
       blueprintId: blueprint.id,
       userId,
+      type,
+      severity,
       threshold: thresholdBreached,
       hoursInactive: Math.round(hoursInactive),
     },
@@ -170,8 +210,51 @@ async function scanBlueprint(
   return "detected";
 }
 
+async function recordCriticalAbandonmentHealthLog(
+  blueprintId: string,
+  userId: string,
+  hoursInactive: number,
+): Promise<void> {
+  const dayKey = new Date().toISOString().slice(0, 10);
+  await db.insert(systemHealthLogs).values({
+    check_type: "INACTIVITY_CRITICAL_ABANDONMENT",
+    severity: "CRITICAL",
+    status: "OPEN",
+    area: "inactivity",
+    blueprint_id: blueprintId,
+    message: `Blueprint abandoned for ${Math.round(hoursInactive)}h (14d+ threshold)`,
+    user_id: userId,
+    entity_type: "blueprint",
+    entity_id: blueprintId,
+    details_json: {
+      hours_inactive: hoursInactive,
+      threshold_hours: INACTIVITY_DOC11_THRESHOLDS.critical_abandonment,
+    },
+  }).catch((err) => {
+    logger.warn(
+      { blueprintId, err: err instanceof Error ? err.message : String(err) },
+      "[InactivityEngine] Critical health log insert failed",
+    );
+  });
+
+  logger.warn(
+    { blueprintId, userId, hoursInactive: Math.round(hoursInactive) },
+    "[InactivityEngine] CRITICAL abandonment logged",
+  );
+}
+
 export class InactivityDetectionEngine {
-  scan(): Promise<{ scanned: number; detected: number; resolved: number }> {
+  scan(): Promise<{ scanned: number; detected: number; resolved: number; skipped: number }> {
     return scanForInactivity();
+  }
+
+  static classify(
+    hoursInactive: number,
+  ): {
+    type: InactivityType;
+    severity: InactivitySeverity;
+    thresholdBreached: ThresholdBreached;
+  } | null {
+    return classifyInactivity(hoursInactive);
   }
 }

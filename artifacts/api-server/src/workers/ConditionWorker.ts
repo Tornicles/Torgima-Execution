@@ -5,7 +5,9 @@ import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
 
-export const CONDITION_QUEUE = "condition_evaluation_requested";
+import { WorkerQueues } from "../types/eventContracts.js";
+
+export const CONDITION_QUEUE = WorkerQueues.CONDITION_EVALUATION;
 
 workerRegistry.register({
   name: "ConditionWorker",

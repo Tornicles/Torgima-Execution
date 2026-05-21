@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiPost } from "@/lib/torgima-api";
 import { applyExecutionLanguage } from "@/lib/execution-language";
 import { cn } from "@/lib/utils";
 
@@ -46,22 +46,16 @@ export function IntelligencePanel({
       return;
     }
 
-    void fetch(`${API_BASE_URL}/api/communication/filter`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: raw,
-        outputType: type,
-        userCondition,
-        confidenceTier,
-      }),
+    void apiPost<{ content: string; uncertaintyNote?: string | null }>("/api/communication/filter", {
+      content: raw,
+      outputType: type,
+      userCondition,
+      confidenceTier,
     })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { content: string; uncertaintyNote?: string | null } }) => {
-        if (d.ok && d.data) {
-          setFiltered(d.data.content);
-          setUncertaintyNote(d.data.uncertaintyNote ?? null);
+      .then((d) => {
+        if (d?.content) {
+          setFiltered(d.content);
+          setUncertaintyNote(d.uncertaintyNote ?? null);
         } else {
           setFiltered(applyExecutionLanguage(raw));
         }

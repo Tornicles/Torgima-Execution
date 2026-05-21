@@ -21,7 +21,8 @@ export type ErrorCode =
   | "BLUEPRINT_SELECTION_REQUIRED"
   | "SCHEMA_OUT_OF_DATE"
   | "CONTRACT_NOT_FOUND"
-  | "VALIDATION_PAYLOAD_CORRUPT";
+  | "VALIDATION_PAYLOAD_CORRUPT"
+  | "FALSE_PROGRESS_BLOCKED";
 
 export class TorgimaError extends Error {
   constructor(

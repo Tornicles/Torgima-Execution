@@ -10,6 +10,8 @@ import { getPendingRewards, markRewardsDelivered } from "../engines/reward/Rewar
 import {
   getOpenFlags,
   validateOutcome,
+  recordRealOutcome,
+  outcomeValidationEngine,
 } from "../engines/outcome/OutcomeValidationEngine.js";
 
 const router = Router();
@@ -161,6 +163,65 @@ const evidenceSchema = z.object({
   evidenceText: z.string().min(10).max(2000),
   targetId:     z.string().uuid().optional(),
   claimText:    z.string().max(500).optional(),
+});
+
+const realOutcomeSchema = z.object({
+  blueprintId: z.string().uuid(),
+  targetId: z.string().uuid().optional(),
+  outcomeType: z.string().min(1).max(80),
+  claimedValue: z.string().min(1).max(500),
+  evidenceText: z.string().min(10).max(4000),
+  metricName: z.string().max(120).optional(),
+  metricValue: z.number().optional(),
+});
+
+router.post("/outcomes/real", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const input = realOutcomeSchema.parse(req.body);
+
+    const [owned] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(
+        and(eq(blueprints.id, input.blueprintId), eq(blueprints.user_id, auth.userId)),
+      )
+      .limit(1);
+
+    if (!owned) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const row = await recordRealOutcome({
+      userId: auth.userId,
+      blueprintId: input.blueprintId,
+      targetId: input.targetId,
+      outcomeType: input.outcomeType,
+      claimedValue: input.claimedValue,
+      evidenceText: input.evidenceText,
+      metricName: input.metricName,
+      metricValue: input.metricValue,
+    });
+
+    const validation = await outcomeValidationEngine.validate({
+      userId: auth.userId,
+      blueprintId: input.blueprintId,
+      trigger: "real_outcome_submitted",
+    });
+
+    success(res, { realOutcomeId: row.id, validation });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      failure(res, "VALIDATION_ERROR", "Invalid input", 422);
+      return;
+    }
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
+    failure(res, "INTERNAL_ERROR", "Failed to record real outcome", 500);
+  }
 });
 
 router.post("/outcomes/:id/evidence", async (req, res) => {

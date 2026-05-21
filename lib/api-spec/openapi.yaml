@@ -572,6 +572,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Interrogation"
+    post:
+      operationId: answerFeedbackInterrogation
+      tags: [feedback]
+      summary: Answer feedback interrogation question
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer]
+              properties:
+                answer:
+                  type: string
+                idempotencyKey:
+                  type: string
+      responses:
+        "200":
+          description: Interrogation answered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
 
   /feedback/weekly-review:
     post:
@@ -671,6 +701,162 @@ paths:
               schema:
                 $ref: "#/components/schemas/StateExplanation"
 
+  /execution/active-order:
+    get:
+      operationId: getExecutionActiveOrder
+      tags: [orders]
+      summary: Get active execution order for current user
+      responses:
+        "200":
+          description: Active order payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+        "404":
+          description: No active order
+
+  /execution/feedback:
+    post:
+      operationId: submitExecutionFeedback
+      tags: [feedback]
+      summary: Submit feedback via primary execution loop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecutionFeedbackInput"
+      responses:
+        "200":
+          description: Feedback processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /execution/next-task:
+    post:
+      operationId: requestNextExecutionTask
+      tags: [orders]
+      summary: Request next task in execution loop
+      responses:
+        "200":
+          description: Next task generation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /execution/help:
+    post:
+      operationId: requestExecutionHelp
+      tags: [orders]
+      summary: Request contextual execution help
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Help response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /condition/current:
+    get:
+      operationId: getCurrentCondition
+      tags: [signals]
+      summary: Get current condition state
+      responses:
+        "200":
+          description: Current condition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /orders/{id}/feedback:
+    post:
+      operationId: submitOrderFeedback
+      tags: [feedback]
+      summary: Submit feedback for an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderFeedbackInput"
+      responses:
+        "200":
+          description: Feedback result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /onboarding/complete:
+    post:
+      operationId: completeOnboarding
+      tags: [onboarding]
+      summary: Mark onboarding complete
+      responses:
+        "200":
+          description: Onboarding completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /auth/session:
+    get:
+      operationId: getAuthSession
+      tags: [me]
+      summary: Get current auth session
+      responses:
+        "200":
+          description: Session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
+  /auth/send-magic-link:
+    post:
+      operationId: sendMagicLink
+      tags: [me]
+      summary: Send magic link login email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Magic link sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiSuccessEnvelope"
+
   /notifications/history:
     get:
       operationId: getNotificationHistory
@@ -688,6 +874,92 @@ paths:
 
 components:
   schemas:
+    ApiSuccessEnvelope:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          additionalProperties: true
+
+    ExecutionFeedbackInput:
+      type: object
+      required: [orderId, blueprintId, completionStatus]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        blueprintId:
+          type: string
+          format: uuid
+        completionStatus:
+          type: string
+          enum: [completed, partial, failed, skipped]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 10
+        feedbackText:
+          type: string
+        proofJson:
+          type: object
+          additionalProperties: true
+        blockerJson:
+          type: object
+          additionalProperties: true
+        idempotencyKey:
+          type: string
+
+    OrderFeedbackInput:
+      type: object
+      required: [completionStatus, score, reflection, idempotencyKey]
+      properties:
+        completionStatus:
+          type: string
+          enum: [completed, partial, failed, skipped]
+        score:
+          type: integer
+        reflection:
+          type: string
+        proofJson:
+          type: object
+          additionalProperties: true
+        blockerJson:
+          type: object
+          additionalProperties: true
+        idempotencyKey:
+          type: string
+        expectedStateVersion:
+          type: integer
+
+    OrderFeedbackResult:
+      type: object
+      required: [feedbackId, verdictStatus, weightedScore, confidence, requiresInterrogation, eventId]
+      properties:
+        feedbackId:
+          type: string
+          format: uuid
+        verdictStatus:
+          type: string
+          enum: [accepted, needs_interrogation, rejected]
+        weightedScore:
+          type: number
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        requiresInterrogation:
+          type: boolean
+        interrogationQuestion:
+          type: string
+        eventId:
+          type: string
+
     HealthStatus:
       type: object
       required: [status]

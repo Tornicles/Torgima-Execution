@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetDashboardStateQueryKey } from "@workspace/api-client-react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet, startOrder } from "@/lib/torgima-api";
 import { ConditionalScreen } from "@/components/dashboard/ConditionalScreens";
 import { CurrentActionPanel } from "@/components/dashboard/CurrentActionPanel";
 import {
@@ -76,15 +76,10 @@ export function DashboardStateRouter({
   async function handleStart() {
     const action = state.currentAction;
     const orderId = action?.orderId ?? action?.id;
-    if (!orderId || !API_BASE_URL) return;
+    if (!orderId) return;
     setStarting(true);
     try {
-      await fetch(`${API_BASE_URL}/api/orders/${orderId}/start`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+      await startOrder(orderId, {});
       await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
     } finally {
       setStarting(false);
@@ -147,18 +142,15 @@ function DashboardMainContent({
   }, [refreshAll]);
 
   useEffect(() => {
-    if (!API_BASE_URL) return;
-    fetch(`${API_BASE_URL}/api/state/dashboard-intelligence`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: typeof dashboardIntel }) => {
-        if (d.ok && d.data) setDashboardIntel(d.data);
-      })
+    void apiGet<typeof dashboardIntel>("/api/state/dashboard-intelligence")
+      .then((d) => setDashboardIntel(d ?? null))
       .catch(() => null);
 
-    fetch(`${API_BASE_URL}/api/intelligence/eis`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { opportunityWindows?: Array<{ description?: string; trend?: string; timeWindow?: string; urgency?: string }> } | null }) => {
-        const urgent = d.data?.opportunityWindows?.find((o) => o.urgency === "HIGH") ?? null;
+    void apiGet<{ opportunityWindows?: Array<{ description?: string; trend?: string; timeWindow?: string; urgency?: string }> }>(
+      "/api/intelligence/eis",
+    )
+      .then((d) => {
+        const urgent = d?.opportunityWindows?.find((o) => o.urgency === "HIGH") ?? null;
         setUrgentOpportunity(urgent);
       })
       .catch(() => null);
@@ -232,12 +224,8 @@ function DashboardMainContent({
       <GovernanceActionCenter
         proposals={dashboardIntel?.governanceSummary?.proposals}
         onChanged={() => {
-          if (!API_BASE_URL) return;
-          fetch(`${API_BASE_URL}/api/state/dashboard-intelligence`, { credentials: "include" })
-            .then((r) => r.json())
-            .then((d: { ok?: boolean; data?: typeof dashboardIntel }) => {
-              if (d.ok && d.data) setDashboardIntel(d.data);
-            })
+          void apiGet<typeof dashboardIntel>("/api/state/dashboard-intelligence")
+            .then((d) => setDashboardIntel(d ?? null))
             .catch(() => null);
         }}
       />

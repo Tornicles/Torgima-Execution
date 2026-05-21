@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Torgima",
+    "slug": "torgima",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tornicles.torgima",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.tornicles.torgima",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#5b21b6"
+      }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
+      "expo-sqlite"
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:3000/api"
+    }
+  }
+}

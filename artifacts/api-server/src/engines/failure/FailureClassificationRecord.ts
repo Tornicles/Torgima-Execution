@@ -5,9 +5,11 @@ import { db, failureClassifications, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   classifyFailure,
+  persistFailureClassificationOnFeedback,
   type ClassificationResult,
   FAILURE_CATEGORIES,
 } from "./FailureClassificationEngine.js";
+import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { runDebate } from "../../bhudhi/DebateEngine.js";
 
@@ -55,6 +57,38 @@ export async function classifyFailureWithRecord(params: {
   reflection?: string;
 }) {
   const base = await classifyFailure(params);
+  await persistFailureClassificationOnFeedback({
+    feedbackId: params.feedbackId,
+    primaryCategory: base.primaryCategory,
+    correctionTaskType: base.correctionTaskType,
+  });
+
+  const { traceFailureRouting, getBlueprintStateVersion } = await import(
+    "../decision-trace/DecisionTraceSystem.js"
+  );
+  await traceFailureRouting({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    feedbackId: params.feedbackId,
+    primaryCategory: base.primaryCategory,
+    correctionTaskType: base.correctionTaskType,
+    stateVersion: await getBlueprintStateVersion(params.blueprintId),
+  });
+
+  await writeEvent({
+    eventType: EVENT_TYPES.FAILURE_CLASSIFIED,
+    entityType: "feedback",
+    entityId: params.feedbackId,
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    payload: {
+      primary_category: base.primaryCategory,
+      correction_task_type: base.correctionTaskType,
+      correction_type: base.correctionType,
+    },
+    idempotencyKey: `failure_classified:${params.feedbackId}`,
+  });
+
   const reflection = params.reflection ?? "";
 
   const [bp] = await db

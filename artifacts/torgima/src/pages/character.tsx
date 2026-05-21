@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 
 interface CharacterPayload {
   consistency?: number;
@@ -21,16 +21,11 @@ export default function CharacterPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLoading(false);
-      return;
-    }
-    fetch(`${API_BASE_URL}/api/character/current`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: { character?: CharacterPayload; identity?: typeof identity } }) => {
-        if (d.ok && d.data) {
-          setCharacter(d.data.character ?? null);
-          setIdentity(d.data.identity ?? null);
+    apiGet<{ character?: CharacterPayload; identity?: typeof identity }>("/api/character/current")
+      .then((d) => {
+        if (d) {
+          setCharacter(d.character ?? null);
+          setIdentity(d.identity ?? null);
         }
       })
       .finally(() => setLoading(false));

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 
 type SkillProfile = {
   skillScores?: Record<string, number>;
@@ -19,27 +19,21 @@ export function SkillProgressPanel() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!API_BASE_URL) return;
     Promise.all([
-      fetch(`${API_BASE_URL}/api/academy/skills`, { credentials: "include" }).then((r) => r.json()),
-      fetch(`${API_BASE_URL}/api/academy`, { credentials: "include" }).then((r) => r.json()),
+      apiGet<{ skillScores?: Record<string, number>; masteredSkills?: string[] }>("/api/academy/skills"),
+      apiGet<AcademyPayload>("/api/academy"),
     ])
-      .then(([skillsRes, academyRes]) => {
-        const skills = skillsRes as {
-          ok?: boolean;
-          data?: { skillScores?: Record<string, number>; masteredSkills?: string[] };
-        };
-        const ac = academyRes as { ok?: boolean; data?: AcademyPayload };
-        if (skills.ok && skills.data) {
+      .then(([skillsData, academyData]) => {
+        if (skillsData) {
           setProfile({
-            skillScores: skills.data.skillScores,
-            masteredSkills: skills.data.masteredSkills,
+            skillScores: skillsData.skillScores,
+            masteredSkills: skillsData.masteredSkills,
           });
         }
-        if (ac.ok && ac.data) setAcademy(ac.data);
+        if (academyData) setAcademy(academyData);
         const completed =
-          (ac.data?.proofHistory?.length ?? 0) > 0 ||
-          (ac.data?.tasks?.some((t) => t.status === "completed") ?? false);
+          (academyData?.proofHistory?.length ?? 0) > 0 ||
+          (academyData?.tasks?.some((t) => t.status === "completed") ?? false);
         setVisible(completed);
       })
       .catch(() => null);

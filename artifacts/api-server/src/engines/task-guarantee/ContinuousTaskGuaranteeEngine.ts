@@ -11,11 +11,43 @@ import {
   enforcementPackages,
   continuousTaskGuaranteeLogs,
   conditions,
+  capabilityProfiles,
 } from "@workspace/db";
 import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
 import { BlueprintStatus, ConditionState, OrderStatus, PivotReviewStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { generate } from "../task-generation/TaskGenerationEngine.js";
+import { resolvePublishableOrder } from "../execution-loop/DependencyEngine.js";
+
+async function applyDependencyPublicationGate(params: {
+  blueprintId: string;
+  userId: string;
+  orderId: string | undefined;
+  fallbackState: GuaranteeState;
+}): Promise<{ state: GuaranteeState; orderId?: string }> {
+  if (!params.orderId) return { state: params.fallbackState, orderId: undefined };
+
+  const resolved = await resolvePublishableOrder({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    orderId: params.orderId,
+  });
+
+  if (resolved.replaced) {
+    logger.info(
+      {
+        blueprintId: params.blueprintId,
+        originalOrderId: params.orderId,
+        resolutionOrderId: resolved.orderId,
+        blockedBy: resolved.blockedBy,
+      },
+      "[Guarantee] Dependency gate — resolution order published",
+    );
+    return { state: "BLOCKED_BY_DEPENDENCY", orderId: resolved.orderId };
+  }
+
+  return { state: params.fallbackState, orderId: resolved.orderId };
+}
 
 export type GuaranteeState =
   | "SATISFIED"
@@ -62,9 +94,19 @@ export async function guaranteeTask(params: {
     const existing = await findActionableOrder(blueprintId, userId);
     if (!existing) {
       const holdOrder = await createHoldTask(blueprintId, userId, blueprint.goal);
-      return { state: "PIVOT_REVIEW", orderId: holdOrder ?? undefined };
+      return applyDependencyPublicationGate({
+        blueprintId,
+        userId,
+        orderId: holdOrder ?? undefined,
+        fallbackState: "PIVOT_REVIEW",
+      });
     }
-    return { state: "PIVOT_REVIEW", orderId: existing };
+    return applyDependencyPublicationGate({
+      blueprintId,
+      userId,
+      orderId: existing,
+      fallbackState: "PIVOT_REVIEW",
+    });
   }
 
   const mode = params.generationMode ?? "post_feedback";
@@ -72,22 +114,23 @@ export async function guaranteeTask(params: {
   const existingOrder = await findActionableOrder(blueprintId, userId);
   if (existingOrder && (await shouldSatisfyExistingOrder(blueprintId, userId, existingOrder, mode))) {
     logger.info({ blueprintId, orderId: existingOrder }, "[Guarantee] SATISFIED — task already exists");
-    return { state: "SATISFIED", orderId: existingOrder };
+    return applyDependencyPublicationGate({
+      blueprintId,
+      userId,
+      orderId: existingOrder,
+      fallbackState: "SATISFIED",
+    });
   }
 
-  const [criticalHealth] = await db
-    .select({ id: systemHealthLogs.id })
-    .from(systemHealthLogs)
-    .where(
-      and(
-        eq(systemHealthLogs.blueprint_id, blueprintId),
-        eq(systemHealthLogs.status, "degraded"),
-        inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
-      ),
-    )
-    .limit(1);
-
-  if (criticalHealth) return { state: "SYSTEM_LOCKED" };
+  const { isBlueprintExecutionLocked } = await import("../health/ExecutionLock.js");
+  const lock = await isBlueprintExecutionLocked(blueprintId);
+  if (lock.locked) {
+    logger.warn(
+      { blueprintId, issueCode: lock.issueCode },
+      "[Guarantee] SYSTEM_LOCKED — CRITICAL health issue",
+    );
+    return { state: "SYSTEM_LOCKED" };
+  }
 
   const trigger = params.generationTrigger ?? "guarantee_check";
 
@@ -129,7 +172,12 @@ export async function guaranteeTask(params: {
 
     if (recoveryResult.orders_generated > 0 && recoveryResult.order_ids[0]) {
       await logFallbackHealth(blueprintId);
-      return { state: "RECOVER_EMPTY", orderId: recoveryResult.order_ids[0] };
+      return applyDependencyPublicationGate({
+        blueprintId,
+        userId,
+        orderId: recoveryResult.order_ids[0],
+        fallbackState: "RECOVER_EMPTY",
+      });
     }
   } catch {
     /* continue */
@@ -138,7 +186,12 @@ export async function guaranteeTask(params: {
   const holdTaskId = await createHoldTask(blueprintId, userId, blueprint.goal);
   if (holdTaskId) {
     await logFallbackHealth(blueprintId);
-    return { state: "RECOVER_EMPTY", orderId: holdTaskId };
+    return applyDependencyPublicationGate({
+      blueprintId,
+      userId,
+      orderId: holdTaskId,
+      fallbackState: "RECOVER_EMPTY",
+    });
   }
 
   await db
@@ -164,7 +217,12 @@ export async function guaranteeTask(params: {
       enforcementPackageId: pkgId,
     });
     logger.warn({ blueprintId, orderId: emergencyId }, "[Guarantee] Emergency recovery order after dead letter");
-    return { state: "RECOVER_EMPTY", orderId: emergencyId };
+    return applyDependencyPublicationGate({
+      blueprintId,
+      userId,
+      orderId: emergencyId,
+      fallbackState: "RECOVER_EMPTY",
+    });
   } catch (error) {
     logger.error(
       {
@@ -213,8 +271,12 @@ async function shouldSatisfyExistingOrder(
 }
 
 async function findActionableOrder(blueprintId: string, userId: string): Promise<string | null> {
-  const [order] = await db
-    .select({ id: orders.id })
+  const pending = await db
+    .select({
+      id: orders.id,
+      task_type: orders.task_type,
+      difficulty: orders.difficulty,
+    })
     .from(orders)
     .where(
       and(
@@ -223,10 +285,55 @@ async function findActionableOrder(blueprintId: string, userId: string): Promise
         inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
       ),
     )
-    .orderBy(desc(orders.priority))
+    .orderBy(desc(orders.priority));
+
+  if (pending.length === 0) return null;
+  if (pending.length === 1) return pending[0]!.id;
+
+  const [cond] = await db
+    .select({ condition: conditions.condition })
+    .from(conditions)
+    .where(and(eq(conditions.blueprint_id, blueprintId), eq(conditions.is_current, true)))
     .limit(1);
 
-  return order?.id ?? null;
+  const [capability] = await db
+    .select({ current_difficulty: capabilityProfiles.current_difficulty })
+    .from(capabilityProfiles)
+    .where(eq(capabilityProfiles.user_id, userId))
+    .limit(1);
+
+  const { getOpenFlags } = await import("../outcome/OutcomeValidationEngine.js");
+  const openFp = await getOpenFlags(blueprintId);
+
+  const { priorityEngine } = await import("../priority/PriorityEngine.js");
+  const { tracePrioritySelection, getBlueprintStateVersion } = await import(
+    "../decision-trace/DecisionTraceSystem.js"
+  );
+
+  const candidates = pending.map((o) => ({
+    id: o.id,
+    task_type: o.task_type ?? "execution",
+    difficulty: o.difficulty,
+  }));
+
+  const scored = priorityEngine.scoreAll(candidates, {
+    condition: cond?.condition ?? "stability",
+    capability: { difficulty_recommendation: capability?.current_difficulty ?? "easy" },
+    falseProgressActive: openFp.length > 0,
+  });
+
+  const best = scored[0]!.candidate;
+  await tracePrioritySelection({
+    blueprintId,
+    userId,
+    condition: cond?.condition ?? "stability",
+    selectedTaskType: best.task_type,
+    selectedOrderId: best.id,
+    candidates: scored.map((s) => ({ task_type: s.candidate.task_type, score: s.score })),
+    stateVersion: await getBlueprintStateVersion(blueprintId),
+  });
+
+  return best.id ?? pending[0]!.id;
 }
 
 async function currentEnforcementPackageId(blueprintId: string): Promise<string | undefined> {

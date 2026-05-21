@@ -49,6 +49,7 @@ import { getBasicProfile } from "../../bhudhi/agents/BehavioralAgent.js";
 import { selectPackage, packageToInjection } from "../../bhudhi/agents/KnowledgeAgent.js";
 import { fetchRecoveryCoachingCopy } from "../../bhudhi/AdvancedIntelligenceBridge.js";
 import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
+import { enforceCapabilityDifficulty } from "../capability/CapabilityDifficulty.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -207,6 +208,8 @@ async function loadContext(params: {
     .select({
       completion_status: feedback.completion_status,
       blocker_json: feedback.blocker_json,
+      failure_classification: feedback.failure_classification,
+      failure_correction_type: feedback.failure_correction_type,
     })
     .from(feedback)
     .where(and(eq(feedback.blueprint_id, blueprintId), eq(feedback.user_id, userId)))
@@ -291,6 +294,7 @@ async function loadContext(params: {
       consistency: capability?.consistency_score ?? 0,
       execution_quality: capability?.execution_quality ?? 0,
       current_streak: capability?.streak_current ?? 0,
+      difficulty_recommendation: (capability?.current_difficulty as string) ?? "easy",
     },
     knowledge_objects: knowledgeRows,
     recent_task_hashes: recentOrders.map((o) => o.content_hash).filter(Boolean) as string[],
@@ -357,17 +361,53 @@ function allowedAction(ctx: Awaited<ReturnType<typeof loadContext>>, key: string
   return ctx.enforcement.allowed_actions.some((a) => String(a).toLowerCase() === k);
 }
 
+function buildPriorityCandidates(
+  ctx: Awaited<ReturnType<typeof loadContext>>,
+  primaryTaskType: string,
+): Array<{ task_type: string; difficulty?: string | null }> {
+  const seen = new Set<string>();
+  const candidates: Array<{ task_type: string; difficulty?: string | null }> = [];
+  const add = (task_type: string) => {
+    if (seen.has(task_type)) return;
+    seen.add(task_type);
+    candidates.push({ task_type });
+  };
+
+  add(primaryTaskType);
+
+  const latest = ctx.latest_feedback as { failure_correction_type?: string | null } | null;
+  if (latest?.failure_correction_type) add(latest.failure_correction_type);
+
+  if (ctx.false_progress_flag) {
+    add("clarification");
+    add("review");
+  }
+  if ((ctx.blocked_open_count ?? 0) > 0) add("blocker_resolution");
+
+  return candidates;
+}
+
 function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
   const { enforcement, phase, action, generation_mode } = ctx;
 
   const latestFb = ctx.latest_feedback as {
     completion_status?: string;
     blocker_json?: Record<string, unknown> | null;
+    failure_classification?: string | null;
+    failure_correction_type?: string | null;
   } | null;
-  if (latestFb?.completion_status === "failed") {
+  if (
+    latestFb?.completion_status === "failed" ||
+    latestFb?.completion_status === "skipped"
+  ) {
+    const classifiedType = latestFb.failure_correction_type?.trim();
+    if (classifiedType) return classifiedType;
+
     const blocker = (latestFb.blocker_json ?? {}) as Record<string, unknown>;
     const hasBlocker = Boolean(blocker.had_blocker || blocker.blocker_type);
     if (hasBlocker || (ctx.blocked_open_count ?? 0) > 0) return "blocker_resolution";
+    if (latestFb.failure_classification === "CAPABILITY_FAILURE") return "academy";
+    if (latestFb.failure_classification === "CLARITY_FAILURE") return "clarification";
     if (generation_mode === "recovery" || generation_mode === "post_feedback") return "recovery";
   }
 
@@ -416,37 +456,56 @@ function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
 
 function selectDifficulty(params: {
   difficulty_cap: string;
+  difficulty_recommendation: string;
   capability_level: string;
+  execution_quality: number;
+  consistency: number;
   action_type?: string | null;
   generation_mode: string;
   current_streak: number;
   is_first_in_phase: boolean;
 }): string {
-  const order = DIFFICULTY_ORDER as readonly string[];
-  const capIdx = order.indexOf(params.difficulty_cap);
-  const safeCap = capIdx >= 0 ? capIdx : order.indexOf("moderate");
-
   // Recovery tasks stay deliberately lightweight (verification: difficulty very_easy).
   if (params.generation_mode === "recovery") {
     return "very_easy";
   }
 
+  const base = enforceCapabilityDifficulty({
+    difficultyRecommendation: params.difficulty_recommendation,
+    difficultyCap: params.difficulty_cap,
+    capabilityLevel: params.capability_level,
+    executionQuality: params.execution_quality,
+    consistency: params.consistency,
+  });
+
   if (params.generation_mode === "initial") {
-    return DIFFICULTY_ORDER[Math.min(1, safeCap)] ?? "easy";
+    return enforceCapabilityDifficulty({
+      difficultyRecommendation: "easy",
+      difficultyCap: params.difficulty_cap,
+      capabilityLevel: params.capability_level,
+      executionQuality: params.execution_quality,
+      consistency: params.consistency,
+    });
   }
 
   if (params.is_first_in_phase) {
-    return DIFFICULTY_ORDER[Math.max(0, safeCap - 1)] ?? "easy";
+    return enforceCapabilityDifficulty({
+      difficultyRecommendation: "easy",
+      difficultyCap: base,
+      capabilityLevel: params.capability_level,
+      executionQuality: params.execution_quality,
+      consistency: params.consistency,
+    });
   }
 
   const hardActionTypes = ["analyze", "improve", "standardize", "build", "publish", "validate"];
   if (params.action_type && hardActionTypes.includes(params.action_type)) {
-    return params.difficulty_cap;
+    return base;
   }
 
-  if (params.current_streak >= 7) return params.difficulty_cap;
+  if (params.current_streak >= 7) return base;
 
-  return DIFFICULTY_ORDER[Math.max(0, safeCap - 1)] ?? "moderate";
+  return base;
 }
 
 // ── VALUE SCORE ───────────────────────────────────────────────────────────────
@@ -1029,6 +1088,16 @@ export async function generate(params: {
   enforcementPackageId?: string;
   causationEventId?: string;
 }): Promise<GenerationResult> {
+  const { isBlueprintExecutionLocked } = await import("../health/ExecutionLock.js");
+  const lock = await isBlueprintExecutionLocked(params.blueprintId);
+  if (lock.locked) {
+    throw new TorgimaError(
+      "FEATURE_DISABLED",
+      lock.message ?? "Task generation blocked until health issue is resolved",
+      false,
+    );
+  }
+
   const genModeNorm = normalizeGenerationMode(params.generationMode);
   const genTrigNorm = normalizeGenerationTrigger(params.generationTrigger);
 
@@ -1095,6 +1164,29 @@ export async function generate(params: {
   }
 
   let taskType = selectTaskType(ctx);
+  const priorityCandidates = buildPriorityCandidates(ctx, taskType);
+  if (priorityCandidates.length > 1) {
+    const { priorityEngine } = await import("../priority/PriorityEngine.js");
+    const { tracePrioritySelection, getBlueprintStateVersion } = await import(
+      "../decision-trace/DecisionTraceSystem.js"
+    );
+    const scored = priorityEngine.scoreAll(priorityCandidates, {
+      condition: ctx.enforcement.condition_code ?? "stability",
+      capability: { difficulty_recommendation: ctx.capability.difficulty_recommendation },
+      falseProgressActive: Boolean(ctx.false_progress_flag),
+    });
+    const best = scored[0]!.candidate;
+    taskType = best.task_type;
+    await tracePrioritySelection({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      condition: ctx.enforcement.condition_code ?? "stability",
+      selectedTaskType: taskType,
+      candidates: scored.map((s) => ({ task_type: s.candidate.task_type, score: s.score })),
+      stateVersion: await getBlueprintStateVersion(params.blueprintId),
+    });
+  }
+
   const requiredSkill = inferSkillFromActionType(
     ctx.action?.type ?? null,
     ctx.blueprint.current_domain,
@@ -1113,7 +1205,10 @@ export async function generate(params: {
     ctx.phase?.status === "active" && countActive === 0;
   let difficulty = selectDifficulty({
     difficulty_cap: enforcement.difficulty_cap,
+    difficulty_recommendation: ctx.capability.difficulty_recommendation,
     capability_level: ctx.capability.level,
+    execution_quality: ctx.capability.execution_quality,
+    consistency: ctx.capability.consistency,
     action_type: ctx.action?.type ?? undefined,
     generation_mode: genModeNorm,
     current_streak: ctx.capability.current_streak,

@@ -216,22 +216,13 @@ export async function moveEventToDLQ(params: {
   userId?: string;
   blueprintId?: string;
 }): Promise<void> {
-  await db.insert(deadLetterEvents).values({
-    original_event_id: params.eventId,
-    event_type: params.eventType,
-    blueprint_id: params.blueprintId ?? null,
-    user_id: params.userId ?? null,
-    payload: params.payload,
-    failure_reason: params.failureReason,
-    failure_class: "transient",
-    retry_count: params.retryCount,
-    resolution_status: "OPEN",
-  });
-
+  const { deadLetterEvent } = await import("../events/DeadLetterHandler.js");
   await db
     .update(events)
-    .set({ status: "dead_lettered" })
-    .where(eq(events.id, params.eventId));
+    .set({ retry_count: params.retryCount })
+    .where(eq(events.id, params.eventId))
+    .catch(() => null);
+  await deadLetterEvent(params.eventId, params.failureReason, params.failureReason, "transient");
 
   await emitEvent({
     eventType: EVENT_TYPES.DLQ_ITEM_CREATED,

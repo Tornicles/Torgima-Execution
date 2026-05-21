@@ -4,12 +4,15 @@ import {
   orders,
   behaviorPatterns,
   behaviorEvents,
+  capabilityProfiles,
+  inactivityRecords,
 } from "@workspace/db";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { getOpenFlags } from "../outcome/OutcomeValidationEngine.js";
 
-/** Spec / doc labels from Prompt 10 — stored in evidence_json.spec_label. */
+/** DOC_21 — full pattern spec labels (stored in evidence_json.spec_label). */
 export const PATTERN_SPEC_LABELS = [
   "CONSISTENT_EXECUTION",
   "DELAY_PATTERN",
@@ -20,9 +23,30 @@ export const PATTERN_SPEC_LABELS = [
   "ABANDONMENT_RISK",
   "FATIGUE_RISK",
   "VOLATILE_EXECUTION",
+  "DIFFICULTY_CEILING",
+  "RECOVERY_DEPENDENCE",
+  "FALSE_PROGRESS_PATTERN",
+  "FOCUS_DRIFT",
+  "BURNOUT_RISK",
 ] as const;
 
 export type PatternSpecLabel = (typeof PATTERN_SPEC_LABELS)[number];
+
+/** IL3 LAW 3 — minimum occurrences within the evidence window. */
+export const PATTERN_MIN_OCCURRENCES = 3;
+
+export const DOC21_PATTERN_TYPES = [
+  "procrastination",
+  "inconsistency",
+  "avoidance",
+  "fake_completion",
+  "difficulty_ceiling",
+  "task_type_avoidance",
+  "burnout",
+  "recovery_dependence",
+  "false_progress",
+  "focus_drift",
+] as const;
 
 type DbPatternType =
   | "procrastination"
@@ -33,30 +57,66 @@ type DbPatternType =
   | "low_reflection"
   | "blocker_repetition"
   | "inactivity"
-  | "score_inflation";
+  | "score_inflation"
+  | "difficulty_ceiling"
+  | "task_type_avoidance"
+  | "recovery_dependence"
+  | "false_progress"
+  | "focus_drift";
 
 function mapSpecLabelToDbType(label: PatternSpecLabel): DbPatternType {
   const m: Record<PatternSpecLabel, DbPatternType> = {
-    CONSISTENT_EXECUTION:  "score_inflation",
-    DELAY_PATTERN:         "procrastination",
-    DIFFICULTY_FAILURE:    "blocker_repetition",
-    TASK_TYPE_AVOIDANCE:   "avoidance",
-    LOW_VALUE_COMPLETION:  "fake_completion",
-    RECOVERY_SUCCESS:      "inconsistency",
-    ABANDONMENT_RISK:      "inactivity",
-    FATIGUE_RISK:          "burnout",
-    VOLATILE_EXECUTION:    "inconsistency",
+    CONSISTENT_EXECUTION: "score_inflation",
+    DELAY_PATTERN: "procrastination",
+    DIFFICULTY_FAILURE: "blocker_repetition",
+    TASK_TYPE_AVOIDANCE: "task_type_avoidance",
+    LOW_VALUE_COMPLETION: "fake_completion",
+    RECOVERY_SUCCESS: "inconsistency",
+    ABANDONMENT_RISK: "inactivity",
+    FATIGUE_RISK: "burnout",
+    VOLATILE_EXECUTION: "inconsistency",
+    DIFFICULTY_CEILING: "difficulty_ceiling",
+    RECOVERY_DEPENDENCE: "recovery_dependence",
+    FALSE_PROGRESS_PATTERN: "false_progress",
+    FOCUS_DRIFT: "focus_drift",
+    BURNOUT_RISK: "burnout",
   };
   return m[label];
 }
 
+const FATIGUE_RISK_SCORE: Record<string, number> = {
+  low: 0.2,
+  moderate: 0.5,
+  high: 0.75,
+  critical: 0.9,
+};
+
+export function meetsPatternThreshold(count: number, min = PATTERN_MIN_OCCURRENCES): boolean {
+  return count >= min;
+}
+
+/** IL3 — burnout signal count from execution window (read-only intelligence). */
+export function countBurnoutSignals(input: {
+  failureRate: number;
+  inactivityCount: number;
+  lateCount: number;
+  fatigueRiskScore: number;
+}): number {
+  return [
+    input.failureRate >= 0.5,
+    input.inactivityCount >= 3,
+    input.lateCount >= 4,
+    input.fatigueRiskScore >= 0.7,
+  ].filter(Boolean).length;
+}
+
 export async function scanPatterns(params: {
-  userId:      string;
+  userId: string;
   blueprintId: string;
   windowDays?: number;
-}): Promise<{ patternsDetected: number; fatigueRisk: string }> {
-  const window = params.windowDays ?? 7;
-  const since  = new Date(Date.now() - window * 86400000);
+}): Promise<{ patternsDetected: number; fatigueRisk: string; burnoutRisk: boolean }> {
+  const window = params.windowDays ?? 14;
+  const since = new Date(Date.now() - window * 86400000);
 
   const feedbackRows = await db
     .select({
@@ -67,6 +127,9 @@ export async function scanPatterns(params: {
       friction_score: feedback.friction_score,
       confidence_score: feedback.confidence_score,
       order_id: feedback.order_id,
+      late_penalty_applied: feedback.late_penalty_applied,
+      gaming_flag: feedback.gaming_flag,
+      reflection: feedback.reflection,
       taskDifficulty: orders.difficulty,
       taskType: orders.task_type,
     })
@@ -96,60 +159,90 @@ export async function scanPatterns(params: {
   const patterns: PatternSpecLabel[] = [];
 
   const consistentCount = feedbackRows.filter(
-    f => f.completion_status === "completed" && (f.score ?? 0) >= 7,
+    (f) => f.completion_status === "completed" && (f.score ?? 0) >= 7,
   ).length;
-  if (consistentCount >= 5) patterns.push("CONSISTENT_EXECUTION");
+  if (meetsPatternThreshold(consistentCount)) patterns.push("CONSISTENT_EXECUTION");
 
-  const delayCount = orderRows.filter(o => {
+  const delayCount = orderRows.filter((o) => {
     if (!o.started_at) return false;
     const startDelay = (o.started_at.getTime() - o.created_at.getTime()) / 3600000;
     return startDelay > 24;
   }).length;
-  if (delayCount >= 3) patterns.push("DELAY_PATTERN");
+  if (meetsPatternThreshold(delayCount)) patterns.push("DELAY_PATTERN");
+
+  const lateCount = feedbackRows.filter((f) => f.late_penalty_applied).length;
 
   const difficultyFailures = feedbackRows.filter(
-    f =>
+    (f) =>
       f.completion_status === "failed" &&
       ["hard", "very_hard"].includes((f.taskDifficulty as string) ?? ""),
   ).length;
-  if (difficultyFailures >= 3) patterns.push("DIFFICULTY_FAILURE");
+  if (meetsPatternThreshold(difficultyFailures)) patterns.push("DIFFICULTY_FAILURE");
+
+  const sameDifficultyFails = feedbackRows.filter(
+    (f) => f.completion_status === "failed" && f.taskDifficulty === "hard",
+  ).length;
+  if (meetsPatternThreshold(sameDifficultyFails)) patterns.push("DIFFICULTY_CEILING");
 
   const lowValue = feedbackRows.filter(
-    f => f.completion_status === "completed" && (f.score ?? 0) < 5,
+    (f) => f.completion_status === "completed" && (f.score ?? 0) < 5,
   ).length;
-  if (lowValue >= 4) patterns.push("LOW_VALUE_COMPLETION");
+  if (meetsPatternThreshold(lowValue)) patterns.push("LOW_VALUE_COMPLETION");
 
   const avoidance = feedbackRows.filter(
-    f =>
+    (f) =>
       f.taskType === "execution" &&
       (f.completion_status === "skipped" || f.completion_status === "failed"),
   ).length;
-  if (avoidance >= 4) patterns.push("TASK_TYPE_AVOIDANCE");
+  if (meetsPatternThreshold(avoidance)) patterns.push("TASK_TYPE_AVOIDANCE");
+
+  const recoveryOrders = orderRows.filter((o) => o.task_type === "recovery").length;
+  const executionOrders = orderRows.filter((o) => o.task_type === "execution").length;
+  if (
+    meetsPatternThreshold(recoveryOrders) &&
+    executionOrders < Math.max(1, Math.floor(recoveryOrders / 2))
+  ) {
+    patterns.push("RECOVERY_DEPENDENCE");
+  }
+
+  const openFalseProgress = await getOpenFlags(params.blueprintId);
+  if (openFalseProgress.length > 0) patterns.push("FALSE_PROGRESS_PATTERN");
+
+  const driftHints = feedbackRows.filter((f) => {
+    const r = (f.reflection ?? "").toLowerCase();
+    return (
+      f.completion_status === "completed" &&
+      (r.includes("off track") || r.includes("wrong goal") || r.includes("not aligned"))
+    );
+  }).length;
+  if (meetsPatternThreshold(driftHints)) patterns.push("FOCUS_DRIFT");
 
   if (feedbackRows.length >= 6) {
     const mid = Math.floor(feedbackRows.length / 2);
-    const firstHalf  = feedbackRows.slice(0, mid);
+    const firstHalf = feedbackRows.slice(0, mid);
     const secondHalf = feedbackRows.slice(mid);
     const rateFirst =
-      firstHalf.filter(f => f.completion_status === "completed").length /
+      firstHalf.filter((f) => f.completion_status === "completed").length /
       Math.max(1, firstHalf.length);
     const rateSecond =
-      secondHalf.filter(f => f.completion_status === "completed").length /
+      secondHalf.filter((f) => f.completion_status === "completed").length /
       Math.max(1, secondHalf.length);
     if (Math.abs(rateFirst - rateSecond) >= 0.3) patterns.push("VOLATILE_EXECUTION");
   }
 
   const last3Days = new Date(Date.now() - 3 * 86400000);
-  const recentActivity = feedbackRows.filter(f => f.created_at >= last3Days).length;
-  const priorActivity  = feedbackRows.filter(f => f.created_at < last3Days).length;
-  if (recentActivity === 0 && priorActivity >= 3) patterns.push("ABANDONMENT_RISK");
+  const recentActivity = feedbackRows.filter((f) => f.created_at >= last3Days).length;
+  const priorActivity = feedbackRows.filter((f) => f.created_at < last3Days).length;
+  if (recentActivity === 0 && priorActivity >= PATTERN_MIN_OCCURRENCES) {
+    patterns.push("ABANDONMENT_RISK");
+  }
 
   if (feedbackRows.length >= 5) {
-    const hadFail = feedbackRows.some(f => f.completion_status === "failed");
+    const hadFail = feedbackRows.some((f) => f.completion_status === "failed");
     const tail = feedbackRows.slice(-3);
     const recovered =
       hadFail &&
-      tail.every(f => f.completion_status === "completed" && (f.score ?? 0) >= 7);
+      tail.every((f) => f.completion_status === "completed" && (f.score ?? 0) >= 7);
     if (recovered) patterns.push("RECOVERY_SUCCESS");
   }
 
@@ -159,7 +252,7 @@ export async function scanPatterns(params: {
       : 0;
   const failureRate =
     feedbackRows.length > 0
-      ? feedbackRows.filter(f => f.completion_status === "failed").length / feedbackRows.length
+      ? feedbackRows.filter((f) => f.completion_status === "failed").length / feedbackRows.length
       : 0;
   const avgConfidence =
     feedbackRows.length > 0
@@ -179,6 +272,37 @@ export async function scanPatterns(params: {
           : "LOW";
 
   if (["HIGH", "CRITICAL"].includes(fatigueRisk)) patterns.push("FATIGUE_RISK");
+
+  const [{ inactivityCount = 0 } = {}] = await db
+    .select({ inactivityCount: count() })
+    .from(inactivityRecords)
+    .where(
+      and(
+        eq(inactivityRecords.user_id, params.userId),
+        eq(inactivityRecords.blueprint_id, params.blueprintId),
+        gte(inactivityRecords.created_at, since),
+      ),
+    );
+
+  const [capability] = await db
+    .select({ fatigue_risk: capabilityProfiles.fatigue_risk })
+    .from(capabilityProfiles)
+    .where(eq(capabilityProfiles.user_id, params.userId))
+    .limit(1);
+
+  const fatigueRiskScore = FATIGUE_RISK_SCORE[capability?.fatigue_risk ?? "low"] ?? 0.2;
+  const burnoutSignalCount = countBurnoutSignals({
+    failureRate,
+    inactivityCount: Number(inactivityCount),
+    lateCount,
+    fatigueRiskScore,
+  });
+
+  let burnoutRisk = false;
+  if (burnoutSignalCount >= 3) {
+    burnoutRisk = true;
+    if (!patterns.includes("BURNOUT_RISK")) patterns.push("BURNOUT_RISK");
+  }
 
   let patternsDetected = 0;
 
@@ -201,27 +325,31 @@ export async function scanPatterns(params: {
       )
       .limit(1);
 
-    const sevRaw = patternType === "FATIGUE_RISK" ? fatigueRisk.toLowerCase() : "moderate";
+    const sevRaw =
+      patternType === "FATIGUE_RISK" || patternType === "BURNOUT_RISK"
+        ? fatigueRisk.toLowerCase()
+        : "moderate";
     const evidence = {
       spec_label: patternType,
       window_days: window,
       fatigue_risk_band: fatigueRisk,
+      burnout_signals: burnoutSignalCount,
     };
 
     if (!existing) {
       const [created] = await db
         .insert(behaviorPatterns)
         .values({
-          user_id:           params.userId,
-          blueprint_id:      params.blueprintId,
-          pattern_type:      dbType,
-          severity:          sevRaw,
-          confidence:        feedbackRows.length >= 7 ? 0.8 : 0.6,
-          frequency:         feedbackRows.length || 1,
-          status:            "active",
-          evidence_json:     evidence,
+          user_id: params.userId,
+          blueprint_id: params.blueprintId,
+          pattern_type: dbType,
+          severity: sevRaw,
+          confidence: feedbackRows.length >= 7 ? 0.8 : 0.6,
+          frequency: feedbackRows.length || 1,
+          status: "active",
+          evidence_json: evidence,
           first_detected_at: new Date(),
-          last_detected_at:  new Date(),
+          last_detected_at: new Date(),
         })
         .returning({ id: behaviorPatterns.id });
 
@@ -229,11 +357,11 @@ export async function scanPatterns(params: {
 
       if (created) {
         await db.insert(behaviorEvents).values({
-          user_id:      params.userId,
+          user_id: params.userId,
           blueprint_id: params.blueprintId,
-          pattern_id:   created.id,
-          event_type:   "pattern_detected",
-          data_json:    { spec_label: patternType, fatigue_risk: fatigueRisk },
+          pattern_id: created.id,
+          event_type: "pattern_detected",
+          data_json: { spec_label: patternType, fatigue_risk: fatigueRisk },
         });
       }
     } else {
@@ -241,36 +369,53 @@ export async function scanPatterns(params: {
         .update(behaviorPatterns)
         .set({
           last_detected_at: new Date(),
-          frequency:        existing.frequency + 1,
-          evidence_json:    evidence,
+          frequency: existing.frequency + 1,
+          evidence_json: evidence,
         })
         .where(eq(behaviorPatterns.id, existing.id));
     }
   }
 
+  if (burnoutRisk) {
+    await writeEvent({
+      eventType: EVENT_TYPES.FRICTION_ADAPTATION_REQUESTED,
+      entityType: "user",
+      entityId: params.userId,
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      payload: {
+        reason: "burnout_risk",
+        action: "reduce_difficulty",
+        reduce_task_count: true,
+      },
+      idempotencyKey: `burnout_adapt:${params.userId}:${Math.floor(Date.now() / 86400000)}`,
+    });
+  }
+
   if (["HIGH", "CRITICAL"].includes(fatigueRisk)) {
     await writeEvent({
-      eventType:      EVENT_TYPES.BURNOUT_RISK_DETECTED,
-      entityType:     "blueprint",
-      entityId:       params.blueprintId,
-      userId:         params.userId,
-      blueprintId:    params.blueprintId,
-      payload:        { risk_level: fatigueRisk, recommended_response: "reduce_load" },
+      eventType: EVENT_TYPES.BURNOUT_RISK_DETECTED,
+      entityType: "blueprint",
+      entityId: params.blueprintId,
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      payload: { risk_level: fatigueRisk, recommended_response: "reduce_load" },
       idempotencyKey: `burnout:${params.blueprintId}:${Math.floor(Date.now() / 3600000)}`,
-    }).catch(() => null);
+    });
   }
 
   logger.info(
     {
       blueprintId: params.blueprintId,
-      patterns:    patterns.join(", "),
+      patterns: patterns.join(", "),
       fatigueRisk,
-      detected:    patternsDetected,
+      burnoutRisk,
+      detected: patternsDetected,
     },
     "[PatternEngine] Scan complete",
   );
 
-  return { patternsDetected, fatigueRisk };
+  return { patternsDetected, fatigueRisk, burnoutRisk };
 }
 
 export async function resolvePattern(patternId: string, _reason?: string): Promise<void> {

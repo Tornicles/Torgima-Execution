@@ -5,6 +5,7 @@ import {
   conditions,
   behaviorPatterns,
   decisionTraces,
+  capabilityProfiles,
 } from "@workspace/db";
 import { and, count, eq, gte, like } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -32,7 +33,43 @@ export interface ClassificationResult {
   severity:            "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   repeatFailure:       boolean;
   correctionType:      string;
+  /** TaskGenerationEngine task_type (IL3). */
+  correctionTaskType:  string;
   evidenceSummary:     string;
+}
+
+/** Maps engine correction routes to order task_type values. */
+export function correctionTypeToTaskType(correctionType: string): string {
+  if (
+    correctionType.includes("clarification") ||
+    correctionType.includes("evidence_clarification")
+  ) {
+    return "clarification";
+  }
+  if (correctionType.includes("academy")) return "academy";
+  if (
+    correctionType.includes("blocker") ||
+    correctionType.includes("dependency") ||
+    correctionType.includes("external_wait")
+  ) {
+    return "blocker_resolution";
+  }
+  if (correctionType.includes("review") || correctionType.includes("priority")) return "review";
+  return "recovery";
+}
+
+export async function persistFailureClassificationOnFeedback(params: {
+  feedbackId: string;
+  primaryCategory: FailureCategory;
+  correctionTaskType: string;
+}): Promise<void> {
+  await db
+    .update(feedback)
+    .set({
+      failure_classification: params.primaryCategory,
+      failure_correction_type: params.correctionTaskType,
+    })
+    .where(eq(feedback.id, params.feedbackId));
 }
 
 function blockerKeys(nonNull: unknown): number {
@@ -80,15 +117,100 @@ export async function classifyFailure(params: {
     );
 
   if (!order || !fb) {
+    const correctionType = "clarification_task_requested";
     return {
       primaryCategory:     "CLARITY_FAILURE",
       secondaryCategories: [],
       confidence:          "LOW",
       severity:            "LOW",
       repeatFailure:       false,
-      correctionType:      "clarification_task_requested",
+      correctionType,
+      correctionTaskType:  correctionTypeToTaskType(correctionType),
       evidenceSummary:     "Insufficient data to classify",
     };
+  }
+
+  const blockerJson = fb.blocker_json as Record<string, unknown> | null;
+  const hadBlocker = blockerKeys(blockerJson) > 0;
+  const blockerType =
+    typeof blockerJson?.blocker_type === "string" ? blockerJson.blocker_type : undefined;
+
+  if (hadBlocker) {
+    const correctionType = "dependency_resolution_requested";
+    return {
+      primaryCategory:     "DEPENDENCY_FAILURE",
+      secondaryCategories: [],
+      confidence:          "HIGH",
+      severity:            "MEDIUM",
+      repeatFailure:       false,
+      correctionType,
+      correctionTaskType:  correctionTypeToTaskType(correctionType),
+      evidenceSummary:     `Blocker reported${blockerType ? `: ${blockerType}` : ""}`,
+    };
+  }
+
+  const [capability] = await db
+    .select({
+      current_difficulty: capabilityProfiles.current_difficulty,
+      fatigue_risk: capabilityProfiles.fatigue_risk,
+    })
+    .from(capabilityProfiles)
+    .where(eq(capabilityProfiles.user_id, params.userId))
+    .limit(1);
+
+  if (
+    order.difficulty === "hard" &&
+    capability?.current_difficulty === "easy" &&
+    fb.completion_status === "failed"
+  ) {
+    const correctionType = "academy_task_requested";
+    return buildClassifiedResult({
+      primaryCategory: "CAPABILITY_FAILURE",
+      correctionType,
+      confidence: "HIGH",
+      severity: "MEDIUM",
+      repeatFailure: false,
+      evidenceSummary: "Hard task failed while capability recommends easy difficulty",
+      blueprintId: params.blueprintId,
+      feedbackId: params.feedbackId,
+      orderId: params.orderId,
+      userId: params.userId,
+    });
+  }
+
+  if ((fb.score ?? 10) <= 2 && !hadBlocker) {
+    const correctionType = "clarification_task_requested";
+    return buildClassifiedResult({
+      primaryCategory: "CLARITY_FAILURE",
+      correctionType,
+      confidence: "HIGH",
+      severity: "LOW",
+      repeatFailure: false,
+      evidenceSummary: "Very low score without blocker — clarity failure",
+      blueprintId: params.blueprintId,
+      feedbackId: params.feedbackId,
+      orderId: params.orderId,
+      userId: params.userId,
+    });
+  }
+
+  if (
+    capability &&
+    (capability.fatigue_risk === "high" || capability.fatigue_risk === "critical")
+  ) {
+    const correctionType = "load_reduction_requested";
+    return buildClassifiedResult({
+      primaryCategory: "CAPACITY_FAILURE",
+      correctionType,
+      confidence: "MEDIUM",
+      severity: "MEDIUM",
+      repeatFailure: false,
+      evidenceSummary: "Elevated fatigue risk — capacity reduction",
+      blueprintId: params.blueprintId,
+      feedbackId: params.feedbackId,
+      orderId: params.orderId,
+      userId: params.userId,
+    });
   }
 
   const scores: Partial<Record<FailureCategory, number>> = {};
@@ -111,11 +233,6 @@ export async function classifyFailure(params: {
   const estimate = order.time_estimate_minutes ?? 30;
   if (duration > estimate * 2 && condition?.condition === "urgency") {
     scores.CAPACITY_FAILURE = (scores.CAPACITY_FAILURE ?? 0) + 0.5;
-  }
-
-  const blockerJson = fb.blocker_json as Record<string, unknown> | null;
-  if (blockerKeys(blockerJson) > 0) {
-    scores.DEPENDENCY_FAILURE = (scores.DEPENDENCY_FAILURE ?? 0) + 0.8;
   }
 
   const reflectionLower = (fb.reflection ?? "").toLowerCase();
@@ -214,6 +331,7 @@ export async function classifyFailure(params: {
     PROOF_FAILURE:       "evidence_clarification_requested",
   };
   const correctionType = correctionMap[primaryCategory] ?? "clarification_task_requested";
+  const correctionTaskType = correctionTypeToTaskType(correctionType);
 
   await traceDecision({
     blueprintId:  params.blueprintId,
@@ -244,6 +362,66 @@ export async function classifyFailure(params: {
     severity,
     repeatFailure,
     correctionType,
+    correctionTaskType,
     evidenceSummary: `${primaryCategory} detected with ${confidence} confidence`,
   };
 }
+
+async function buildClassifiedResult(params: {
+  primaryCategory: FailureCategory;
+  correctionType: string;
+  confidence: ClassificationResult["confidence"];
+  severity: ClassificationResult["severity"];
+  repeatFailure: boolean;
+  evidenceSummary: string;
+  blueprintId: string;
+  feedbackId: string;
+  orderId: string;
+  userId: string;
+}): Promise<ClassificationResult> {
+  const correctionTaskType = correctionTypeToTaskType(params.correctionType);
+  await traceDecision({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    decisionType: "failure_classification",
+    contextType: "FEEDBACK",
+    contextId: params.feedbackId,
+    rationale: `${params.primaryCategory} (fast-path)`,
+    outcome: params.correctionType,
+    evidenceIds: [params.orderId, params.feedbackId],
+  }).catch(() => null);
+
+  return {
+    primaryCategory: params.primaryCategory,
+    secondaryCategories: [],
+    confidence: params.confidence,
+    severity: params.severity,
+    repeatFailure: params.repeatFailure,
+    correctionType: params.correctionType,
+    correctionTaskType,
+    evidenceSummary: params.evidenceSummary,
+  };
+}
+
+/** IL3 — class wrapper for DOC_22 wiring. */
+export class FailureClassificationEngine {
+  async classify(params: {
+    userId: string;
+    blueprintId: string;
+    orderId: string;
+    feedbackId: string;
+    hadBlocker?: boolean;
+    blockerType?: string;
+    completion?: string;
+    score?: number;
+  }): Promise<ClassificationResult> {
+    return classifyFailure({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      orderId: params.orderId,
+      feedbackId: params.feedbackId,
+    });
+  }
+}
+
+export const failureClassificationEngine = new FailureClassificationEngine();

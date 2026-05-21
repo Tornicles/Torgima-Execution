@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-base";
+import { sendMagicLink } from "@/lib/torgima-api";
+import { ApiError } from "@workspace/api-client-react";
 
 export default function LoginPage() {
   const [location] = useLocation();
@@ -42,30 +44,15 @@ export default function LoginPage() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/send-magic-link`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-
-      const raw = await res.text();
-      let data: { ok?: boolean; error?: { message?: string } };
-      try {
-        data = raw ? (JSON.parse(raw) as typeof data) : {};
-      } catch {
-        setError(
-          `The server replied with non-JSON (HTTP ${res.status}). Often this means VITE_API_BASE_URL points to the wrong host, or Railway returned an error page. Check DevTools → Network for the exact request URL.`,
-        );
+      await sendMagicLink({ email: email.trim().toLowerCase() });
+      setSent(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const msg =
+          (err.data as { error?: { message?: string } })?.error?.message ?? err.message;
+        setError(msg || "Failed to send link.");
         return;
       }
-
-      if (data.ok) {
-        setSent(true);
-      } else {
-        setError(data.error?.message ?? (res.ok ? "Failed to send link." : `Request failed (${res.status}).`));
-      }
-    } catch (err) {
       if (err instanceof TypeError) {
         setError(
           "Network error (browser blocked the request or the host is unreachable). Typical causes: CORS — set Railway FRONTEND_URL to https://torgima-execution.vercel.app (exact origin); or wrong VITE_API_BASE_URL; or http:// API URL on an https:// page (use https).",

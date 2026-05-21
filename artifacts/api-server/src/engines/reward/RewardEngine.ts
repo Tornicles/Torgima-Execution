@@ -39,16 +39,30 @@ async function resolveRewardKind(params: {
 
     if (!fb) return null;
     if (fb.validity !== "valid") return null;
+    if (fb.gaming_flag) return null;
+
+    const interrogation = fb.interrogation_json as { status?: string } | null;
+    if (
+      interrogation?.status === "pending" ||
+      interrogation?.status === "needs_interrogation"
+    ) {
+      return null;
+    }
 
     if (fb.completion_status === "failed" || fb.completion_status === "skipped") {
+      const hadBlocker =
+        Boolean(fb.blocker_json) &&
+        Object.keys((fb.blocker_json as Record<string, unknown>) ?? {}).length > 0;
+      if (hadBlocker) return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
       return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
     }
     if (fb.completion_status === "completed") {
-      const intensity =
-        (fb.score ?? 0) >= 8 ? "HIGH" : (fb.score ?? 0) >= 6 ? "MEDIUM" : "LOW";
+      const score = fb.weighted_score ?? fb.score ?? 0;
+      if (score < 6) return null;
+      const intensity = score >= 8 ? "HIGH" : score >= 6 ? "MEDIUM" : "LOW";
       return { rewardType: "COMPLETION", intensity };
     }
-    return { rewardType: "COMPLETION", intensity: "LOW" };
+    return null;
   }
 
   if (params.sourceType === "INACTIVITY") return { rewardType: "RECOVERY", intensity: "MEDIUM" };
@@ -112,6 +126,30 @@ const REWARD_MESSAGES: Record<
   },
 };
 
+async function maybeConsistencyReward(userId: string): Promise<{
+  rewardType: RewardType;
+  intensity: "LOW" | "MEDIUM" | "HIGH";
+} | null> {
+  const recent = await db
+    .select({ id: feedback.id, completion_status: feedback.completion_status, validity: feedback.validity, gaming_flag: feedback.gaming_flag })
+    .from(feedback)
+    .where(
+      and(
+        eq(feedback.user_id, userId),
+        eq(feedback.completion_status, "completed"),
+        eq(feedback.validity, "valid"),
+      ),
+    )
+    .orderBy(desc(feedback.created_at))
+    .limit(5);
+
+  const verified = recent.filter((r) => !r.gaming_flag);
+  if (verified.length >= 5) {
+    return { rewardType: "CONSISTENCY", intensity: "HIGH" };
+  }
+  return null;
+}
+
 export async function evaluateReward(params: {
   userId:           string;
   blueprintId?:   string;
@@ -120,31 +158,24 @@ export async function evaluateReward(params: {
   idempotencyKey: string;
   stateVersion:   number;
   causationEventId?: string;
+  sourceEventId?: string;
 }): Promise<{ rewardCreated: boolean; rewardId?: string; rewardType?: string }> {
   void params.stateVersion;
   void params.causationEventId;
 
-  const kind = await resolveRewardKind(params);
-  if (!kind) {
-    return { rewardCreated: false };
+  const sourceEventId = params.sourceEventId ?? params.sourceId;
+
+  const kinds: Array<{ rewardType: RewardType; intensity: "LOW" | "MEDIUM" | "HIGH" }> = [];
+  const primary = await resolveRewardKind(params);
+  if (primary) kinds.push(primary);
+
+  if (params.sourceType === "FEEDBACK") {
+    const streak = await maybeConsistencyReward(params.userId);
+    if (streak) kinds.push(streak);
   }
 
-  const { rewardType, intensity } = kind;
-  const idempotencyKey = rewardIdempotencyKey(
-    params.userId,
-    params.sourceType,
-    params.sourceId,
-    rewardType,
-  );
-
-  const [existing] = await db
-    .select()
-    .from(rewardEvents)
-    .where(eq(rewardEvents.idempotency_key, idempotencyKey))
-    .limit(1);
-
-  if (existing) {
-    return { rewardCreated: false, rewardId: existing.id, rewardType: existing.reward_type };
+  if (kinds.length === 0) {
+    return { rewardCreated: false };
   }
 
   if (params.blueprintId) {
@@ -183,64 +214,141 @@ export async function evaluateReward(params: {
     conditionName = condition?.condition ?? "stability";
   }
 
-  let effectiveIntensity = intensity;
-  if (
-    conditionName === "danger" &&
-    !["RECOVERY", "HONEST_FAILURE"].includes(rewardType)
-  ) {
-    effectiveIntensity = "LOW";
-  }
+  let createdId: string | undefined;
+  let createdType: string | undefined;
+  let anyCreated = false;
 
-  const effectiveMessage =
-    REWARD_MESSAGES[rewardType][
-      effectiveIntensity.toLowerCase() as "low" | "medium" | "high"
-    ];
+  for (const { rewardType, intensity } of kinds) {
+    const idempotencyKey = rewardIdempotencyKey(
+      params.userId,
+      params.sourceType,
+      params.sourceId,
+      rewardType,
+    );
 
-  const [reward] = await db
-    .insert(rewardEvents)
-    .values({
-      user_id:      params.userId,
-      blueprint_id: params.blueprintId,
-      milestone_id: params.sourceType === "MILESTONE" ? params.sourceId : null,
-      idempotency_key: idempotencyKey,
-      reward_type:  rewardType,
-      title:        rewardType.replace(/_/g, " "),
-      description:  effectiveMessage,
-      ui_action:    params.idempotencyKey ? `idemp:${params.idempotencyKey}` : null,
-      delivered:    false,
-    })
-    .returning();
-
-  if (reward && rewardType === "MILESTONE" && params.blueprintId) {
-    const [m] = await db
-      .select({ title: milestones.title, description: milestones.description })
-      .from(milestones)
-      .where(and(eq(milestones.id, params.sourceId), eq(milestones.user_id, params.userId)))
+    const [existing] = await db
+      .select()
+      .from(rewardEvents)
+      .where(eq(rewardEvents.idempotency_key, idempotencyKey))
       .limit(1);
 
-    await notifyMilestoneAchieved({
-      userId:        params.userId,
-      blueprintId:   params.blueprintId,
-      milestoneId:   params.sourceId,
-      milestoneTitle: m?.title ?? "Milestone",
-      milestoneDesc: m?.description ?? undefined,
-    }).catch(() => null);
+    if (existing) {
+      createdId = existing.id;
+      createdType = existing.reward_type;
+      continue;
+    }
+
+    let effectiveIntensity = intensity;
+    if (
+      conditionName === "danger" &&
+      !["RECOVERY", "HONEST_FAILURE"].includes(rewardType)
+    ) {
+      effectiveIntensity = "LOW";
+    }
+
+    const effectiveMessage =
+      REWARD_MESSAGES[rewardType][
+        effectiveIntensity.toLowerCase() as "low" | "medium" | "high"
+      ];
+
+    const [reward] = await db
+      .insert(rewardEvents)
+      .values({
+        user_id: params.userId,
+        blueprint_id: params.blueprintId,
+        milestone_id: params.sourceType === "MILESTONE" ? params.sourceId : null,
+        idempotency_key: idempotencyKey,
+        reward_type: rewardType,
+        title: rewardType.replace(/_/g, " "),
+        description: effectiveMessage,
+        message: effectiveMessage,
+        reward_level:
+          effectiveIntensity === "HIGH"
+            ? "MAJOR"
+            : effectiveIntensity === "MEDIUM"
+              ? "NOTABLE"
+              : "MINOR",
+        intensity: effectiveIntensity,
+        source_event_id: sourceEventId,
+        ui_action: params.idempotencyKey ? `idemp:${params.idempotencyKey}` : null,
+        delivered: false,
+      })
+      .returning();
+
+    if (reward) {
+      anyCreated = true;
+      createdId = reward.id;
+      createdType = reward.reward_type;
+
+      if (rewardType === "MILESTONE" && params.blueprintId) {
+        const [m] = await db
+          .select({ title: milestones.title, description: milestones.description })
+          .from(milestones)
+          .where(and(eq(milestones.id, params.sourceId), eq(milestones.user_id, params.userId)))
+          .limit(1);
+
+        await notifyMilestoneAchieved({
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+          milestoneId: params.sourceId,
+          milestoneTitle: m?.title ?? "Milestone",
+          milestoneDesc: m?.description ?? undefined,
+        }).catch(() => null);
+      }
+
+      logger.info(
+        {
+          rewardId: reward.id,
+          rewardType,
+          intensity: effectiveIntensity,
+          sourceEventId,
+          userId: params.userId,
+        },
+        "[RewardEngine] Reward created",
+      );
+
+      if (rewardType === "COMPLETION" && params.sourceType === "FEEDBACK") {
+        const [fb] = await db
+          .select({
+            order_id: feedback.order_id,
+            weighted_score: feedback.weighted_score,
+            score: feedback.score,
+          })
+          .from(feedback)
+          .where(eq(feedback.id, params.sourceId))
+          .limit(1);
+
+        if (fb?.order_id) {
+          const score = fb.weighted_score ?? fb.score ?? 5;
+          const difficulty = score >= 8 ? 5 : score >= 6 ? 3 : 2;
+          const { tryAwardGamificationXp } = await import(
+            "../gamification/gamificationHooks.js"
+          );
+          void tryAwardGamificationXp({
+            userId: params.userId,
+            eventType: "order-completion",
+            sourceId: fb.order_id,
+            eventData: { difficulty },
+          });
+
+          const { onOrderCompleted } = await import(
+            "../integrations/integrationHooks.js"
+          );
+          void onOrderCompleted(params.userId, {
+            orderId: fb.order_id,
+            score,
+            feedbackId: params.sourceId,
+            blueprintId: params.blueprintId,
+          });
+        }
+      }
+    }
   }
 
-  logger.info(
-    {
-      rewardId:   reward?.id,
-      rewardType,
-      intensity:  effectiveIntensity,
-      userId:     params.userId,
-    },
-    "[RewardEngine] Reward created",
-  );
-
   return {
-    rewardCreated: true,
-    rewardId:      reward?.id,
-    rewardType,
+    rewardCreated: anyCreated,
+    rewardId: createdId,
+    rewardType: createdType,
   };
 }
 

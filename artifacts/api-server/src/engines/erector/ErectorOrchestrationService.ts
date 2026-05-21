@@ -1,61 +1,14 @@
 import { db, validations, validationArchetypeMaps } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { writeEvent } from "../../services/EventService.js";
+import { EventTypes } from "../../types/eventContracts.js";
 import { validatePayload } from "../../lib/validationPayloadSchemas.js";
-import type {
-  ArchetypeResolutionOutput,
-  ErectorValidationInput,
-  ErectorValidationResult,
-  TimeSimulationOutput,
-  ValidationPathOutput,
-} from "../../types/erector.js";
+import type { ErectorValidationInput, ErectorValidationResult } from "../../types/erector.js";
 import { resolveArchetype } from "./ArchetypeResolutionEngine.js";
 import { calculateAllScores } from "./ScoringEngine.js";
 import { buildErectorOutputs, ensureEconomicArchetypesSeeded } from "./ErectorIntelligenceBridge.js";
-import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
-
-function buildSimulations(input: ErectorValidationInput, scores: ReturnType<typeof calculateAllScores>): TimeSimulationOutput[] {
-  const base = scores.realityScore >= 7 ? 0.72 : scores.realityScore >= 4 ? 0.48 : 0.24;
-  return ["30d", "90d", "6m", "1yr"].map((timeframe, index) => ({
-    timeframe,
-    dailyTaskCount: { min: 1 + index, max: 2 + index * 2, average: 1.5 + index },
-    weeklyOutputRequirements: ["Produce proof assets", "Validate demand signal", "Submit execution feedback"],
-    estimatedRevenueTimeline: timeframe === "30d" ? "Validation, not dependable revenue." : "Possible after repeated proof and conversion tests.",
-    requiredCapitalBurn: Math.round(input.budgetAvailable * (0.15 + index * 0.1)),
-    executionIntensityLabel: index === 0 ? "very_high" : index === 1 ? "high" : "moderate",
-    probabilityOfReachingGoal: Number(Math.max(0.05, Math.min(0.9, base + index * 0.07)).toFixed(2)),
-    majorRiskPoints: ["Weak proof", "Distribution lag", "Budget/time mismatch"],
-    criticalSuccessFactors: ["Narrow segment", "Visible proof", "Weekly adaptation"],
-  }));
-}
-
-function path(pathType: ValidationPathOutput["pathType"], scores: ReturnType<typeof calculateAllScores>): ValidationPathOutput & Record<string, unknown> {
-  const adjusted = pathType === "adjusted";
-  const alternative = pathType === "alternative";
-  const disabled = scores.verdict === "pivot" && pathType === "current";
-  const probability = Math.max(0.05, Math.min(0.85, scores.realityScore / 10 + (adjusted ? 0.12 : alternative ? 0.18 : 0)));
-  return {
-    pathType,
-    type: pathType,
-    title: alternative ? "Alternative Path" : adjusted ? "Adjusted Path" : "Current Path",
-    description: alternative ? "Change the execution wedge before launch." : adjusted ? "Keep the goal but reduce scope and increase proof cadence." : "Execute the stated goal under current assumptions.",
-    summary: alternative ? "Pivot the first market or model." : adjusted ? "Modify scope before blueprint launch." : "Proceed with current assumptions.",
-    rationale: "Path generated from economy-adjusted validation scores.",
-    expectedOutcome: "Estimated progress depends on execution evidence and signal quality.",
-    riskLevel: scores.riskScore >= 7 ? "high" : scores.riskScore >= 4 ? "medium" : "low",
-    modifications: adjusted ? ["Narrow target customer", "Extend timeline", "Increase proof cadence"] : alternative ? ["Change wedge", "Lower capital exposure", "Validate demand first"] : [],
-    expectedDifficulty: scores.blueprintDifficultyScore >= 7 ? "high" : "moderate",
-    probabilityOfSuccess: Number(probability.toFixed(2)),
-    timelineAdjustment: adjusted ? "Add 30-60 days of validation time." : alternative ? "Restart with lower-risk wedge." : "Base timeframe retained.",
-    blueprintLevelRecommendation: scores.recommendedBlueprintLevel,
-    keyRisks: ["Demand uncertainty", "Execution consistency", "Trust-building delay"],
-    keyAdvantages: adjusted ? ["Lower risk", "Clearer market proof"] : alternative ? ["Avoids weakest assumptions"] : ["Fastest start"],
-    firstWeekActionsPreview: ["Define proof target", "Interview customer segment", "Ship first visible artifact"],
-    disabled,
-    disabledReason: disabled ? "Reality Score below 4.0. Current path cannot launch." : undefined,
-    planSkeleton: { plans: [{ name: "Reality-tested launch", description: "First execution plan from Erector output." }], targets: [{ name: "First proof signal", type: "primary" }] },
-  };
-}
+import { buildTimeSimulations, generatePaths } from "./PathEngine.js";
+import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
 function rowToResult(row: typeof validations.$inferSelect): ErectorValidationResult {
   return {
@@ -137,6 +90,16 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
 
   if (!created) throw new Error("Could not create Erector validation");
 
+  await writeEvent({
+    eventType: EventTypes.ERECTOR_VALIDATION_STARTED,
+    entityType: "validation",
+    entityId: created.id,
+    userId: input.userId,
+    blueprintId: input.blueprintId,
+    payload: { validationId: created.id },
+    idempotencyKey: `erector_validation_started:${created.id}`,
+  }).catch(() => null);
+
   const archetypeResolution = await resolveArchetype(input.location.country, input.location.city);
   await db.update(validations).set({ archetype_resolution: archetypeResolution, validation_stage: "archetype_resolved" }).where(eq(validations.id, created.id));
   const persistedArchetypeMaps = [archetypeResolution.primaryArchetype, ...archetypeResolution.secondaryArchetypes]
@@ -154,11 +117,20 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     competitorAnalysis: outputs.competitorAnalysis,
     timingAnalysis: outputs.timingAnalysis,
   });
-  const simulations = buildSimulations(input, scores);
-  const paths = {
-    current: path("current", scores),
-    adjusted: path("adjusted", scores),
-    alternative: path("alternative", scores),
+  const simulations = await buildTimeSimulations(input, archetypeResolution, scores, created.id);
+  const paths = await generatePaths(input, archetypeResolution, scores, simulations, created.id);
+  const erectorPayload = {
+    archetype: archetypeResolution,
+    purpose: outputs.purposeDecomposition,
+    industry: outputs.industryIntelligence,
+    market: outputs.marketAnalysis,
+    competitors: outputs.competitorAnalysis,
+    economy: outputs.economyBriefing,
+    pain: outputs.customerPainAnalysis,
+    difficulty: outputs.executionDifficulty,
+    simulations,
+    paths,
+    scores,
   };
   const intelligencePayload = {
     erector: true,
@@ -209,22 +181,29 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
       launch_blocked: scores.verdict === "pivot",
       readiness: scores.verdict === "proceed" ? "ready_proceed" : scores.verdict === "adjust" ? "ready_with_adjustment" : "blocked_pivot",
       validation_stage: "complete",
+      erector_validation_stage: ErectorValidationStage.COMPLETE,
       status: ValidationStatus.COMPLETE,
       validation_kind: ValidationKind.ERECTOR,
       payload_version: 1,
+      erector_payload: erectorPayload,
       intelligence_payload: intelligencePayload,
     })
     .where(eq(validations.id, created.id))
     .returning();
 
   await writeEvent({
-    eventType: EVENT_TYPES.VALIDATION_COMPLETED,
+    eventType: EventTypes.ERECTOR_VALIDATION_COMPLETE,
     entityType: "validation",
     entityId: created.id,
     userId: input.userId,
     blueprintId: input.blueprintId,
-    payload: { validationId: created.id, realityScore: scores.realityScore, verdict: scores.verdict },
-    idempotencyKey: `erector_validation_completed:${created.id}`,
+    payload: {
+      validationId: created.id,
+      contract_id: created.contract_id,
+      realityScore: scores.realityScore,
+      verdict: scores.verdict,
+    },
+    idempotencyKey: `erector_complete:${created.id}`,
   }).catch(() => null);
 
   return rowToResult(complete ?? created);

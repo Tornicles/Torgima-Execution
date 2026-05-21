@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 import { AcademyOrderCard } from "@/components/execution/AcademyOrderCard";
 
 type AcademyTask = {
@@ -25,14 +25,9 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLoading(false);
-      return;
-    }
-    fetch(`${API_BASE_URL}/api/academy`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; data?: AcademyData }) => {
-        if (d.ok && d.data) setData(d.data);
+    apiGet<AcademyData>("/api/academy")
+      .then((d) => {
+        if (d) setData(d);
       })
       .finally(() => setLoading(false));
   }, []);

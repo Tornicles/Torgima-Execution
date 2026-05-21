@@ -14,6 +14,98 @@ export { BlueprintStatus, ApiOrderStatus as OrderStatus };
 
 type OrderStatus = (typeof ApiOrderStatus)[keyof typeof ApiOrderStatus];
 
+
+export type ApiSuccessEnvelopeData = { [key: string]: unknown };
+
+export type ApiSuccessEnvelopeMeta = { [key: string]: unknown };
+
+export interface ApiSuccessEnvelope {
+  ok: boolean;
+  data?: ApiSuccessEnvelopeData;
+  meta?: ApiSuccessEnvelopeMeta;
+}
+
+export type ExecutionFeedbackInputCompletionStatus =
+  (typeof ExecutionFeedbackInputCompletionStatus)[keyof typeof ExecutionFeedbackInputCompletionStatus];
+
+export const ExecutionFeedbackInputCompletionStatus = {
+  completed: "completed",
+  partial: "partial",
+  failed: "failed",
+  skipped: "skipped",
+} as const;
+
+export type ExecutionFeedbackInputProofJson = { [key: string]: unknown };
+
+export type ExecutionFeedbackInputBlockerJson = { [key: string]: unknown };
+
+export interface ExecutionFeedbackInput {
+  orderId: string;
+  blueprintId: string;
+  completionStatus: ExecutionFeedbackInputCompletionStatus;
+  /**
+   * @minimum 0
+   * @maximum 10
+   */
+  score?: number;
+  feedbackText?: string;
+  proofJson?: ExecutionFeedbackInputProofJson;
+  blockerJson?: ExecutionFeedbackInputBlockerJson;
+  idempotencyKey?: string;
+}
+
+export type OrderFeedbackInputCompletionStatus =
+  (typeof OrderFeedbackInputCompletionStatus)[keyof typeof OrderFeedbackInputCompletionStatus];
+
+export const OrderFeedbackInputCompletionStatus = {
+  completed: "completed",
+  partial: "partial",
+  failed: "failed",
+  skipped: "skipped",
+} as const;
+
+export type OrderFeedbackInputProofJson = { [key: string]: unknown };
+
+export type OrderFeedbackInputBlockerJson = { [key: string]: unknown };
+
+export interface OrderFeedbackInput {
+  completionStatus: OrderFeedbackInputCompletionStatus;
+  score: number;
+  reflection: string;
+  proofJson?: OrderFeedbackInputProofJson;
+  blockerJson?: OrderFeedbackInputBlockerJson;
+  idempotencyKey: string;
+  expectedStateVersion?: number;
+}
+
+export type OrderFeedbackResultVerdictStatus =
+  (typeof OrderFeedbackResultVerdictStatus)[keyof typeof OrderFeedbackResultVerdictStatus];
+
+export const OrderFeedbackResultVerdictStatus = {
+  accepted: "accepted",
+  needs_interrogation: "needs_interrogation",
+  rejected: "rejected",
+} as const;
+
+export type OrderFeedbackResultConfidence =
+  (typeof OrderFeedbackResultConfidence)[keyof typeof OrderFeedbackResultConfidence];
+
+export const OrderFeedbackResultConfidence = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export interface OrderFeedbackResult {
+  feedbackId: string;
+  verdictStatus: OrderFeedbackResultVerdictStatus;
+  weightedScore: number;
+  confidence: OrderFeedbackResultConfidence;
+  requiresInterrogation: boolean;
+  interrogationQuestion?: string;
+  eventId: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -723,4 +815,15 @@ export type GetBlueprintExecutionFeed200 = {
 
 export type GetValidationResultParams = {
   blueprintId: string;
+};
+
+export type AnswerFeedbackInterrogationBody = {
+  answer: string;
+  idempotencyKey?: string;
+};
+
+export type RequestExecutionHelpBody = { [key: string]: unknown };
+
+export type SendMagicLinkBody = {
+  email: string;
 };

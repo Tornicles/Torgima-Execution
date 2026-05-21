@@ -20,6 +20,14 @@ export const FEATURE_FLAGS = {
   CONTENT_ENGINE_ENABLED:      "content_engine_enabled",
   PREDICTIVE_SIGNALS_ENABLED:  "predictive_signals_enabled",
   EXTERNAL_INTEGRATIONS_ENABLED: "external_integrations_enabled",
+  PRINCIPLES_365_ENABLED:         "principles_365_enabled",
+  CALENDAR_ENABLED:               "calendar_enabled",
+  CHAT_ENABLED:                   "chat_enabled",
+  NOTIFICATIONS_MULTI_CHANNEL_ENABLED: "notifications_multi_channel_enabled",
+  GAMIFICATION_ENABLED:               "gamification_enabled",
+  MOBILE_APP_ENABLED:                 "mobile_app_enabled",
+  ANALYTICS_ENABLED:                  "analytics_enabled",
+  PUBLIC_PROFILES_ENABLED:            "public_profiles_enabled",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -30,6 +38,15 @@ const PHASE1_DEFAULT_ON: readonly FeatureFlagKey[] = [
   FEATURE_FLAGS.IDENTITY_SYSTEM_ENABLED,
   FEATURE_FLAGS.COMPULSION_LOOP_ENABLED,
   FEATURE_FLAGS.OUTCOME_VALIDATION_ENABLED,
+  FEATURE_FLAGS.PRINCIPLES_365_ENABLED,
+  FEATURE_FLAGS.CALENDAR_ENABLED,
+  FEATURE_FLAGS.CHAT_ENABLED,
+  FEATURE_FLAGS.NOTIFICATIONS_MULTI_CHANNEL_ENABLED,
+  FEATURE_FLAGS.GAMIFICATION_ENABLED,
+  FEATURE_FLAGS.MOBILE_APP_ENABLED,
+  FEATURE_FLAGS.ANALYTICS_ENABLED,
+  FEATURE_FLAGS.EXTERNAL_INTEGRATIONS_ENABLED,
+  FEATURE_FLAGS.PUBLIC_PROFILES_ENABLED,
 ];
 
 // Static pre-DB-lookup default. Real runtime checks should call

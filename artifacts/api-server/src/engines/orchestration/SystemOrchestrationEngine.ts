@@ -1,6 +1,8 @@
-import { db, events } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-import { logger } from "../../lib/logger.js";
+import {
+  acquireBlueprintLock,
+  releaseBlueprintLock,
+  blueprintLockKey,
+} from "./OrchestrationLock.js";
 
 const ENGINE_PRECEDENCE: Record<string, number> = {
   CONTROL_ENGINE:    1,
@@ -63,39 +65,14 @@ export async function acquireOrchestrationLock(params: {
   scope:       string;
   ttlMs?:      number;
 }): Promise<boolean> {
-  const lockKey = `lock:${params.blueprintId}:${params.scope}`;
-  const ttl = params.ttlMs ?? 5000;
-  const expiresAt = new Date(Date.now() + ttl);
-
-  const [inserted] = await db
-    .insert(events)
-    .values({
-      event_type:      "ORCHESTRATION_LOCK",
-      entity_type:     "blueprint",
-      entity_id:       params.blueprintId,
-      blueprint_id:    params.blueprintId,
-      idempotency_key: lockKey,
-      payload:         { scope: params.scope, expires_at: expiresAt.toISOString() },
-      process_after:   expiresAt,
-      status:          "claimed",
-    })
-    .onConflictDoNothing({ target: events.idempotency_key })
-    .returning({ id: events.id });
-
-  return !!inserted;
+  return acquireBlueprintLock(params.blueprintId, params.scope, params.ttlMs ?? 5000);
 }
 
 export async function releaseOrchestrationLock(params: {
   blueprintId: string;
   scope:       string;
 }): Promise<void> {
-  const lockKey = `lock:${params.blueprintId}:${params.scope}`;
-  try {
-    await db
-      .update(events)
-      .set({ status: "processed" })
-      .where(and(eq(events.idempotency_key, lockKey), eq(events.status, "claimed")));
-  } catch (err) {
-    logger.debug({ err }, "[Orchestration] release lock failed");
-  }
+  return releaseBlueprintLock(params.blueprintId, params.scope);
 }
+
+export { blueprintLockKey };

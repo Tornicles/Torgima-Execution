@@ -6,6 +6,7 @@ import { PromptRegistry, getContract, getContractByName } from "../../../bhudhi/
 import { OutputValidator, validateFromContract } from "../../../bhudhi/OutputValidator.js";
 import { FallbackLibrary, getFallback } from "../../../bhudhi/FallbackLibrary.js";
 import { getFallbackCoverageReport } from "../../../bhudhi/FallbackRegistry.js";
+import { mapBhudhiTriggerToRequestType } from "../../../bhudhi/bhudhiLogMapping.js";
 import { CORE_TRIGGER_TYPES } from "../../../bhudhi/schemas/outputSchemas.js";
 
 const CORE_TRIGGER_NAMES = [
@@ -120,5 +121,19 @@ describe("B2 advanced intelligence prompts (T4)", () => {
     expect(getContractByName("state.coaching.v1")).not.toBeNull();
     expect(getContractByName("goal.eis_extended.v1")).not.toBeNull();
     expect(getContractByName("task.simulation.v1")).not.toBeNull();
+  });
+});
+
+describe("B5 — bhudhi_logs request_type mapping", () => {
+  it("maps core triggers to legacy request_type enum values", () => {
+    expect(mapBhudhiTriggerToRequestType("GOAL_STRUCTURING")).toBe("goal_validation");
+    expect(mapBhudhiTriggerToRequestType("TASK_DRAFTING")).toBe("task_generation");
+    expect(mapBhudhiTriggerToRequestType("FEEDBACK_CLASSIFICATION")).toBe("feedback_interpretation");
+    expect(mapBhudhiTriggerToRequestType("CLARIFICATION_PROMPT")).toBe("feedback_interrogation");
+    expect(mapBhudhiTriggerToRequestType("RECOVERY_COPY")).toBe("recovery_suggestion");
+    expect(mapBhudhiTriggerToRequestType("STATE_EXPLANATION")).toBe("condition_explanation");
+    expect(
+      mapBhudhiTriggerToRequestType("STATE_EXPLANATION", { sourceEngine: "DASHBOARD" }),
+    ).toBe("dashboard_summary");
   });
 });

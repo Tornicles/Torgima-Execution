@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiGet } from "@/lib/torgima-api";
 
 interface LoopEvent {
   id: string;
@@ -29,15 +29,12 @@ export function ExecutionLoopTimeline({ blueprintId }: { blueprintId?: string | 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!API_BASE_URL || !blueprintId) return;
+    if (!blueprintId) return;
     setLoading(true);
-    void fetch(`${API_BASE_URL}/api/blueprints/${blueprintId}/execution-feed?limit=40`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
-      .then((body: { ok?: boolean; data?: { events?: LoopEvent[] } }) => {
-        if (body.ok && body.data?.events) {
-          const filtered = body.data.events.filter((e) => LOOP_EVENT_TYPES.has(e.eventType));
+    void apiGet<{ events?: LoopEvent[] }>(`/api/blueprints/${blueprintId}/execution-feed?limit=40`)
+      .then((body) => {
+        if (body?.events) {
+          const filtered = body.events.filter((e) => LOOP_EVENT_TYPES.has(e.eventType));
           setEvents(filtered);
         }
       })

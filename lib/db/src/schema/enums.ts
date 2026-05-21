@@ -147,6 +147,8 @@ export const fatigueRiskEnum = pgEnum("fatigue_risk", ["low", "moderate", "high"
 export const behaviorPatternTypeEnum = pgEnum("behavior_pattern_type", [
   "procrastination", "burnout", "inconsistency", "avoidance", "fake_completion",
   "low_reflection", "blocker_repetition", "inactivity", "score_inflation",
+  "difficulty_ceiling", "task_type_avoidance", "recovery_dependence",
+  "false_progress", "focus_drift",
 ]);
 export const behaviorPatternStatusEnum = pgEnum("behavior_pattern_status", [
   "active", "resolved", "ignored", "monitoring",

@@ -11,13 +11,25 @@
 
 import { describe, it, expect } from "vitest";
 import { EVENT_TYPES } from "../../../services/EventService.js";
+import { assertEventQueueContract } from "../../../types/eventContracts.js";
 import { enterLoop } from "../../../engines/execution-loop/ExecutionLoopEngine.js";
 import { startDailyLoopScheduler, runDailyLoopsForAllActiveBlueprints } from "../../../engines/execution-loop/DailyLoopEngine.js";
 import { answerInterrogation } from "../../../engines/feedback/InterrogationService.js";
-import { applyMutation, getCurrentStateVersion, incrementStateVersion } from "../../../services/StateMutationService.js";
+import {
+  applyMutation,
+  getCurrentStateVersion,
+  incrementStateVersion,
+  mutate,
+} from "../../../services/StateMutationService.js";
 import { runIntegrityChecks, processFindings, getUserFacingHealthState } from "../../../services/SystemHealthService.js";
 
 describe("Execution loop — basic chain assertions", () => {
+  it("GAP G1: event emitter → worker queue contract has no mismatches", () => {
+    const { ok, mismatches } = assertEventQueueContract();
+    expect(ok).toBe(true);
+    expect(mismatches).toEqual([]);
+  });
+
   it("event type constants cover the full chain", () => {
     const chain = [
       EVENT_TYPES.FEEDBACK_SUBMITTED,
@@ -41,6 +53,7 @@ describe("Execution loop — basic chain assertions", () => {
 
   it("StateMutationService exports the documented surface", () => {
     expect(typeof applyMutation).toBe("function");
+    expect(typeof mutate).toBe("function");
     expect(typeof getCurrentStateVersion).toBe("function");
     expect(typeof incrementStateVersion).toBe("function");
   });

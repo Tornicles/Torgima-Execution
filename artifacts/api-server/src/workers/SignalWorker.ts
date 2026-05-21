@@ -11,7 +11,9 @@ import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { aggregateAndPersistTeamSignal } from "../engines/blueprint/infrastructure/TeamSignalAggregationService.js";
 
-export const SIGNAL_QUEUE = "signal_recalculation_requested";
+import { WorkerQueues } from "../types/eventContracts.js";
+
+export const SIGNAL_QUEUE = WorkerQueues.SIGNAL_RECALCULATION;
 
 function operationalMathExcerpt(om: OperationalMathematicsDocument): Record<string, unknown> {
   const s = om.scores;

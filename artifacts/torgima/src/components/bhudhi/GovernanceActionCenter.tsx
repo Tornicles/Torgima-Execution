@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiPost } from "@/lib/torgima-api";
 
 export interface GovernanceProposalVm {
   id: string;
@@ -18,13 +18,10 @@ export function GovernanceActionCenter({
   if (!proposals?.length) return null;
 
   async function submit(id: string, action: "approve" | "reject") {
-    if (!API_BASE_URL) return;
-    await fetch(`${API_BASE_URL}/api/governance/${id}/${action}`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: action === "reject" ? JSON.stringify({ reason: "Dismissed from dashboard" }) : JSON.stringify({}),
-    }).catch(() => null);
+    await apiPost(
+      `/api/governance/${id}/${action}`,
+      action === "reject" ? { reason: "Dismissed from dashboard" } : {},
+    ).catch(() => null);
     onChanged?.();
   }
 

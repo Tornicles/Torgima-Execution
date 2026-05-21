@@ -1,0 +1,1682 @@
+{
+  "generatedAt": "2026-05-21T17:55:38.246Z",
+  "routeCount": 335,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/:source",
+      "file": "webhooks.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/alignment-with-torgima/:blueprintId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/analytics/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/award-xp/:userId/:conceptId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/course/:courseId/chapters",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/course/:courseId/first-lesson",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/courses",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/create-learning-goal",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/daily-study-plan/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/dashboard/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/enroll/:courseId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/evaluate",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/generate-study-plan",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/generate-summary/:lessonId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/goals-for-torgima/:blueprintId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/learning-evidence/:userId/:date",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/learning-profile/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/learning-roadmap/:goalId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/lessons/:lessonId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/lessons/:lessonId/complete",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/morning-section",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/my/analytics",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/my/daily-study-plan",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/my/dashboard",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/my/learning-profile",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/my/recommendations",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/practice/:itemId/submit",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/practice/:lessonId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/progress/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/recommend-courses/:blueprintId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/recommendations/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/router",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/schedule-review/:conceptId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/schedule-study-session",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/skills",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/suggest-learning-for-order/:orderId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/sync-calendar/:studySessionId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/tutor-chat/ask",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/weak-areas/:userId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/academy/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/benchmarks/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/analytics/compute",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/content/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard/academy/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard/content/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard/execution/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard/integrated/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard/principles/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/execution/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/analytics/export",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/failures/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/heatmap/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/insights/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/momentum/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/patterns/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/principles/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/principles/top-performing",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/velocity/:userId",
+      "file": "analytics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/explain-state",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/structure-goal",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprint/:id",
+      "file": "blueprintGeneration.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprint/:id/interpret",
+      "file": "blueprintGeneration.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprint/generate",
+      "file": "blueprintGeneration.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprint/generate-ready/:userId",
+      "file": "blueprintGeneration.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprint/resolve-domain",
+      "file": "blueprintGeneration.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/activate",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/behavior-patterns",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/command-center",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/complete",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/completion-status",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/completion-summary",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/configure-selection",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/domain-history",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/execution-feed",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/framework-activations",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/infrastructure",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/migrate-tier",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/pause",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/pause-status",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/pivot-review/:reviewId/dismiss",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/pivot-review/:reviewId/resolve",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/pivot-review/current",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/resume",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/state",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:id/strategy-review/request",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/features",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/history",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/selection-catalog",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/available-slots",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/check-conflicts",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/conflicts/:conflictId/resolve",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/conflicts/:userId",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/conflicts/unresolved",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/events",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/events",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/calendar/events/:eventId",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/calendar/events/:eventId",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/calendar/events/:eventId/reschedule",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/notifications/pending",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/notifications/subscribe",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/preferences",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/sync/order/:orderId",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/sync/principle-deadline",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/calendar/time-blocks",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/today",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/calendar/views/available",
+      "file": "calendar.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/capability",
+      "file": "intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/capability/history",
+      "file": "capability.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/character/current",
+      "file": "character.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/character/refresh",
+      "file": "character.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/chat/attachments",
+      "file": "chat.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/blockers",
+      "file": "chat.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/chat/blockers/:blockerId/resolve",
+      "file": "chat.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/chat/messages",
+      "file": "chat.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/messages",
+      "file": "chat.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/chat/search",
+      "file": "chat.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/chat/status",
+      "file": "chat.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/chat/voice/record",
+      "file": "chat.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/communication/filter",
+      "file": "communication.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/condition/current",
+      "file": "condition.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/conditions/current",
+      "file": "condition.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/content-guidance/today",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/execution/active-order",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/execution/feedback",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/execution/help",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/execution/history",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/execution/loop-status",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/execution/next-task",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/execution/session",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/:id/interrogation",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/feedback/:id/interrogation",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/habit-checkin",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/phase-checkpoint",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/task",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/weekly-review",
+      "file": "feedback.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/achievements",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/achievements/:userId",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/gamification/avatar/customize",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/avatar/templates",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/leaderboard",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/leaderboard/personal",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/profile",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/profile/:userId",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/rewards/available",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/rewards/earned",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/streaks/:userId",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/xp-ledger",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/gamification/xp-ledger/:userId",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/gamification/xp/award",
+      "file": "gamification.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/goals/create",
+      "file": "goals.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/goals/validate",
+      "file": "goals.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/governance/:blueprintId",
+      "file": "governance.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/governance/:blueprintId/history",
+      "file": "governance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/governance/:queueId/approve",
+      "file": "governance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/governance/:queueId/reject",
+      "file": "governance.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/health/current",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/health/schema",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/identity/current",
+      "file": "engagement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/identity/history",
+      "file": "identity.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/integrations/:integrationId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/:integrationId/sync",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/automation-flows",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/automation-flows",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/integrations/automation-flows/:flowId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/integrations/automation-flows/:flowId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/automation-flows/execute",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/calendar/conflicts",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/calendar/conflicts/:conflictId/resolve",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/connect/:integrationType",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/connected",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/discord/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/health-data",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/linkedin/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/notification-channels",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/slack/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/social/post/:postId/metrics",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/social/publish",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/social/sync-engagement",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/sync-history/:integrationId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/telegram/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/test/:integrationType",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/twitter/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/types",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/integrations/webhooks/:webhookId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/integrations/webhooks/logs/:webhookId",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/webhooks/register",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/webhooks/trigger",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/zapier/connect",
+      "file": "integrations.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/intelligence/blueprint/:id",
+      "file": "intelligence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/intelligence/blueprint/:id/refresh",
+      "file": "intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/intelligence/eis",
+      "file": "intelligence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/bhudhi/trigger",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/bhudhi/usage",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/blueprints/:id/complete",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/blueprints/:id/force-pause",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/dead-letter",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/dead-letter/:id/resolve",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/events/:id/cancel",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/events/:id/replay",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/events/dispatch",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/events/health",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/false-progress/:id/resolve",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/health/check",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/health/logs",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/identity/evaluate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/inactivity/scan",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/metrics",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/notifications/bounce",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/notifications/send",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/outcomes/validate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/rewards/evaluate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/signals/recalculate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/:domain/:actionType",
+      "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/logout",
+      "file": "auth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/loop/regenerate",
+      "file": "loop.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/me",
+      "file": "me.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me",
+      "file": "me.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/communication-profile",
+      "file": "communication.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/me/notification-preferences",
+      "file": "me.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/notification-preferences",
+      "file": "me.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/me/settings",
+      "file": "me.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/me/settings",
+      "file": "me.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/auth/verify",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/mobile/dashboard-summary",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/device-token",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/health-metrics",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/quick-feedback",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/sync/batch",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/mobile/wearable/connect",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/mobile/widget-data",
+      "file": "mobile.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/bounce",
+      "file": "webhooks.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/notifications/channels/:channelId",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/channels/connect/:channelType",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/channels/connected",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/delivery-history",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/do-not-disturb",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/do-not-disturb",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/history",
+      "file": "notifications.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/in-app",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/in-app/:id/read",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/preferences",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/notifications/preferences",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/send",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/subscribe",
+      "file": "notifications-delivery.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/unsubscribe",
+      "file": "notifications.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/onboarding/complete",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/onboarding/goal",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/onboarding/status",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/:id",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/block",
+      "file": "orders.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/:id/decision-trace",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/feedback",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/finish",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/pause",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/reset",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/resume",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/start",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/orders/:id/unblock",
+      "file": "orders.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/active",
+      "file": "orders.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/current",
+      "file": "orders.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/outcomes/:id/evidence",
+      "file": "engagement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/outcomes/current",
+      "file": "engagement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/outcomes/real",
+      "file": "engagement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/patterns",
+      "file": "intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-applications/:applicationId",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/principle-applications/:applicationId/freeze-streak",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-applications/history",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/principle-applications/submit",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-applications/today",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-profiles/:username",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-profiles/:username/entries",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-profiles/:username/streak",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-profiles/:username/widget",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/principle-profiles/settings",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principle-streaks/current",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principles/:dayNumber",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principles/all",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principles/my-accountability",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/principles/selection-log",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/principles/today",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:userId/widgets/:widgetType",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username/entries",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username/entries/:entryDate",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username/pledges",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username/share-metrics",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/:username/share-token",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/entries/:shareToken",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/entries/:shareToken/react",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/entries/:shareToken/view",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pledges",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/pledges/evaluate",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/settings",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/settings",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/social-links",
+      "file": "profiles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/published-content/:contentId/engagement",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/published-content/create",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/published-content/history",
+      "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/published-content/sync-engagement",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/rewards/current",
+      "file": "engagement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/rewards/history",
+      "file": "rewards.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/send-magic-link",
+      "file": "auth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/session",
+      "file": "auth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/signals/current",
+      "file": "signals.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/signals/history",
+      "file": "signals.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/social-accounts/connected",
+      "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/sources",
+      "file": "webhooks.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/state/dashboard",
+      "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/state/dashboard-intelligence",
+      "file": "state.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks/guarantee",
+      "file": "loop.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:id",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:id/first-week",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:id/select-path",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/archetypes",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/run",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/validation/:id/edit-inputs",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/:id/industry-intelligence",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/:id/result",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/validation/:id/select-path",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/:id/status",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/:id/timeline",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/validation/run",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/run",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/validation/start",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/verify",
+      "file": "auth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/workers/trigger-compression",
+      "file": "workers.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/workers/trigger-overnight",
+      "file": "workers.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/workers/trigger-world-state",
+      "file": "workers.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/world-model",
+      "file": "worldModel.ts"
+    }
+  ],
+  "openApiPathCount": 323
+}

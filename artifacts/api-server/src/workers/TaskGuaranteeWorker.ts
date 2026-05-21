@@ -6,7 +6,9 @@ import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuarantee
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { logger } from "../lib/logger.js";
 
-export const TASK_GUARANTEE_QUEUE = "task_guarantee_check";
+import { WorkerQueues } from "../types/eventContracts.js";
+
+export const TASK_GUARANTEE_QUEUE = WorkerQueues.TASK_GUARANTEE;
 
 workerRegistry.register({
   name: "TaskGuaranteeWorker",
@@ -63,7 +65,19 @@ workerRegistry.register({
           return { success: true };
         }
 
-        const orderId = actionable?.id ?? orderIdFromPayload;
+        let orderId = actionable?.id ?? orderIdFromPayload;
+        if (orderId) {
+          const { resolvePublishableOrder } = await import(
+            "../engines/execution-loop/DependencyEngine.js"
+          );
+          const resolved = await resolvePublishableOrder({
+            blueprintId,
+            userId,
+            orderId,
+          });
+          orderId = resolved.orderId;
+        }
+
         await writeEvent({
           eventType: EVENT_TYPES.ORDER_AVAILABLE,
           entityType: "order",

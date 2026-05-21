@@ -4,10 +4,10 @@ import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { dispatchPendingEvents } from "../services/EventDispatcher.js";
 import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
-import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
 import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
 import { stopScheduledHealthChecks } from "../workers/HealthWorker.js";
+import { stopExecutionContinuitySchedulers } from "./ExecutionContinuityScheduler.js";
 import { startValidationWorkerSchedules } from "../workers/ValidationWorkers.js";
 import { runHealthCheck } from "../engines/health/SystemHealthEngine.js";
 
@@ -70,10 +70,6 @@ export function startProductionSchedulers(): void {
     }
   });
 
-  schedule(24 * 60 * 60 * 1000, "inactivity_check", async () => {
-    await scanForInactivity();
-  });
-
   schedule(24 * 60 * 60 * 1000, "pattern_scan", async () => {
     const active = await db
       .select({ id: blueprints.id, user_id: blueprints.user_id })
@@ -124,6 +120,7 @@ export function stopProductionSchedulers(): void {
   for (const t of timers) clearInterval(t);
   timers.length = 0;
   stopScheduledHealthChecks();
+  stopExecutionContinuitySchedulers();
 }
 
 export async function runDispatcherOnce(): Promise<number> {

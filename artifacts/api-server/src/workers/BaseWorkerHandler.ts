@@ -1,7 +1,10 @@
 import { db } from "@workspace/db";
-import { events, eventLogs, deadLetterEvents } from "@workspace/db";
+import { events, eventLogs } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { EventStatus } from "@workspace/state-machine";
 import { logger } from "../lib/logger.js";
+import { getMaxAttempts, getNextRunAfter } from "../engines/events/RetryPolicy.js";
+import { deadLetterEvent } from "../engines/events/DeadLetterHandler.js";
 
 export interface WorkerJobData {
   eventId: string;
@@ -46,7 +49,7 @@ export async function handleWorkerJob(
       await writeEventLog(data.eventId, workerName, "noop_duplicate", startedAt);
       await db
         .update(events)
-        .set({ status: "processed" })
+        .set({ status: EventStatus.PROCESSED })
         .where(eq(events.id, data.eventId))
         .catch(() => null);
       return;
@@ -57,7 +60,7 @@ export async function handleWorkerJob(
     if (result.success) {
       await db
         .update(events)
-        .set({ status: "processed" })
+        .set({ status: EventStatus.PROCESSED, processed_at: new Date() })
         .where(eq(events.id, data.eventId))
         .catch(() => null);
       await writeEventLog(data.eventId, workerName, "success", startedAt);
@@ -96,31 +99,22 @@ async function handleFailure(
 
   if (!event) return;
 
+  const maxRetries = event.maxRetries ?? getMaxAttempts(event.eventType);
   const nextRetryCount = event.retryCount + 1;
 
-  if (!result.retryable || nextRetryCount > event.maxRetries) {
-    // Dead-letter
+  if (!result.retryable || nextRetryCount > maxRetries) {
     await db
       .update(events)
-      .set({ status: "dead_lettered", retry_count: nextRetryCount })
+      .set({ retry_count: nextRetryCount })
       .where(eq(events.id, data.eventId))
       .catch(() => null);
 
-    await db
-      .insert(deadLetterEvents)
-      .values({
-        original_event_id: data.eventId,
-        event_type: event.eventType,
-        ...(data.blueprintId ? { blueprint_id: data.blueprintId } : {}),
-        ...(data.userId ? { user_id: data.userId } : {}),
-        payload: (event.payload as Record<string, unknown>) ?? {},
-        failure_reason: result.reason ?? "Unknown failure",
-        failure_class: result.retryable === false ? "permanent" : "transient",
-        resolution_status: "OPEN",
-        retry_count: nextRetryCount,
-        last_error: result.reason,
-      })
-      .catch(() => null);
+    await deadLetterEvent(
+      data.eventId,
+      result.reason ?? "Unknown failure",
+      result.reason ?? "Unknown failure",
+      result.retryable === false ? "permanent" : "transient",
+    );
 
     await writeEventLog(data.eventId, workerName, "dead_lettered", startedAt, result.reason);
     logger.error(
@@ -128,12 +122,11 @@ async function handleFailure(
       `[${workerName}] Dead-lettered`,
     );
   } else {
-    const backoffMs = Math.min(300_000, 1000 * 2 ** nextRetryCount);
-    const processAfter = new Date(Date.now() + backoffMs);
+    const processAfter = getNextRunAfter(event.eventType, event.retryCount);
     await db
       .update(events)
       .set({
-        status: "retry_pending",
+        status: EventStatus.RETRY_PENDING,
         retry_count: nextRetryCount,
         process_after: processAfter,
       })

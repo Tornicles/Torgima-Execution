@@ -5,11 +5,8 @@ import { db, feedback } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { scoreBurnoutRisk } from "../burnout/BurnoutDetectionEngine.js";
 import { validateFeedbackOutcome } from "../outcome/OutcomeValidationFeedbackEngine.js";
-import { classifyFailureWithRecord } from "../failure/FailureClassificationRecord.js";
 import { runPatternAnalysis } from "../pattern/PatternRecordsEngine.js";
 import { updateCharacterScores } from "../character/CharacterProgressionEngine.js";
-import { checkAndGenerateRewards } from "../reward/RewardSystemEngine.js";
-import { runIdentityUpdateFromRecent } from "../../bhudhi/agents/PsychologyAgent.js";
 
 export async function runPsychologyPostFeedback(params: {
   userId: string;
@@ -34,15 +31,7 @@ export async function runPsychologyPostFeedback(params: {
     }).catch(() => null);
   }
 
-  if (params.completionStatus === "failed" || params.completionStatus === "skipped") {
-    await classifyFailureWithRecord({
-      userId: params.userId,
-      blueprintId: params.blueprintId,
-      orderId: params.orderId,
-      feedbackId: params.feedbackId,
-      reflection: fb.reflection ?? "",
-    }).catch(() => null);
-  }
+  // IL3: failure classification runs in FeedbackWorker (required path, not swallowed).
 
   await runPatternAnalysis(params.userId, params.blueprintId).catch(() => null);
 
@@ -56,11 +45,7 @@ export async function runPsychologyPostFeedback(params: {
     await updateCharacterScores(params.userId).catch(() => null);
   }
 
-  await checkAndGenerateRewards(params.userId, {
-    consecutiveExecutionDays: fb.completion_status === "completed" ? 7 : 0,
-  }, params.blueprintId).catch(() => null);
-
-  await runIdentityUpdateFromRecent(params.userId).catch(() => null);
+  // IL1: identity + rewards run async via FeedbackWorker events (not inline).
 }
 
 export async function runPsychologyOvernight(userId: string, blueprintId?: string) {
@@ -69,10 +54,7 @@ export async function runPsychologyOvernight(userId: string, blueprintId?: strin
   if (isDayOfWeek("sunday") && blueprintId) {
     await runPatternAnalysis(userId, blueprintId).catch(() => null);
     await updateCharacterScores(userId).catch(() => null);
-    await checkAndGenerateRewards(userId, {}, blueprintId).catch(() => null);
   }
-
-  await runIdentityUpdateFromRecent(userId).catch(() => null);
 
   return { burnout };
 }

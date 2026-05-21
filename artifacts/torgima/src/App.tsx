@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/Layout";
 import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { getAuthSession } from "@/lib/torgima-api";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -34,6 +35,17 @@ const StrategyPage = lazy(() => import("@/pages/strategy"));
 const RecoveryPage = lazy(() => import("@/pages/recovery"));
 const CharacterPage = lazy(() => import("@/pages/character"));
 const KnowledgePage = lazy(() => import("@/pages/knowledge"));
+const AcademyLearnPage = lazy(() => import("@/pages/academy"));
+const CalendarPage = lazy(() => import("@/pages/calendar"));
+const ChatPage = lazy(() => import("@/pages/chat"));
+const GamificationPage = lazy(() => import("@/pages/gamification"));
+const AnalyticsPage = lazy(() => import("@/pages/analytics"));
+const IntegrationsPage = lazy(() => import("@/pages/integrations"));
+const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
+const PrincipleEntryPage = lazy(() => import("@/pages/principle-entry"));
+const ProfileSettingsPage = lazy(() => import("@/pages/profile-settings"));
+const ProfileWidgetPage = lazy(() => import("@/pages/profile-widget"));
+const ProfileDayPage = lazy(() => import("@/pages/profile-day"));
 const IntelligencePage = lazy(() => import("@/pages/intelligence"));
 
 setBaseUrl(API_BASE_URL || null);
@@ -59,16 +71,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       setLocation("/login");
       return;
     }
-    fetch(`${API_BASE_URL}/api/auth/session`, {
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("Not authenticated");
-        return r.json();
-      })
-      .then((data: { ok?: boolean; data?: { authenticated?: boolean } }) => {
-        if (data?.ok && data?.data?.authenticated) {
+    void getAuthSession()
+      .then((data) => {
+        if ((data as { authenticated?: boolean })?.authenticated) {
           setAuthenticated(true);
         } else {
           setLocation("/login");
@@ -135,6 +140,12 @@ const ProtectedStrategyPage = protect(StrategyPage);
 const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
+const ProtectedAcademyLearnPage = protect(AcademyLearnPage);
+const ProtectedCalendarPage = protect(CalendarPage);
+const ProtectedChatPage = protect(ChatPage);
+const ProtectedGamificationPage = protect(GamificationPage);
+const ProtectedAnalyticsPage = protect(AnalyticsPage);
+const ProtectedProfileSettingsPage = protect(ProfileSettingsPage);
 const ProtectedIntelligencePage = protect(IntelligencePage);
 
 function withAppLayout(Page: ComponentType) {
@@ -164,6 +175,13 @@ const StrategyRoute = withAppLayout(ProtectedStrategyPage);
 const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
+const AcademyLearnRoute = withAppLayout(ProtectedAcademyLearnPage);
+const CalendarRoute = withAppLayout(ProtectedCalendarPage);
+const ChatRoute = withAppLayout(ProtectedChatPage);
+const GamificationRoute = withAppLayout(ProtectedGamificationPage);
+const AnalyticsRoute = withAppLayout(ProtectedAnalyticsPage);
+const IntegrationsRoute = withAppLayout(ProtectedIntegrationsPage);
+const ProfileSettingsRoute = withAppLayout(ProtectedProfileSettingsPage);
 const IntelligenceRoute = withAppLayout(ProtectedIntelligencePage);
 
 function AppRoutes() {
@@ -194,6 +212,22 @@ function AppRoutes() {
         <Route path="/recovery" component={RecoveryRoute} />
         <Route path="/character" component={CharacterRoute} />
         <Route path="/knowledge" component={KnowledgeRoute} />
+        <Route path="/academy/lesson/:lessonId" component={AcademyLearnRoute} />
+        <Route path="/academy/course/:courseId" component={AcademyLearnRoute} />
+        <Route path="/academy/tutor" component={AcademyLearnRoute} />
+        <Route path="/academy/progress" component={AcademyLearnRoute} />
+        <Route path="/academy" component={AcademyLearnRoute} />
+        <Route path="/calendar" component={CalendarRoute} />
+        <Route path="/chat" component={ChatRoute} />
+        <Route path="/progress" component={GamificationRoute} />
+        <Route path="/gamification" component={GamificationRoute} />
+        <Route path="/analytics" component={AnalyticsRoute} />
+        <Route path="/integrations" component={IntegrationsRoute} />
+        <Route path="/profiles/:username/entry/:entryDate" component={ProfileDayPage} />
+        <Route path="/profiles/:username" component={PublicProfilePage} />
+        <Route path="/principles/entry/:shareToken" component={PrincipleEntryPage} />
+        <Route path="/widget/:widgetType/:userId" component={ProfileWidgetPage} />
+        <Route path="/settings/profile" component={ProfileSettingsRoute} />
         <Route path="/settings/skills" component={SettingsSkillsRoute} />
         <Route path="/settings" component={SettingsRoute} />
         <Route path="/blueprint/:id" component={BlueprintRoute} />

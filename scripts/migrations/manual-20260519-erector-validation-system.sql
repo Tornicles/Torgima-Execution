@@ -72,6 +72,8 @@ ALTER TABLE validations
   ADD COLUMN IF NOT EXISTS winner_analysis jsonb,
   ADD COLUMN IF NOT EXISTS first_week_plan jsonb,
   ADD COLUMN IF NOT EXISTS recommended_blueprint_level text,
+  ADD COLUMN IF NOT EXISTS erector_payload jsonb,
+  ADD COLUMN IF NOT EXISTS erector_validation_stage text DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS validation_stage text NOT NULL DEFAULT 'pending';
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_validations_idempotency_key ON validations(idempotency_key) WHERE idempotency_key IS NOT NULL;

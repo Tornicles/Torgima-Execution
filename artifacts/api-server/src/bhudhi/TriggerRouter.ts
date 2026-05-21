@@ -211,6 +211,7 @@ export async function routeBhudhiRequest<T = unknown>(
       userId: request.userId,
       blueprintId: request.blueprintId,
       triggerType: request.triggerType,
+      sourceEngine: request.sourceEngine,
       promptName: contract.name,
       promptVersion: contract.version,
       inputTokens: 0,
