@@ -37,6 +37,13 @@ async function bootstrap(): Promise<void> {
   });
 }
 
+process.on("unhandledRejection", (reason) => {
+  logger.error(
+    { err: reason instanceof Error ? reason : String(reason) },
+    "[SERVER] Unhandled promise rejection",
+  );
+});
+
 void bootstrap();
 
 async function shutdown(signal: string): Promise<void> {

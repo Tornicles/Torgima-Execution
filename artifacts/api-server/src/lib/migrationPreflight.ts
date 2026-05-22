@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "@workspace/db";
+import { runRuntimeSchemaPreflight } from "./verifySchema.js";
 import { logger } from "./logger.js";
 
 type JournalEntry = {
@@ -117,6 +118,25 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
     return failOrWarn(`Unapplied migrations detected: ${pending.join(", ")}`, result);
   }
 
-  logger.info(result, "[Preflight] All migrations applied. Database in sync.");
-  return result;
+  logger.info(result, "[Preflight] All Drizzle migrations applied.");
+
+  const schema = await runRuntimeSchemaPreflight();
+  if (!schema.ok) {
+    const detail = schema.missing.slice(0, 8).join("; ");
+    const suffix =
+      schema.missing.length > 8 ? ` (+${schema.missing.length - 8} more)` : "";
+    const message =
+      `Database schema is incomplete (${detail}${suffix}). ` +
+      "On Railway run: pnpm -F @workspace/db migrate && pnpm db:apply-manual (use DIRECT_URL for DDL), then redeploy.";
+    return failOrWarn(message, {
+      ok: false,
+      migrationsFolder,
+      available: entries.length,
+      applied,
+      pending: [...pending, ...schema.missing],
+    });
+  }
+
+  logger.info("[Preflight] Runtime schema tables present. Database in sync.");
+  return { ...result, ok: true };
 }

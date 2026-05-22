@@ -19,31 +19,47 @@ const CRITICAL_ISSUE_CODES = new Set([
   "CRITICAL",
 ]);
 
+function isMissingRelationError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /does not exist|relation .* does not exist|parserOpenTable/i.test(msg);
+}
+
 export async function isBlueprintExecutionLocked(blueprintId: string): Promise<{
   locked: boolean;
   issueCode?: string;
   message?: string;
 }> {
-  const rows = await db
-    .select({
-      check_type: systemHealthLogs.check_type,
-      severity: systemHealthLogs.severity,
-      message: systemHealthLogs.message,
-      details_json: systemHealthLogs.details_json,
-    })
-    .from(systemHealthLogs)
-    .where(
-      and(
-        eq(systemHealthLogs.blueprint_id, blueprintId),
-        inArray(systemHealthLogs.status, [...OPEN_STATUSES]),
-        or(
-          inArray(systemHealthLogs.severity, ["CRITICAL", "FATAL"]),
-          inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
-          sql`(${systemHealthLogs.details_json}->>'severity') IN ('CRITICAL', 'FATAL')`,
+  let rows: Array<{
+    check_type: string;
+    severity: string | null;
+    message: string | null;
+    details_json: unknown;
+  }>;
+  try {
+    rows = await db
+      .select({
+        check_type: systemHealthLogs.check_type,
+        severity: systemHealthLogs.severity,
+        message: systemHealthLogs.message,
+        details_json: systemHealthLogs.details_json,
+      })
+      .from(systemHealthLogs)
+      .where(
+        and(
+          eq(systemHealthLogs.blueprint_id, blueprintId),
+          inArray(systemHealthLogs.status, [...OPEN_STATUSES]),
+          or(
+            inArray(systemHealthLogs.severity, ["CRITICAL", "FATAL"]),
+            inArray(systemHealthLogs.check_type, ["FATAL", "CRITICAL"]),
+            sql`(${systemHealthLogs.details_json}->>'severity') IN ('CRITICAL', 'FATAL')`,
+          ),
         ),
-      ),
-    )
-    .limit(5);
+      )
+      .limit(5);
+  } catch (err) {
+    if (isMissingRelationError(err)) return { locked: false };
+    throw err;
+  }
 
   for (const row of rows) {
     const sev =

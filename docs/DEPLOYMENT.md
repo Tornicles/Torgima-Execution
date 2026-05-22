@@ -116,14 +116,17 @@ Email never arrives (or the UI now shows a delivery error) means one of:
 
 **Note:** The Drizzle schema is the database authority. Schema changes must be generated into committed Drizzle migrations and applied with `migrate`; do not use `drizzle-kit push` or ad hoc SQL patch scripts in production.
 
-Before first boot:
+Before first boot (and after every schema change):
 
 ```bash
 pnpm -F @workspace/db check
 pnpm -F @workspace/db migrate
+pnpm db:apply-manual                   # required: most tables/columns live in scripts/migrations/manual-*.sql
 pnpm -F @workspace/db tsx src/seed.ts
 pnpm -F @workspace/db verify           # table count + indexes + flags — see lib/db/src/verify-db.ts for expected baselines
 ```
+
+On **Railway**, set **`DIRECT_URL`** (non-pooled Postgres URL) alongside **`DATABASE_URL`**, then use the repo `railway.json` start command (migrate → apply manual SQL → start API). If the service crashes with `parserOpenTable` / `relation does not exist`, the database never received the manual migrations — run `pnpm db:apply-manual` against production `DIRECT_URL` once, then redeploy.
 
 Run from any machine with `DATABASE_URL`. Seed is idempotent.
 

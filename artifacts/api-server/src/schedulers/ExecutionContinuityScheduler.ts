@@ -86,7 +86,8 @@ function scheduleMidnightUtcDailyCycle(): void {
 }
 
 export function startExecutionContinuitySchedulers(): void {
-  void runHourlyInactivityScan().catch(() => null);
+  // Do not run inactivity scan on boot — incomplete schemas used to crash the process
+  // (relation does not exist) before the HTTP server could serve traffic.
 
   timers.push(
     setInterval(() => {

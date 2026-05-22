@@ -177,6 +177,43 @@ export type SchemaHealthResult = {
   missing: string[];
 };
 
+/** Tables workers and schedulers touch on boot — must exist before the API stays up. */
+export const RUNTIME_REQUIRED_TABLES = [
+  "users",
+  "sessions",
+  "magic_link_tokens",
+  "validations",
+  "blueprints",
+  "plans",
+  "targets",
+  "phases",
+  "projects",
+  "actions",
+  "orders",
+  "feedback",
+  "signal_snapshots",
+  "conditions",
+  "enforcement_packages",
+  "state_memory",
+  "events",
+  "event_logs",
+  "dead_letter_events",
+  "system_health_logs",
+  "inactivity_records",
+  "capability_profiles",
+  "task_generation_logs",
+  "notification_logs",
+  "bhudhi_logs",
+] as const;
+
+export async function runRuntimeSchemaPreflight(): Promise<SchemaHealthResult> {
+  const missing: string[] = [];
+  for (const table of RUNTIME_REQUIRED_TABLES) {
+    if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
+  }
+  return { ok: missing.length === 0, missing };
+}
+
 async function hasTable(table: string): Promise<boolean> {
   const r = await pool.query(
     `SELECT 1 FROM information_schema.tables
@@ -255,29 +292,7 @@ export async function verifyBlueprintLaunchSchema(): Promise<SchemaVerifyResult>
 export async function checkSchemaHealth(): Promise<SchemaHealthResult> {
   const missing: string[] = [];
 
-  const requiredTables = [
-    "users",
-    "sessions",
-    "magic_link_tokens",
-    "validations",
-    "blueprints",
-    "plans",
-    "targets",
-    "phases",
-    "projects",
-    "actions",
-    "orders",
-    "feedback",
-    "signal_snapshots",
-    "condition_records",
-    "enforcement_packages",
-    "state_memory",
-    "events",
-    "capability_profiles",
-    "task_generation_logs",
-    "notification_logs",
-    "bhudhi_logs",
-  ];
+  const requiredTables = RUNTIME_REQUIRED_TABLES;
 
   for (const table of requiredTables) {
     if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
