@@ -53,10 +53,15 @@ workerRegistry.register({
           return { success: true };
         }
 
+        const loopPayload = data.payload as { execution_loop?: string } | undefined;
+        const executionLoop =
+          loopPayload?.execution_loop === "daily" ? "daily" : "primary";
+
         const result = await calculate({
           blueprintId,
           userId,
           causationEventId: data.eventId,
+          executionLoop,
         });
 
         await runFrameworkCycle({

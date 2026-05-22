@@ -4,12 +4,24 @@ import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { enterLoop } from "./ExecutionLoopEngine.js";
 import { scanForInactivity } from "../inactivity/InactivityDetectionEngine.js";
+import {
+  archetypeSignalWindowDays,
+  loadBlueprintArchetypeContext,
+} from "../erector/ArchetypeExecutionContext.js";
 
 /** Time-based loop: baseline signal recalc, inactivity scan, task refresh via full chain tail. */
 export async function runDailyLoopForBlueprint(
   blueprintId: string,
   userId: string,
 ): Promise<void> {
+  const archetype = await loadBlueprintArchetypeContext(blueprintId);
+  const timeMult = archetype?.archetypeTimeframeMult ?? 1.0;
+  const windowDays = archetypeSignalWindowDays(timeMult);
+  logger.info(
+    { blueprintId, timeMult, windowDays },
+    "[DailyLoop] Archetype timeframe pressure — rolling window days",
+  );
+
   await enterLoop({
     blueprintId,
     userId,

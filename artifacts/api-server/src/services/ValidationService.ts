@@ -23,7 +23,7 @@ import { recordValidationMemory } from "../engines/validation/ValidationMemorySe
 import { recordStrategicAssumptions } from "../engines/validation/AssumptionMonitoringService.js";
 import { validations as validationsTable } from "@workspace/db";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
-import { BlueprintStatus, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
 
 export async function getAiEnabled(): Promise<boolean> {
   const rows = await db
@@ -398,6 +398,32 @@ export const ValidationService = {
     if (row.user_id !== userId) throw new TorgimaError("FORBIDDEN", "Not your validation");
     if (row.blueprint_id !== blueprintId) {
       throw new TorgimaError("FORBIDDEN", "validation_contract_id does not belong to this blueprint");
+    }
+
+    if (row.validation_kind === ValidationKind.ERECTOR) {
+      const stage = row.erector_validation_stage ?? row.validation_stage;
+      if (stage !== ErectorValidationStage.COMPLETE && stage !== ValidationStatus.COMPLETE && stage !== "complete") {
+        throw new TorgimaError("VALIDATION_ERROR", "Erector validation must complete before blueprint launch.");
+      }
+      if (row.verdict === "blocked" || (row.reality_score != null && row.reality_score < 2.5)) {
+        throw new TorgimaError(
+          "VALIDATION_ERROR",
+          "Blueprint launch blocked: Reality Score below 2.5. Re-validate with a feasible goal.",
+        );
+      }
+      if (!row.selected_path) {
+        throw new TorgimaError("VALIDATION_ERROR", "Select a validation path before launching.");
+      }
+      if (row.verdict === "pivot" && row.selected_path !== "alternative") {
+        throw new TorgimaError(
+          "VALIDATION_ERROR",
+          "Blueprint launch blocked: Pivot Required. Select an alternative path or re-validate.",
+        );
+      }
+      if (row.verdict === "adjust" && row.selected_path === "current" && !row.adjusted_path_confirmed) {
+        throw new TorgimaError("VALIDATION_ERROR", "Confirm adjusted path before launch.");
+      }
+      return;
     }
 
     const intel = assertIntelligencePayload(row);

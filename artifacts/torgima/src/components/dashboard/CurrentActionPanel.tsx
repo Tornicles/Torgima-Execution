@@ -19,6 +19,10 @@ export function CurrentActionPanel({
   const difficulty = String(action?.difficulty ?? "moderate");
   const minutes = action?.timeEstimateMinutes as number | undefined;
   const proofRequired = Boolean(action?.proofRequired);
+  const generationReason =
+    (action?.generationReason as string | undefined) ??
+    (action?.generation_reason as string | undefined);
+  const isSmokeTestSeed = generationReason === "erector_first_week_seed";
 
   if (uiState === "PENDING_SYNC") {
     return (
@@ -84,6 +88,11 @@ export function CurrentActionPanel({
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Current action</p>
         <h2 className="text-xl font-bold text-gray-900 mt-1">{title}</h2>
         <div className="flex flex-wrap gap-2 mt-2">
+          {isSmokeTestSeed ? (
+            <span className="text-xs font-medium text-amber-600 uppercase tracking-wide">
+              Smoke Test — Week 1
+            </span>
+          ) : null}
           <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 capitalize">{difficulty}</span>
           {minutes != null && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">~{minutes} min</span>

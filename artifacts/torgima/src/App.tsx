@@ -23,6 +23,7 @@ import UnsubscribePage from "@/pages/unsubscribe";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
+const ValidationScoresPage = lazy(() => import("@/pages/validation-scores"));
 const BlueprintPage = lazy(() => import("@/pages/blueprint"));
 const BlueprintIndexPage = lazy(() => import("@/pages/blueprint-index"));
 const TaskPage = lazy(() => import("@/pages/task"));
@@ -127,6 +128,7 @@ function protect(Page: RoutePage) {
 }
 
 const ProtectedOnboarding = protect(Onboarding);
+const ProtectedValidationScores = protect(ValidationScoresPage);
 const ProtectedDashboard = protect(Dashboard);
 const ProtectedTaskPage = protect(TaskPage);
 const ProtectedFeedbackPage = protect(FeedbackPage);
@@ -163,6 +165,7 @@ function withAppLayout(Page: ComponentType) {
 
 /** Onboarding is a full-page flow (no app sidebar). */
 const OnboardingRoute = ProtectedOnboarding;
+const ValidationScoresRoute = ProtectedValidationScores;
 const DashboardRoute = withAppLayout(ProtectedDashboard);
 const TaskRoute = withAppLayout(ProtectedTaskPage);
 const FeedbackRoute = withAppLayout(ProtectedFeedbackPage);
@@ -199,7 +202,10 @@ function AppRoutes() {
         <Route path="/verify" component={VerifyPage} />
         <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
+        <Route path="/onboarding/goal" component={OnboardingRoute} />
         <Route path="/onboarding" component={OnboardingRoute} />
+        <Route path="/validation/scores" component={ValidationScoresRoute} />
+        <Route path="/validation" component={ValidationScoresRoute} />
         <Route path="/dashboard" component={DashboardRoute} />
         <Route path="/tasks/:orderId" component={TaskRoute} />
         <Route path="/execute" component={TaskRoute} />

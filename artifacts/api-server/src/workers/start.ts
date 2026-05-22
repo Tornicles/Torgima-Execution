@@ -21,6 +21,7 @@ import "./ValidationQueueWorker.js";
 import "./PatternScanWorker.js";
 import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";
+import "./ErectorEventWorkers.js";
 import { startCalendarNotificationPoller } from "./CalendarNotificationWorker.js";
 import { startNotificationDeliveryPoller } from "./NotificationDeliveryWorker.js";
 import { startAnalyticsPoller } from "./AnalyticsWorker.js";

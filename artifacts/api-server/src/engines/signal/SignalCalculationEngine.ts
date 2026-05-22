@@ -4,6 +4,12 @@ import { logger } from "../../lib/logger.js";
 import type { SignalMetrics as ExportedSignalMetrics } from "./SignalCalculationEngine.types.js";
 import type { OperationalMathematicsDocument } from "./SignalOperationalMathematicsEngine.js";
 import { computeOperationalMathematics } from "./SignalOperationalMathematicsEngine.js";
+import {
+  archetypeSignalWindowDays,
+  emitArchetypeContextMissingIfNeeded,
+  loadBlueprintArchetypeContext,
+} from "../erector/ArchetypeExecutionContext.js";
+import type { ExecutionLoopKind } from "../erector/ArchetypeExecutionContext.js";
 
 export type SignalMetrics = ExportedSignalMetrics;
 
@@ -59,6 +65,8 @@ export async function calculate(params: {
   blueprintId: string;
   userId: string;
   causationEventId?: string;
+  /** primary = feedback path; daily = midnight/daily loop signal refresh */
+  executionLoop?: ExecutionLoopKind;
 }): Promise<{
   snapshotId: string;
   condition: string;
@@ -67,9 +75,31 @@ export async function calculate(params: {
 }> {
   const now = new Date();
   const windowEnd = now;
-  const windowStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const bpArchetype = await loadBlueprintArchetypeContext(params.blueprintId);
+  const loopKind = params.executionLoop ?? "primary";
+  await emitArchetypeContextMissingIfNeeded({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    primaryArchetypeId: bpArchetype?.primaryArchetypeId,
+    loop: loopKind === "daily" ? "daily" : "primary",
+  });
+  const timeMult = bpArchetype?.archetypeTimeframeMult ?? 1.0;
+  const windowDays = archetypeSignalWindowDays(timeMult);
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  logger.info(
+    {
+      blueprint_id: params.blueprintId,
+      timeMult,
+      windowDays,
+      executionLoop: loopKind,
+    },
+    "[DailyLoop] Archetype timeframe window applied",
+  );
+
+  const windowStart = new Date(now.getTime() - windowMs);
   const priorEnd = windowStart;
-  const priorStart = new Date(priorEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const priorStart = new Date(priorEnd.getTime() - windowMs);
 
   const feedbackInWindow = await db
     .select()

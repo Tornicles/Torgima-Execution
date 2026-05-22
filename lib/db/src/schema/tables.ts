@@ -380,6 +380,11 @@ export const blueprints = pgTable(
     erector_validation_id: uuid("erector_validation_id"),
     primary_archetype_id: uuid("primary_archetype_id").references(() => economicArchetypes.id),
     reality_score: doublePrecision("reality_score"),
+    blueprint_tier: text("blueprint_tier"),
+    industry_state: text("industry_state"),
+    archetype_execution_mult: doublePrecision("archetype_execution_mult"),
+    archetype_timeframe_mult: doublePrecision("archetype_timeframe_mult"),
+    archetype_difficulty_adj: doublePrecision("archetype_difficulty_adj"),
     chosen_blueprint_level: text("chosen_blueprint_level"),
     economy_briefing_summary: text("economy_briefing_summary"),
     metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
@@ -857,6 +862,7 @@ export const feedback = pgTable(
   (t) => [
     index("idx_feedback_order_id").on(t.order_id),
     index("idx_feedback_blueprint_id").on(t.blueprint_id),
+    index("idx_feedback_blueprint_created_at").on(t.blueprint_id, t.created_at),
     index("idx_feedback_user_id").on(t.user_id),
   ],
 );

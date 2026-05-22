@@ -1,5 +1,9 @@
 import type { ArchetypeResolutionOutput, ErectorValidationInput } from "../../types/erector.js";
 
+function clamp(score: number): number {
+  return Math.max(0, Math.min(10, Number(score.toFixed(1))));
+}
+
 /** Rule-engine baseline when Bhudhi is unavailable or returns thin output. */
 export function buildDeterministicErectorPayload(
   input: ErectorValidationInput,
@@ -62,15 +66,49 @@ export function buildDeterministicErectorPayload(
     emotionalTriggers: economy.consumerBehaviorPatterns,
     underservedFrustrations: ["Generic solutions", "Unclear ROI", "Weak follow-through"],
   };
+  const technicalComplexity = Math.min(10, economy.digitalAdoption * 0.4 + (input.businessType === "online" ? 2 : 0));
+  const capitalRequirements = input.budgetAvailable < 500 ? 9 : input.budgetAvailable < 2500 ? 6.5 : 4;
+  const salesComplexity = Math.min(10, economy.corruptionIndex * 0.35 + economy.marketCompetitionDensity * 0.25);
+  const distributionDifficulty = Math.min(10, 11 - economy.infrastructureQuality);
+  const regulatoryBurden = Math.min(10, economy.corruptionIndex * 0.5 + (10 - economy.regulatoryOpenness) * 0.3);
+  const teamRequirements = input.currentResources.length < 2 ? 7 : 4;
+  const operationalComplexity = Math.min(10, economy.executionIntensityMultiplier * 2.5);
+  const overallDifficultyScore = clamp(
+    (technicalComplexity +
+      capitalRequirements +
+      salesComplexity +
+      distributionDifficulty +
+      regulatoryBurden +
+      teamRequirements +
+      operationalComplexity) /
+      7,
+  );
+  const timingVerdict =
+    industryIntelligence.industryState === "DECLINING" || industryIntelligence.industryState === "DANGEROUS"
+      ? "wrong"
+      : industryIntelligence.industryState === "SATURATED"
+        ? "risky"
+        : industryIntelligence.industryState === "GROWING" || industryIntelligence.industryState === "OPPORTUNISTIC"
+          ? "optimal"
+          : "acceptable";
+
   const executionDifficulty = {
+    technicalComplexity,
+    capitalRequirements,
+    timeToFirstRevenueDays: input.timeframe === "30d" ? 45 : input.timeframe === "90d" ? 30 : 21,
+    salesComplexity,
+    distributionDifficulty,
+    regulatoryBurden,
+    teamRequirements,
+    operationalComplexity,
+    overallDifficultyScore,
+    archetypeAdjustment: economy.blueprintDifficultyAdjustment,
+    timingVerdict,
+    timingRationale: `Industry state ${industryIntelligence.industryState} in ${economy.name} implies ${timingVerdict} entry timing.`,
     dailyIntensity: archetype.combinedExecutionIntensityMultiplier,
     infrastructureConstraint: economy.infrastructureQuality < 5,
     requiredProofCadence: "weekly",
-    difficultyLabel: economy.blueprintDifficultyAdjustment >= 2 ? "high" : "moderate",
-    skillGap: economy.blueprintDifficultyAdjustment >= 2 ? "high" : "moderate",
-    capitalRequirement: input.budgetAvailable < 2500 ? "constrained" : "adequate",
-    timeToRevenue: input.timeframe === "30d" ? "aggressive" : "staged",
-    regulatoryFriction: economy.corruptionIndex >= 7 ? "elevated" : "standard",
+    difficultyLabel: overallDifficultyScore >= 7 ? "high" : "moderate",
   };
   return {
     purposeDecomposition,

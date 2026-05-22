@@ -15,6 +15,14 @@ const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "validations", column: "tier" },
   { table: "blueprints", column: "tier" },
   { table: "blueprints", column: "mode" },
+  { table: "blueprints", column: "blueprint_tier" },
+  { table: "blueprints", column: "primary_archetype_id" },
+  { table: "blueprints", column: "reality_score" },
+  { table: "blueprints", column: "erector_validation_id" },
+  { table: "blueprints", column: "industry_state" },
+  { table: "blueprints", column: "archetype_execution_mult" },
+  { table: "blueprints", column: "archetype_timeframe_mult" },
+  { table: "blueprints", column: "archetype_difficulty_adj" },
   { table: "blueprints", column: "intelligence_depth" },
   { table: "blueprints", column: "selection_confirmed_at" },
   { table: "blueprints", column: "blueprint_config" },
@@ -211,6 +219,8 @@ export async function runRuntimeSchemaPreflight(): Promise<SchemaHealthResult> {
   for (const table of RUNTIME_REQUIRED_TABLES) {
     if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
   }
+  const columnHealth = await checkSchemaHealth();
+  if (!columnHealth.ok) missing.push(...columnHealth.missing);
   return { ok: missing.length === 0, missing };
 }
 
@@ -306,8 +316,14 @@ export async function checkSchemaHealth(): Promise<SchemaHealthResult> {
     { table: "blueprints", column: "tier" },
     { table: "blueprints", column: "mode" },
     { table: "blueprints", column: "state_version" },
+    { table: "blueprints", column: "blueprint_tier" },
+    { table: "blueprints", column: "primary_archetype_id" },
+    { table: "blueprints", column: "reality_score" },
+    { table: "blueprints", column: "erector_validation_id" },
     { table: "orders", column: "command_context" },
     { table: "orders", column: "content_hash" },
+    { table: "validations", column: "reality_score" },
+    { table: "validations", column: "erector_validation_stage" },
   ];
 
   for (const { table, column } of columnChecks) {

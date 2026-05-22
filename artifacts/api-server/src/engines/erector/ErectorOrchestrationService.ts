@@ -9,10 +9,12 @@ import { calculateAllScores } from "./ScoringEngine.js";
 import { buildErectorOutputs, ensureEconomicArchetypesSeeded } from "./ErectorIntelligenceBridge.js";
 import { buildTimeSimulations, generatePaths } from "./PathEngine.js";
 import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { emitArchetypeResolved } from "./emitErectorEvents.js";
 
 function rowToResult(row: typeof validations.$inferSelect): ErectorValidationResult {
   return {
     validationId: row.id,
+    validationContractId: row.contract_id,
     blueprintId: row.blueprint_id,
     validationStage: row.validation_stage ?? row.status,
     verdict: (row.verdict ?? "adjust") as ErectorValidationResult["verdict"],
@@ -74,6 +76,10 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
           status: ValidationStatus.RUNNING,
           validation_stage: ValidationStatus.RUNNING,
           tier: input.tier ?? null,
+          raw_goal: input.rawGoal,
+          purpose: input.purpose,
+          current_context: input.currentContext ?? null,
+          success_signal: input.successSignal ?? null,
           location_country: input.location.country,
           location_city: input.location.city,
           business_type: input.businessType,
@@ -102,6 +108,12 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
 
   const archetypeResolution = await resolveArchetype(input.location.country, input.location.city);
   await db.update(validations).set({ archetype_resolution: archetypeResolution, validation_stage: "archetype_resolved" }).where(eq(validations.id, created.id));
+  await emitArchetypeResolved({
+    validationId: created.id,
+    blueprintId: input.blueprintId,
+    userId: input.userId,
+    archetypeResolution,
+  });
   const persistedArchetypeMaps = [archetypeResolution.primaryArchetype, ...archetypeResolution.secondaryArchetypes]
     .filter((item) => !item.id.startsWith("seed-"))
     .map((item, index) => ({ validation_id: created.id, archetype_id: item.id, is_primary: index === 0 }));
@@ -178,8 +190,15 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
       winner_analysis: outputs.competitorAnalysis,
       recommended_blueprint_level: scores.recommendedBlueprintLevel,
       verdict: scores.verdict,
-      launch_blocked: scores.verdict === "pivot",
-      readiness: scores.verdict === "proceed" ? "ready_proceed" : scores.verdict === "adjust" ? "ready_with_adjustment" : "blocked_pivot",
+      launch_blocked: scores.verdict === "pivot" || scores.verdict === "blocked",
+      readiness:
+        scores.verdict === "proceed"
+          ? "ready_proceed"
+          : scores.verdict === "adjust"
+            ? "ready_with_adjustment"
+            : scores.verdict === "blocked"
+              ? "blocked_reality"
+              : "blocked_pivot",
       validation_stage: "complete",
       erector_validation_stage: ErectorValidationStage.COMPLETE,
       status: ValidationStatus.COMPLETE,
@@ -192,7 +211,7 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     .returning();
 
   await writeEvent({
-    eventType: EventTypes.ERECTOR_VALIDATION_COMPLETE,
+    eventType: EventTypes.ERECTOR_VALIDATION_COMPLETED,
     entityType: "validation",
     entityId: created.id,
     userId: input.userId,

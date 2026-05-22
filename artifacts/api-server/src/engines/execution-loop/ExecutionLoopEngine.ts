@@ -93,7 +93,7 @@ export async function enterLoop(params: LoopEntryParams): Promise<void> {
       break;
 
     case "daily_cycle":
-      await emitSignalRecalculation(blueprintId, userId, params.causationEventId);
+      await emitSignalRecalculation(blueprintId, userId, params.causationEventId, "daily");
       break;
 
     case "feedback_submitted":
@@ -144,6 +144,7 @@ async function emitSignalRecalculation(
   blueprintId: string,
   userId: string,
   causationEventId?: string,
+  executionLoop: "primary" | "daily" = "primary",
 ): Promise<void> {
   await writeEvent({
     eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
@@ -151,7 +152,7 @@ async function emitSignalRecalculation(
     entityId: blueprintId,
     userId,
     blueprintId,
-    payload: { trigger: "execution_loop" },
+    payload: { trigger: "execution_loop", execution_loop: executionLoop },
     idempotencyKey: `signal_recalc:${blueprintId}:${Date.now()}`,
     causationEventId,
   });

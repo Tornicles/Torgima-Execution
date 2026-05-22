@@ -6,6 +6,7 @@ import { getContract } from "../../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../../types/bhudhi.js";
 import type { ArchetypeResolutionOutput, ErectorValidationInput } from "../../types/erector.js";
 import { buildDeterministicErectorPayload } from "./ErectorDeterministicPayload.js";
+import { emitErectorEngineCompleted } from "./emitErectorEvents.js";
 import { seedEconomicArchetypes } from "./seedArchetypes.js";
 import { logger } from "../../lib/logger.js";
 
@@ -72,14 +73,32 @@ export async function callErectorTrigger(
       facts,
     });
     if (result.ok && result.output?.data && typeof result.output.data === "object") {
-      return { data: result.output.data as Record<string, unknown>, fallbackUsed: result.fallbackUsed };
+      const out = { data: result.output.data as Record<string, unknown>, fallbackUsed: result.fallbackUsed };
+      await emitErectorEngineCompleted({
+        validationId: params.validationId,
+        blueprintId: params.input.blueprintId,
+        userId: params.input.userId,
+        engineName: triggerType,
+        success: true,
+        fallbackUsed: result.fallbackUsed,
+      });
+      return out;
     }
   } catch (err) {
     logger.warn({ triggerType, err: err instanceof Error ? err.message : String(err) }, "[Erector] Bhudhi trigger failed");
   }
 
   const fb = getFallback(fallbackKey, facts, 0);
-  return { data: (fb.data ?? {}) as Record<string, unknown>, fallbackUsed: true };
+  const out = { data: (fb.data ?? {}) as Record<string, unknown>, fallbackUsed: true };
+  await emitErectorEngineCompleted({
+    validationId: params.validationId,
+    blueprintId: params.input.blueprintId,
+    userId: params.input.userId,
+    engineName: triggerType,
+    success: true,
+    fallbackUsed: true,
+  });
+  return out;
 }
 
 export async function ensureEconomicArchetypesSeeded(): Promise<number> {

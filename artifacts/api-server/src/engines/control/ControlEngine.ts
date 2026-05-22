@@ -1,4 +1,5 @@
 import {
+  blueprints,
   db,
   users,
   capabilityProfiles,
@@ -7,6 +8,11 @@ import {
   cognitiveLoadScores,
   signalSnapshots,
 } from "@workspace/db";
+import {
+  applyArchetypeTaskLimitsWithLog,
+  emitArchetypeContextMissingIfNeeded,
+  loadBlueprintArchetypeContext,
+} from "../erector/ArchetypeExecutionContext.js";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { incrementStateVersion } from "../../services/StateMutationService.js";
@@ -369,6 +375,23 @@ export async function generateEnforcementPackage(params: {
   rules = rulesLoaded;
 
   rules = await applyPatternEvidenceModifier(rules, params.blueprintId, params.userId);
+
+  const bpArchetype = await loadBlueprintArchetypeContext(params.blueprintId);
+  await emitArchetypeContextMissingIfNeeded({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    primaryArchetypeId: bpArchetype?.primaryArchetypeId,
+    loop: "primary",
+  });
+  const baseMin = rules.taskMin;
+  const baseMax = rules.taskMax;
+  const adjusted = applyArchetypeTaskLimitsWithLog({
+    blueprintId: params.blueprintId,
+    baseMin,
+    baseMax,
+    archetypeExecutionMult: bpArchetype?.archetypeExecutionMult,
+  });
+  rules = { ...rules, taskMin: adjusted.min, taskMax: adjusted.max };
 
   const featurePermissions = buildFeaturePermissions(params.condition, tier, rules.allowedActions);
 

@@ -100,6 +100,8 @@ export interface DashboardPrimaryTask {
     content: string | null;
     type: string | null;
   }>;
+  /** Prompt 6 — smoke test indicator on dashboard task card */
+  generationReason: string | null;
 }
 
 export const OrderService = {
@@ -220,6 +222,7 @@ export const OrderService = {
         content: k.content,
         type: k.type,
       })),
+      generationReason: order.generation_reason ?? null,
     };
   },
 

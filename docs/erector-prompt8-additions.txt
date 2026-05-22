@@ -1,0 +1,124 @@
+TORGIMA
+CURSOR BUILD PROMPT
+PROMPT 8 — ERECTOR ADDITIONS
+Erector Additions — Event System
+7 Erector Events, Dead Letter Queue Handlers, Validation Health Check
+
+A — PURPOSE
+The main Prompt 8 builds the event system, dead letter queue, and system health. The Erector introduced 7 new events that the existing event registry does not know about. This prompt registers them, adds dead letter queue handlers for Erector failures, and adds a system health check that monitors the validation pipeline.
+Run this prompt AFTER the main Prompt 8 is verified working.
+
+B — READ BEFORE TOUCHING ANYTHING
+Read the existing event registry — identify exactly where events are defined and how workers are registered for them.
+Read the existing dead letter queue handler — understand the current failure pattern before adding new ones.
+Read the existing SystemHealthWorker — understand the current check structure before adding a new check.
+
+C — WHAT TO BUILD (3 ADDITIONS)
+Addition 1 — Register 7 Erector events in the event registry
+Add these 7 events to the event type registry. Each needs a worker registered in WorkerRegistry.ts. The workers are lightweight — they log, update status fields, and emit follow-on events where required.
+Event Type
+Worker Name
+Worker Responsibility
+erector_validation_started
+handleErectorValidationStarted
+Create ValidationRun record. Set validation_stage = &apos;running&apos;. Log to EventLog.
+archetype_resolved
+handleArchetypeResolved
+Update validation record with archetype_resolution JSON. Log archetype name and multipliers.
+erector_engine_completed
+handleErectorEngineCompleted
+Log engine name, success flag, fallback_used flag to EventLog. Update engine completion count on ValidationRun.
+erector_validation_completed
+handleErectorValidationCompleted
+Set validation_stage = &apos;complete&apos;. Update blueprint draft status to &apos;path_selection&apos;. Emit notification to user.
+erector_path_selected
+handleErectorPathSelected
+Set validation.selected_path. Set validation.recommended_blueprint_level. Trigger first week plan generation.
+erector_first_week_generated
+handleErectorFirstWeekGenerated
+Confirm first_week_plan JSON is stored on validation record. Log task_count and smoke_test_count.
+erector_blueprint_launched
+handleErectorBlueprintLaunched
+Confirm 7 smoke test tasks exist in orders table. Confirm archetype fields locked on blueprint. Log launch telemetry.
+
+// Add to WorkerRegistry.ts:
+await queue.work(&apos;erector_validation_started&apos;,    {teamSize:3,teamConcurrency:1}, handleErectorValidationStarted);
+await queue.work(&apos;archetype_resolved&apos;,            {teamSize:3,teamConcurrency:1}, handleArchetypeResolved);
+await queue.work(&apos;erector_engine_completed&apos;,      {teamSize:5,teamConcurrency:2}, handleErectorEngineCompleted);
+await queue.work(&apos;erector_validation_completed&apos;,  {teamSize:3,teamConcurrency:1}, handleErectorValidationCompleted);
+await queue.work(&apos;erector_path_selected&apos;,         {teamSize:3,teamConcurrency:1}, handleErectorPathSelected);
+await queue.work(&apos;erector_first_week_generated&apos;,  {teamSize:3,teamConcurrency:1}, handleErectorFirstWeekGenerated);
+await queue.work(&apos;erector_blueprint_launched&apos;,    {teamSize:3,teamConcurrency:1}, handleErectorBlueprintLaunched);
+
+Addition 2 — Dead letter queue handlers for Erector failures
+Erector failures have different recovery logic from execution loop failures. A failed validation can be retried. A failed blueprint launch needs a specific repair path. Add these dead letter queue cases to the existing DLQ handler:
+// Add to existing dead letter queue handler:
+case &apos;erector_validation_started&apos;:
+case &apos;erector_engine_completed&apos;: {
+  // Validation can be retried — reset validation_stage to &apos;pending&apos; and allow re-run
+  await prisma.validation.updateMany({
+    where: { id: payload.validation_id },
+    data: { validation_stage: &apos;failed&apos;, updated_at: new Date() }
+  });
+  // User will see &apos;Validation failed — retry available&apos; state on validation screen
+  break;
+}
+
+case &apos;erector_blueprint_launched&apos;: {
+  // Launch failed after validation — critical. Set blueprint back to path_selection.
+  await prisma.blueprint.updateMany({
+    where: { id: payload.blueprint_id },
+    data: { status: &apos;path_selection&apos;, active: false }
+  });
+  await emitEvent({ event_type: &apos;blueprint_launch_failed&apos;, ...payload });
+  break;
+}
+
+Addition 3 — System health check: validation pipeline
+Add a validation pipeline health check to the SystemHealthWorker. This check runs every 5 minutes alongside existing health checks and verifies the Erector pipeline is not stuck.
+// Add to SystemHealthWorker checks:
+async function checkValidationPipeline() {
+  // Check 1: No validation stuck in &apos;running&apos; for more than 5 minutes
+  const stuckValidations = await prisma.validation.count({
+    where: {
+      validation_stage: &apos;running&apos;,
+      updated_at: { lt: new Date(Date.now() - 5 * 60 * 1000) }
+    }
+  });
+
+  // Check 2: No blueprint in &apos;path_selection&apos; for more than 48 hours
+  const abandonedValidations = await prisma.blueprint.count({
+    where: {
+      status: &apos;path_selection&apos;,
+      updated_at: { lt: new Date(Date.now() - 48 * 60 * 60 * 1000) }
+    }
+  });
+
+  await prisma.systemHealthLog.create({ data: {
+    check_type: &apos;validation_pipeline&apos;,
+    status:     stuckValidations > 0 ? &apos;warn&apos; : &apos;ok&apos;,
+    score:      stuckValidations === 0 ? 10 : 5,
+    details_json: { stuckValidations, abandonedValidations }
+  }});
+}
+
+D — ACCEPTANCE CRITERIA
+[ ] All 7 Erector events registered in WorkerRegistry.ts with workers.
+[ ] erector_validation_started worker creates/updates ValidationRun record.
+[ ] erector_validation_completed worker sets validation_stage = &apos;complete&apos;.
+[ ] erector_blueprint_launched worker confirms 7 smoke test tasks in orders table.
+[ ] Dead letter queue handles erector_engine_completed failure by setting validation to &apos;failed&apos;.
+[ ] Dead letter queue handles erector_blueprint_launched failure by reverting blueprint to &apos;path_selection&apos;.
+[ ] validation_pipeline health check runs every 5 minutes. Results in system_health_logs table.
+[ ] All existing event workers still functioning. No regressions.
+
+E — FINAL REPORT FORMAT
+TORGIMA — PROMPT 8 ERECTOR ADDITIONS — BUILD REPORT
+════════════════════════════════════════════════════
+Addition 1 — 7 Erector events registered:    [complete / error]
+Addition 2 — DLQ handlers for Erector:       [complete / error]
+Addition 3 — Validation pipeline health:     [complete / error]
+All existing event workers functional:       [yes / no]
+Health check runs every 5 min:               [yes / no]
+READY FOR PROMPT 9: [YES / NO]
+════════════════════════════════════════════════════

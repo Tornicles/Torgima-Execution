@@ -66,14 +66,19 @@ export async function sendMagicLink(email: string): Promise<SendMagicLinkResult>
   const result = await sendEmail({
     from: EMAIL_FROM_HEADER,
     to: normalizedEmail,
-    subject: "Your Torgima sign-in link",
-    text: `Sign in to Torgima:\n\n${verifyUrl}\n\nThis link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes. If you did not request this, ignore this email.`,
+    subject: "Your Torgima access link",
+    text:
+      `Click the link below to access Torgima. This link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes.\n` +
+      `Do not share this link with anyone.\n\n` +
+      `${verifyUrl}\n\n` +
+      `If you did not request this, ignore this email.`,
     html:
-      `<p>Sign in to Torgima:</p>` +
-      `<p><a href="${verifyUrl}">Sign in</a></p>` +
+      `<p>Click the link below to access Torgima. This link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes.</p>` +
+      `<p>Do not share this link with anyone.</p>` +
+      `<p><a href="${verifyUrl}" style="display:inline-block;background:#111827;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Access Torgima</a></p>` +
       `<p style="color:#666;font-size:12px">` +
       `Or paste this link into your browser:<br/>${verifyUrl}<br/><br/>` +
-      `This link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes. If you did not request this, ignore this email.` +
+      `If you did not request this, ignore this email.` +
       `</p>`,
   });
 

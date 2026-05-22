@@ -1,0 +1,100 @@
+TORGIMA
+CURSOR BUILD PROMPT
+PROMPT 6 — ERECTOR ADDITIONS
+Erector Additions — Frontend
+Validation Route Group, Archetype on Dashboard, Navigation Hardening
+
+A — PURPOSE
+The main Prompt 6 builds 15 frontend screens. This prompt adds 3 specific Erector requirements that Prompt 6 could not anticipate: the validation route group exists as a separate routing context, the dashboard shows archetype intelligence, and the navigation between onboarding, validation, and dashboard is enforced at the layout level.
+Run this prompt AFTER the main Prompt 6 is verified working.
+
+B — READ BEFORE TOUCHING ANYTHING
+Read app/(onboarding)/ layout and all page files. Map the current routing tree before touching it.
+Read app/(validation)/ — confirm all 10 Erector screens are present and accessible before making any changes.
+Read app/(dashboard)/dashboard/page.tsx — understand the current state projection before adding archetype elements.
+Read the Blueprint model — confirm reality_score, blueprint_tier, primary_archetype_id are present.
+
+C — WHAT TO BUILD (4 ADDITIONS)
+Addition 1 — Validate route group layout guard
+Create app/(validation)/layout.tsx if it does not exist. This layout must enforce that a blueprintDraftId exists in the URL params or session before rendering any validation screen. If no draft is found, redirect to /onboarding/goal.
+// app/(validation)/layout.tsx
+export default async function ValidationLayout({ children, params }) {
+  const session = await getServerSession();
+  if (!session?.user?.id) redirect(&apos;/login&apos;);
+
+  const draft = await prisma.blueprint.findFirst({
+    where: { user_id: session.user.id, status: { in: [&apos;draft&apos;,&apos;validating&apos;] } },
+    select: { id: true, status: true }
+  });
+
+  if (!draft) redirect(&apos;/onboarding/goal&apos;);
+
+  return <>{children}</>;
+}
+GATE: Access /validation/scores without an active draft in the database — receive redirect to /onboarding/goal.
+
+Addition 2 — Dashboard: Archetype intelligence panel
+Add an Archetype Intelligence panel to the dashboard. This panel shows the user the civilisation context their execution is running inside. It is read-only, informational, and updates never — it is locked at blueprint launch.
+Panel content:
+Field
+Source + Display Rule
+Archetype name
+blueprint.primary_archetype_id → EconomicArchetype.name. Display as plain text label.
+Reality Score
+blueprint.reality_score. Display as &apos;Reality Score: X.X / 10&apos;. If null, hide panel.
+Blueprint Tier
+blueprint.blueprint_tier. Display as badge: STARTER / GROWTH / ULTIMATE.
+Industry State
+blueprint.industry_state. Display as small status tag (GROWING / SATURATED etc).
+Economy Briefing
+Fetch from validation.economy_briefing. Display as collapsible 2-line summary.
+
+Panel appears collapsed by default. User can expand it. It never appears empty — if blueprint has no archetype data, the panel is hidden entirely (not shown with blank fields).
+Execution language: label is &apos;Execution Context&apos; not &apos;Your Economy&apos; or &apos;Your Profile&apos;.
+
+Addition 3 — Dashboard: First week task indicator
+When the active task has generation_reason = &apos;erector_first_week_seed&apos;, show a small indicator on the task card that reads &apos;Smoke Test — Week 1&apos;. This helps the user understand they are in the validation phase of their blueprint, not yet in full execution.
+The indicator disappears automatically when all smoke test tasks are complete. No special state management required — read generation_reason from the order and render conditionally.
+// In task card component:
+{order.generation_reason === &apos;erector_first_week_seed&apos; && (
+  <span className=&apos;text-xs font-medium text-amber-600 uppercase tracking-wide&apos;>
+    Smoke Test — Week 1
+  </span>
+)}
+
+Addition 4 — Navigation: post-launch redirect
+In the Blueprint Level Selection screen (last Erector screen), the &apos;Launch Blueprint&apos; button calls POST /api/v1/blueprints/launch. After a 200 response, the client must redirect to /dashboard. Update the success handler:
+const handleLaunch = async () => {
+  setLaunching(true);
+  const res = await fetch(&apos;/api/v1/blueprints/launch&apos;, {
+    method: &apos;POST&apos;,
+    body: JSON.stringify({ blueprint_draft_id: draftId, selected_path: selectedPath })
+  });
+  if (res.ok) {
+    router.push(&apos;/dashboard&apos;);
+  } else {
+    const err = await res.json();
+    setError(err.message);
+    setLaunching(false);
+  }
+};
+GATE: Click Launch Blueprint → POST succeeds → browser navigates to /dashboard → Execution Context panel visible → first smoke test task visible with &apos;Smoke Test — Week 1&apos; indicator.
+
+D — ACCEPTANCE CRITERIA
+[ ] Validation layout guard redirects to /onboarding/goal when no active draft exists.
+[ ] Dashboard shows Execution Context panel with archetype name, reality score, blueprint tier, industry state.
+[ ] Execution Context panel is hidden (not blank) when blueprint has no archetype data.
+[ ] First week tasks display &apos;Smoke Test — Week 1&apos; indicator on task card.
+[ ] After blueprint launch, browser redirects to /dashboard.
+[ ] No existing dashboard functionality removed. All original 15 screens still functional.
+
+E — FINAL REPORT FORMAT
+TORGIMA — PROMPT 6 ERECTOR ADDITIONS — BUILD REPORT
+════════════════════════════════════════════════════
+Addition 1 — Validation layout guard:       [complete / error]
+Addition 2 — Execution Context panel:       [complete / error]
+Addition 3 — Smoke Test task indicator:     [complete / error]
+Addition 4 — Post-launch redirect:          [complete / error]
+All existing screens still functional:      [yes / no]
+READY FOR PROMPT 7: [YES / NO]
+════════════════════════════════════════════════════

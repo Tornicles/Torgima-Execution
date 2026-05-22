@@ -8,6 +8,8 @@ import {
   type TierId,
 } from "@/components/blueprint/BlueprintSelectionPanel";
 import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
+import { ErectorScoresDashboard } from "@/components/validation/ErectorScoresDashboard";
+import { FirstWeekPlanPanel } from "@/components/validation/FirstWeekPlanPanel";
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { activateBlueprint, ApiError } from "@workspace/api-client-react";
@@ -147,6 +149,7 @@ export default function OnboardingPage() {
   const [goalStructured, setGoalStructured] = useState(false);
   const [erectorPhase, setErectorPhase] = useState<ErectorReviewPhase>("briefing");
   const [pathConfirmed, setPathConfirmed] = useState(false);
+  const [archetypePreview, setArchetypePreview] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
   const [form, setForm] = useState<FormData>({
@@ -187,6 +190,30 @@ export default function OnboardingPage() {
         ? p.currentResources.filter((item) => item !== resource)
         : [...p.currentResources, resource],
     }));
+  }
+
+  async function previewArchetypeForCountry() {
+    if (!API_BASE_URL || !form.locationCountry.trim()) return;
+    try {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/resolve-archetype`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: form.locationCountry.trim(),
+          city: form.locationCity.trim() || undefined,
+        }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        data?: { primaryArchetype?: { name?: string } };
+      };
+      if (json.ok && json.data?.primaryArchetype?.name) {
+        setArchetypePreview(json.data.primaryArchetype.name);
+      }
+    } catch {
+      setArchetypePreview(null);
+    }
   }
 
   function commitmentForErector(level: string): string {
@@ -392,11 +419,14 @@ export default function OnboardingPage() {
           setError(erectorJson.error?.message ?? "Erector validation failed.");
           return;
         }
+        const erectorVerdict = String(erectorJson.data?.["verdict"] ?? "");
         payload = {
           ...payload,
           erectorValidationId: String(erectorJson.data?.["validationId"] ?? ""),
-          verdict: (erectorJson.data?.["verdict"] as ValidationPayload["verdict"]) ?? payload.verdict,
-          launchBlocked: erectorJson.data?.["verdict"] === "pivot",
+          erectorValidationContractId: String(erectorJson.data?.["validationContractId"] ?? ""),
+          verdict: (erectorVerdict as ValidationPayload["verdict"]) || payload.verdict,
+          launchBlocked: erectorVerdict === "pivot" || erectorVerdict === "blocked",
+          paths: (erectorJson.data?.["paths"] as ValidationPayload["paths"]) ?? payload.paths,
           intelligence: { ...(payload.intelligence ?? {}), erector: erectorJson.data },
         };
         if (!payload.blueprintId) {
@@ -426,9 +456,14 @@ export default function OnboardingPage() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
     const launchValidation = await resolveValidationContractId(validation);
     const blueprintId = launchValidation.blueprintId;
-    const validationContractId = launchValidation.validationContractId;
+    const validationContractId =
+      launchValidation.erectorValidationContractId || launchValidation.validationContractId;
     if (!blueprintId || !validationContractId) {
       setError("Validation contract is missing. Re-run validation before launch.");
+      return;
+    }
+    if (validation.verdict === "blocked") {
+      setError("Reality Score is too low to launch. Re-validate with a more feasible goal.");
       return;
     }
     if ((validation.launchBlocked || validation.verdict === "pivot") && selectedPath !== "alternative") {
@@ -854,12 +889,19 @@ export default function OnboardingPage() {
                     <label className="text-sm font-semibold text-gray-700">Country <span className="text-red-500">*</span></label>
                     <input
                       value={form.locationCountry}
-                      onChange={(e) => setField("locationCountry", e.target.value)}
+                      onChange={(e) => {
+                        setField("locationCountry", e.target.value);
+                        setArchetypePreview(null);
+                      }}
+                      onBlur={() => void previewArchetypeForCountry()}
                       placeholder="United States, Nigeria, Germany..."
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
                     />
-                    {form.locationCountry && (
-                      <p className="text-xs text-blue-600">Economy archetype resolves before validation scoring.</p>
+                    {archetypePreview && (
+                      <p className="text-xs text-blue-600">Economy preview: {archetypePreview}</p>
+                    )}
+                    {form.locationCountry && !archetypePreview && (
+                      <p className="text-xs text-gray-500">Economy archetype resolves when you leave this field.</p>
                     )}
                   </div>
                   <div className="space-y-1.5">
@@ -1128,6 +1170,68 @@ export default function OnboardingPage() {
                       >
                         View reality scores →
                       </button>
+                    )}
+
+                    {erectorPhase === "scores" && validation.intelligence?.["erector"] && (
+                      <ErectorScoresDashboard
+                        scores={
+                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
+                            string,
+                            number | string | undefined
+                          >) ?? {}
+                        }
+                        realityScore={Number(
+                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
+                            string,
+                            unknown
+                          > | undefined)?.["realityScore"] ?? NaN,
+                        )}
+                        verdict={String(validation.verdict ?? "")}
+                        recommendedBlueprintLevel={String(
+                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
+                            string,
+                            unknown
+                          > | undefined)?.["recommendedBlueprintLevel"] ?? "",
+                        )}
+                      />
+                    )}
+
+                    {erectorPhase === "paths" && validation.intelligence?.["erector"] && (
+                      <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50 text-sm text-gray-700">
+                        <p className="font-semibold text-gray-900 mb-2">Timeframe simulations</p>
+                        <ul className="space-y-2">
+                          {(
+                            ((validation.intelligence["erector"] as Record<string, unknown>)["timeSimulations"] as Array<
+                              Record<string, unknown>
+                            >) ?? []
+                          ).map((sim) => (
+                            <li key={String(sim.timeframe)}>
+                              <span className="font-medium">{String(sim.timeframe)}</span>
+                              {" — "}
+                              {String(sim.executionIntensityLabel ?? "moderate")} intensity,{" "}
+                              {Math.round(Number(sim.probabilityOfReachingGoal ?? 0) * 100)}% goal probability
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {erectorPhase === "paths" && validation.intelligence?.["erector"] && (
+                      <FirstWeekPlanPanel
+                        erector={
+                          {
+                            plans: (
+                              (validation.paths?.[selectedPath] as Record<string, unknown> | undefined)?.[
+                                "firstWeekActionsPreview"
+                              ] as string[] | undefined
+                            )?.map((title) => ({
+                              title,
+                              action: "Smoke test — completes at blueprint launch.",
+                              smokeTest: true,
+                            })),
+                          } as Record<string, unknown>
+                        }
+                      />
                     )}
 
                     {(erectorPhase === "scores" || erectorPhase === "paths") && (

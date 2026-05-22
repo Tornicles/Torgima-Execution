@@ -22,6 +22,13 @@ export const RetryPolicies: Record<string, RetryPolicy> = {
   identity_evaluation_requested:    { maxAttempts: 3, backoffMs: 10000, backoffMultiplier: 2 },
   outcome_validation_requested:     { maxAttempts: 3, backoffMs: 10000, backoffMultiplier: 2 },
   pattern_scan_requested:             { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  erector_validation_started:         { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  archetype_resolved:                 { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  erector_engine_completed:           { maxAttempts: 5, backoffMs: 3000,  backoffMultiplier: 2 },
+  erector_validation_completed:         { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  erector_path_selected:              { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  erector_first_week_generated:       { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
+  erector_blueprint_launched:         { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
   default:                          { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },
 };
 

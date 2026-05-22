@@ -7,6 +7,7 @@ import { SignalService } from "./SignalService.js";
 import {
   db,
   blueprints,
+  economicArchetypes,
   orders,
   pivotReviews,
   conditions,
@@ -82,6 +83,13 @@ export const DashboardService = {
       warning?: string | null;
       opportunity?: string | null;
       reportHref?: string;
+    } | null = null;
+    let executionContext: {
+      archetypeName: string | null;
+      realityScore: number | null;
+      blueprintTier: string | null;
+      industryState: string | null;
+      economyBriefingSummary: string | null;
     } | null = null;
     let pivotReview: {
       id: string;
@@ -350,20 +358,44 @@ export const DashboardService = {
         );
       openFalseProgressCount = fpCount?.c ?? 0;
 
-      const [valRow] = await db
-        .select({
-          id: validations.id,
-          created_at: validations.created_at,
-          reality_score: validations.reality_score,
-          archetype_resolution: validations.archetype_resolution,
-          economy_briefing: validations.economy_briefing,
-        })
-        .from(validations)
-        .where(eq(validations.blueprint_id, blueprintId))
-        .orderBy(desc(validations.created_at))
-        .limit(1);
+      const [bpIntelRow, valRow] = await Promise.all([
+        db
+          .select({
+            primary_archetype_id: blueprints.primary_archetype_id,
+            reality_score: blueprints.reality_score,
+            blueprint_tier: blueprints.blueprint_tier,
+            industry_state: blueprints.industry_state,
+            economy_briefing_summary: blueprints.economy_briefing_summary,
+            archetype_name: economicArchetypes.name,
+          })
+          .from(blueprints)
+          .leftJoin(
+            economicArchetypes,
+            eq(blueprints.primary_archetype_id, economicArchetypes.id),
+          )
+          .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, userId)))
+          .limit(1)
+          .then((r) => r[0] ?? null),
+        db
+          .select({
+            id: validations.id,
+            created_at: validations.created_at,
+            reality_score: validations.reality_score,
+            archetype_resolution: validations.archetype_resolution,
+            economy_briefing: validations.economy_briefing,
+          })
+          .from(validations)
+          .where(eq(validations.blueprint_id, blueprintId))
+          .orderBy(desc(validations.created_at))
+          .limit(1)
+          .then((r) => r[0] ?? null),
+      ]);
 
-      const briefing = valRow?.economy_briefing as { keyWarnings?: string[]; keyOpportunities?: string[] } | null;
+      const briefing = valRow?.economy_briefing as {
+        keyWarnings?: string[];
+        keyOpportunities?: string[];
+        briefingNarrative?: string;
+      } | null;
       const resolution = valRow?.archetype_resolution as { primaryArchetype?: { name?: string } } | null;
       economyIntelligence = valRow ? {
         archetypeName: resolution?.primaryArchetype?.name ?? null,
@@ -372,6 +404,31 @@ export const DashboardService = {
         opportunity: briefing?.keyOpportunities?.[0] ?? null,
         reportHref: `/validation/${valRow.id}`,
       } : null;
+
+      const briefingNarrative =
+        briefing?.briefingNarrative?.trim() ||
+        bpIntelRow?.economy_briefing_summary?.trim() ||
+        null;
+      const economyBriefingSummary = briefingNarrative
+        ? briefingNarrative
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(" ")
+        : null;
+
+      const archetypeName = bpIntelRow?.archetype_name ?? resolution?.primaryArchetype?.name ?? null;
+      const realityScore = bpIntelRow?.reality_score ?? valRow?.reality_score ?? null;
+      if (bpIntelRow?.primary_archetype_id && realityScore != null) {
+        executionContext = {
+          archetypeName,
+          realityScore,
+          blueprintTier: bpIntelRow.blueprint_tier ?? null,
+          industryState: bpIntelRow.industry_state ?? null,
+          economyBriefingSummary,
+        };
+      }
 
       const daysSinceValidation = valRow?.created_at
         ? (Date.now() - valRow.created_at.getTime()) / 86400000
@@ -437,7 +494,9 @@ export const DashboardService = {
       user,
       identity,
       signals,
-      activeBlueprint: activeBlueprint ? { ...activeBlueprint, economyIntelligence } : activeBlueprint,
+      activeBlueprint: activeBlueprint
+        ? { ...activeBlueprint, economyIntelligence, executionContext }
+        : activeBlueprint,
       recentCompletionBlueprint,
       activeOrders,
       recentFeedback,

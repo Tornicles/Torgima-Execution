@@ -40,7 +40,7 @@ export const blueprintOperationalStateEnum = pgEnum("blueprint_operational_state
   "COLLAPSED",
   "ARCHIVED",
 ]);
-export const validationVerdictEnum = pgEnum("validation_verdict", ["proceed", "adjust", "pivot"]);
+export const validationVerdictEnum = pgEnum("validation_verdict", ["proceed", "adjust", "pivot", "blocked"]);
 export const selectedPathEnum = pgEnum("selected_path", ["current", "adjusted", "alternative"]);
 export const validationReadinessEnum = pgEnum("validation_readiness", [
   "not_ready",
@@ -48,6 +48,7 @@ export const validationReadinessEnum = pgEnum("validation_readiness", [
   "ready_proceed",
   "ready_with_adjustment",
   "blocked_pivot",
+  "blocked_reality",
 ]);
 export const validationKindEnum = pgEnum("validation_kind", ValidationKindValues);
 export const domainEnum = pgEnum("domain", [
@@ -70,7 +71,7 @@ export const actionTypeEnum = pgEnum("action_type", ActionTypeValues);
 // GROUP 3 — ORDER (TASK)
 export const taskTypeEnum = pgEnum("task_type", [
   "execution", "recovery", "academy", "clarification",
-  "blocker_resolution", "phase_checkpoint", "habit", "review",
+  "blocker_resolution", "phase_checkpoint", "habit", "review", "smoke_test",
 ]);
 export const difficultyEnum = pgEnum("difficulty", [
   "very_easy", "easy", "moderate", "hard", "very_hard",

@@ -252,6 +252,7 @@ async function shouldSatisfyExistingOrder(
   if (!order) return false;
 
   const taskType = order.task_type ?? "execution";
+  if (taskType === "smoke_test") return true;
   if (generationMode === "recovery") {
     return RECOVERY_TASK_TYPES.includes(taskType as (typeof RECOVERY_TASK_TYPES)[number]);
   }

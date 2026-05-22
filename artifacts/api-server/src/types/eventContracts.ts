@@ -58,9 +58,17 @@ export const EventTypes = {
   VALIDATION_START_REQUESTED:       "validation_start_requested",
   VALIDATION_COMPLETED:             "validation_completed",
   VALIDATION_PATH_SELECTED:         "validation_path_selected",
-  ERECTOR_VALIDATION_STARTED:       "erector_validation_started",
-  ERECTOR_VALIDATION_COMPLETE:        "erector_validation_complete",
-  ERECTOR_PATH_SELECTED:            "erector_path_selected",
+  ERECTOR_VALIDATION_STARTED:         "erector_validation_started",
+  /** @deprecated Use ERECTOR_VALIDATION_COMPLETED — same lifecycle, spec name. */
+  ERECTOR_VALIDATION_COMPLETE:        "erector_validation_completed",
+  ERECTOR_VALIDATION_COMPLETED:       "erector_validation_completed",
+  ARCHETYPE_RESOLVED:                 "archetype_resolved",
+  ERECTOR_ENGINE_COMPLETED:           "erector_engine_completed",
+  ERECTOR_PATH_SELECTED:              "erector_path_selected",
+  ERECTOR_FIRST_WEEK_GENERATED:       "erector_first_week_generated",
+  ERECTOR_BLUEPRINT_LAUNCHED:           "erector_blueprint_launched",
+  BLUEPRINT_LAUNCH_FAILED:            "blueprint_launch_failed",
+  ARCHETYPE_CONTEXT_MISSING:        "archetype_context_missing",
   ASSUMPTION_CHECK_REQUESTED:       "assumption_check_requested",
   EIS_REFRESH_REQUESTED:            "eis_refresh_requested",
   SYSTEM_HEALTH_SCAN_REQUESTED:     "system_health_scan_requested",
@@ -94,6 +102,14 @@ export const WorkerQueues = {
   ASSUMPTION_CHECK:           "assumption_check_requested",
   DEAD_LETTER_REVIEW:         "dead_letter_review_requested",
   OUTCOME_VALIDATION:         "outcome_validation_requested",
+  /** Prompt 8 — Erector event workers (queue name matches event type). */
+  ERECTOR_VALIDATION_STARTED:   "erector_validation_started",
+  ARCHETYPE_RESOLVED:           "archetype_resolved",
+  ERECTOR_ENGINE_COMPLETED:     "erector_engine_completed",
+  ERECTOR_VALIDATION_COMPLETED: "erector_validation_completed",
+  ERECTOR_PATH_SELECTED:        "erector_path_selected",
+  ERECTOR_FIRST_WEEK_GENERATED: "erector_first_week_generated",
+  ERECTOR_BLUEPRINT_LAUNCHED:   "erector_blueprint_launched",
 } as const;
 
 export type WorkerQueue = (typeof WorkerQueues)[keyof typeof WorkerQueues];
@@ -128,6 +144,13 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.SYSTEM_HEALTH_SCAN_REQUESTED]:   WorkerQueues.SYSTEM_HEALTH,
   [EventTypes.DEAD_LETTER_REVIEW_REQUESTED]:   WorkerQueues.DEAD_LETTER_REVIEW,
   [EventTypes.OUTCOME_VALIDATION_REQUESTED]:   WorkerQueues.OUTCOME_VALIDATION,
+  [EventTypes.ERECTOR_VALIDATION_STARTED]:     WorkerQueues.ERECTOR_VALIDATION_STARTED,
+  [EventTypes.ARCHETYPE_RESOLVED]:             WorkerQueues.ARCHETYPE_RESOLVED,
+  [EventTypes.ERECTOR_ENGINE_COMPLETED]:       WorkerQueues.ERECTOR_ENGINE_COMPLETED,
+  [EventTypes.ERECTOR_VALIDATION_COMPLETED]:   WorkerQueues.ERECTOR_VALIDATION_COMPLETED,
+  [EventTypes.ERECTOR_PATH_SELECTED]:          WorkerQueues.ERECTOR_PATH_SELECTED,
+  [EventTypes.ERECTOR_FIRST_WEEK_GENERATED]:   WorkerQueues.ERECTOR_FIRST_WEEK_GENERATED,
+  [EventTypes.ERECTOR_BLUEPRINT_LAUNCHED]:     WorkerQueues.ERECTOR_BLUEPRINT_LAUNCHED,
 };
 
 /** Persisted for audit; no queue consumer. */
@@ -145,9 +168,8 @@ export const TERMINAL_EVENT_TYPES = new Set<string>([
   EventTypes.OVERNIGHT_COMPLETE,
   EventTypes.HEALTH_ALERT,
   EventTypes.DLQ_ITEM_CREATED,
-  EventTypes.ERECTOR_VALIDATION_STARTED,
-  EventTypes.ERECTOR_VALIDATION_COMPLETE,
-  EventTypes.ERECTOR_PATH_SELECTED,
+  EventTypes.BLUEPRINT_LAUNCH_FAILED,
+  EventTypes.ARCHETYPE_CONTEXT_MISSING,
 ]);
 
 /** DOC_28 / GAP G1 — emitter → consumer contract (live names). */

@@ -32,6 +32,12 @@ import {
   type CommandTraceChain,
 } from "../intelligence/CommandOrderIntelligenceEngine.js";
 import { buildTraceMetadata, getTierRules, parseMode, parseTier } from "../blueprint/BlueprintRuleEngine.js";
+import { industryWeightForAction } from "../erector/industryTaskWeights.js";
+import {
+  archetypeDifficultyShift,
+  emitArchetypeContextMissingIfNeeded,
+  shiftDifficultyCap,
+} from "../erector/ArchetypeExecutionContext.js";
 import {
   applyOrderTemplate,
   getOrderTemplate,
@@ -273,6 +279,10 @@ async function loadContext(params: {
       current_condition: blueprint.current_condition ?? undefined,
       tier: blueprint.tier ?? undefined,
       mode: blueprint.mode ?? undefined,
+      industry_state: blueprint.industry_state ?? undefined,
+      reality_score: blueprint.reality_score ?? undefined,
+      archetype_difficulty_adj: blueprint.archetype_difficulty_adj ?? undefined,
+      primary_archetype_id: blueprint.primary_archetype_id ?? undefined,
     },
     plan: currentPlan,
     phase: currentPhase,
@@ -454,6 +464,18 @@ function selectTaskType(ctx: Awaited<ReturnType<typeof loadContext>>): string {
 
 // ── DIFFICULTY SELECTION ──────────────────────────────────────────────────────
 
+function isBackgroundGeneration(params: { generation_mode: string; generation_trigger?: string }): boolean {
+  if (params.generation_mode === "daily") return true;
+  const trigger = (params.generation_trigger ?? "").toLowerCase();
+  return (
+    trigger === "daily_cycle" ||
+    trigger === "inactivity_detected" ||
+    trigger === "user_inactive" ||
+    trigger === "task_guarantee" ||
+    trigger === "guarantee_check"
+  );
+}
+
 function selectDifficulty(params: {
   difficulty_cap: string;
   difficulty_recommendation: string;
@@ -462,8 +484,10 @@ function selectDifficulty(params: {
   consistency: number;
   action_type?: string | null;
   generation_mode: string;
+  generation_trigger?: string;
   current_streak: number;
   is_first_in_phase: boolean;
+  archetype_difficulty_adj?: number | null;
 }): string {
   // Recovery tasks stay deliberately lightweight (verification: difficulty very_easy).
   if (params.generation_mode === "recovery") {
@@ -505,7 +529,26 @@ function selectDifficulty(params: {
 
   if (params.current_streak >= 7) return base;
 
-  return base;
+  let result: string = base;
+  if (isBackgroundGeneration(params) && params.archetype_difficulty_adj != null) {
+    const shift = archetypeDifficultyShift(params.archetype_difficulty_adj);
+    if (shift !== 0) {
+      result = shiftDifficultyCap(result, shift);
+      logger.info(
+        {
+          diffAdj: params.archetype_difficulty_adj,
+          shift,
+          base,
+          adjusted: result,
+          generation_mode: params.generation_mode,
+          generation_trigger: params.generation_trigger,
+        },
+        "[BackgroundLoop] Archetype difficulty adj applied",
+      );
+    }
+  }
+
+  return result;
 }
 
 // ── VALUE SCORE ───────────────────────────────────────────────────────────────
@@ -515,6 +558,7 @@ function calculateValueScore(params: {
   task_type: string;
   difficulty: string;
   is_critical: boolean;
+  industry_state?: string | null;
 }): number {
   let score = 5.0;
   const action_scores: Record<string, number> = {
@@ -530,7 +574,8 @@ function calculateValueScore(params: {
     measure: 1.3,
     build: 1.8,
   };
-  score += action_scores[params.action_type ?? ""] ?? 1.0;
+  const baseAction = action_scores[params.action_type ?? ""] ?? 1.0;
+  score += baseAction * industryWeightForAction(params.industry_state, params.action_type);
   if (params.is_critical) score += 1.5;
   const diff_scores: Record<string, number> = {
     very_easy: 0.0,
@@ -1107,6 +1152,15 @@ export async function generate(params: {
     generationTrigger: genTrigNorm,
   });
 
+  await emitArchetypeContextMissingIfNeeded({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    primaryArchetypeId: ctx.blueprint.primary_archetype_id,
+    loop: isBackgroundGeneration({ generation_mode: genModeNorm, generation_trigger: genTrigNorm })
+      ? "background"
+      : "primary",
+  });
+
   let { enforcement } = ctx;
 
   if (params.generationMode === "condition_change" || genModeNorm === "condition_change") {
@@ -1211,8 +1265,10 @@ export async function generate(params: {
     consistency: ctx.capability.consistency,
     action_type: ctx.action?.type ?? undefined,
     generation_mode: genModeNorm,
+    generation_trigger: genTrigNorm,
     current_streak: ctx.capability.current_streak,
     is_first_in_phase: isFirstInPhase,
+    archetype_difficulty_adj: ctx.blueprint.archetype_difficulty_adj,
   });
 
   let content = buildTaskContent({
@@ -1414,6 +1470,7 @@ export async function generate(params: {
     task_type: taskType,
     difficulty,
     is_critical: ctx.phase?.status === "gated",
+    industry_state: ctx.blueprint.industry_state,
   });
 
   const domainGen = ctx.blueprint.current_domain ?? "delivery";

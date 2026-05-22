@@ -48,6 +48,16 @@ import { invalidateHydrationCache } from "./infrastructure/StateHydrationService
 import { blueprintMembers } from "@workspace/db";
 import { getClientFeatureManifest } from "./infrastructure/BlueprintTypeRegistry.js";
 import { ValidationService } from "../../services/ValidationService.js";
+import {
+  applyArchetypeToTaskLimits,
+  archetypeSignalWindowDays,
+  blueprintSetFromLockedIntel,
+  extractLockedIntelFromValidation,
+  loadValidationForLaunch,
+  parseFirstWeekPlan,
+  resolvePrimaryArchetypeId,
+  seedErectorFirstWeekOrders,
+} from "../erector/ErectorExecutionBridge.js";
 import type { ValidationToBlueprintContract } from "../validation/intelligence/validation-intelligence-types.js";
 import { BlueprintStatus, OrderStatus, PhaseStatus, ProjectStatus } from "@workspace/state-machine";
 
@@ -224,6 +234,15 @@ export class BlueprintEngine {
     });
 
     await db.transaction(async (tx) => {
+      const launchValidation = await loadValidationForLaunch(tx, blueprintId, validationContractId);
+      const archetypeResolution = (launchValidation?.archetype_resolution ?? null) as import("../../types/erector.js").ArchetypeResolutionOutput | null;
+      const primaryArchetypeId = launchValidation
+        ? await resolvePrimaryArchetypeId(tx, launchValidation.id, archetypeResolution)
+        : null;
+      const lockedIntel = launchValidation
+        ? extractLockedIntelFromValidation(launchValidation, primaryArchetypeId)
+        : null;
+
       // 1. Update blueprint to active. Initial condition is `nothingness` —
       //    the system is bootstrapping, no signal data exists yet.
       await tx
@@ -236,6 +255,7 @@ export class BlueprintEngine {
           selected_blueprint_level: tier,
           current_domain: resolvedDomain,
           current_condition: CONDITIONS.NOTHINGNESS,
+          ...(lockedIntel ? blueprintSetFromLockedIntel(lockedIntel) : {}),
           metadata: {
             masterBlueprint: "TORGIMA_COMPLETE_MASTER_BLUEPRINT_REFINED",
             structuralLaw: "plans_targets_phases_projects_actions_orders_never_skipped",
@@ -244,24 +264,41 @@ export class BlueprintEngine {
             selectedMode: mode,
             initializedCondition: CONDITIONS.NOTHINGNESS,
             aiRule: "AI assists; rules control; signals define truth; condition regulates execution.",
+            ...(lockedIntel
+              ? {
+                  erectorLockedAtLaunch: true,
+                  erectorIndustryState: lockedIntel.industryState,
+                  erectorRealityScore: lockedIntel.realityScore,
+                }
+              : {}),
           },
           state_version: 1,
         })
         .where(eq(blueprints.id, blueprintId));
 
       // 2. Read validation path selection (if any) to customise chain
-      const validationRows = await tx
-        .select({
-          selected_path: validations.selected_path,
-          path_current: validations.path_current,
-          path_adjusted: validations.path_adjusted,
-          path_alternative: validations.path_alternative,
-          blueprint_contract: validations.blueprint_contract,
-        })
-        .from(validations)
-        .where(eq(validations.blueprint_id, blueprintId))
-        .orderBy(desc(validations.created_at))
-        .limit(1);
+      const validationRows = launchValidation
+        ? [
+            {
+              selected_path: launchValidation.selected_path,
+              path_current: launchValidation.path_current,
+              path_adjusted: launchValidation.path_adjusted,
+              path_alternative: launchValidation.path_alternative,
+              blueprint_contract: launchValidation.blueprint_contract,
+            },
+          ]
+        : await tx
+            .select({
+              selected_path: validations.selected_path,
+              path_current: validations.path_current,
+              path_adjusted: validations.path_adjusted,
+              path_alternative: validations.path_alternative,
+              blueprint_contract: validations.blueprint_contract,
+            })
+            .from(validations)
+            .where(eq(validations.blueprint_id, blueprintId))
+            .orderBy(desc(validations.created_at))
+            .limit(1);
 
       let pathSkeleton:
         | { plans: Array<{ name: string; description: string }>; targets: Array<{ name: string; type: string }> }
@@ -337,7 +374,8 @@ export class BlueprintEngine {
       // 4. Initial signal snapshot — placeholder so checkSignalChainContinuity
       //    has a row from the start; SignalWorker overwrites on first feedback.
       const now = new Date();
-      const windowStart = new Date(now.getTime() - 7 * 24 * 3600_000);
+      const signalWindowDays = archetypeSignalWindowDays(lockedIntel?.archetypeTimeframeMult);
+      const windowStart = new Date(now.getTime() - signalWindowDays * 24 * 3600_000);
       const [signalSnapshot] = await tx.insert(signalSnapshots).values({
         blueprint_id:       blueprintId,
         user_id:            userId,
@@ -375,7 +413,9 @@ export class BlueprintEngine {
       //    viable execution. Real package generator runs in Prompt 7+.
       const allowedActions = allowedActionsForTier(tier);
       const restrictedActions = restrictedActionsForTier(tier);
-      const taskLimits = { taskLimit: { min: 1, max: tier === "starter" ? 2 : tier === "growth" ? 3 : 4 } };
+      const baseMax = tier === "starter" ? 2 : tier === "growth" ? 3 : 4;
+      const adjustedLimits = applyArchetypeToTaskLimits(1, baseMax, lockedIntel?.archetypeExecutionMult);
+      const taskLimits = { taskLimit: { min: adjustedLimits.min, max: adjustedLimits.max } };
       const [enforcementPackage] = await tx.insert(enforcementPackages).values({
         blueprint_id:        blueprintId,
         user_id:             userId,
@@ -404,98 +444,138 @@ export class BlueprintEngine {
         is_current:          true,
       }).returning({ id: enforcementPackages.id });
 
-      const actionRows = await tx
-        .select({
-          id: actions.id,
-          name: actions.name,
-          title: actions.title,
-          description: actions.description,
-          project_id: actions.project_id,
-          target_id: actions.target_id,
-          type: actions.type,
-        })
-        .from(actions)
-        .where(eq(actions.blueprint_id, blueprintId))
-        .orderBy(actions.order_index)
-        .limit(dayOneOrderCount(tier));
-
-      if (actionRows.length === 0) {
-        throw new TorgimaError("SCHEMA_OUT_OF_DATE", "Blueprint launch failed: no actions were created for initial orders.");
+      const firstWeekItems = lockedIntel ? parseFirstWeekPlan(lockedIntel.firstWeekPlan) : [];
+      let erectorSeeded = 0;
+      if (firstWeekItems.length > 0) {
+        erectorSeeded = await seedErectorFirstWeekOrders({
+          tx,
+          blueprintId,
+          userId,
+          enforcementPackageId: enforcementPackage?.id ?? null,
+          plan: firstWeekItems,
+          chain: { planId: chain.planId, phaseId: chain.phaseId },
+          domain: String(resolvedDomain),
+          tier,
+        });
       }
 
-      await tx
-        .update(blueprints)
-        .set({
-          current_project_id: actionRows[0]?.project_id ?? null,
-          current_action_id: actionRows[0]?.id ?? null,
-        })
-        .where(eq(blueprints.id, blueprintId));
+      if (erectorSeeded === 0) {
+        const actionRows = await tx
+          .select({
+            id: actions.id,
+            name: actions.name,
+            title: actions.title,
+            description: actions.description,
+            project_id: actions.project_id,
+            target_id: actions.target_id,
+            type: actions.type,
+          })
+          .from(actions)
+          .where(eq(actions.blueprint_id, blueprintId))
+          .orderBy(actions.order_index)
+          .limit(dayOneOrderCount(tier));
 
-      const dueToday = new Date();
-      for (let i = 0; i < actionRows.length; i++) {
-        const action = actionRows[i]!;
-        const title = action.title ?? action.name;
-        await tx.insert(orders).values({
-          blueprint_id: blueprintId,
-          user_id: userId,
-          action_id: action.id,
-          linked_plan_id: chain.planId,
-          linked_target_id: action.target_id,
-          linked_phase_id: chain.phaseId,
-          linked_project_id: action.project_id,
-          enforcement_package_id: enforcementPackage?.id ?? null,
-          task_type: "execution",
-          title,
-          instruction: instructionForAction(title),
-          expected_output: `Completed launch artifact for: ${title}`,
-          definition_of_done: "A concrete artifact exists and can be reviewed.",
-          context_why: "Blueprint launched from validated reality context; this order creates the first execution signal.",
-          order_type: "execution",
-          why_it_matters: "Creates the first proof signal after validation.",
-          time_estimate_minutes: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
-          time_estimate_mins: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
-          proof_required: true,
-          proof_type: "text",
-          proof_description: "Submit the artifact or a concise written proof of completion.",
-          difficulty: tier === "starter" ? "easy" : tier === "growth" ? "moderate" : "hard",
-          priority: 10 - i,
-          domain: resolvedDomain,
-          condition_at_generation: CONDITIONS.NOTHINGNESS,
-          domain_at_generation: String(resolvedDomain),
-          generation_reason: "blueprint_launch_initial_order",
-          assigned_member_id: userId,
-          status: OrderStatus.PENDING,
-          due_at: dueToday,
-          due_date: dueToday,
-          command_context: {
-            source: "launch_initialization",
-            selectedPath: valRow?.selected_path ?? null,
-            selectedBlueprintLevel: tier,
-            traceChain: {
-              orderFrom: "action",
-              actionId: action.id,
+        if (actionRows.length === 0) {
+          throw new TorgimaError("SCHEMA_OUT_OF_DATE", "Blueprint launch failed: no actions were created for initial orders.");
+        }
+
+        await tx
+          .update(blueprints)
+          .set({
+            current_project_id: actionRows[0]?.project_id ?? null,
+            current_action_id: actionRows[0]?.id ?? null,
+          })
+          .where(eq(blueprints.id, blueprintId));
+
+        const dueToday = new Date();
+        for (let i = 0; i < actionRows.length; i++) {
+          const action = actionRows[i]!;
+          const title = action.title ?? action.name;
+          await tx.insert(orders).values({
+            blueprint_id: blueprintId,
+            user_id: userId,
+            action_id: action.id,
+            linked_plan_id: chain.planId,
+            linked_target_id: action.target_id,
+            linked_phase_id: chain.phaseId,
+            linked_project_id: action.project_id,
+            enforcement_package_id: enforcementPackage?.id ?? null,
+            task_type: "execution",
+            title,
+            instruction: instructionForAction(title),
+            expected_output: `Completed launch artifact for: ${title}`,
+            definition_of_done: "A concrete artifact exists and can be reviewed.",
+            context_why: "Blueprint launched from validated reality context; this order creates the first execution signal.",
+            order_type: "execution",
+            why_it_matters: "Creates the first proof signal after validation.",
+            time_estimate_minutes: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
+            time_estimate_mins: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
+            proof_required: true,
+            proof_type: "text",
+            proof_description: "Submit the artifact or a concise written proof of completion.",
+            difficulty: tier === "starter" ? "easy" : tier === "growth" ? "moderate" : "hard",
+            priority: 10 - i,
+            domain: resolvedDomain,
+            condition_at_generation: CONDITIONS.NOTHINGNESS,
+            domain_at_generation: String(resolvedDomain),
+            generation_reason: "blueprint_launch_initial_order",
+            assigned_member_id: userId,
+            status: OrderStatus.PENDING,
+            due_at: dueToday,
+            due_date: dueToday,
+            command_context: {
+              source: "launch_initialization",
+              selectedPath: valRow?.selected_path ?? null,
+              selectedBlueprintLevel: tier,
+              traceChain: {
+                orderFrom: "action",
+                actionId: action.id,
+                projectId: action.project_id,
+                phaseId: chain.phaseId,
+                planId: chain.planId,
+                targetId: action.target_id,
+                goal: chainGoal,
+              },
+              aiBoundary: "AI may explain and adapt inside rules; signals and condition remain authoritative.",
+            },
+            trace_metadata: {
+              layer: "order",
+              parentId: action.id,
+              parentLayer: "action",
+              tier,
+              mode,
+              generationReason: "blueprint_launch_initial_order",
+              targetId: action.target_id,
               projectId: action.project_id,
               phaseId: chain.phaseId,
               planId: chain.planId,
-              targetId: action.target_id,
-              goal: chainGoal,
+              assignedUserId: userId,
             },
-            aiBoundary: "AI may explain and adapt inside rules; signals and condition remain authoritative.",
+          });
+        }
+      }
+
+      if (erectorSeeded > 0 && lockedIntel) {
+        await writeEventInTx(
+          {
+            eventType: EVENT_TYPES.ERECTOR_BLUEPRINT_LAUNCHED,
+            entityType: "blueprint",
+            entityId: blueprintId,
+            userId,
+            blueprintId,
+            payload: {
+              validation_id: lockedIntel.validationId,
+              reality_score: lockedIntel.realityScore,
+              blueprint_tier: lockedIntel.blueprintTier,
+              selected_path: lockedIntel.selectedPath,
+              primary_archetype_id: lockedIntel.primaryArchetypeId,
+              industry_state: lockedIntel.industryState,
+              first_week_tasks_seeded: erectorSeeded,
+            },
+            idempotencyKey: `erector_blueprint_launched_${blueprintId}`,
           },
-          trace_metadata: {
-            layer: "order",
-            parentId: action.id,
-            parentLayer: "action",
-            tier,
-            mode,
-            generationReason: "blueprint_launch_initial_order",
-            targetId: action.target_id,
-            projectId: action.project_id,
-            phaseId: chain.phaseId,
-            planId: chain.planId,
-            assignedUserId: userId,
-          },
-        });
+          tx,
+        );
       }
 
       // 7. State memory record (nothingness)
@@ -588,25 +668,27 @@ export class BlueprintEngine {
         tx,
       );
 
-      // 12. Cold start: fire TASK_GENERATION_REQUESTED
-      await writeEventInTx(
-        {
-          eventType:  EVENT_TYPES.TASK_GENERATION_REQUESTED,
-          entityType: "blueprint",
-          entityId:   blueprintId,
-          userId,
-          blueprintId,
-          payload: {
-            trigger:   "cold_start",
-            phaseId:   chain.phaseId,
-            planId:    chain.planId,
-            condition: CONDITIONS.NOTHINGNESS,
-            domain:    resolvedDomain,
+      // 12. Cold start: fire TASK_GENERATION_REQUESTED (skip when Erector first-week queue is already seeded)
+      if (erectorSeeded === 0) {
+        await writeEventInTx(
+          {
+            eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+            entityType: "blueprint",
+            entityId: blueprintId,
+            userId,
+            blueprintId,
+            payload: {
+              trigger: "cold_start",
+              phaseId: chain.phaseId,
+              planId: chain.planId,
+              condition: CONDITIONS.NOTHINGNESS,
+              domain: resolvedDomain,
+            },
+            idempotencyKey: `task_gen_cold_start_${blueprintId}`,
           },
-          idempotencyKey: `task_gen_cold_start_${blueprintId}`,
-        },
-        tx,
-      );
+          tx,
+        );
+      }
     });
 
     await validateHierarchyAfterCompile(blueprintId, tier, mode);

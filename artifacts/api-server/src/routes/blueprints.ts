@@ -198,8 +198,7 @@ router.post("/blueprints/:id/configure-selection", async (req, res) => {
   }
 });
 
-// POST /api/blueprints/:id/activate — canonical blueprint launch route.
-router.post("/blueprints/:id/activate", async (req, res) => {
+const blueprintLaunchHandler = async (req: import("express").Request, res: import("express").Response) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
@@ -225,14 +224,15 @@ router.post("/blueprints/:id/activate", async (req, res) => {
       failure(
         res,
         "VALIDATION_ERROR",
-        "validation_contract_id and selected_path_type are required",
+        "validation_required: validation_contract_id and selected_path_type are required",
         400,
       );
       return;
     }
 
+    const blueprintId = String(req.params.id ?? "");
     const result = await BlueprintLaunchService.launch({
-      blueprintId: req.params.id!,
+      blueprintId,
       userId: auth.userId,
       validationContractId,
       selectedPathType,
@@ -242,7 +242,13 @@ router.post("/blueprints/:id/activate", async (req, res) => {
   } catch (err) {
     handleError(req, res, err);
   }
-});
+};
+
+// POST /api/v1/blueprints/:id/launch — Prompt 4 alias for blueprint activate.
+router.post("/v1/blueprints/:id/launch", blueprintLaunchHandler);
+
+// POST /api/blueprints/:id/activate — canonical blueprint launch route.
+router.post("/blueprints/:id/activate", blueprintLaunchHandler);
 
 // GET /api/blueprints/:id/state
 router.get("/blueprints/:id/state", async (req, res) => {

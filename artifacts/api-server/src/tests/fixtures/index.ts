@@ -85,6 +85,17 @@ export const TEST_SIGNALS = {
 } as const;
 
 /** Maps Prompt 9 fixture names to `seedPhase9Fixture` keys. */
+export {
+  seedErectorFixture,
+  cleanupErectorFixture,
+  seedStuckValidationFixture,
+  countArchetypesWithSubstance,
+  type ErectorFixture,
+  type ErectorFixtureName,
+} from "./erector-fixtures.js";
+
+export { ERECTOR_FIXTURE_NAMES } from "./erector-fixtures.js";
+
 export const FIXTURE_ALIASES = {
   newUser: "new_user_minimal",
   activeUser: "stable_user_active",

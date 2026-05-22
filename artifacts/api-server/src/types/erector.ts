@@ -1,4 +1,4 @@
-export type ErectorVerdict = "proceed" | "adjust" | "pivot";
+export type ErectorVerdict = "proceed" | "adjust" | "pivot" | "blocked";
 export type BlueprintLevel = "starter" | "growth" | "ultimate";
 export type ErectorPathType = "current" | "adjusted" | "alternative";
 
@@ -124,6 +124,7 @@ export interface TimeSimulationOutput {
 
 export interface ErectorValidationResult {
   validationId: string;
+  validationContractId?: string;
   blueprintId: string;
   validationStage: string;
   verdict: ErectorVerdict;

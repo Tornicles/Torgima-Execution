@@ -1,0 +1,12 @@
+﻿TORGIMA FULL SYSTEM AUDIT — DEDUPLICATION — ALIGNMENT FIX — COMMIT
+(See source: TORGIMA_FULL_AUDIT_FIX_COMMIT_PROMPT.docx)
+
+Goals:
+1. Duplicate detection and merge (no logic deletion)
+2. Cross-layer alignment (DB schema, types, engines, routes, frontend)
+3. Magic link auth end-to-end
+4. Execution loop wired: Goal → Blueprint → Task → Feedback → Signal → Condition → New Task
+5. Bottleneck elimination
+6. Commit when checks pass
+
+Note: This monorepo uses artifacts/api-server (Express + Drizzle), lib/db, artifacts/torgima (Vite), not Next.js/Prisma paths from the docx template.

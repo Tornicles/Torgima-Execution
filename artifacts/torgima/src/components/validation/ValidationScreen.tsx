@@ -8,12 +8,14 @@ import { IntelligenceStatusBar } from "./IntelligenceStatusBar";
 import { PathComparisonTable } from "./PathComparisonTable";
 import { FeasibilityScoreCard } from "./FeasibilityScoreCard";
 import { ScenarioSimulator } from "./ScenarioSimulator";
+import { ErectorScoresDashboard } from "./ErectorScoresDashboard";
 import type { ValidationStatus } from "@workspace/state-machine";
 
 export interface ValidationScreenData {
   validationId?: string;
   validationContractId?: string;
   erectorValidationId?: string;
+  erectorValidationContractId?: string;
   blueprintId?: string;
   verdict?: string;
   readiness?: string;
@@ -51,6 +53,8 @@ export function ValidationScreen({
 
   const paths = data.paths as Partial<Record<PathKey, PathView>> | undefined;
   const tabsFeasibility = data.tabs?.feasibility as Record<string, string | string[]> | undefined;
+  const erector = data.intelligence?.["erector"] as Record<string, unknown> | undefined;
+  const erectorScores = erector?.["scores"] as Record<string, number | string | undefined> | undefined;
 
   return (
     <div className="space-y-6">
@@ -66,6 +70,17 @@ export function ValidationScreen({
       )}
 
       <IntelligenceStatusBar progress={data.systemsProgress} />
+
+      {erectorScores && (
+        <ErectorScoresDashboard
+          scores={erectorScores}
+          realityScore={Number(erectorScores.realityScore ?? erector?.["realityScore"] ?? NaN) || undefined}
+          verdict={String(erectorScores.verdict ?? data.verdict ?? "")}
+          recommendedBlueprintLevel={String(
+            erectorScores.recommendedBlueprintLevel ?? erector?.["recommendedBlueprintLevel"] ?? "",
+          )}
+        />
+      )}
 
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2">

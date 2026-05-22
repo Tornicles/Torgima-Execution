@@ -7,10 +7,70 @@ import { runErectorValidation } from "../engines/erector/ErectorOrchestrationSer
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
 import { writeEvent } from "../services/EventService.js";
 import { EventTypes } from "../types/eventContracts.js";
+import { emitErectorFirstWeekGenerated } from "../engines/erector/emitErectorEvents.js";
 import { generateFirstWeek } from "../engines/erector/PathEngine.js";
 import { resolveArchetype } from "../engines/erector/ArchetypeResolutionEngine.js";
+import type { ErectorValidationInput } from "../types/erector.js";
 
 const router = Router();
+
+async function loadOwnedErectorValidation(validationId: string, userId: string) {
+  const { db, validations } = await import("@workspace/db");
+  const { eq } = await import("drizzle-orm");
+  const [row] = await db.select().from(validations).where(eq(validations.id, validationId)).limit(1);
+  if (!row || row.user_id !== userId) return null;
+  return row;
+}
+
+function erectorInputFromRow(row: typeof import("@workspace/db").validations.$inferSelect, userId: string): ErectorValidationInput {
+  return {
+    userId,
+    blueprintId: row.blueprint_id,
+    idempotencyKey: row.idempotency_key ?? `erector:${row.id}`,
+    rawGoal: row.raw_goal ?? row.desired_outcome ?? "Execution goal",
+    purpose: row.purpose ?? row.desired_outcome ?? "Execution purpose",
+    timeframe: "90d",
+    commitmentLevel: row.commitment_level ?? "MEDIUM",
+    desiredOutcome: row.desired_outcome ?? "Proof and traction",
+    location: { country: row.location_country ?? "Unknown", city: row.location_city ?? undefined },
+    businessType: (row.business_type as "online" | "offline" | "hybrid") ?? "online",
+    businessModel: row.business_model ?? "Service",
+    budgetAvailable: row.budget_available ?? 0,
+    currency: row.currency ?? "USD",
+    currentResources: (row.current_resources as string[]) ?? ["Skills"],
+    targetCustomer: row.target_customer ?? "Target segment",
+    currentContext: row.current_context ?? undefined,
+    successSignal: row.success_signal ?? undefined,
+  };
+}
+
+async function persistFirstWeekPlan(
+  row: typeof import("@workspace/db").validations.$inferSelect,
+  userId: string,
+  selectedPath: "current" | "adjusted" | "alternative",
+) {
+  const archetypeResolution = row.archetype_resolution as import("../types/erector.js").ArchetypeResolutionOutput | null;
+  const archetype =
+    archetypeResolution ??
+    (await resolveArchetype(row.location_country ?? "Unknown", row.location_city ?? undefined));
+  const firstWeekPlan = await generateFirstWeek(erectorInputFromRow(row, userId), archetype, row.id, selectedPath);
+  const { db, validations } = await import("@workspace/db");
+  const { eq } = await import("drizzle-orm");
+  const stored = {
+    days: firstWeekPlan.days,
+    plans: firstWeekPlan.plans,
+  };
+  await db.update(validations).set({ first_week_plan: stored }).where(eq(validations.id, row.id));
+  const dayCount = Array.isArray(stored.days) ? stored.days.length : 7;
+  await emitErectorFirstWeekGenerated({
+    validationId: row.id,
+    blueprintId: row.blueprint_id,
+    userId,
+    taskCount: dayCount,
+    smokeTestCount: dayCount,
+  });
+  return stored;
+}
 
 const erectorValidationInputSchema = z.object({
   blueprintId: z.string().uuid(),
@@ -80,6 +140,43 @@ router.get("/v1/validation/archetypes", async (_req, res) => {
   }
 });
 
+// GET /api/v1/validation/active-draft — Prompt 6 validation route group guard.
+router.get("/v1/validation/active-draft", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { db, blueprints } = await import("@workspace/db");
+    const { and, desc, eq, inArray } = await import("drizzle-orm");
+    const [draft] = await db
+      .select({
+        id: blueprints.id,
+        status: blueprints.status,
+        validation_id: blueprints.validation_id,
+        erector_validation_id: blueprints.erector_validation_id,
+      })
+      .from(blueprints)
+      .where(
+        and(
+          eq(blueprints.user_id, auth.userId),
+          inArray(blueprints.status, ["draft", "validating", "path_selection", "awaiting_selection"]),
+        ),
+      )
+      .orderBy(desc(blueprints.updated_at))
+      .limit(1);
+    if (!draft) {
+      success(res, null);
+      return;
+    }
+    success(res, {
+      blueprintId: draft.id,
+      status: draft.status,
+      validationId: draft.validation_id,
+      erectorValidationId: draft.erector_validation_id,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // GET /api/v1/validation/:id — polling endpoint for Erector stage/result screens.
 router.get("/v1/validation/:id", async (req, res) => {
   try {
@@ -94,6 +191,7 @@ router.get("/v1/validation/:id", async (req, res) => {
     success(res, {
       validationId: row.id,
       validationContractId: row.contract_id,
+      launchBlocked: row.launch_blocked ?? false,
       blueprintId: row.blueprint_id,
       validationStage: row.validation_stage ?? row.status,
       status: row.status,
@@ -125,7 +223,123 @@ router.get("/v1/validation/:id", async (req, res) => {
   }
 });
 
-// POST /api/v1/validation/:id/select-path — record selected Erector path.
+// POST /api/v1/validation/resolve-archetype — preview economy mapping for a country/city.
+router.post("/v1/validation/resolve-archetype", async (req, res) => {
+  try {
+    await requireAuth(req, "USER_SESSION");
+    const schema = z.object({
+      country: z.string().min(2).max(120),
+      city: z.string().max(120).optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid archetype resolution input", 422);
+      return;
+    }
+    const resolution = await resolveArchetype(parsed.data.country, parsed.data.city);
+    success(res, resolution);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/v1/validation/:id/scores — 11-score dashboard payload.
+router.get("/v1/validation/:id/scores", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    success(res, {
+      validationId: row.id,
+      verdict: row.verdict,
+      realityScore: row.reality_score,
+      recommendedBlueprintLevel: row.recommended_blueprint_level,
+      scores: {
+        marketScore: row.market_score,
+        executionScore: row.execution_score,
+        timingScore: row.timing_score,
+        competitionScore: row.competition_score,
+        scalabilityScore: row.scalability_score,
+        localEconomyScore: row.local_economy_score,
+        resourceScore: row.resource_score,
+        blueprintDifficultyScore: row.blueprint_difficulty_score,
+        riskScore: row.risk_score,
+        momentumPotential: row.momentum_potential,
+        trustBuildingScore: row.trust_building_score,
+        realityScore: row.reality_score,
+        verdict: row.verdict,
+        recommendedBlueprintLevel: row.recommended_blueprint_level,
+      },
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/v1/validation/:id/competitors
+router.get("/v1/validation/:id/competitors", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    success(res, row.competitor_analysis ?? row.winner_analysis ?? {});
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/v1/validation/:id/simulation
+router.get("/v1/validation/:id/simulation", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    success(res, {
+      timeSimulations: row.time_simulations ?? [],
+      executionDifficulty: row.execution_difficulty ?? {},
+      timingAnalysis: row.timing_analysis ?? {},
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/v1/validation/:id/first-week
+router.get("/v1/validation/:id/first-week", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    if (row.first_week_plan) {
+      success(res, { first_week_plan: row.first_week_plan });
+      return;
+    }
+    const selected = row.selected_path_type ?? row.selected_path;
+    if (!selected) {
+      failure(res, "NOT_FOUND", "First week plan is available after path selection.", 404);
+      return;
+    }
+    const selectedPath = selected as "current" | "adjusted" | "alternative";
+    const firstWeekPlan = await persistFirstWeekPlan(row, auth.userId, selectedPath);
+    success(res, { first_week_plan: firstWeekPlan });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/v1/validation/:id/select-path — record selected Erector path and generate first-week plan.
 router.post("/v1/validation/:id/select-path", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
@@ -135,18 +349,22 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid path selection", 422);
       return;
     }
-    const { db, validations } = await import("@workspace/db");
-    const { eq } = await import("drizzle-orm");
-    const [row] = await db.select().from(validations).where(eq(validations.id, req.params.id)).limit(1);
-    if (!row || row.user_id !== auth.userId) {
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
       failure(res, "NOT_FOUND", "Validation not found", 404);
       return;
     }
     const selected = parsed.data.selectedPath;
-    if (row.verdict === "pivot" && selected === "current") {
+    if (row.verdict === "blocked") {
+      failure(res, "VALIDATION_ERROR", "Launch blocked: Reality Score below 2.5. Re-validate your goal.", 422);
+      return;
+    }
+    if ((row.verdict === "pivot" || (row.reality_score != null && row.reality_score < 4)) && selected === "current") {
       failure(res, "VALIDATION_ERROR", "Current path cannot launch when Reality Score requires pivot.", 422);
       return;
     }
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
     await db
       .update(validations)
       .set({
@@ -156,6 +374,7 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
         adjusted_path_confirmed: selected === "adjusted" || selected === "alternative",
       })
       .where(eq(validations.id, row.id));
+    const firstWeekPlan = await persistFirstWeekPlan(row, auth.userId, selected);
     await writeEvent({
       eventType: EventTypes.ERECTOR_PATH_SELECTED,
       entityType: "validation",
@@ -170,6 +389,7 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       validation_contract_id: row.contract_id,
       selected_path: selected,
       recommended_blueprint_level: row.recommended_blueprint_level ?? "starter",
+      first_week_plan: firstWeekPlan,
     });
   } catch (err) {
     handleError(req, res, err);
@@ -180,41 +400,13 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
 router.post("/v1/validation/:id/first-week", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    const { db, validations } = await import("@workspace/db");
-    const { eq } = await import("drizzle-orm");
-    const [row] = await db.select().from(validations).where(eq(validations.id, req.params.id)).limit(1);
-    if (!row || row.user_id !== auth.userId) {
+    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
+    if (!row) {
       failure(res, "NOT_FOUND", "Validation not found", 404);
       return;
     }
     const selectedPath = (row.selected_path_type ?? row.selected_path ?? "adjusted") as "current" | "adjusted" | "alternative";
-    const archetypeResolution = row.archetype_resolution as import("../types/erector.js").ArchetypeResolutionOutput | null;
-    const archetype =
-      archetypeResolution ??
-      (await resolveArchetype(row.location_country ?? "Unknown", row.location_city ?? undefined));
-    const firstWeekPlan = await generateFirstWeek(
-      {
-        userId: auth.userId,
-        blueprintId: row.blueprint_id,
-        idempotencyKey: row.idempotency_key ?? `first-week:${row.id}`,
-        rawGoal: row.desired_outcome ?? "Execution goal",
-        purpose: row.desired_outcome ?? "Execution purpose",
-        timeframe: "90d",
-        commitmentLevel: row.commitment_level ?? "MEDIUM",
-        desiredOutcome: row.desired_outcome ?? "Proof and traction",
-        location: { country: row.location_country ?? "Unknown", city: row.location_city ?? undefined },
-        businessType: (row.business_type as "online" | "offline" | "hybrid") ?? "online",
-        businessModel: row.business_model ?? "Service",
-        budgetAvailable: row.budget_available ?? 0,
-        currency: row.currency ?? "USD",
-        currentResources: (row.current_resources as string[]) ?? ["Skills"],
-        targetCustomer: row.target_customer ?? "Target segment",
-      },
-      archetype,
-      row.id,
-      selectedPath,
-    );
-    await db.update(validations).set({ first_week_plan: firstWeekPlan }).where(eq(validations.id, row.id));
+    const firstWeekPlan = await persistFirstWeekPlan(row, auth.userId, selectedPath);
     success(res, { first_week_plan: firstWeekPlan });
   } catch (err) {
     handleError(req, res, err);

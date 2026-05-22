@@ -3,7 +3,7 @@
  * LAW 1: events carry payloads; engines calculate signals/conditions — never inline here.
  * LAW 2: DLQ retries reuse original payload; no mutation retries.
  */
-import { db, events, idempotencyRecords, deadLetterEvents } from "@workspace/db";
+import { db, events, idempotencyRecords, deadLetterEvents, validations, blueprints } from "@workspace/db";
 import { eq, and, lt, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import {
@@ -12,6 +12,8 @@ import {
   EVENT_TYPES,
   type CreateEventInput,
 } from "../../services/EventService.js";
+import { EventTypes } from "../../types/eventContracts.js";
+import { ErectorValidationStage, ValidationStatus } from "@workspace/state-machine";
 
 export { EVENT_TYPES };
 
@@ -153,6 +155,11 @@ export async function handleDLQ(dlqItemId?: string): Promise<{ reviewed: number;
     const ageMs = now - item.created_at.getTime();
     const payload = (item.payload ?? {}) as Record<string, unknown>;
 
+    const erectorHandled = await handleErectorDlqRecovery(item.event_type, payload, item);
+    if (erectorHandled) {
+      continue;
+    }
+
     if (payload["mutate_signal"] === true || payload["force_signal_recalc"] === true) {
       await db
         .update(deadLetterEvents)
@@ -205,6 +212,66 @@ export async function handleDLQ(dlqItemId?: string): Promise<{ reviewed: number;
   }
 
   return { reviewed, alerted };
+}
+
+/** Prompt 8 — Erector-specific DLQ recovery (validation retry vs launch rollback). */
+async function handleErectorDlqRecovery(
+  eventType: string,
+  payload: Record<string, unknown>,
+  item: { id: string; blueprint_id: string | null; user_id: string | null; original_event_id: string },
+): Promise<boolean> {
+  const validationId = String(payload.validation_id ?? payload.validationId ?? "");
+  const blueprintId = String(payload.blueprint_id ?? payload.blueprintId ?? item.blueprint_id ?? "");
+
+  switch (eventType) {
+    case EventTypes.ERECTOR_VALIDATION_STARTED:
+    case EventTypes.ERECTOR_ENGINE_COMPLETED: {
+      if (validationId) {
+        await db
+          .update(validations)
+          .set({
+            validation_stage: ValidationStatus.FAILED,
+            erector_validation_stage: ErectorValidationStage.FAILED,
+            status: ValidationStatus.FAILED,
+            updated_at: new Date(),
+          })
+          .where(eq(validations.id, validationId));
+      }
+      await db
+        .update(deadLetterEvents)
+        .set({ resolution_status: "REQUIRES_MANUAL" })
+        .where(eq(deadLetterEvents.id, item.id));
+      return true;
+    }
+    case EventTypes.ERECTOR_BLUEPRINT_LAUNCHED: {
+      if (blueprintId) {
+        await db
+          .update(blueprints)
+          .set({ status: "path_selection", active: false, updated_at: new Date() })
+          .where(eq(blueprints.id, blueprintId));
+      }
+      await writeEvent({
+        eventType: EventTypes.BLUEPRINT_LAUNCH_FAILED,
+        entityType: "blueprint",
+        entityId: blueprintId || item.original_event_id,
+        userId: item.user_id ?? undefined,
+        blueprintId: blueprintId || undefined,
+        payload: {
+          ...payload,
+          validation_id: validationId || undefined,
+          reason: "erector_blueprint_launched_dlq",
+        },
+        idempotencyKey: `blueprint_launch_failed:${item.id}`,
+      }).catch(() => null);
+      await db
+        .update(deadLetterEvents)
+        .set({ resolution_status: "REQUIRES_MANUAL" })
+        .where(eq(deadLetterEvents.id, item.id));
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 export async function moveEventToDLQ(params: {

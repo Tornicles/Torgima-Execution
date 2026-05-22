@@ -1,0 +1,121 @@
+TORGIMA
+CURSOR BUILD PROMPT
+PROMPT 9 — ERECTOR ADDITIONS
+Erector Additions — Test Suite
+Erector Fixtures, Acceptance Criteria, E2E Scenarios
+
+A — PURPOSE
+The main Prompt 9 builds the end-to-end test suite and 20-item Phase 1 acceptance checklist. The Erector adds 21 additional acceptance criteria, a full set of test fixtures, and 6 new end-to-end scenarios that must pass before Phase 1 is considered shippable.
+Run this prompt AFTER the main Prompt 9 is verified working.
+
+B — READ BEFORE TOUCHING ANYTHING
+Read the existing test fixture inventory — understand what fixtures already exist before creating new ones.
+Read the existing e2e test scenarios — understand the current structure before adding new scenarios.
+Read the existing 20-item acceptance checklist — understand the numbering before appending the Erector items.
+
+C — TEST FIXTURES TO ADD
+Add these fixtures to tests/fixtures/. Each fixture must be a complete, self-contained database seed function that creates the minimum data required for the test scenario.
+Fixture Name
+What It Seeds
+erectorValidationProceed
+User + blueprint draft + completed validation with reality_score = 7.2, verdict = proceed, all 9 engine outputs populated, selected_path = &apos;current&apos;, first_week_plan with 7 tasks, recommended_blueprint_level = &apos;growth&apos;.
+erectorValidationAdjust
+Same as above but reality_score = 5.1, verdict = &apos;adjust&apos;. selected_path must be set to &apos;adjusted&apos; to allow blueprint launch. Tests that adjusted path is correctly enforced.
+erectorValidationPivot
+reality_score = 3.2, verdict = &apos;pivot&apos;. Blueprint launch is blocked until alternative path selected. Tests pivot enforcement.
+erectorValidationBlocked
+reality_score = 2.1, verdict = &apos;blocked&apos;. Blueprint launch completely blocked. Tests hard block logic.
+erectorBlueprintLaunched
+A fully launched blueprint with all 7 archetype fields set on the blueprint record, 7 smoke test tasks in orders table, all with generation_reason = erector_first_week_seed, erector_blueprint_launched event in events table.
+erectorArchetypeNigeria
+Validation completed with Nigeria as location. Primary archetype = Archetype 7 (Rapid Urbanisation) + Archetype 14 (Informal Cash). Tests economy-specific output divergence.
+erectorArchetypeGermany
+Same goal as Nigeria fixture but location = Germany. Archetype 2 (Welfare Industrial) + Archetype 5 (High-Efficiency Manufacturing). Used to assert different scores for identical goals.
+erectorArchetypeIran
+Location = Iran. Archetype 23 (Sanctioned Economy). Tests that economy_briefing contains payment system warning.
+erectorSmokeTestsComplete
+Blueprint with all 7 smoke test tasks marked complete. Tests that execution loop transitions correctly from smoke test phase to normal execution phase.
+erectorFallbackMode
+Validation completed with all 10 Bhudhi calls having fallback_used = true in BhudhiLog. Tests system resilience.
+
+D — 21 ERECTOR ACCEPTANCE CRITERIA
+Add these to the master acceptance checklist as items 21–41:
+
+[ ] 21 — All 30 Economic Archetypes seeded with complete substantive profiles (no placeholder values).
+[ ] 22 — Nigeria fixture and Germany fixture for identical goals produce materially different reality scores, archetype narratives, and economy briefings.
+[ ] 23 — Iran fixture economy briefing contains payment system warning string.
+[ ] 24 — Corruption-Heavy archetype economy briefing contains relationship/connection guidance.
+[ ] 25 — All 9 validation engines run in sequence and produce non-empty outputs.
+[ ] 26 — erectorFallbackMode fixture: all 9 engines complete, all 10 BhudhiLog entries show fallback_used = true, validation has reality_score.
+[ ] 27 — Scoring Engine calculates all 11 scores without any BhudhiLog entry being created (deterministic proof).
+[ ] 28 — erectorValidationBlocked fixture: POST /api/v1/blueprints/launch returns 400 with specific block reason.
+[ ] 29 — erectorValidationPivot fixture: blueprint launch blocked until selected_path = &apos;alternative&apos;.
+[ ] 30 — erectorValidationAdjust fixture: blueprint launch blocked until selected_path = &apos;adjusted&apos;.
+[ ] 31 — erectorValidationProceed fixture: blueprint launches successfully with selected_path = &apos;current&apos;.
+[ ] 32 — 90d time simulation produces higher daily_task_count than 1yr simulation for identical goal.
+[ ] 33 — Archetype timeframe_pressure_multiplier is applied to time simulation output (visible difference between archetype 1 and archetype 6 for same timeframe).
+[ ] 34 — All 3 paths (current/adjusted/alternative) generated in every validation run.
+[ ] 35 — First week plan generated only after path selection. /api/v1/validation/:id/first-week returns 404 before path is selected.
+[ ] 36 — erectorBlueprintLaunched fixture: 7 rows in orders with generation_reason = erector_first_week_seed. First task status = pending. Tasks 2-7 status = queued.
+[ ] 37 — Dashboard Execution Context panel renders archetype name, reality score, and blueprint tier from erectorBlueprintLaunched fixture.
+[ ] 38 — First week task card shows &apos;Smoke Test — Week 1&apos; indicator. Indicator absent on normal execution tasks.
+[ ] 39 — erectorSmokeTestsComplete fixture: after all 7 smoke tasks complete, next generated task has generation_reason != erector_first_week_seed (normal execution begins).
+[ ] 40 — Validation pipeline health check: stuck validation (running > 5 min) creates system_health_log with status = warn.
+[ ] 41 — Complete Phase 1 Erector flow in one session: register → goal → validation (9 engines) → path selection → blueprint launch → first smoke test task → complete task → feedback → next task generated. All in under 30 seconds total API time.
+
+E — 6 NEW END-TO-END SCENARIOS
+Scenario E1 — Full Erector Validation Flow
+Step
+Expected Result
+POST /api/v1/validation/run with full erectorValidationProceed input
+Returns validation_id, status = &apos;complete&apos;, reality_score > 6.5, verdict = &apos;proceed&apos;, all 9 engine outputs populated.
+GET /api/v1/validation/:id
+Full validation report returned. economy_briefing not null. competitor_analysis has >= 5 items.
+GET /api/v1/validation/:id/simulation
+3 time simulation objects returned. 90d daily_task_count > 1yr daily_task_count.
+POST /api/v1/validation/:id/select-path { path: &apos;current&apos; }
+selected_path = &apos;current&apos; set. first_week_plan generated and stored.
+GET /api/v1/validation/:id/first-week
+7 FirstWeekPlan objects returned. At least 2 have smokeTest = true.
+POST /api/v1/blueprints/launch
+Blueprint status = active. 7 orders seeded. Redirect to /dashboard.
+
+Scenario E2 — Archetype Divergence
+Run validation twice with identical goal, purpose, timeframe, commitment — but location A = Germany and location B = Nigeria. Assert that primary_archetype differs, economy_briefing text differs, at least 3 score values differ by > 1.0, and competitor_analysis returns different competitor contexts.
+
+Scenario E3 — Blocked Validation
+Run validation that produces reality_score < 2.5. Assert verdict = &apos;blocked&apos;. Attempt POST /api/v1/blueprints/launch. Assert 400 response with reason containing &apos;blocked&apos;. Assert that UI Blueprint Level Selection screen is not reachable. Assert that system_health_logs contains no entries for this attempt (it is not a system error — it is correct behaviour).
+
+Scenario E4 — Fallback Resilience
+Set ANTHROPIC_API_KEY to an invalid value. Run a full validation. Assert all 9 engines complete. Assert validation has reality_score (not null). Assert all 10 BhudhiLog entries show outcome = &apos;fallback_used&apos;. Assert the validation report shows &apos;intelligence_limited&apos; flag. Assert blueprint can still launch from fallback validation.
+
+Scenario E5 — Smoke Test to Normal Execution Transition
+Use erectorBlueprintLaunched fixture. Complete all 7 smoke test tasks sequentially, submitting valid feedback after each. After task 7 completes and feedback is submitted, assert that the task generation worker creates a new task with generation_reason != &apos;erector_first_week_seed&apos;. Assert the Smoke Test indicator is no longer visible on the new task. Assert signal snapshot is created after task 7 feedback.
+
+Scenario E6 — Idempotency
+POST /api/v1/validation/run with idempotency_key = &apos;test-key-001&apos;. Note validation_id returned. POST the identical request again with the same idempotency_key. Assert the same validation_id is returned. Assert no new ValidationRun record was created. Assert no new Bhudhi calls were made (BhudhiLog count unchanged).
+
+F — ACCEPTANCE CRITERIA
+[ ] All 10 Erector fixtures created and seed without errors.
+[ ] Items 21–41 added to master acceptance checklist.
+[ ] All 6 new E2E scenarios passing.
+[ ] All original 20 acceptance criteria still passing.
+[ ] Full Phase 1 shippability checklist: 41 criteria all green.
+
+G — FINAL REPORT FORMAT
+TORGIMA — PROMPT 9 ERECTOR ADDITIONS — BUILD REPORT
+════════════════════════════════════════════════════
+Fixtures created:            [10 / 10 or list failures]
+Acceptance criteria 21-41:   [all pass / list failures]
+E2E Scenario E1:             [pass / fail]
+E2E Scenario E2 (divergence):[pass / fail]
+E2E Scenario E3 (blocked):   [pass / fail]
+E2E Scenario E4 (fallback):  [pass / fail]
+E2E Scenario E5 (transition):[pass / fail]
+E2E Scenario E6 (idempotency):[pass / fail]
+Original 20 criteria pass:   [yes / no]
+Total criteria passing:      [x of 41]
+
+PHASE 1 ERECTOR COMPLETE: [YES / NO]
+(YES only if all 41 criteria green and all 6 scenarios pass)
+════════════════════════════════════════════════════

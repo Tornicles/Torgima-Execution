@@ -7,11 +7,18 @@ import {
   signalSnapshots,
   orders,
   systemHealthLogs,
+  validations,
 } from "@workspace/db";
 import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
-import { BlueprintStatus, EventStatus, OrderStatus, SystemHealthStatus } from "@workspace/state-machine";
+import {
+  BlueprintStatus,
+  EventStatus,
+  OrderStatus,
+  SystemHealthStatus,
+  ValidationStatus,
+} from "@workspace/state-machine";
 
 // SystemHealthService — runs integrity checks across the execution chain, classifies
 // findings, writes SystemHealthLog records, emits system_health_degraded, and
@@ -35,7 +42,8 @@ export type HealthArea =
   | "BHUDHI"
   | "WORKER_RUNTIME"
   | "WORKER_HEALTH"
-  | "AI_SYSTEM";
+  | "AI_SYSTEM"
+  | "VALIDATION";
 
 export type HealthSeverity = "INFO" | "WARN" | "ERROR" | "CRITICAL" | "FATAL";
 
@@ -73,6 +81,7 @@ export async function runIntegrityChecks(): Promise<HealthFinding[]> {
     checkDeadLetterBlockers,
     checkSignalChainContinuity,
     checkProjectionFreshness,
+    checkValidationPipeline,
   ];
 
   for (const check of checks) {
@@ -254,6 +263,82 @@ async function checkSignalChainContinuity(): Promise<HealthFinding[]> {
 // the dashboard projection store is introduced (Prompt 15+).
 async function checkProjectionFreshness(): Promise<HealthFinding[]> {
   return [];
+}
+
+/** Prompt 8 — Erector validation pipeline stuck / abandoned detection. */
+async function checkValidationPipeline(): Promise<HealthFinding[]> {
+  const findings: HealthFinding[] = [];
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+  const [stuckRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(validations)
+    .where(
+      and(
+        eq(validations.validation_stage, ValidationStatus.RUNNING),
+        lt(validations.updated_at, fiveMinAgo),
+      ),
+    );
+
+  const [abandonedRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(blueprints)
+    .where(
+      and(
+        eq(blueprints.status, BlueprintStatus.PATH_SELECTION),
+        lt(blueprints.updated_at, fortyEightHoursAgo),
+      ),
+    );
+
+  const stuckValidations = stuckRow?.count ?? 0;
+  const abandonedValidations = abandonedRow?.count ?? 0;
+  const score = stuckValidations === 0 ? 10 : 5;
+  const status = stuckValidations > 0 ? "warn" : "ok";
+
+  await db
+    .insert(systemHealthLogs)
+    .values({
+      area: "VALIDATION",
+      severity: stuckValidations > 0 ? "WARN" : "INFO",
+      check_type: "validation_pipeline",
+      message:
+        stuckValidations > 0
+          ? `${stuckValidations} validation(s) stuck in running > 5 minutes`
+          : "Validation pipeline healthy",
+      status,
+      score,
+      details_json: { stuckValidations, abandonedValidations },
+      issues_detected:
+        stuckValidations > 0 ? ["VALIDATION_PIPELINE_STUCK"] : [],
+    })
+    .catch(() => null);
+
+  if (stuckValidations > 0) {
+    findings.push({
+      area: "VALIDATION",
+      severity: "WARN",
+      issueCode: "VALIDATION_PIPELINE_STUCK",
+      expected: "No Erector validation stuck in running > 5 minutes",
+      actual: `${stuckValidations} validation row(s) stale`,
+      repairable: false,
+      repairAction: "ADMIN_REVIEW",
+    });
+  }
+
+  if (abandonedValidations > 0) {
+    findings.push({
+      area: "VALIDATION",
+      severity: "INFO",
+      issueCode: "VALIDATION_PATH_SELECTION_STALE",
+      expected: "Blueprints in path_selection should progress within 48 hours",
+      actual: `${abandonedValidations} blueprint(s) idle > 48 hours`,
+      repairable: false,
+      repairAction: "NONE",
+    });
+  }
+
+  return findings;
 }
 
 // ── PROCESS AND LOG FINDINGS ─────────────────────────────────────────────────

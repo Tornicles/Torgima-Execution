@@ -1,0 +1,227 @@
+﻿TORGIMA
+CURSOR BUILD PROMPT
+PROMPT 4
+Erector â†’ Execution Bridge
+Connecting Validation Intelligence to the Live Execution Loop
+
+A â€” PURPOSE OF THIS PROMPT
+The Erector (Prompt 3) ends at blueprint launch. The execution loop (Prompt 5 onward) begins at task generation. This prompt builds the bridge between them. Without this bridge, the archetype intelligence gathered during validation is collected but never used. The first week plan is generated but never seeded. The reality score is stored but the execution engine never reads it.
+This prompt has one job: make the Erector's output a living, active part of every execution decision from the moment the blueprint launches.
+
+B â€” READ BEFORE TOUCHING ANYTHING
+Read services/validation/ completely â€” especially the path selection and first week plan outputs.
+Read engines/blueprint/BlueprintEngine.ts â€” the launchBlueprint() function specifically. You will extend it, not replace it.
+Read lib/bhudhi/ â€” the full prompt library. You will ADD registrations, not change existing ones.
+Read app/(onboarding)/ and app/(validation)/ â€” map the current routing before touching any route file.
+Read the Blueprint and Validation models in prisma/schema.prisma to confirm the fields added in Prompt 3 are present before building anything.
+
+C â€” CORE LAWS
+EXTEND ONLY. launchBlueprint() gets new logic added inside the existing transaction. Nothing is removed.
+ARCHETYPE NEVER OVERRIDES CONDITION. Archetype multipliers adjust task count ranges and pace calculations. They never set a condition directly. Condition is always owned by the Signal Engine.
+FIRST WEEK TASKS ARE SMOKE TESTS. They seed the task queue with reality-checking actions before the normal execution loop takes over. They do not replace the normal loop.
+ALL NEW BHUDHI CALLS FOLLOW THE EXISTING PATTERN. Registered in TriggerRouter, Zod schema, BhudhiLog write, deterministic fallback. No exceptions.
+
+D â€” WHAT TO BUILD (8 TASKS IN ORDER)
+Task 1 â€” Lock validation intelligence on blueprint at launch
+When launchBlueprint() is called, read the validation record linked to the blueprint draft. Extract and lock these values onto the Blueprint record inside the existing transaction:
+reality_score              Float?   // from validation.reality_score
+blueprint_tier             String?  // from validation.recommended_blueprint_level
+primary_archetype_id       String?  // from validation.archetype_maps (is_primary=true)
+industry_state             String?  // from validation.industry_intelligence.industryState
+archetype_execution_mult   Float?   // from primary archetype executionIntensityMultiplier
+archetype_timeframe_mult   Float?   // from primary archetype timeframePressureMultiplier
+archetype_difficulty_adj   Float?   // from primary archetype blueprintDifficultyAdjustment
+Add these fields to the Blueprint model in prisma/schema.prisma (all nullable). Run migration: npx prisma migrate dev --name add_archetype_intel_to_blueprint
+GATE: After migration â€” SELECT reality_score, blueprint_tier, primary_archetype_id FROM blueprints WHERE id = [test_id] returns the locked values.
+
+Task 2 â€” Seed first week plan as initial task queue
+The first week plan stored in validation.first_week_plan is an array of 7 FirstWeekPlan objects. After the blueprint is activated inside launchBlueprint(), seed these as the first 7 Order records in the same transaction. Seed them BEFORE emitting blueprint_launched so the task generation worker sees them already present and does not generate duplicate tasks.
+// Inside the existing launchBlueprint() transaction, after blueprint.update():
+const validation = await tx.validation.findFirst({
+  where: { blueprint_id: blueprintDraftId },
+  select: { first_week_plan: true, recommended_blueprint_level: true }
+});
+
+if (validation?.first_week_plan) {
+  const plan = validation.first_week_plan as FirstWeekPlan[];
+  for (let i = 0; i < plan.length; i++) {
+    await tx.order.create({ data: {
+      blueprint_id,
+      user_id,
+      title:              plan[i].title,
+      instruction:        plan[i].action,
+      expected_output:    plan[i].expectedOutput,
+      definition_of_done: 'Smoke test completed and outcome recorded.',
+      why_it_matters:     plan[i].archetypeSpecific,
+      task_type:          plan[i].smokeTest ? 'smoke_test' : 'execution',
+      difficulty:         'easy',
+      priority:           i + 1,
+      proof_required:     plan[i].smokeTest,
+      status:             i === 0 ? 'pending' : 'queued',
+      generation_reason:  'erector_first_week_seed',
+      condition_at_generation: 'nothingness',
+      enforcement_package_id: pkg.id
+    }});
+  }
+}
+GATE: After blueprint launch â€” SELECT COUNT(*) FROM orders WHERE blueprint_id = [id] AND generation_reason = 'erector_first_week_seed' returns 7.
+
+Task 3 â€” Inject archetype multipliers into Signal Engine
+The Signal Engine (SignalCalculationEngine) calculates momentum and condition. It currently has no awareness of the archetype. Add a context reader that loads archetype_execution_mult and archetype_timeframe_mult from the blueprint record before signal calculation runs.
+Apply archetype_execution_mult to the task_limit_min and task_limit_max in the enforcement package:
+// In SignalCalculationEngine or ConditionAssignmentEngine:
+const blueprint = await prisma.blueprint.findFirst({
+  where: { id: blueprint_id },
+  select: { archetype_execution_mult: true, archetype_timeframe_mult: true,
+            archetype_difficulty_adj: true }
+});
+
+const execMult  = blueprint?.archetype_execution_mult  ?? 1.0;
+const timeMult  = blueprint?.archetype_timeframe_mult  ?? 1.0;
+const diffAdj   = blueprint?.archetype_difficulty_adj  ?? 0.0;
+
+// Apply to enforcement package task limits:
+task_limit_min = Math.max(1, Math.round(base_min * execMult));
+task_limit_max = Math.min(8, Math.round(base_max * execMult));
+
+// Apply to signal window (timeframe pressure â€” affects rolling 7-day window):
+const windowDays = Math.round(7 * timeMult); // e.g. 1.3x â†’ 9-day window
+GATE: A blueprint with archetype_execution_mult = 1.5 generates a higher task_limit_max in its enforcement package than an identical blueprint with mult = 1.0.
+
+Task 4 â€” Inject industry_state into Task Generation Engine
+The Task Generation Engine (TaskGenerationEngine) selects task types based on blueprint position and condition. Add industry_state as a context modifier that adjusts which task types are weighted higher during generation.
+// In TaskGenerationEngine context loading:
+const blueprint = await prisma.blueprint.findFirst({
+  where: { id: blueprint_id },
+  select: { industry_state: true, reality_score: true }
+});
+
+// Industry state modifier map:
+const industryWeights: Record<string, Record<string, number>> = {
+  EMERGING:      { create: 1.4, analyze: 1.3, replicate: 0.8, improve: 0.9 },
+  GROWING:       { create: 1.2, analyze: 1.0, replicate: 1.3, improve: 1.1 },
+  STABLE:        { create: 0.9, analyze: 1.2, replicate: 1.0, improve: 1.3 },
+  SATURATED:     { create: 0.7, analyze: 1.4, replicate: 0.9, improve: 1.5 },
+  DECLINING:     { create: 0.6, analyze: 1.5, replicate: 0.7, improve: 1.4 },
+  OPPORTUNISTIC: { create: 1.5, analyze: 0.9, replicate: 1.2, improve: 0.8 },
+  DANGEROUS:     { create: 0.5, analyze: 1.6, replicate: 0.6, improve: 1.0 },
+};
+
+const weights = industryWeights[blueprint?.industry_state ?? 'STABLE'];
+GATE: A blueprint with industry_state = DECLINING generates proportionally more analyze and improve tasks and fewer create tasks than one with EMERGING.
+
+Task 5 â€” Expand Bhudhi prompt library with 10 Erector registrations
+Create lib/bhudhi/erector-prompts.ts. Register all 10 Erector Bhudhi calls following the existing registration pattern in lib/bhudhi/. Each registration must include: name, Zod input schema, Zod output schema, system prompt, user prompt template, deterministic fallback function, and the standard BhudhiLog write.
+Call Name
+Output Type
+Deterministic Fallback Rule
+resolve_archetype
+ArchetypeResolutionOutput
+Return archetype 1 (Consumer Capitalist) as primary with neutral multipliers (1.0). Log fallback_used.
+decompose_purpose
+PurposeDecompositionOutput
+Return purposeStrength='moderate', clarityScore=5, empty contradictions array.
+analyze_industry
+IndustryIntelligenceOutput
+Return industryState='STABLE', trend='unknown', saturation=5.
+analyze_market
+MarketAnalysisOutput
+Return all 6 layers scored at 5.0. Mark as 'estimated'.
+identify_competitors
+CompetitorAnalysis[]
+Return 5 placeholder competitor objects with archetypeContext='data unavailable'.
+generate_economy_briefing
+EconomyBriefingOutput
+Return generic briefing from archetype profile data without AI narrative.
+analyze_execution_and_timing
+ExecutionDifficultyOutput
+Return all 8 dimensions at 5.0. timingVerdict='acceptable'.
+simulate_timeframes
+TimeSimulationOutput[]
+Return 3 simulations using archetype multiplier Ã— base task count formula.
+generate_paths
+ValidationPathOutput[]
+Return 3 paths with titles derived from verdict. No narrative.
+generate_first_week
+FirstWeekPlan[]
+Return 7 generic smoke test tasks using archetype primary risk factors.
+
+GATE: All 10 calls are findable in TriggerRouter. Disable ANTHROPIC_API_KEY and run a full validation â€” all 9 engines complete using fallbacks. BhudhiLog shows 10 entries with outcome = 'fallback_used'.
+
+Task 6 â€” Harden onboarding â†’ validation â†’ dashboard routing
+The routing sequence must be enforced at the server level, not just the client. Three checks are required:
+CHECK 1 â€” Blueprint cannot launch without completed validation. In /api/v1/blueprints/launch, before processing: check that blueprint.validation_id is set AND the linked validation record has validation_stage = 'complete' AND selected_path is not null. If any check fails, return 400 with reason.
+CHECK 2 â€” Validation screens cannot be accessed without an active blueprint draft. The app/(validation)/ layout must verify that blueprintDraftId exists in session/query params and is in status 'validating' before rendering any validation screen.
+CHECK 3 â€” After blueprint launch, the redirect must go to /dashboard, not back to onboarding. Update the success handler in the Blueprint Level Selection screen to call the launch API then redirect to /dashboard.
+GATE: Attempt to POST /api/v1/blueprints/launch with a blueprint that has no completed validation â€” receive 400 with 'validation_required' error. Attempt to access /validation/scores without a draft in session â€” receive redirect to /onboarding.
+
+Task 7 â€” Add smoke_test to TaskType enum
+The task seeding in Task 2 uses task_type = 'smoke_test'. Add this to the TaskType enum in prisma/schema.prisma and run the migration. The task generation engine and condition engine do not restrict smoke_test tasks â€” they always execute regardless of condition (except 'blocked' state).
+// In prisma/schema.prisma, extend TaskType enum:
+enum TaskType {
+  execution
+  recovery
+  clarification
+  blocker_resolution
+  academy
+  phase_checkpoint
+  smoke_test    // NEW â€” Erector first week plan tasks
+  review
+}
+GATE: Migration runs without error. Seeded first week tasks have task_type = 'smoke_test'. Condition Engine does not block smoke_test tasks even in Danger condition.
+
+Task 8 â€” Emit Erector events at launch
+After the blueprint launches successfully, emit the erector_blueprint_launched event. This connects the Erector to the event system and allows future workers to react to validated launches differently from unvalidated ones.
+await emitEvent({
+  event_type:   'erector_blueprint_launched',
+  entity_type:  'blueprint',
+  entity_id:    blueprint_id,
+  user_id,
+  blueprint_id,
+  payload: {
+    validation_id:          validationId,
+    reality_score:          validation.reality_score,
+    blueprint_tier:         validation.recommended_blueprint_level,
+    selected_path:          validation.selected_path,
+    primary_archetype_id:   primaryArchetypeId,
+    industry_state:         industryState,
+    first_week_tasks_seeded: 7
+  }
+});
+
+E â€” ACCEPTANCE CRITERIA
+[ ] Blueprint model has 7 new nullable fields: reality_score, blueprint_tier, primary_archetype_id, industry_state, archetype_execution_mult, archetype_timeframe_mult, archetype_difficulty_adj.
+[ ] launchBlueprint() locks all 7 values from validation record in the same transaction.
+[ ] 7 smoke test tasks are seeded in orders table on blueprint launch before blueprint_launched event fires.
+[ ] Signal Engine reads archetype_execution_mult and applies it to enforcement package task limits.
+[ ] Task Generation Engine reads industry_state and adjusts task type weights.
+[ ] All 10 Erector Bhudhi calls registered in TriggerRouter with Zod schemas and fallbacks.
+[ ] Fallback mode: all 9 validation engines complete without Anthropic API. All 10 BhudhiLog entries show fallback_used.
+[ ] Blueprint launch blocked if validation not complete. HTTP 400 returned with reason.
+[ ] After blueprint launch, user lands on /dashboard with smoke test task as first visible order.
+[ ] erector_blueprint_launched event emitted and appears in events table.
+[ ] smoke_test TaskType enum value exists. Smoke test tasks run in Danger condition.
+
+F â€” FINAL REPORT FORMAT
+TORGIMA â€” PROMPT 4 ERECTOR BRIDGE â€” BUILD REPORT
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+Task 1 â€” Blueprint field migration:    [complete / error]
+Task 2 â€” First week seed (7 tasks):    [complete / error â€” count confirmed]
+Task 3 â€” Archetype â†’ Signal Engine:    [complete / error]
+Task 4 â€” industry_state â†’ TaskGen:     [complete / error]
+Task 5 â€” 10 Bhudhi registrations:      [complete / error â€” fallback tested]
+Task 6 â€” Routing hardening:            [complete / error]
+Task 7 â€” smoke_test enum:              [complete / error]
+Task 8 â€” erector_blueprint_launched:   [complete / error]
+
+End-to-end test:
+  Validation completed:      [yes/no]
+  Blueprint launched:        [yes/no]
+  7 smoke tasks seeded:      [yes/no]
+  First task visible:        [yes/no]
+  Dashboard routing correct: [yes/no]
+
+Acceptance criteria passed: [x of 11]
+READY FOR PROMPT 5: [YES / NO]
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+

@@ -58,26 +58,55 @@ export function calculateRiskScore(scores: Omit<ErectorScores, "riskScore" | "re
   return clamp(weakAverage * 0.55 + archetype.corruptionIndex * 0.35 + archetype.blueprintDifficultyAdjustment);
 }
 
-export function calculateRealityScore(scores: Pick<ErectorScores, "marketScore" | "executionScore" | "localEconomyScore" | "riskScore" | "timingScore" | "competitionScore">): number {
+/** Spec composite: all 11 inputs; risk uses inverse (higher riskScore = worse). */
+export function calculateRealityScore(
+  scores: Pick<
+    ErectorScores,
+    | "marketScore"
+    | "executionScore"
+    | "timingScore"
+    | "competitionScore"
+    | "scalabilityScore"
+    | "localEconomyScore"
+    | "resourceScore"
+    | "riskScore"
+  >,
+): number {
   return clamp(
-    scores.marketScore * 0.25 +
-      scores.executionScore * 0.2 +
-      scores.localEconomyScore * 0.2 +
-      (10 - scores.riskScore) * 0.15 +
-      scores.timingScore * 0.1 +
-      scores.competitionScore * 0.1,
+    scores.marketScore * 0.2 +
+      scores.executionScore * 0.18 +
+      scores.timingScore * 0.12 +
+      scores.competitionScore * 0.1 +
+      scores.scalabilityScore * 0.08 +
+      scores.localEconomyScore * 0.1 +
+      scores.resourceScore * 0.12 +
+      (10 - scores.riskScore) * 0.1,
   );
 }
 
 export function determineVerdict(realityScore: number): ErectorScores["verdict"] {
   if (realityScore >= 6.5) return "proceed";
   if (realityScore >= 4) return "adjust";
-  return "pivot";
+  if (realityScore >= 2.5) return "pivot";
+  return "blocked";
 }
 
-export function recommendBlueprintLevel(realityScore: number, archetype: EconomicArchetypeProfile): ErectorScores["recommendedBlueprintLevel"] {
-  if (realityScore >= 7.5 && archetype.blueprintDifficultyAdjustment <= 1) return "ultimate";
-  if (realityScore >= 5) return "growth";
+export function recommendBlueprintLevel(
+  scores: Pick<ErectorScores, "resourceScore" | "executionScore">,
+  input: ErectorValidationInput,
+  archetype: EconomicArchetypeProfile,
+): ErectorScores["recommendedBlueprintLevel"] {
+  const commitment = input.commitmentLevel.toLowerCase();
+  const adj = archetype.blueprintDifficultyAdjustment;
+  const resource = scores.resourceScore - adj * 0.5;
+  const execution = scores.executionScore - adj * 0.5;
+
+  if (resource > 7.5 && execution > 7.5 && (commitment === "intense" || commitment === "full")) {
+    return "ultimate";
+  }
+  if (resource >= 5 && execution >= 5 && commitment !== "low") {
+    return "growth";
+  }
   return "starter";
 }
 
@@ -103,11 +132,12 @@ export function calculateAllScores(params: {
   };
   const riskScore = calculateRiskScore(base, archetype);
   const realityScore = calculateRealityScore({ ...base, riskScore });
+  const verdict = determineVerdict(realityScore);
   return {
     ...base,
     riskScore,
     realityScore,
-    verdict: determineVerdict(realityScore),
-    recommendedBlueprintLevel: recommendBlueprintLevel(realityScore, archetype),
+    verdict,
+    recommendedBlueprintLevel: recommendBlueprintLevel(base, params.input, archetype),
   };
 }

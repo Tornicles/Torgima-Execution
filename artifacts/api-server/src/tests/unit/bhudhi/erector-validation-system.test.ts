@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { getContract } from "../../../bhudhi/PromptRegistry.js";
 import { hasFallbackKey } from "../../../bhudhi/FallbackLibrary.js";
 import { ERECTOR_ARCHETYPE_SEEDS, COUNTRY_ARCHETYPE_MAP, archetypeSeedByNumber } from "../../../engines/erector/archetypeData.js";
-import { calculateAllScores } from "../../../engines/erector/ScoringEngine.js";
+import { calculateAllScores, determineVerdict } from "../../../engines/erector/ScoringEngine.js";
 import type { ArchetypeResolutionOutput, ErectorValidationInput } from "../../../types/erector.js";
 
 const root = resolve(process.cwd(), "../..");
@@ -142,6 +142,13 @@ describe("Erector scoring and route integration", () => {
     expect(sanctioned.typicalResistancePatterns.join(" ").toLowerCase()).toContain("payment");
   });
 
+  it("maps reality score thresholds to proceed, adjust, pivot, and blocked verdicts", () => {
+    expect(determineVerdict(7)).toBe("proceed");
+    expect(determineVerdict(5)).toBe("adjust");
+    expect(determineVerdict(3)).toBe("pivot");
+    expect(determineVerdict(2)).toBe("blocked");
+  });
+
   it("low-resource hostile-economy input produces pivot-level score", () => {
     const scores = calculateAllScores({
       input: baseInput("Chad", {
@@ -164,16 +171,27 @@ describe("Erector scoring and route integration", () => {
   it("API routes and UI screens are wired into the actual Express/Vite app", () => {
     const routes = readRepo("artifacts/api-server/src/routes/validation.ts");
     expect(routes).toContain('router.post("/v1/validation/run"');
+    expect(routes).toContain('router.post("/v1/validation/resolve-archetype"');
+    expect(routes).toContain('router.get("/v1/validation/:id/scores"');
+    expect(routes).toContain('router.get("/v1/validation/:id/competitors"');
+    expect(routes).toContain('router.get("/v1/validation/:id/simulation"');
+    expect(routes).toContain('router.get("/v1/validation/:id/first-week"');
     expect(routes).toContain('router.post("/v1/validation/:id/select-path"');
     expect(routes).toContain('router.post("/v1/validation/:id/first-week"');
     expect(routes).toContain('router.get("/v1/validation/archetypes"');
+
+    const launchGate = readRepo("artifacts/api-server/src/services/ValidationService.ts");
+    expect(launchGate).toContain("ValidationKind.ERECTOR");
+    expect(launchGate).toContain("Reality Score below 2.5");
 
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
     expect(onboarding).toContain("Reality context");
     expect(onboarding).toContain("/api/v1/validation/run");
     expect(onboarding).toContain("The Erector Reality Briefing");
+    expect(onboarding).toContain("ErectorScoresDashboard");
+    expect(onboarding).toContain("resolve-archetype");
 
     const dashboard = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
-    expect(dashboard).toContain("EconomyIntelligencePanel");
+    expect(dashboard).toContain("ExecutionContextPanel");
   });
 });

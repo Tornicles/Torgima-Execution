@@ -7,11 +7,21 @@ import type {
 } from "../../types/erector.js";
 import { callErectorTrigger } from "./ErectorIntelligenceBridge.js";
 
-function deterministicSimulations(input: ErectorValidationInput, scores: ErectorScores): TimeSimulationOutput[] {
+function deterministicSimulations(
+  input: ErectorValidationInput,
+  scores: ErectorScores,
+  archetype?: ArchetypeResolutionOutput,
+): TimeSimulationOutput[] {
   const base = scores.realityScore >= 7 ? 0.72 : scores.realityScore >= 4 ? 0.48 : 0.24;
-  return ["30d", "90d", "6m", "1yr"].map((timeframe, index) => ({
+  const pressure =
+    archetype?.combinedTimeframePressureMultiplier ??
+    archetype?.primaryArchetype.timeframePressureMultiplier ??
+    1;
+  return ["30d", "90d", "6m", "1yr"].map((timeframe, index) => {
+    const intensity = (4 - index) * pressure;
+    return {
     timeframe,
-    dailyTaskCount: { min: 1 + index, max: 2 + index * 2, average: 1.5 + index },
+    dailyTaskCount: { min: intensity, max: intensity + 1, average: intensity + 0.5 },
     weeklyOutputRequirements: ["Produce proof assets", "Validate demand signal", "Submit execution feedback"],
     estimatedRevenueTimeline:
       timeframe === "30d" ? "Validation, not dependable revenue." : "Possible after repeated proof and conversion tests.",
@@ -20,7 +30,8 @@ function deterministicSimulations(input: ErectorValidationInput, scores: Erector
     probabilityOfReachingGoal: Number(Math.max(0.05, Math.min(0.9, base + index * 0.07)).toFixed(2)),
     majorRiskPoints: ["Weak proof", "Distribution lag", "Budget/time mismatch"],
     criticalSuccessFactors: ["Narrow segment", "Visible proof", "Weekly adaptation"],
-  }));
+  };
+  });
 }
 
 function pathFromType(
@@ -30,7 +41,9 @@ function pathFromType(
 ): ValidationPathOutput & Record<string, unknown> {
   const adjusted = pathType === "adjusted";
   const alternative = pathType === "alternative";
-  const disabled = scores.verdict === "pivot" && pathType === "current";
+  const disabled =
+    scores.verdict === "blocked" ||
+    ((scores.verdict === "pivot" || scores.realityScore < 4) && pathType === "current");
   const probability = Math.max(0.05, Math.min(0.85, scores.realityScore / 10 + (adjusted ? 0.12 : alternative ? 0.18 : 0)));
   const title = alternative ? "Alternative Path" : adjusted ? "Adjusted Path" : "Current Path";
   return {
@@ -56,7 +69,11 @@ function pathFromType(
     keyAdvantages: adjusted ? ["Lower risk", "Clearer market proof"] : alternative ? ["Avoids weakest assumptions"] : ["Fastest start"],
     firstWeekActionsPreview: ["Define proof target", "Interview customer segment", "Ship first visible artifact"],
     disabled,
-    disabledReason: disabled ? "Reality Score below 4.0. Current path cannot launch." : undefined,
+    disabledReason: disabled
+      ? scores.verdict === "blocked"
+        ? "Reality Score below 2.5. Re-validate with a feasible goal."
+        : "Reality Score below 4.0. Current path cannot launch."
+      : undefined,
     ...patch,
   };
 }
@@ -77,7 +94,7 @@ export async function buildTimeSimulations(
   if (Array.isArray(simulations) && simulations.length > 0) {
     return simulations as TimeSimulationOutput[];
   }
-  return deterministicSimulations(input, scores);
+  return deterministicSimulations(input, scores, archetype);
 }
 
 export async function generatePaths(
@@ -116,7 +133,10 @@ export async function generateFirstWeek(
   archetype: ArchetypeResolutionOutput,
   validationId: string,
   selectedPath: "current" | "adjusted" | "alternative",
-): Promise<{ days: Array<{ day: number; actions: Array<{ title: string; description: string; type: string; economyContext: string }> }> }> {
+): Promise<{
+  days: Array<{ day: number; actions: Array<{ title: string; description: string; type: string; economyContext: string }> }>;
+  plans: Array<{ title: string; action: string; expectedOutput: string; archetypeSpecific: string; smokeTest: boolean }>;
+}> {
   const result = await callErectorTrigger("ERECTOR_FIRST_WEEK", {
     input,
     archetype,
@@ -126,29 +146,41 @@ export async function generateFirstWeek(
   const actions = result.data["actions"];
   if (Array.isArray(actions) && actions.length >= 3) {
     const perDay = Math.max(1, Math.ceil(actions.length / 7));
-    return {
-      days: Array.from({ length: 7 }, (_, index) => ({
-        day: index + 1,
-        actions: (actions as string[]).slice(index * perDay, index * perDay + perDay).map((title) => ({
-          title,
-          description: "Produce one verifiable output tied to the selected path.",
-          type: "execution",
-          economyContext: archetype.primaryArchetype.name,
-        })),
-      })),
-    };
-  }
-  return {
-    days: Array.from({ length: 7 }, (_, index) => ({
+    const days = Array.from({ length: 7 }, (_, index) => ({
       day: index + 1,
-      actions: [
-        {
-          title: index === 0 ? "Define proof target" : `Execute validation proof ${index + 1}`,
-          description: "Produce one verifiable output tied to the selected path.",
-          type: "execution",
-          economyContext: archetype.economySpecificOpportunities[0] ?? archetype.primaryArchetype.name,
-        },
-      ],
-    })),
-  };
+      actions: (actions as string[]).slice(index * perDay, index * perDay + perDay).map((title) => ({
+        title,
+        description: "Produce one verifiable output tied to the selected path.",
+        type: "execution",
+        economyContext: archetype.primaryArchetype.name,
+      })),
+    }));
+    const plans = days.map((d) => ({
+      title: d.actions[0]?.title ?? `Day ${d.day}`,
+      action: d.actions[0]?.description ?? "Complete smoke test.",
+      expectedOutput: "Verifiable proof recorded.",
+      archetypeSpecific: d.actions[0]?.economyContext ?? archetype.primaryArchetype.name,
+      smokeTest: true,
+    }));
+    return { days, plans };
+  }
+  const days = Array.from({ length: 7 }, (_, index) => ({
+    day: index + 1,
+    actions: [
+      {
+        title: index === 0 ? "Define proof target" : `Execute validation proof ${index + 1}`,
+        description: "Produce one verifiable output tied to the selected path.",
+        type: "execution",
+        economyContext: archetype.economySpecificOpportunities[0] ?? archetype.primaryArchetype.name,
+      },
+    ],
+  }));
+  const plans = days.map((d) => ({
+    title: d.actions[0]?.title ?? `Day ${d.day}`,
+    action: d.actions[0]?.description ?? "Complete smoke test.",
+    expectedOutput: "Verifiable proof recorded.",
+    archetypeSpecific: d.actions[0]?.economyContext ?? archetype.primaryArchetype.name,
+    smokeTest: true,
+  }));
+  return { days, plans };
 }

@@ -5,7 +5,32 @@ import { TorgimaError } from "../lib/errors.js";
 import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
 import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { ValidationService } from "./ValidationService.js";
-import { BlueprintStatus } from "@workspace/state-machine";
+import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+
+function assertValidationReadyForLaunch(row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>): void {
+  const selected = row.selected_path_type ?? row.selected_path;
+  if (!selected) {
+    throw new TorgimaError(
+      "VALIDATION_ERROR",
+      "validation_required: Select a validation path before launch.",
+      false,
+    );
+  }
+  const stage = row.erector_validation_stage ?? row.validation_stage ?? row.status;
+  if (row.validation_kind === ValidationKind.ERECTOR) {
+    const complete =
+      stage === ErectorValidationStage.COMPLETE ||
+      stage === ValidationStatus.COMPLETE ||
+      stage === "complete";
+    if (!complete) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "validation_required: Erector validation must complete before launch.",
+        false,
+      );
+    }
+  }
+}
 
 export type LaunchPathType = "current" | "adjusted" | "alternative";
 
@@ -44,6 +69,7 @@ export const BlueprintLaunchService = {
     if (validationRow.blueprint_id !== input.blueprintId || validationRow.user_id !== input.userId) {
       throw new TorgimaError("FORBIDDEN", "validation_contract_id does not belong to this blueprint");
     }
+    assertValidationReadyForLaunch(validationRow);
 
     if (input.selectedBlueprintLevel) {
       await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
@@ -71,6 +97,10 @@ export const BlueprintLaunchService = {
       .set({
         selected_path: input.selectedPathType,
         selected_blueprint_level: input.selectedBlueprintLevel ?? blueprint.selected_blueprint_level,
+        validation_id: validationRow.id,
+        ...(validationRow.validation_kind === ValidationKind.ERECTOR
+          ? { erector_validation_id: validationRow.id }
+          : {}),
       })
       .where(eq(blueprints.id, input.blueprintId));
 

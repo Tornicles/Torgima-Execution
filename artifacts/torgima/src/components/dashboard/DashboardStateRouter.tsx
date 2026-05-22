@@ -22,7 +22,10 @@ import { SignalTrendPanel, type SignalNarrativeVm } from "@/components/bhudhi/Si
 import { BlueprintHealthPanel, type BlueprintHealthVm } from "@/components/bhudhi/BlueprintHealthPanel";
 import { GovernanceActionCenter, type GovernanceProposalVm } from "@/components/bhudhi/GovernanceActionCenter";
 import { SkillProgressPanel } from "@/components/dashboard/SkillProgressPanel";
-import { EconomyIntelligencePanel, type EconomyIntelligenceVm } from "@/components/dashboard/EconomyIntelligencePanel";
+import {
+  ExecutionContextPanel,
+  type ExecutionContextVm,
+} from "@/components/dashboard/ExecutionContextPanel";
 import { useExecutionStore } from "@/store/executionStore";
 
 export function DashboardStateRouter({
@@ -117,10 +120,8 @@ function DashboardMainContent({
     (state.user as { email?: string })?.email?.split("@")[0] ??
     "Builder";
   const blueprint = state.activeBlueprint as { id?: string; title?: string } | null;
-  const economyIntel = state.activeBlueprint as (typeof blueprint & {
-    economyIntelligence?: EconomyIntelligenceVm;
-    realityScore?: number;
-    primaryArchetypeName?: string;
+  const blueprintIntel = state.activeBlueprint as (typeof blueprint & {
+    executionContext?: ExecutionContextVm;
   });
   const morningReport = useExecutionStore((s) => s.morningReport);
   const refreshAll = useExecutionStore((s) => s.refreshAll);
@@ -196,19 +197,7 @@ function DashboardMainContent({
         starting={starting}
       />
 
-      <EconomyIntelligencePanel
-        intelligence={
-          economyIntel?.economyIntelligence ?? (
-            economyIntel?.primaryArchetypeName || economyIntel?.realityScore != null
-              ? {
-                  archetypeName: economyIntel.primaryArchetypeName,
-                  realityScore: economyIntel.realityScore,
-                  reportHref: economyIntel.id ? `/validation/${economyIntel.id}` : undefined,
-                }
-              : null
-          )
-        }
-      />
+      <ExecutionContextPanel context={blueprintIntel?.executionContext} />
 
       <div className="grid lg:grid-cols-2 gap-4">
         <StrategicOutlookPanel outlook={dashboardIntel?.strategicOutlook} />
