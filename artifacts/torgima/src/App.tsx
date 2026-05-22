@@ -145,6 +145,7 @@ const ProtectedCalendarPage = protect(CalendarPage);
 const ProtectedChatPage = protect(ChatPage);
 const ProtectedGamificationPage = protect(GamificationPage);
 const ProtectedAnalyticsPage = protect(AnalyticsPage);
+const ProtectedIntegrationsPage = protect(IntegrationsPage);
 const ProtectedProfileSettingsPage = protect(ProfileSettingsPage);
 const ProtectedIntelligencePage = protect(IntelligencePage);
 

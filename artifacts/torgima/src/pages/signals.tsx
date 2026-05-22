@@ -50,7 +50,7 @@ export default function SignalsPage() {
   useEffect(() => {
     Promise.all([getCurrentSignals(), getSignalHistory(), getCurrentCondition()])
       .then(([cur, hist, cond]) => {
-        setSignals(cur as Record<string, unknown>);
+        setSignals(cur as unknown as Record<string, unknown>);
         const snaps =
           (hist as { snapshots?: unknown[] })?.snapshots ??
           (Array.isArray(hist) ? hist : []);

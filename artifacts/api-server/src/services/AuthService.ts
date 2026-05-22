@@ -4,7 +4,8 @@ import { users, sessions, blueprints } from "@workspace/db";
 import { eq, and, gt, like } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
-import { sendEmail } from "../lib/resend.js";
+import { sendEmail, EMAIL_FROM_HEADER } from "../lib/resend.js";
+import { resolveAppUrl } from "../lib/app-url.js";
 import type { AuthContext, SafeUser } from "../types/auth.js";
 
 const SESSION_MAX_HOURS = 24 * 30;
@@ -12,19 +13,17 @@ const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 const MAGIC_PREFIX = "magic:";
 
-function getAppUrl(): string {
-  const url =
-    process.env["APP_URL"] ||
-    process.env["PUBLIC_APP_URL"] ||
-    process.env["NEXT_PUBLIC_APP_URL"] ||
-    process.env["FRONTEND_URL"]?.split(",")[0]?.trim() ||
-    "http://localhost:5173";
-  return url.replace(/\/$/, "");
-}
+export type SendMagicLinkResult = {
+  sent: boolean;
+  /** User-safe hint when `sent` is false (missing Resend, provider error, etc.). */
+  message?: string;
+  /** Non-production only: recoverable link when outbound email is skipped. */
+  devVerifyUrl?: string;
+};
 
 // ── MAGIC LINK ────────────────────────────────────────────────────────────────
 
-export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
+export async function sendMagicLink(email: string): Promise<SendMagicLinkResult> {
   const normalizedEmail = email.toLowerCase().trim();
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -54,7 +53,7 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
     expires_at: expiresAt,
   });
 
-  const verifyUrl = `${getAppUrl()}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+  const verifyUrl = `${resolveAppUrl()}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
   // Always log a dev-friendly trail so the link is recoverable when no
   // email provider is configured. In production we additionally try Resend.
@@ -65,6 +64,7 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
   }
 
   const result = await sendEmail({
+    from: EMAIL_FROM_HEADER,
     to: normalizedEmail,
     subject: "Your Torgima sign-in link",
     text: `Sign in to Torgima:\n\n${verifyUrl}\n\nThis link expires in ${MAGIC_LINK_EXPIRY_MINUTES} minutes. If you did not request this, ignore this email.`,
@@ -77,10 +77,21 @@ export async function sendMagicLink(email: string): Promise<{ sent: boolean }> {
       `</p>`,
   });
 
-  // Email is best-effort: in dev or when RESEND_API_KEY is unset the link is
-  // still issued and recoverable from the dev log. We never fail the request
-  // for a transient email-provider issue.
-  return { sent: result.sent };
+  if (result.sent) {
+    return { sent: true };
+  }
+
+  const isDev = process.env["NODE_ENV"] !== "production";
+  const message =
+    result.error?.includes("RESEND_API_KEY") ?
+      "Sign-in email is not configured on the server. Ask an administrator to set RESEND_API_KEY and verify EMAIL_FROM in Resend."
+    : "We could not send the sign-in email. Check spam, wait a minute, and try again.";
+
+  return {
+    sent: false,
+    message,
+    ...(isDev ? { devVerifyUrl: verifyUrl } : {}),
+  };
 }
 
 // ── VERIFY MAGIC LINK ─────────────────────────────────────────────────────────

@@ -44,7 +44,20 @@ export default function LoginPage() {
       return;
     }
     try {
-      await sendMagicLink({ email: email.trim().toLowerCase() });
+      const result = (await sendMagicLink({
+        email: email.trim().toLowerCase(),
+      })) as { sent?: boolean; message?: string; devVerifyUrl?: string };
+      if (!result.sent) {
+        const devLink =
+          typeof result.devVerifyUrl === "string" ? result.devVerifyUrl : null;
+        setError(
+          devLink ?
+            `${result.message ?? "Email was not sent (no Resend key)."} Open this link to sign in: ${devLink}`
+          : result.message ??
+              "We could not send the sign-in email. If you run the API locally, check the server logs for the magic link URL.",
+        );
+        return;
+      }
       setSent(true);
     } catch (err) {
       if (err instanceof ApiError) {

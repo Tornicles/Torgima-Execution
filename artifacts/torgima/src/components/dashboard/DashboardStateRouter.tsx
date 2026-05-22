@@ -75,11 +75,12 @@ export function DashboardStateRouter({
 
   async function handleStart() {
     const action = state.currentAction;
-    const orderId = action?.orderId ?? action?.id;
+    const rawId = action?.orderId ?? action?.id;
+    const orderId = typeof rawId === "string" ? rawId : undefined;
     if (!orderId) return;
     setStarting(true);
     try {
-      await startOrder(orderId, {});
+      await startOrder(orderId);
       await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
     } finally {
       setStarting(false);

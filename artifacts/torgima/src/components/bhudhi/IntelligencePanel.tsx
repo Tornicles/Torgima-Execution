@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "@/lib/api-base";
 import { apiPost } from "@/lib/torgima-api";
 import { applyExecutionLanguage } from "@/lib/execution-language";
 import { cn } from "@/lib/utils";

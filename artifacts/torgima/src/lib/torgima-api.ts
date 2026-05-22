@@ -62,6 +62,14 @@ export async function apiPatch<T = unknown>(path: string, body?: unknown): Promi
   });
 }
 
+export async function apiPut<T = unknown>(path: string, body?: unknown): Promise<T> {
+  return customFetch<T>(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
 export async function apiGet<T = unknown>(path: string): Promise<T> {
   return customFetch<T>(path, { method: "GET" });
 }

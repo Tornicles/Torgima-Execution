@@ -106,7 +106,11 @@ If the SPA shows a **database** or **`SERVICE_UNAVAILABLE`** message when sendin
 1. Fix **`DATABASE_URL`** on Railway (credentials, hostname, SSL, or wrong URI variant). Many hosts require **`?sslmode=require`** on the JDBC/Postgres URL.
 2. Redeploy the API after changing variables.
 
-Email never arrives despite a success toast means **`RESEND_API_KEY`** / verified **`EMAIL_FROM`** are missing or invalid.
+Email never arrives (or the UI now shows a delivery error) means one of:
+
+1. **`RESEND_API_KEY`** is unset on the API host — the API returns `{ sent: false }`; the login page surfaces this instead of a false success.
+2. **`EMAIL_FROM`** is not a domain verified in [Resend](https://resend.com) — sends fail with `sent: false` (check Railway logs for `[resend] Send failed`).
+3. **`FRONTEND_URL`** does not match where users open the app — magic links point at `FRONTEND_URL/verify`; if that host is only the marketing site (no SPA), the link 404s. Set `FRONTEND_URL` to your Vercel execution app (e.g. `https://torgima-execution.vercel.app`), comma-separated before other origins if you use multiple.
 
 ### Database schema + seed
 

@@ -33,7 +33,7 @@ export function OnboardingStructureStep({
         purpose,
         timeframe,
         commitmentLevel,
-        domainHint: domain || null,
+        domainHints: domain ? [domain] : undefined,
       })) as {
         cleanedGoal?: string;
         structured_goal?: { cleanedGoal?: string };

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api-base";
 import { apiGet, getOrder, getExecutionActiveOrder, startOrder, blockOrder } from "@/lib/torgima-api";
+import type { Order } from "@workspace/api-client-react";
 import { KnowledgeInjectionAccordion, type KnowledgeInjection } from "@/components/execution/KnowledgeInjectionAccordion";
 import { ExecutionHelpPanel } from "@/components/execution/ExecutionHelpPanel";
 import { AcademyOrderCard } from "@/components/execution/AcademyOrderCard";
@@ -35,6 +37,17 @@ type OrderVm = {
   knowledgeObjects?: Array<{ id: string; title: string; content?: string | null }>;
 };
 
+function orderToVm(order: Order): OrderVm {
+  return {
+    title: order.title,
+    instruction: order.instructions ?? order.description ?? "",
+    timeEstimateMinutes: order.estimatedMinutes ?? null,
+    proofRequired: order.proofRequired,
+    taskType: order.type,
+    priority: order.priority,
+  };
+}
+
 export default function TaskPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [, setLocation] = useLocation();
@@ -50,7 +63,7 @@ export default function TaskPage() {
   useEffect(() => {
     if (!orderId) return;
     void getOrder(orderId)
-      .then((d) => setOrder(d as OrderVm))
+      .then((d) => setOrder(orderToVm(d)))
       .finally(() => setLoading(false));
 
     void apiGet<{ summary?: string }>(`/api/orders/${orderId}/decision-trace`)
@@ -75,7 +88,7 @@ export default function TaskPage() {
 
   async function handleStart() {
     if (!orderId) return;
-    await startOrder(orderId, {}).catch(() => null);
+    await startOrder(orderId).catch(() => null);
     setStarted(true);
   }
 
@@ -362,10 +375,8 @@ export default function TaskPage() {
           onClick={async () => {
             if (!orderId) return;
             await blockOrder(orderId, {
-              blockerType: "other",
-              blockerDescription:
+              reason:
                 "Execution blocked from Order screen — dependency or resource gap.",
-              idempotencyKey: `block-${orderId}-${Date.now()}`,
             });
             setLocation("/dashboard");
           }}

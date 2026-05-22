@@ -25,6 +25,9 @@ if (process.env["NODE_ENV"] !== "production") {
 export const EMAIL_FROM: string =
   process.env["EMAIL_FROM"] ?? "noreply@torgima.com";
 
+/** RFC5322 From header — improves deliverability vs bare address. */
+export const EMAIL_FROM_HEADER = `Torgima <${EMAIL_FROM}>`;
+
 export const EMAIL_REPLY_TO: string =
   process.env["EMAIL_REPLY_TO"] ?? "support@torgima.com";
 
