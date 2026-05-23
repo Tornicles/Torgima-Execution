@@ -1,103 +1,71 @@
-import type { Server } from "node:http";
-import app from "./app.js";
-import { pool } from "@workspace/db";
-import { logger } from "./lib/logger.js";
-import { startWorkers } from "./workers/start.js";
-import { stopBoss } from "./lib/queue.js";
-import { stopProductionSchedulers } from "./schedulers/ProductionScheduler.js";
-import { runMigrationPreflight } from "./lib/migrationPreflight.js";
+/**
+ * Entry point: bind HTTP immediately (Railway health/CORS) or serve a clear degraded response
+ * when DATABASE_URL is missing. Heavy app + DB load happens in boot.ts only when configured.
+ */
+import http from "node:http";
+import { applyCorsHeaders } from "./lib/cors.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
-const DB_PING_TIMEOUT_MS = parseInt(process.env.DB_PING_TIMEOUT_MS ?? "8000", 10);
 
-let server: Server | null = null;
-let workersStarted = false;
-
-async function pingDatabase(): Promise<void> {
-  const client = await pool.connect();
-  try {
-    await client.query("SELECT 1");
-  } finally {
-    client.release();
-  }
+function writeJson(
+  res: http.ServerResponse,
+  status: number,
+  body: Record<string, unknown>,
+): void {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
 }
 
-async function runBackgroundStartup(): Promise<void> {
-  try {
-    const preflight = await runMigrationPreflight();
-    if (preflight.warnings.length > 0) {
-      logger.warn({ warnings: preflight.warnings }, "[SERVER] Startup preflight warnings");
+function startDegradedServer(reason: string): void {
+  const server = http.createServer((req, res) => {
+    applyCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
     }
 
-    await Promise.race([
-      pingDatabase(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Database ping timed out after ${DB_PING_TIMEOUT_MS}ms`)), DB_PING_TIMEOUT_MS),
-      ),
-    ]);
-    console.log("[SERVER] Database connection: OK");
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error({ err: msg }, "[SERVER] Startup checks failed — API stays up for health/CORS; fix DATABASE_URL and run db:apply-manual");
-    return;
-  }
-
-  if (workersStarted || process.env.START_WORKERS === "false") {
-    if (process.env.START_WORKERS === "false") {
-      logger.warn("[SERVER] START_WORKERS=false — queue workers skipped");
+    if (req.url === "/api/healthz" || req.url === "/api/health") {
+      writeJson(res, 200, {
+        status: "degraded",
+        database: false,
+        message: reason,
+      });
+      return;
     }
-    return;
-  }
-  workersStarted = true;
-  const delayMs = parseInt(process.env.WORKER_START_DELAY_MS ?? "10000", 10);
-  setTimeout(() => {
-    startWorkers().catch((workerErr) => {
-      logger.error({ err: workerErr }, "Failed to start workers");
+
+    writeJson(res, 503, {
+      status: "error",
+      code: "DATABASE_URL_MISSING",
+      message: reason,
     });
-  }, delayMs);
-  logger.info({ delayMs }, "[SERVER] Workers scheduled to start after delay");
-}
-
-function bootstrap(): void {
-  server = app.listen(PORT, HOST, () => {
-    console.log(`[SERVER] Running on http://${HOST}:${PORT}`);
-    console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`[SERVER] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
-    void runBackgroundStartup();
   });
 
-  server.on("error", (err) => {
-    logger.error({ err }, "[SERVER] HTTP server error");
-    process.exit(1);
+  server.listen(PORT, HOST, () => {
+    console.error(`[SERVER] Degraded mode: ${reason}`);
+    console.log(`[SERVER] Listening on http://${HOST}:${PORT} (configure DATABASE_URL on Railway)`);
   });
 }
 
 process.on("unhandledRejection", (reason) => {
-  logger.error(
-    { err: reason instanceof Error ? reason : String(reason) },
-    "[SERVER] Unhandled promise rejection",
-  );
+  console.error("[SERVER] Unhandled promise rejection:", reason);
 });
 
 process.on("uncaughtException", (err) => {
-  logger.error({ err }, "[SERVER] Uncaught exception (process stays up for health/CORS)");
+  console.error("[SERVER] Uncaught exception:", err);
 });
 
-bootstrap();
-
-async function shutdown(signal: string): Promise<void> {
-  logger.info({ signal }, "[SERVER] Graceful shutdown");
-  stopProductionSchedulers();
-  await stopBoss().catch(() => null);
-  if (server) {
-    await new Promise<void>((resolve) => {
-      server!.close(() => resolve());
-    });
-  }
-  await pool.end().catch(() => null);
-  process.exit(0);
+const databaseUrl = process.env.DATABASE_URL?.trim();
+if (!databaseUrl) {
+  startDegradedServer(
+    "DATABASE_URL is not set on Railway. Add your Supabase connection string to the api-server service variables.",
+  );
+} else {
+  void import("./boot.js").then(({ startHttpServer, shutdown }) => {
+    startHttpServer();
+    process.on("SIGTERM", () => void shutdown("SIGTERM"));
+    process.on("SIGINT", () => void shutdown("SIGINT"));
+  });
 }
-
-process.on("SIGTERM", () => void shutdown("SIGTERM"));
-process.on("SIGINT", () => void shutdown("SIGINT"));
