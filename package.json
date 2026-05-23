@@ -26,6 +26,7 @@
     "db:check": "pnpm -F @workspace/db check",
     "db:apply-manual": "pnpm -F @workspace/db exec tsx ../../scripts/apply-all-manual-migrations.mjs",
     "db:ci": "pnpm -F @workspace/db run push-force && pnpm db:apply-manual && pnpm -F @workspace/db exec tsx ../../scripts/ci-verify-schema.mjs",
+    "start:api": "node --enable-source-maps ./artifacts/api-server/dist/index.mjs",
     "db:migrate:prod": "pnpm -F @workspace/db migrate",
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen"
   },

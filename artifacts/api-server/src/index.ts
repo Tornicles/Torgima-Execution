@@ -63,9 +63,15 @@ if (!databaseUrl) {
     "DATABASE_URL is not set on Railway. Add your Supabase connection string to the api-server service variables.",
   );
 } else {
-  void import("./boot.js").then(({ startHttpServer, shutdown }) => {
-    startHttpServer();
-    process.on("SIGTERM", () => void shutdown("SIGTERM"));
-    process.on("SIGINT", () => void shutdown("SIGINT"));
-  });
+  void import("./boot.js")
+    .then(({ startHttpServer, shutdown }) => {
+      startHttpServer();
+      process.on("SIGTERM", () => void shutdown("SIGTERM"));
+      process.on("SIGINT", () => void shutdown("SIGINT"));
+    })
+    .catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[SERVER] Boot failed:", msg);
+      startDegradedServer(`API boot failed: ${msg}`);
+    });
 }
