@@ -1,5 +1,4 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
@@ -7,20 +6,12 @@ import router from "./routes/index.js";
 import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
-import { applyCorsHeaders, buildCorsOptions } from "./lib/cors.js";
-
-const corsOptions = buildCorsOptions();
+import { createCorsMiddleware } from "./lib/cors.js";
 
 const app: Express = express();
 
-// CORS must run before other middleware so preflight and error responses include ACAO.
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  applyCorsHeaders(req, res);
-  next();
-});
+// CORS must be first — handles preflights immediately and stamps ACAO on every response.
+app.use(createCorsMiddleware());
 
 app.use(
   pinoHttp({
