@@ -102,7 +102,6 @@ describe("B3 context sanitizer (T1)", () => {
 
 describe("B3 Memory read policy (T2, T3)", () => {
   beforeEach(() => {
-    vi.resetModules();
     memorySelectResult = [];
     insertPayload = null;
   });
@@ -144,7 +143,6 @@ describe("B3 Memory read policy (T2, T3)", () => {
 
 describe("B3 MemoryWriter (T4)", () => {
   beforeEach(() => {
-    vi.resetModules();
     insertPayload = null;
   });
 
@@ -167,7 +165,6 @@ describe("B3 MemoryWriter (T4)", () => {
 
 describe("B3 UsageController token budget (T5)", () => {
   beforeEach(() => {
-    vi.resetModules();
     process.env.BHUDHI_DAILY_TOKEN_LIMIT = "1000";
     tokenSumResult = 1500;
   });

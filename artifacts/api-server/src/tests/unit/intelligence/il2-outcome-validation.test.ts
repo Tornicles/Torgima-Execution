@@ -7,6 +7,23 @@ import { detectFalseProgress, FALSE_PROGRESS_PATTERNS } from "../../../engines/i
 import { EventTypes, EVENT_QUEUE_MAP } from "../../../types/eventContracts.js";
 import { TorgimaError } from "../../../lib/errors.js";
 
+vi.mock("@workspace/db", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([{ id: "flag-1" }]),
+        })),
+      })),
+    })),
+  },
+  falseProgressFlags: {
+    blueprint_id: "blueprint_id",
+    user_id: "user_id",
+    resolved: "resolved",
+  },
+}));
+
 describe("IL2 — FalseProgressDetectionEngine", () => {
   it("T2: activity without outcome pattern when many completions, low movement", () => {
     const fp = detectFalseProgress({
@@ -36,28 +53,7 @@ describe("IL2 — event chain", () => {
 });
 
 describe("IL2 — phase and reward gates", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
   it("T4: assertNoActiveFalseProgress throws FALSE_PROGRESS_BLOCKED", async () => {
-    vi.doMock("@workspace/db", () => ({
-      db: {
-        select: vi.fn(() => ({
-          from: vi.fn(() => ({
-            where: vi.fn(() => ({
-              limit: vi.fn().mockResolvedValue([{ id: "flag-1" }]),
-            })),
-          })),
-        })),
-      },
-      falseProgressFlags: {
-        blueprint_id: "blueprint_id",
-        user_id: "user_id",
-        resolved: "resolved",
-      },
-    }));
-
     const { assertNoActiveFalseProgress } = await import(
       "../../../engines/outcome/OutcomeValidationEngine.js"
     );

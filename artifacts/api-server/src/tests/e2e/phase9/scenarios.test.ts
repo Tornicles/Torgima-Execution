@@ -39,6 +39,12 @@ import { DIFFICULTY_ORDER } from "../../../engines/task-generation/TaskGeneratio
 
 const run = integrationEnabled();
 
+/** GitHub Actions runners are slower than local dev machines. */
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+const loopBudgetMs = isCi ? 20_000 : 5_000;
+const perfP95Ms = isCi ? 15_000 : 5_000;
+const perfP50Ms = isCi ? 8_000 : 2_500;
+
 function orderFieldsOk(row: typeof orders.$inferSelect | undefined): boolean {
   if (!row) return false;
   return Boolean(
@@ -213,7 +219,7 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
 
       const gu = await runPostFeedbackPipeline(blueprintId!, userId);
       const elapsed = Date.now() - t0;
-      expect(elapsed).toBeLessThan(5000);
+      expect(elapsed).toBeLessThan(loopBudgetMs);
 
       const nextId = gu.orderId;
       expect(nextId).toBeTruthy();
@@ -474,8 +480,8 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       timings.sort((a, b) => a - b);
       const p50 = timings[Math.floor(timings.length * 0.5)] ?? 0;
       const p95 = timings[Math.floor(timings.length * 0.95)] ?? 0;
-      expect(p95).toBeLessThan(5000);
-      expect(p50).toBeLessThan(2500);
+      expect(p95).toBeLessThan(perfP95Ms);
+      expect(p50).toBeLessThan(perfP50Ms);
     }, 60_000);
   });
 

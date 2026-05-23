@@ -34,14 +34,19 @@ function loadEnvKeys(filePath: string, keys: readonly string[]): void {
   }
 }
 
-const INTEGRATION_KEYS = ["TORGIMA_INTEGRATION", "DATABASE_URL", "DIRECT_URL"] as const;
-loadEnvKeys(join(repoRoot, ".env.local"), INTEGRATION_KEYS);
-loadEnvKeys(join(repoRoot, ".env"), INTEGRATION_KEYS);
-loadEnvKeys(join(repoRoot, "artifacts", "api-server", ".env"), INTEGRATION_KEYS);
+loadEnvKeys(join(repoRoot, ".env.local"), ["TORGIMA_INTEGRATION"] as const);
+loadEnvKeys(join(repoRoot, ".env"), ["TORGIMA_INTEGRATION"] as const);
+loadEnvKeys(join(repoRoot, "artifacts", "api-server", ".env"), ["TORGIMA_INTEGRATION"] as const);
 
 const integrationRequested =
   typeof process.env.TORGIMA_INTEGRATION === "string" &&
   ["1", "true", "yes"].includes(process.env.TORGIMA_INTEGRATION.toLowerCase());
+
+if (integrationRequested) {
+  loadEnvKeys(join(repoRoot, ".env.local"), ["DATABASE_URL", "DIRECT_URL"] as const);
+  loadEnvKeys(join(repoRoot, ".env"), ["DATABASE_URL", "DIRECT_URL"] as const);
+  loadEnvKeys(join(repoRoot, "artifacts", "api-server", ".env"), ["DATABASE_URL", "DIRECT_URL"] as const);
+}
 
 const dbUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "";
 const integration = integrationRequested && dbUrl.startsWith("postgres");
