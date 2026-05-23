@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "@workspace/db";
-import { runRuntimeSchemaPreflight } from "./verifySchema.js";
+import { checkExtendedSchemaHealth, runRuntimeSchemaPreflight } from "./verifySchema.js";
 import { logger } from "./logger.js";
 
 type JournalEntry = {
@@ -135,6 +135,17 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
       applied,
       pending: [...pending, ...schema.missing],
     });
+  }
+
+  const extended = await checkExtendedSchemaHealth();
+  if (!extended.ok) {
+    logger.warn(
+      {
+        missing: extended.missing.slice(0, 12),
+        count: extended.missing.length,
+      },
+      "[Preflight] Extended schema incomplete (Erector/blueprint features degraded; auth still available)",
+    );
   }
 
   logger.info("[Preflight] Runtime schema tables present. Database in sync.");

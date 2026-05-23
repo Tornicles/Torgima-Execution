@@ -214,13 +214,62 @@ export const RUNTIME_REQUIRED_TABLES = [
   "bhudhi_logs",
 ] as const;
 
+/** Boot-critical columns (auth + core loop). Erector columns are checked separately. */
+const BOOT_CRITICAL_COLUMNS: RequiredColumn[] = [
+  { table: "users", column: "email" },
+  { table: "sessions", column: "token_hash" },
+  { table: "sessions", column: "expires_at" },
+  { table: "validations", column: "selected_blueprint_tier" },
+  { table: "validations", column: "selected_blueprint_mode" },
+  { table: "validations", column: "location_context" },
+  { table: "validations", column: "reality_context" },
+  { table: "blueprints", column: "tier" },
+  { table: "blueprints", column: "mode" },
+  { table: "blueprints", column: "state_version" },
+  { table: "orders", column: "command_context" },
+  { table: "orders", column: "content_hash" },
+];
+
+/** Erector / blueprint-launch columns — warn at boot if missing; do not block auth. */
+const EXTENDED_SCHEMA_COLUMNS: RequiredColumn[] = [
+  { table: "blueprints", column: "blueprint_tier" },
+  { table: "blueprints", column: "primary_archetype_id" },
+  { table: "blueprints", column: "reality_score" },
+  { table: "blueprints", column: "erector_validation_id" },
+  { table: "blueprints", column: "industry_state" },
+  { table: "blueprints", column: "archetype_execution_mult" },
+  { table: "blueprints", column: "archetype_timeframe_mult" },
+  { table: "blueprints", column: "archetype_difficulty_adj" },
+  { table: "validations", column: "reality_score" },
+  { table: "validations", column: "erector_validation_stage" },
+];
+
+async function checkColumns(columns: RequiredColumn[]): Promise<string[]> {
+  const missing: string[] = [];
+  for (const { table, column } of columns) {
+    if (!(await hasTable(table))) continue;
+    if (!(await hasColumn(table, column))) missing.push(`Missing column: ${table}.${column}`);
+  }
+  return missing;
+}
+
+/** Tables + core columns required before the API listens (includes magic-link auth). */
 export async function runRuntimeSchemaPreflight(): Promise<SchemaHealthResult> {
   const missing: string[] = [];
   for (const table of RUNTIME_REQUIRED_TABLES) {
     if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
   }
-  const columnHealth = await checkSchemaHealth();
-  if (!columnHealth.ok) missing.push(...columnHealth.missing);
+  missing.push(...(await checkColumns(BOOT_CRITICAL_COLUMNS)));
+  return { ok: missing.length === 0, missing };
+}
+
+/** Erector feature columns — optional at boot so login still works while migrations catch up. */
+export async function checkExtendedSchemaHealth(): Promise<SchemaHealthResult> {
+  const missing: string[] = [];
+  for (const table of RUNTIME_REQUIRED_TABLES) {
+    if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
+  }
+  missing.push(...(await checkColumns(EXTENDED_SCHEMA_COLUMNS)));
   return { ok: missing.length === 0, missing };
 }
 
@@ -300,36 +349,10 @@ export async function verifyBlueprintLaunchSchema(): Promise<SchemaVerifyResult>
 }
 
 export async function checkSchemaHealth(): Promise<SchemaHealthResult> {
-  const missing: string[] = [];
-
-  const requiredTables = RUNTIME_REQUIRED_TABLES;
-
-  for (const table of requiredTables) {
-    if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
-  }
-
-  const columnChecks: RequiredColumn[] = [
-    { table: "validations", column: "selected_blueprint_tier" },
-    { table: "validations", column: "selected_blueprint_mode" },
-    { table: "validations", column: "location_context" },
-    { table: "validations", column: "reality_context" },
-    { table: "blueprints", column: "tier" },
-    { table: "blueprints", column: "mode" },
-    { table: "blueprints", column: "state_version" },
-    { table: "blueprints", column: "blueprint_tier" },
-    { table: "blueprints", column: "primary_archetype_id" },
-    { table: "blueprints", column: "reality_score" },
-    { table: "blueprints", column: "erector_validation_id" },
-    { table: "orders", column: "command_context" },
-    { table: "orders", column: "content_hash" },
-    { table: "validations", column: "reality_score" },
-    { table: "validations", column: "erector_validation_stage" },
-  ];
-
-  for (const { table, column } of columnChecks) {
-    if (!(await hasTable(table))) continue;
-    if (!(await hasColumn(table, column))) missing.push(`Missing column: ${table}.${column}`);
-  }
-
-  return { ok: missing.length === 0, missing };
+  const core = await runRuntimeSchemaPreflight();
+  const extended = await checkExtendedSchemaHealth();
+  return {
+    ok: core.ok && extended.ok,
+    missing: [...core.missing, ...extended.missing],
+  };
 }
