@@ -27,6 +27,7 @@ type MigrationPreflightResult = {
   available: number;
   applied: number;
   pending: string[];
+  warnings: string[];
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,58 +71,64 @@ async function countAppliedMigrations(): Promise<number> {
   return Number(applied.rows[0]?.count ?? 0);
 }
 
-function failOrWarn(message: string, result: MigrationPreflightResult): MigrationPreflightResult {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(message);
-  }
-
-  logger.warn({ ...result, message }, "[Preflight] Migration state not authoritative");
-  return result;
+function recordWarning(warnings: string[], message: string, meta?: Record<string, unknown>): void {
+  warnings.push(message);
+  logger.warn({ ...(meta ?? {}), message }, "[Preflight]");
 }
 
+/**
+ * Never aborts the HTTP server in production — Railway must keep listening for health/CORS.
+ * Set STRICT_STARTUP_PREFLIGHT=true to restore hard-fail behaviour.
+ */
 export async function runMigrationPreflight(): Promise<MigrationPreflightResult> {
+  const warnings: string[] = [];
+  const strict = process.env.STRICT_STARTUP_PREFLIGHT === "true";
+
   logger.info("[Preflight] Checking migration state...");
 
   const migrationsFolder = resolveMigrationsFolder();
   if (!migrationsFolder) {
-    return failOrWarn("Drizzle migrations folder not found", {
-      ok: false,
-      migrationsFolder: null,
-      available: 0,
-      applied: 0,
-      pending: [],
-    });
+    recordWarning(warnings, "Drizzle migrations folder not found");
+    if (strict) throw new Error(warnings[warnings.length - 1]!);
+    return { ok: false, migrationsFolder: null, available: 0, applied: 0, pending: [], warnings };
   }
 
-  const entries = readJournal(migrationsFolder);
+  let entries: JournalEntry[] = [];
+  try {
+    entries = readJournal(migrationsFolder);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    recordWarning(warnings, message);
+    if (strict) throw new Error(message);
+    return { ok: false, migrationsFolder, available: 0, applied: 0, pending: [], warnings };
+  }
+
   if (entries.length === 0) {
-    return failOrWarn("Drizzle migration journal has no entries; generate and apply a baseline/catch-up migration", {
-      ok: false,
-      migrationsFolder,
-      available: 0,
-      applied: 0,
-      pending: [],
-    });
+    recordWarning(warnings, "Drizzle migration journal has no entries");
+    if (strict) throw new Error(warnings[warnings.length - 1]!);
+    return { ok: false, migrationsFolder, available: 0, applied: 0, pending: [], warnings };
   }
 
   const applied = await countAppliedMigrations();
   const pending = entries.slice(applied).map((entry) => entry.tag);
-  const result = {
+  const result: MigrationPreflightResult = {
     ok: pending.length === 0 && applied <= entries.length,
     migrationsFolder,
     available: entries.length,
     applied,
     pending,
+    warnings,
   };
 
   if (applied > entries.length) {
-    return failOrWarn("Database has more Drizzle migrations than this codebase knows about", result);
+    recordWarning(warnings, "Database has more Drizzle migrations than this codebase knows about", result);
   }
 
   if (pending.length > 0) {
-    logger.warn(
+    recordWarning(
+      warnings,
+      `Drizzle journal shows unapplied tags: ${pending.join(", ")} (run db:apply-manual on Railway)`,
       { pending, applied, available: entries.length },
-      "[Preflight] Drizzle journal shows unapplied tags (common after manual SQL / push); verifying runtime schema",
     );
   } else {
     logger.info(result, "[Preflight] All Drizzle migrations applied.");
@@ -130,28 +137,17 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
   const authBoot = await runAuthBootPreflight();
   if (!authBoot.ok) {
     const detail = authBoot.missing.slice(0, 8).join("; ");
-    const suffix = authBoot.missing.length > 8 ? ` (+${authBoot.missing.length - 8} more)` : "";
-    const message =
-      `Auth database schema is incomplete (${detail}${suffix}). ` +
-      "On Railway run: pnpm -F @workspace/db migrate && pnpm db:apply-manual (use DIRECT_URL for DDL), then redeploy.";
-    return failOrWarn(message, {
-      ok: false,
-      migrationsFolder,
-      available: entries.length,
-      applied,
-      pending: [...pending, ...authBoot.missing],
-    });
+    const message = `Auth schema incomplete (${detail}). Run: pnpm db:apply-manual`;
+    recordWarning(warnings, message, { missing: authBoot.missing });
+    if (strict) throw new Error(message);
   }
 
   const schema = await runRuntimeSchemaPreflight();
   if (!schema.ok) {
-    logger.warn(
-      {
-        missing: schema.missing.slice(0, 12),
-        count: schema.missing.length,
-      },
-      "[Preflight] Full runtime schema incomplete — API will start for auth/CORS; run db:apply-manual",
-    );
+    recordWarning(warnings, "Full runtime schema incomplete — run pnpm db:apply-manual", {
+      missing: schema.missing.slice(0, 12),
+      count: schema.missing.length,
+    });
   }
 
   const extended = await checkExtendedSchemaHealth();
@@ -161,10 +157,13 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
         missing: extended.missing.slice(0, 12),
         count: extended.missing.length,
       },
-      "[Preflight] Extended schema incomplete (Erector/blueprint features degraded; auth still available)",
+      "[Preflight] Extended schema incomplete (Erector features degraded)",
     );
   }
 
-  logger.info("[Preflight] Runtime schema tables present. Database in sync.");
-  return { ...result, ok: true };
+  if (warnings.length === 0) {
+    logger.info("[Preflight] Database checks passed.");
+  }
+
+  return { ...result, ok: warnings.length === 0, warnings };
 }

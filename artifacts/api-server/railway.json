@@ -4,7 +4,7 @@
     "buildCommand": "pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/api-server build"
   },
   "deploy": {
-    "startCommand": "pnpm -F @workspace/db migrate; pnpm db:apply-manual && pnpm --filter @workspace/api-server start",
+    "startCommand": "pnpm db:apply-manual; pnpm --filter @workspace/api-server start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }

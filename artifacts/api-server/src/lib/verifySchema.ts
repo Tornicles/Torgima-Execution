@@ -253,8 +253,8 @@ async function checkColumns(columns: RequiredColumn[]): Promise<string[]> {
   return missing;
 }
 
-/** Minimum schema for magic-link auth and CORS API to listen (production boot gate). */
-export const AUTH_BOOT_TABLES = ["users", "sessions", "magic_link_tokens"] as const;
+/** Minimum schema for magic-link auth (AuthService uses users + sessions only). */
+export const AUTH_BOOT_TABLES = ["users", "sessions"] as const;
 
 export async function runAuthBootPreflight(): Promise<SchemaHealthResult> {
   const missing: string[] = [];
