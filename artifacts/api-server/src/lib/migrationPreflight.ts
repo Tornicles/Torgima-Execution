@@ -115,10 +115,13 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
   }
 
   if (pending.length > 0) {
-    return failOrWarn(`Unapplied migrations detected: ${pending.join(", ")}`, result);
+    logger.warn(
+      { pending, applied, available: entries.length },
+      "[Preflight] Drizzle journal shows unapplied tags (common after manual SQL / push); verifying runtime schema",
+    );
+  } else {
+    logger.info(result, "[Preflight] All Drizzle migrations applied.");
   }
-
-  logger.info(result, "[Preflight] All Drizzle migrations applied.");
 
   const schema = await runRuntimeSchemaPreflight();
   if (!schema.ok) {

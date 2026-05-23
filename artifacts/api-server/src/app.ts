@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -7,49 +7,20 @@ import router from "./routes/index.js";
 import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
+import { applyCorsHeaders, buildCorsOptions } from "./lib/cors.js";
 
-const rawFrontend = process.env.FRONTEND_URL ?? "";
-const explicitOrigins = rawFrontend
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const DEV_ORIGINS =
-  process.env.NODE_ENV === "production"
-    ? []
-    : [`http://localhost:${process.env.FRONTEND_DEV_PORT ?? "5173"}`, `http://localhost:${process.env.APP_DEV_PORT ?? "3000"}`];
-
-const ALLOWED_ORIGINS = [
-  ...explicitOrigins,
-  "https://torgima-execution.vercel.app",
-  "https://torgima.com",
-  ...DEV_ORIGINS,
-];
+const corsOptions = buildCorsOptions();
 
 const app: Express = express();
 
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    if (origin.endsWith(".vercel.app")) return callback(null, true);
-    if (origin.includes("localhost")) return callback(null, true);
-    if (origin.startsWith("http://127.0.0.1:")) return callback(null, true);
-    console.warn("[CORS] Blocked origin:", origin);
-    callback(new Error(`CORS blocked: ${origin}`));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "x-internal-auth",
-    "x-expected-state-version",
-    "idempotency-key",
-    "Cookie",
-  ],
-  exposedHeaders: ["Set-Cookie"],
-};
+// CORS must run before other middleware so preflight and error responses include ACAO.
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  applyCorsHeaders(req, res);
+  next();
+});
 
 app.use(
   pinoHttp({
@@ -70,12 +41,6 @@ app.use(
     },
   }),
 );
-
-app.use(cors(corsOptions));
-
-// Ensure preflight requests always receive the same CORS configuration.
-// Use a regex (not a string glob) to avoid path-to-regexp incompatibilities in Express/router.
-app.options(/.*/, cors(corsOptions));
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
