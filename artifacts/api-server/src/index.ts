@@ -43,13 +43,20 @@ async function runBackgroundStartup(): Promise<void> {
     return;
   }
 
-  if (workersStarted) return;
-  workersStarted = true;
-  try {
-    await startWorkers();
-  } catch (workerErr) {
-    logger.error({ err: workerErr }, "Failed to start workers");
+  if (workersStarted || process.env.START_WORKERS === "false") {
+    if (process.env.START_WORKERS === "false") {
+      logger.warn("[SERVER] START_WORKERS=false — queue workers skipped");
+    }
+    return;
   }
+  workersStarted = true;
+  const delayMs = parseInt(process.env.WORKER_START_DELAY_MS ?? "10000", 10);
+  setTimeout(() => {
+    startWorkers().catch((workerErr) => {
+      logger.error({ err: workerErr }, "Failed to start workers");
+    });
+  }, delayMs);
+  logger.info({ delayMs }, "[SERVER] Workers scheduled to start after delay");
 }
 
 function bootstrap(): void {
@@ -71,6 +78,10 @@ process.on("unhandledRejection", (reason) => {
     { err: reason instanceof Error ? reason : String(reason) },
     "[SERVER] Unhandled promise rejection",
   );
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "[SERVER] Uncaught exception (process stays up for health/CORS)");
 });
 
 bootstrap();
