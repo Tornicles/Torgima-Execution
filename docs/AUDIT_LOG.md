@@ -46,14 +46,14 @@ Three separate paths were applying schema differently:
 | Environment | Schema apply |
 |-------------|----------------|
 | Railway (`railway.json`) | `pnpm db:migrate` → `pnpm db:apply-manual` |
-| GitHub Phase 9 E2E (was) | `drizzle-kit push --force` only |
+| GitHub Phase 9 E2E (was) | `push-force` only, or `migrate` on empty DB (fails) |
 | API boot preflight (was) | Full Erector column check → `process.exit(1)` |
 
 **Symptoms:** Magic link “network error” (API never listened), Phase 9 E2E 42703 / missing columns, unit test `phase6-prompt` failures on standalone word `task` in UI copy.
 
 **Fixes (2026-05-22):**
 
-- CI Phase 9 job uses `pnpm db:ci` (`migrate` + `apply-manual`) — same as Railway.
+- CI Phase 9 job uses `pnpm db:ci` (`push-force` + `apply-manual`) for **empty** Postgres; Railway keeps `migrate` + `apply-manual` on **existing** DBs.
 - Boot preflight: `BOOT_CRITICAL_COLUMNS` only blocks start; Erector columns warn (`fe875e1`).
 - `FirstWeekPlanPanel.tsx`: execution-language compliant copy (`Order` not `task`).
 - `vitest.setup.ts`: unit runs always use `torgima_vitest_stub` URL so local `.env` cannot hijack CI-style unit jobs.
