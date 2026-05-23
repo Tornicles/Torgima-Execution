@@ -107,7 +107,7 @@ jobs:
       - name: Apply database schema to test database
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          pnpm -F @workspace/db run push-force
+          pnpm db:ci
       - name: Wait for Railway API and onboarding schema readiness
         run: |
           if [ -z "$RAILWAY_API_URL" ]; then

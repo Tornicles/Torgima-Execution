@@ -49,8 +49,10 @@ const integration = integrationRequested && dbUrl.startsWith("postgres");
 if (integration) {
   process.env.DATABASE_URL = dbUrl;
 } else {
-  process.env.DATABASE_URL ??=
+  // Unit runs must never inherit a developer .env DATABASE_URL (avoids flaky CI/local drift).
+  process.env.DATABASE_URL =
     "postgresql://postgres:postgres@127.0.0.1:5432/torgima_vitest_stub";
+  delete process.env.DIRECT_URL;
 }
 
 vi.mock("@anthropic-ai/sdk", () => ({
