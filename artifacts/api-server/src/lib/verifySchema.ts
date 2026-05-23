@@ -253,6 +253,21 @@ async function checkColumns(columns: RequiredColumn[]): Promise<string[]> {
   return missing;
 }
 
+/** Minimum schema for magic-link auth and CORS API to listen (production boot gate). */
+export const AUTH_BOOT_TABLES = ["users", "sessions", "magic_link_tokens"] as const;
+
+export async function runAuthBootPreflight(): Promise<SchemaHealthResult> {
+  const missing: string[] = [];
+  for (const table of AUTH_BOOT_TABLES) {
+    if (!(await hasTable(table))) missing.push(`Missing table: ${table}`);
+  }
+  const authColumns = BOOT_CRITICAL_COLUMNS.filter((c) =>
+    AUTH_BOOT_TABLES.includes(c.table as (typeof AUTH_BOOT_TABLES)[number]),
+  );
+  missing.push(...(await checkColumns(authColumns)));
+  return { ok: missing.length === 0, missing };
+}
+
 /** Tables + core columns required before the API listens (includes magic-link auth). */
 export async function runRuntimeSchemaPreflight(): Promise<SchemaHealthResult> {
   const missing: string[] = [];
