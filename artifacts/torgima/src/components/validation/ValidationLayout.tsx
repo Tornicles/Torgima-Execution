@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { API_BASE_URL } from "@/lib/api-base";
 import { apiGet } from "@/lib/torgima-api";
 
 type ActiveDraft = {
@@ -19,10 +18,6 @@ export function ValidationLayout({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setLocation("/onboarding/goal");
-      return;
-    }
     void apiGet<ActiveDraft | null>("/api/v1/validation/active-draft")
       .then((draft) => {
         if (!draft?.blueprintId) {

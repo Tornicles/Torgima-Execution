@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
 import {
   BlueprintSelectionPanel,
   type ModeId,
@@ -59,10 +58,10 @@ function sleep(ms: number): Promise<void> {
 async function resolveValidationContractId(
   payload: ValidationPayload,
 ): Promise<ValidationPayload> {
-  if (payload.validationContractId || !payload.validationId || !API_BASE_URL) {
+  if (payload.validationContractId || !payload.validationId) {
     return payload;
   }
-  const res = await fetchWithRetry(`${API_BASE_URL}/api/validation/${payload.validationId}/status`, {
+  const res = await fetchWithRetry(`/api/validation/${payload.validationId}/status`, {
     credentials: "include",
   });
   const json = (await res.json()) as { ok?: boolean; data?: { validationContractId?: string } };
@@ -193,9 +192,9 @@ export default function OnboardingPage() {
   }
 
   async function previewArchetypeForCountry() {
-    if (!API_BASE_URL || !form.locationCountry.trim()) return;
+    if (!form.locationCountry.trim()) return;
     try {
-      const res = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/resolve-archetype`, {
+      const res = await fetchWithRetry(`/api/v1/validation/resolve-archetype`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -251,7 +250,7 @@ export default function OnboardingPage() {
   }
 
   async function saveBlueprintSelection(blueprintId: string): Promise<boolean> {
-    if (!API_BASE_URL || !selectedTier || !selectedMode) return false;
+    if (!selectedTier || !selectedMode) return false;
     const res = await apiFetchResponseWithRetry(`/api/blueprints/${blueprintId}/configure-selection`, {
       method: "POST",
       credentials: "include",
@@ -301,12 +300,11 @@ export default function OnboardingPage() {
   }
 
   async function pollValidationUntilReady(validationId: string): Promise<ValidationPayload | null> {
-    if (!API_BASE_URL) return null;
     const maxAttempts = 60;
     for (let i = 0; i < maxAttempts; i++) {
       const [statusRes, timelineRes] = await Promise.all([
-        fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/status`, { credentials: "include" }),
-        fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/timeline`, { credentials: "include" }),
+        fetchWithRetry(`/api/validation/${validationId}/status`, { credentials: "include" }),
+        fetchWithRetry(`/api/validation/${validationId}/timeline`, { credentials: "include" }),
       ]);
       const timelineJson = (await timelineRes.json()) as {
         ok?: boolean;
@@ -321,7 +319,7 @@ export default function OnboardingPage() {
       };
       const sessionStatus = statusJson.data?.status;
       if (sessionStatus === ValidationStatus.COMPLETE || sessionStatus === "validated") {
-        const resultRes = await fetchWithRetry(`${API_BASE_URL}/api/validation/${validationId}/result`, {
+        const resultRes = await fetchWithRetry(`/api/validation/${validationId}/result`, {
           credentials: "include",
         });
         const resultJson = (await resultRes.json()) as { ok?: boolean; data?: ValidationPayload };
@@ -335,16 +333,11 @@ export default function OnboardingPage() {
   }
 
   async function handleValidate() {
-    if (!API_BASE_URL) {
-      setError("VITE_API_BASE_URL is not configured.");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError("");
     setValidation(null);
     try {
-      const res = await fetchWithRetry(`${API_BASE_URL}/api/onboarding/goal`, {
+      const res = await fetchWithRetry(`/api/onboarding/goal`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -387,7 +380,7 @@ export default function OnboardingPage() {
         (payload.status === "validated" || payload.validationContractId)
       ) {
         payload = await resolveValidationContractId(payload);
-        const erectorRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/run`, {
+        const erectorRes = await fetchWithRetry(`/api/v1/validation/run`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -470,7 +463,6 @@ export default function OnboardingPage() {
       setError("This validation requires the alternative path before launch.");
       return;
     }
-    if (!API_BASE_URL) return;
     setLoading(true);
     setError("");
     try {
@@ -479,7 +471,7 @@ export default function OnboardingPage() {
 
       const erectorId = launchValidation.erectorValidationId ?? launchValidation.validationId;
       if (erectorId) {
-        const pathRes = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${erectorId}/select-path`, {
+        const pathRes = await fetchWithRetry(`/api/v1/validation/${erectorId}/select-path`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -490,7 +482,7 @@ export default function OnboardingPage() {
           setError(pathData.error?.message ?? "Could not confirm path selection.");
           return;
         }
-        await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${erectorId}/first-week`, {
+        await fetchWithRetry(`/api/v1/validation/${erectorId}/first-week`, {
           method: "POST",
           credentials: "include",
         });

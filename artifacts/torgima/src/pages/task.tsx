@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
 import { apiGet, getOrder, getExecutionActiveOrder, startOrder, blockOrder } from "@/lib/torgima-api";
 import type { Order } from "@workspace/api-client-react";
 import { KnowledgeInjectionAccordion, type KnowledgeInjection } from "@/components/execution/KnowledgeInjectionAccordion";
@@ -110,7 +109,7 @@ export default function TaskPage() {
     );
   }
 
-  if (!order || !API_BASE_URL) {
+  if (!order) {
     return (
       <div className="p-8 text-center">
         <p className="text-gray-500 text-sm">Order not found.</p>

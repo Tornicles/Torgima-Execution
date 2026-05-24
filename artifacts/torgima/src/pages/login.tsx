@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
 import { sendMagicLink } from "@/lib/torgima-api";
 import { ApiError } from "@workspace/api-client-react";
 
@@ -18,31 +17,6 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setLoading(true);
     setError("");
-    if (!API_BASE_URL) {
-      setError(
-        import.meta.env.PROD
-          ? "API URL is missing from this build. In Vercel set VITE_API_BASE_URL to your Railway HTTPS URL (no /api suffix), assign it to Production, then redeploy."
-          : "API base URL is not configured.",
-      );
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const apiOrigin = new URL(API_BASE_URL, typeof window !== "undefined" ? window.location.href : "http://localhost")
-        .origin;
-      if (typeof window !== "undefined" && apiOrigin === window.location.origin && import.meta.env.PROD) {
-        setError(
-          "VITE_API_BASE_URL is set to this Vercel site instead of your Railway API. Use your Railway HTTPS origin (for example …up.railway.app); otherwise POST hits the static host and returns 405.",
-        );
-        setLoading(false);
-        return;
-      }
-    } catch {
-      setError("VITE_API_BASE_URL does not look like a valid HTTP(S) URL. Fix it in Vercel and redeploy.");
-      setLoading(false);
-      return;
-    }
     try {
       const result = (await sendMagicLink({
         email: email.trim().toLowerCase(),
@@ -68,7 +42,7 @@ export default function LoginPage() {
       }
       if (err instanceof TypeError) {
         setError(
-          "Network error (browser blocked the request or the host is unreachable). Typical causes: CORS — set Railway FRONTEND_URL to https://torgima-execution.vercel.app (exact origin); or wrong VITE_API_BASE_URL; or http:// API URL on an https:// page (use https).",
+          "Network error — the API may be unreachable or CORS blocked the request. Check Railway is running and responds at the production API host.",
         );
         return;
       }

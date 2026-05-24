@@ -49,7 +49,7 @@ const ProfileWidgetPage = lazy(() => import("@/pages/profile-widget"));
 const ProfileDayPage = lazy(() => import("@/pages/profile-day"));
 const IntelligencePage = lazy(() => import("@/pages/intelligence"));
 
-setBaseUrl(API_BASE_URL || null);
+setBaseUrl(API_BASE_URL);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,11 +67,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!API_BASE_URL) {
-      setChecking(false);
-      setLocation("/login");
-      return;
-    }
     void getAuthSession()
       .then((data) => {
         if ((data as { authenticated?: boolean })?.authenticated) {

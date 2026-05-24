@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiFetch } from "@/lib/api-base";
 import { useParams, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, MinusCircle, SkipForward, AlertTriangle, ChevronRight } from "lucide-react";
@@ -79,14 +79,12 @@ export default function FeedbackPage() {
     try {
       const started = Date.now();
       const usePrimaryLoop = Boolean(blueprintId);
-      const res = await fetch(
+      const res = await apiFetch(
         usePrimaryLoop ?
-          `${API_BASE_URL}/api/execution/feedback`
-        : `${API_BASE_URL}/api/orders/${orderId}/feedback`,
+          `/api/execution/feedback`
+        : `/api/orders/${orderId}/feedback`,
         {
           method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
             usePrimaryLoop ?
               {

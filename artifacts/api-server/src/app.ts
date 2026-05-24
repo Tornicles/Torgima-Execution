@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, { type Express } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
@@ -7,8 +7,20 @@ import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 import { createCorsMiddleware } from "./lib/cors.js";
+import {
+  PRODUCTION_BACKEND_URL,
+  PRODUCTION_FRONTEND_URL,
+} from "./config/production.js";
 
 const app: Express = express();
+
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    frontend: PRODUCTION_FRONTEND_URL,
+    backend: PRODUCTION_BACKEND_URL,
+  });
+});
 
 // CORS must be first — handles preflights immediately and stamps ACAO on every response.
 app.use(createCorsMiddleware());

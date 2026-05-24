@@ -1,8 +1,13 @@
+import { PRODUCTION_FRONTEND_URL } from "../config/production.js";
+
 /**
  * Canonical browser origin for links in emails (magic link, notifications).
- * FRONTEND_URL is preferred because it matches CORS and where users open the SPA.
  */
 export function resolveAppUrl(): string {
+  if (process.env.NODE_ENV === "production") {
+    return PRODUCTION_FRONTEND_URL;
+  }
+
   const frontend = process.env["FRONTEND_URL"]?.split(",")[0]?.trim();
   const candidates = [
     frontend,

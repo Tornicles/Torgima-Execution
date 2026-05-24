@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiFetch } from "@/lib/api-base";
 import { apiGet } from "@/lib/torgima-api";
 import { ValidationLayout } from "@/components/validation/ValidationLayout";
 import { ErectorScoresDashboard } from "@/components/validation/ErectorScoresDashboard";
@@ -19,7 +19,6 @@ function ValidationScoresContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!API_BASE_URL) return;
     void apiGet<ActiveDraft | null>("/api/v1/validation/active-draft")
       .then(async (draft) => {
         const validationId = draft?.erectorValidationId ?? draft?.validationId;
@@ -27,9 +26,7 @@ function ValidationScoresContent() {
           setLocation("/onboarding/goal");
           return;
         }
-        const res = await fetch(`${API_BASE_URL}/api/v1/validation/${validationId}/scores`, {
-          credentials: "include",
-        });
+        const res = await apiFetch(`/api/v1/validation/${validationId}/scores`);
         const json = (await res.json()) as {
           ok?: boolean;
           data?: {

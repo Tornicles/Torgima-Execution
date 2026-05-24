@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
 import { apiPost, getMe } from "@/lib/torgima-api";
 
 export default function VerifyPage() {
@@ -19,12 +18,6 @@ export default function VerifyPage() {
     if (!token || !email) {
       setStatus("error");
       setErrMsg("This link is missing required parameters.");
-      return;
-    }
-
-    if (!API_BASE_URL) {
-      setStatus("error");
-      setErrMsg("Server URL is not configured (VITE_API_BASE_URL).");
       return;
     }
 

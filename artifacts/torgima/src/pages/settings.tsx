@@ -9,8 +9,6 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Settings as SettingsIcon, Save } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-base";
-
 export default function SettingsPage() {
   const { data: settingsRes, isLoading } = useGetSettings();
   const updateSettings = useUpdateSettings();

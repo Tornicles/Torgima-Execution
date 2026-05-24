@@ -1,42 +1,35 @@
 import type { Request, Response, NextFunction } from "express";
-
-const PRODUCTION_ORIGINS = [
-  "https://torgima-execution.vercel.app",
-  "https://torgima.com",
-] as const;
+import { PRODUCTION_FRONTEND_URL } from "../config/production.js";
 
 const ALLOW_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
 const ALLOW_HEADERS =
   "Content-Type,Authorization,x-internal-auth,x-expected-state-version,idempotency-key,Cookie";
 const MAX_AGE = "86400";
 
-function parseFrontendOrigins(): string[] {
-  return (process.env.FRONTEND_URL ?? "")
-    .split(",")
-    .map((s) => s.trim().replace(/\/$/, ""))
-    .filter(Boolean);
-}
-
 function devOrigins(): string[] {
-  if (process.env.NODE_ENV === "production") return [];
   return [
+    PRODUCTION_FRONTEND_URL,
     `http://localhost:${process.env.FRONTEND_DEV_PORT ?? "5173"}`,
     `http://localhost:${process.env.APP_DEV_PORT ?? "3000"}`,
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
   ];
 }
 
 export function getAllowedOrigins(): string[] {
-  return [...new Set([...parseFrontendOrigins(), ...PRODUCTION_ORIGINS, ...devOrigins()])];
+  if (process.env.NODE_ENV === "production") {
+    return [PRODUCTION_FRONTEND_URL];
+  }
+  return [...new Set(devOrigins())];
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   const normalized = origin.replace(/\/$/, "");
-  if (getAllowedOrigins().includes(normalized)) return true;
-  if (normalized.endsWith(".vercel.app")) return true;
-  if (normalized.includes("localhost")) return true;
-  if (normalized.startsWith("http://127.0.0.1:")) return true;
-  return false;
+  if (process.env.NODE_ENV === "production") {
+    return normalized === PRODUCTION_FRONTEND_URL;
+  }
+  return getAllowedOrigins().includes(normalized);
 }
 
 /**
@@ -63,7 +56,6 @@ export function createCorsMiddleware() {
         return;
       }
     } else if (req.method === "OPTIONS") {
-      // Unknown origin preflight — acknowledge without granting access.
       console.warn("[CORS] Blocked preflight from origin:", origin);
       res.statusCode = 204;
       res.end();

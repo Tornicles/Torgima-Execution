@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/lib/api-base";
 import { apiPost } from "@/lib/torgima-api";
 import { applyExecutionLanguage } from "@/lib/execution-language";
 import { cn } from "@/lib/utils";
@@ -37,16 +36,6 @@ export function IntelligencePanel({
 
   useEffect(() => {
     const raw = contentToString(content);
-    if (!API_BASE_URL) {
-      setFiltered(applyExecutionLanguage(raw));
-      setUncertaintyNote(
-        confidenceTier === "LOW" ?
-          "This estimate is based on limited data and will improve with more execution."
-        : null,
-      );
-      return;
-    }
-
     void apiPost<{ content: string; uncertaintyNote?: string | null }>("/api/communication/filter", {
       content: raw,
       outputType: type,

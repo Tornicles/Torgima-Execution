@@ -3,7 +3,11 @@
  * when DATABASE_URL is missing. Heavy app + DB load happens in boot.ts only when configured.
  */
 import http from "node:http";
-import { applyPreflightHeaders, applyCorsHeaders } from "./lib/cors.js";
+import { applyCorsHeaders, applyPreflightHeaders } from "./lib/cors.js";
+import {
+  PRODUCTION_BACKEND_URL,
+  PRODUCTION_FRONTEND_URL,
+} from "./config/production.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -25,6 +29,17 @@ function startDegradedServer(reason: string): void {
       applyPreflightHeaders(req, res);
       res.writeHead(204);
       res.end();
+      return;
+    }
+
+    if (req.url === "/health") {
+      writeJson(res, 200, {
+        ok: true,
+        frontend: PRODUCTION_FRONTEND_URL,
+        backend: PRODUCTION_BACKEND_URL,
+        degraded: true,
+        message: reason,
+      });
       return;
     }
 
