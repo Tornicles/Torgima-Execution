@@ -1,6 +1,7 @@
 /**
  * GAP G7 — typed API access via generated client only.
  */
+import { apiFetch } from "@/config/api";
 import {
   customFetch,
   getOrder,
@@ -98,16 +99,71 @@ export async function apiFetchWithRetry<T = unknown>(
   throw last instanceof Error ? last : new Error("Request failed");
 }
 
-/** Compatibility shim: returns Response with `{ ok, data }` envelope for legacy callers. */
+export type ApiEnvelope<T> = {
+  ok: boolean;
+  status: number;
+  data?: T;
+  error?: { message?: string; code?: string };
+};
+
+function normalizeApiPath(pathOrUrl: string): string {
+  if (pathOrUrl.includes("/api/")) return pathOrUrl.slice(pathOrUrl.indexOf("/api/"));
+  return pathOrUrl.startsWith("/") ? pathOrUrl : `/api${pathOrUrl}`;
+}
+
+/** Parses real HTTP + `{ ok, data, error }` envelope (does not mask failures). */
+export async function apiFetchEnvelope<T = unknown>(
+  pathOrUrl: string,
+  init?: RequestInit,
+  attempts = 3,
+): Promise<ApiEnvelope<T>> {
+  const apiPath = normalizeApiPath(pathOrUrl);
+  let last: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const res = await apiFetch(apiPath, init);
+      let json: unknown = null;
+      try {
+        json = await res.json();
+      } catch {
+        json = null;
+      }
+      const body = json as { ok?: boolean; data?: T; error?: { message?: string; code?: string } } | null;
+      if (!res.ok) {
+        return {
+          ok: false,
+          status: res.status,
+          error: body?.error ?? { message: res.statusText || `HTTP ${res.status}` },
+        };
+      }
+      if (body && typeof body === "object" && "ok" in body) {
+        return {
+          ok: body.ok === true,
+          status: res.status,
+          data: body.data,
+          error: body.error,
+        };
+      }
+      return { ok: true, status: res.status, data: json as T };
+    } catch (err) {
+      last = err;
+      if (attempt === attempts - 1) break;
+      await sleep(500 * 2 ** attempt);
+    }
+  }
+  const message = last instanceof Error ? last.message : "Request failed";
+  return { ok: false, status: 0, error: { message } };
+}
+
+/** Compatibility shim: returns Response mirroring the API envelope. */
 export async function apiFetchResponseWithRetry(
   pathOrUrl: string,
   init?: RequestInit,
   attempts = 3,
 ): Promise<Response> {
-  const apiPath = pathOrUrl.includes("/api/") ? pathOrUrl.slice(pathOrUrl.indexOf("/api/")) : pathOrUrl;
-  const data = await apiFetchWithRetry<unknown>(apiPath, init, attempts);
-  return new Response(JSON.stringify({ ok: true, data }), {
-    status: 200,
+  const result = await apiFetchEnvelope<unknown>(pathOrUrl, init, attempts);
+  return new Response(JSON.stringify({ ok: result.ok, data: result.data, error: result.error }), {
+    status: result.status || (result.ok ? 200 : 500),
     headers: { "Content-Type": "application/json" },
   });
 }

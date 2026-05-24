@@ -119,12 +119,34 @@ router.post("/v1/validation/run", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const parsed = erectorValidationInputSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.error("[RUN_FAILURE]", { userId: auth.userId, reason: "invalid_input" });
       failure(res, "VALIDATION_ERROR", "Invalid Erector validation input", 422);
       return;
     }
+    console.log("[RUN_START]", {
+      userId: auth.userId,
+      blueprintId: parsed.data.blueprintId,
+      idempotencyKey: parsed.data.idempotencyKey,
+    });
     const result = await runErectorValidation({ ...parsed.data, userId: auth.userId });
-    success(res, result);
+    const redirectTo = "/onboarding";
+    console.log("[RUN_SUCCESS]", {
+      validationId: result.validationId,
+      verdict: result.verdict,
+      redirectTo,
+    });
+    success(res, {
+      success: true,
+      validationId: result.validationId,
+      validationContractId: result.validationContractId,
+      blueprintId: result.blueprintId,
+      verdict: result.verdict,
+      result,
+      redirectTo,
+    });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[RUN_FAILURE]", { error: message });
     handleError(req, res, err);
   }
 });

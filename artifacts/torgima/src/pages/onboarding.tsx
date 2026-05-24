@@ -12,7 +12,7 @@ import { FirstWeekPlanPanel } from "@/components/validation/FirstWeekPlanPanel";
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { activateBlueprint, ApiError } from "@workspace/api-client-react";
-import { apiFetchResponseWithRetry, apiPost, completeOnboarding } from "@/lib/torgima-api";
+import { apiFetchEnvelope, apiFetchResponseWithRetry, apiPost, completeOnboarding } from "@/lib/torgima-api";
 import { ValidationStatus } from "@workspace/state-machine";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -92,6 +92,24 @@ async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, atte
     await sleep(500 * 2 ** attempt);
   }
   throw lastError instanceof Error ? lastError : new Error("Request failed");
+}
+
+function isValidationPayloadReady(payload: ValidationPayload | null | undefined): boolean {
+  if (!payload?.blueprintId) return false;
+  const status = String(payload.status ?? "").toLowerCase();
+  return (
+    status === "validated" ||
+    status === "complete" ||
+    Boolean(payload.validationContractId) ||
+    Boolean(payload.erectorValidationId)
+  );
+}
+
+function normalizeValidationPayload(payload: ValidationPayload): ValidationPayload {
+  return {
+    ...payload,
+    status: "validated",
+  };
 }
 
 interface FormData {
@@ -250,7 +268,10 @@ export default function OnboardingPage() {
   }
 
   async function saveBlueprintSelection(blueprintId: string): Promise<boolean> {
-    if (!selectedTier || !selectedMode) return false;
+    if (!selectedTier || !selectedMode) {
+      setError("Select a blueprint tier and mode before continuing.");
+      return false;
+    }
     const res = await apiFetchResponseWithRetry(`/api/blueprints/${blueprintId}/configure-selection`, {
       method: "POST",
       credentials: "include",
@@ -336,11 +357,15 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     setValidation(null);
+    console.log("[VALIDATION_START]", {
+      goal: form.primaryGoal.slice(0, 80),
+      timeframe: form.timeframe,
+      tier: selectedTier,
+      mode: selectedMode,
+    });
     try {
-      const res = await fetchWithRetry(`/api/onboarding/goal`, {
+      const goalEnvelope = await apiFetchEnvelope<ValidationPayload>(`/api/onboarding/goal`, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rawGoal: form.primaryGoal,
           purpose: form.purpose,
@@ -351,42 +376,38 @@ export default function OnboardingPage() {
           knownBlockers: form.knownBlockers,
           domainHints: form.domain ? [form.domain] : undefined,
           idempotencyKey: `onboarding-${Date.now()}`,
-          tier: selectedTier ?? undefined,
-          mode: selectedMode ?? undefined,
+          tier: selectedTier ?? "starter",
+          mode: selectedMode ?? "individual",
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; data?: ValidationPayload; error?: { message?: string } };
-      if (!data.ok) {
-        setError(data.error?.message ?? "Validation failed.");
+      console.log("[GOAL_RESPONSE]", {
+        ok: goalEnvelope.ok,
+        status: goalEnvelope.status,
+        data: goalEnvelope.data,
+        error: goalEnvelope.error,
+      });
+      if (!goalEnvelope.ok || !goalEnvelope.data) {
+        setError(goalEnvelope.error?.message ?? "Validation failed.");
         return;
       }
-      const d = data.data;
-      if (!d) {
-        setError("Unexpected response from server.");
-        return;
-      }
+      const d = goalEnvelope.data;
       let payload: ValidationPayload | null = d;
-      if (d.validationId && d.status !== "validated" && !d.blueprintId) {
+      if (d.validationId && !d.blueprintId && String(d.status ?? "").toLowerCase() !== "validated") {
         const polled = await pollValidationUntilReady(d.validationId);
-        if (polled) payload = { ...polled, status: polled.status ?? "validated" };
+        if (polled) payload = normalizeValidationPayload({ ...polled, status: polled.status ?? "validated" });
         else {
           setError("Validation is taking longer than expected. Try again in a moment.");
           return;
         }
       }
 
-      if (
-        payload?.blueprintId &&
-        (payload.status === "validated" || payload.validationContractId)
-      ) {
-        payload = await resolveValidationContractId(payload);
-        const erectorRes = await fetchWithRetry(`/api/v1/validation/run`, {
+      if (isValidationPayloadReady(payload)) {
+        payload = await resolveValidationContractId(payload!);
+        const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/run`, {
           method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            blueprintId: payload.blueprintId,
-            idempotencyKey: `erector-${payload.blueprintId}-${form.locationCountry}-${form.businessModel}`,
+            blueprintId: payload!.blueprintId,
+            idempotencyKey: `erector-${payload!.blueprintId}-${form.locationCountry}-${form.businessModel}`,
             rawGoal: form.primaryGoal,
             purpose: form.purpose,
             timeframe: form.timeframe,
@@ -403,31 +424,49 @@ export default function OnboardingPage() {
             successSignal: form.specificTarget,
             currentContext: form.currentContext,
             domainHint: form.domain,
-            tier: selectedTier ?? undefined,
-            mode: selectedMode ?? undefined,
+            tier: selectedTier ?? "starter",
+            mode: selectedMode ?? "individual",
           }),
         });
-        const erectorJson = (await erectorRes.json()) as { ok?: boolean; data?: Record<string, unknown>; error?: { message?: string } };
-        if (!erectorJson.ok) {
-          setError(erectorJson.error?.message ?? "Erector validation failed.");
+        console.log("[RUN_RESPONSE]", {
+          ok: runEnvelope.ok,
+          status: runEnvelope.status,
+          data: runEnvelope.data,
+          error: runEnvelope.error,
+        });
+        if (!runEnvelope.ok || !runEnvelope.data) {
+          setError(runEnvelope.error?.message ?? "Erector validation failed.");
           return;
         }
-        const erectorVerdict = String(erectorJson.data?.["verdict"] ?? "");
-        payload = {
-          ...payload,
-          erectorValidationId: String(erectorJson.data?.["validationId"] ?? ""),
-          erectorValidationContractId: String(erectorJson.data?.["validationContractId"] ?? ""),
-          verdict: (erectorVerdict as ValidationPayload["verdict"]) || payload.verdict,
+        const runData = runEnvelope.data;
+        const runSuccess = runData.success === true || runData.validationId != null;
+        if (!runSuccess) {
+          setError(String(runData.error ?? "Validation failed"));
+          console.error("[VALIDATION_ERROR]", runData);
+          return;
+        }
+        const erectorResult = (runData.result ?? runData) as Record<string, unknown>;
+        const erectorVerdict = String(runData.verdict ?? erectorResult.verdict ?? "");
+        payload = normalizeValidationPayload({
+          ...payload!,
+          erectorValidationId: String(runData.validationId ?? erectorResult.validationId ?? ""),
+          erectorValidationContractId: String(
+            runData.validationContractId ?? erectorResult.validationContractId ?? "",
+          ),
+          verdict: (erectorVerdict as ValidationPayload["verdict"]) || payload!.verdict,
           launchBlocked: erectorVerdict === "pivot" || erectorVerdict === "blocked",
-          paths: (erectorJson.data?.["paths"] as ValidationPayload["paths"]) ?? payload.paths,
-          intelligence: { ...(payload.intelligence ?? {}), erector: erectorJson.data },
-        };
+          paths: (erectorResult.paths as ValidationPayload["paths"]) ?? payload!.paths,
+          intelligence: { ...(payload!.intelligence ?? {}), erector: erectorResult },
+        });
         if (!payload.blueprintId) {
           setError("Validation did not return a blueprint id.");
           return;
         }
-        const saved = await saveBlueprintSelection(payload.blueprintId);
-        if (!saved) return;
+        console.log("[VALIDATION_NAVIGATE]", {
+          to: runData.redirectTo ?? "/onboarding",
+          erectorPhase: "briefing",
+          validationId: payload.erectorValidationId,
+        });
         setValidation(payload);
         setErectorPhase("briefing");
         setPathConfirmed(false);
@@ -436,10 +475,12 @@ export default function OnboardingPage() {
       } else if (d.status === "invalid") {
         setError("Your goal could not be validated. Refine it on earlier steps and try again.");
       } else {
+        console.error("[VALIDATION_ERROR]", { payload, goalStatus: d.status });
         setError("Validation did not complete. Try again.");
       }
-    } catch {
-      setError("Cannot connect to server.");
+    } catch (err) {
+      console.error("[VALIDATION_ERROR]", err);
+      setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
     } finally {
       setLoading(false);
     }
@@ -573,7 +614,7 @@ export default function OnboardingPage() {
   const sideInfo = WHY_THIS_MATTERS[step] ?? WHY_THIS_MATTERS[1];
   const showStepNav =
     !(step === 7 && !loading && validation && !error) && !(step === 6 && !goalStructured);
-  const validated = validation?.status === "validated" && validation.blueprintId;
+  const validated = isValidationPayloadReady(validation);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
