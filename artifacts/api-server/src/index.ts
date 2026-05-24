@@ -1,56 +1,73 @@
 /**
- * Entry: bind HTTP on 0.0.0.0 immediately (Railway health/proxy), then load API routes in background.
+ * Minimal HTTP entry — binds 0.0.0.0 immediately, then loads Express API in a separate chunk.
  */
-import type { Server } from "node:http";
-import express from "express";
-import { createCorsMiddleware } from "./lib/cors.js";
+import http from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { applyCorsHeaders, applyPreflightHeaders } from "./lib/cors.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = "0.0.0.0";
 
-const root = express();
+type NodeListener = (req: IncomingMessage, res: ServerResponse) => void;
 
-root.get("/health", (_req, res) => {
-  res.json({ ok: true });
+let apiListener: NodeListener | null = null;
+
+function writeJson(res: ServerResponse, status: number, body: Record<string, unknown>): void {
+  const payload = JSON.stringify(body);
+  res.writeHead(status, {
+    "Content-Type": "application/json",
+    "Content-Length": Buffer.byteLength(payload),
+  });
+  res.end(payload);
+}
+
+const server = http.createServer((req, res) => {
+  applyCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    applyPreflightHeaders(req, res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const path = (req.url ?? "").split("?")[0];
+
+  if (path === "/health") {
+    writeJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (apiListener) {
+    apiListener(req, res);
+    return;
+  }
+
+  writeJson(res, 503, { ok: false, status: "starting" });
 });
 
-root.use(createCorsMiddleware());
+server.listen(PORT, HOST, () => {
+  console.log(`[SERVER START] Listening on http://${HOST}:${PORT}`);
+  console.log("[HEALTH READY] GET /health");
 
-let server: Server | null = null;
-
-function startListening(): Server {
-  server = root.listen(PORT, HOST, () => {
-    console.log(`[SERVER START] Listening on http://${HOST}:${PORT}`);
-    console.log("[HEALTH READY] GET /health");
-
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      console.error(
-        "[SERVER] DATABASE_URL is not set — API routes not loaded (health-only mode)",
-      );
-      return;
-    }
-
-    void import("./boot.js")
-      .then(async ({ attachApiApp, runBackgroundStartup, shutdown }) => {
-        await attachApiApp(root);
-        process.on("SIGTERM", () => void shutdown(server!, "SIGTERM"));
-        process.on("SIGINT", () => void shutdown(server!, "SIGINT"));
-        await runBackgroundStartup();
-      })
-      .catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[SERVER] Boot failed (health still available):", msg);
+  void import("./boot.js")
+    .then(async ({ mountExpressApp, runBackgroundStartup, registerShutdown }) => {
+      registerShutdown(server);
+      await mountExpressApp((listener) => {
+        apiListener = listener;
       });
-  });
+      await runBackgroundStartup();
+    })
+    .catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[SERVER] Boot failed (GET /health still works):", msg);
+    });
+});
 
-  server.on("error", (err) => {
-    console.error("[SERVER] HTTP server error:", err);
-    process.exit(1);
-  });
-
-  return server;
-}
+server.on("error", (err) => {
+  console.error("[SERVER] HTTP server error:", err);
+  process.exit(1);
+});
 
 process.on("unhandledRejection", (reason) => {
   console.error("[SERVER] Unhandled promise rejection:", reason);
@@ -59,5 +76,3 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (err) => {
   console.error("[SERVER] Uncaught exception:", err);
 });
-
-startListening();
