@@ -1,68 +1,55 @@
 /**
- * Entry point: bind HTTP immediately (Railway health/CORS) or serve a clear degraded response
- * when DATABASE_URL is missing. Heavy app + DB load happens in boot.ts only when configured.
+ * Entry: bind HTTP on 0.0.0.0 immediately (Railway health/proxy), then load API routes in background.
  */
-import http from "node:http";
-import { applyCorsHeaders, applyPreflightHeaders } from "./lib/cors.js";
-import {
-  PRODUCTION_BACKEND_URL,
-  PRODUCTION_FRONTEND_URL,
-} from "./config/production.js";
+import type { Server } from "node:http";
+import express from "express";
+import { createCorsMiddleware } from "./lib/cors.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
-const HOST = process.env.HOST ?? "0.0.0.0";
+const HOST = "0.0.0.0";
 
-function writeJson(
-  res: http.ServerResponse,
-  status: number,
-  body: Record<string, unknown>,
-): void {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
+const root = express();
 
-function startDegradedServer(reason: string): void {
-  const server = http.createServer((req, res) => {
-    applyCorsHeaders(req, res);
+root.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
 
-    if (req.method === "OPTIONS") {
-      applyPreflightHeaders(req, res);
-      res.writeHead(204);
-      res.end();
+root.use(createCorsMiddleware());
+
+let server: Server | null = null;
+
+function startListening(): Server {
+  server = root.listen(PORT, HOST, () => {
+    console.log(`[SERVER START] Listening on http://${HOST}:${PORT}`);
+    console.log("[HEALTH READY] GET /health");
+
+    const databaseUrl = process.env.DATABASE_URL?.trim();
+    if (!databaseUrl) {
+      console.error(
+        "[SERVER] DATABASE_URL is not set — API routes not loaded (health-only mode)",
+      );
       return;
     }
 
-    if (req.url === "/health") {
-      writeJson(res, 200, {
-        ok: true,
-        frontend: PRODUCTION_FRONTEND_URL,
-        backend: PRODUCTION_BACKEND_URL,
-        degraded: true,
-        message: reason,
+    void import("./boot.js")
+      .then(async ({ attachApiApp, runBackgroundStartup, shutdown }) => {
+        await attachApiApp(root);
+        process.on("SIGTERM", () => void shutdown(server!, "SIGTERM"));
+        process.on("SIGINT", () => void shutdown(server!, "SIGINT"));
+        await runBackgroundStartup();
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[SERVER] Boot failed (health still available):", msg);
       });
-      return;
-    }
-
-    if (req.url === "/api/healthz" || req.url === "/api/health") {
-      writeJson(res, 200, {
-        status: "degraded",
-        database: false,
-        message: reason,
-      });
-      return;
-    }
-
-    writeJson(res, 503, {
-      status: "error",
-      code: "DATABASE_URL_MISSING",
-      message: reason,
-    });
   });
 
-  server.listen(PORT, HOST, () => {
-    console.error(`[SERVER] Degraded mode: ${reason}`);
-    console.log(`[SERVER] Listening on http://${HOST}:${PORT} (configure DATABASE_URL on Railway)`);
+  server.on("error", (err) => {
+    console.error("[SERVER] HTTP server error:", err);
+    process.exit(1);
   });
+
+  return server;
 }
 
 process.on("unhandledRejection", (reason) => {
@@ -73,21 +60,4 @@ process.on("uncaughtException", (err) => {
   console.error("[SERVER] Uncaught exception:", err);
 });
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
-if (!databaseUrl) {
-  startDegradedServer(
-    "DATABASE_URL is not set on Railway. Add your Supabase connection string to the api-server service variables.",
-  );
-} else {
-  void import("./boot.js")
-    .then(({ startHttpServer, shutdown }) => {
-      startHttpServer();
-      process.on("SIGTERM", () => void shutdown("SIGTERM"));
-      process.on("SIGINT", () => void shutdown("SIGINT"));
-    })
-    .catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[SERVER] Boot failed:", msg);
-      startDegradedServer(`API boot failed: ${msg}`);
-    });
-}
+startListening();

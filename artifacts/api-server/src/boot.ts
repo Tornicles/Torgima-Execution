@@ -1,17 +1,15 @@
+import type { Express } from "express";
 import type { Server } from "node:http";
-import app from "./app.js";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger.js";
 import { stopBoss } from "./lib/queue.js";
 import { stopProductionSchedulers } from "./schedulers/ProductionScheduler.js";
 import { runMigrationPreflight } from "./lib/migrationPreflight.js";
 
-const PORT = parseInt(process.env.PORT ?? "3001", 10);
-const HOST = process.env.HOST ?? "0.0.0.0";
 const DB_PING_TIMEOUT_MS = parseInt(process.env.DB_PING_TIMEOUT_MS ?? "8000", 10);
 
-let server: Server | null = null;
 let workersStarted = false;
+let apiMounted = false;
 
 async function pingDatabase(): Promise<void> {
   const client = await pool.connect();
@@ -34,7 +32,9 @@ async function maybeApplyManualMigrations(): Promise<void> {
         shell: true,
         env: process.env,
       });
-      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`db:apply-manual exit ${code}`))));
+      child.on("exit", (code) =>
+        code === 0 ? resolve() : reject(new Error(`db:apply-manual exit ${code}`)),
+      );
       child.on("error", reject);
     });
     logger.info("[SERVER] Background db:apply-manual finished");
@@ -43,7 +43,16 @@ async function maybeApplyManualMigrations(): Promise<void> {
   }
 }
 
-async function runBackgroundStartup(): Promise<void> {
+/** Mount full Express API after HTTP is already listening (avoids Railway startup timeout). */
+export async function attachApiApp(root: Express): Promise<void> {
+  if (apiMounted) return;
+  const { default: apiApp } = await import("./app.js");
+  root.use(apiApp);
+  apiMounted = true;
+  console.log("[SERVER] API routes mounted");
+}
+
+export async function runBackgroundStartup(): Promise<void> {
   void maybeApplyManualMigrations();
 
   try {
@@ -55,15 +64,18 @@ async function runBackgroundStartup(): Promise<void> {
     await Promise.race([
       pingDatabase(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Database ping timed out after ${DB_PING_TIMEOUT_MS}ms`)), DB_PING_TIMEOUT_MS),
+        setTimeout(
+          () => reject(new Error(`Database ping timed out after ${DB_PING_TIMEOUT_MS}ms`)),
+          DB_PING_TIMEOUT_MS,
+        ),
       ),
     ]);
-    console.log("[SERVER] Database connection: OK");
+    console.log("[DB READY] Database connection OK");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(
       { err: msg },
-      "[SERVER] Startup checks failed — API stays up for health/CORS; fix DATABASE_URL and run db:apply-manual",
+      "[SERVER] Startup checks failed — API stays up for /health; fix DATABASE_URL and run db:apply-manual",
     );
     return;
   }
@@ -77,7 +89,7 @@ async function runBackgroundStartup(): Promise<void> {
   workersStarted = true;
   const delayMs = parseInt(process.env.WORKER_START_DELAY_MS ?? "15000", 10);
   setTimeout(() => {
-    import("./workers/start.js")
+    void import("./workers/start.js")
       .then(({ startWorkers }) => startWorkers())
       .catch((workerErr) => {
         logger.error({ err: workerErr }, "Failed to start workers");
@@ -86,31 +98,13 @@ async function runBackgroundStartup(): Promise<void> {
   logger.info({ delayMs }, "[SERVER] Workers scheduled to start after delay");
 }
 
-export function startHttpServer(): Server {
-  server = app.listen(PORT, HOST, () => {
-    console.log(`[SERVER] Running on http://${HOST}:${PORT}`);
-    console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`[SERVER] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
-    void runBackgroundStartup();
-  });
-
-  server.on("error", (err) => {
-    logger.error({ err }, "[SERVER] HTTP server error");
-    process.exit(1);
-  });
-
-  return server;
-}
-
-export async function shutdown(signal: string): Promise<void> {
+export async function shutdown(server: Server, signal: string): Promise<void> {
   logger.info({ signal }, "[SERVER] Graceful shutdown");
   stopProductionSchedulers();
   await stopBoss().catch(() => null);
-  if (server) {
-    await new Promise<void>((resolve) => {
-      server!.close(() => resolve());
-    });
-  }
+  await new Promise<void>((resolve) => {
+    server.close(() => resolve());
+  });
   await pool.end().catch(() => null);
   process.exit(0);
 }
