@@ -42,17 +42,26 @@ router.post("/blueprint/resolve-domain", async (req, res) => {
 router.post("/blueprint/generate", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
+    const pathType = z.enum(["current", "adjusted", "alternative"]);
+    const nullishUuid = z.preprocess(
+      (value) => (value === null || value === "" ? undefined : value),
+      z.string().uuid().optional(),
+    );
     const body = z
       .object({
         blueprintId: z.string().uuid(),
-        validationContractId: z.string().uuid().optional(),
-        validation_contract_id: z.string().uuid().optional(),
-        selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
-        selected_path_type: z.enum(["current", "adjusted", "alternative"]).optional(),
+        validationContractId: nullishUuid,
+        validation_contract_id: nullishUuid,
+        validationId: nullishUuid,
+        validation_id: nullishUuid,
+        selectedPath: pathType.optional().default("current"),
+        selected_path_type: pathType.optional(),
+        selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]).optional().default("starter"),
+        tier: z.enum(["starter", "growth", "ultimate"]).optional(),
       })
       .parse(req.body);
     const validationContractId = body.validationContractId ?? body.validation_contract_id;
-    const selectedPathType = body.selectedPath ?? body.selected_path_type;
+    const selectedPathType = body.selectedPath ?? body.selected_path_type ?? "current";
     if (!validationContractId || !selectedPathType) {
       failure(
         res,

@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { erectorValidationInputSchema } from "../../../routes/validation.js";
+import { blueprintLaunchBodySchema } from "../../../routes/blueprints.js";
 import { getContract } from "../../../bhudhi/PromptRegistry.js";
 import { hasFallbackKey } from "../../../bhudhi/FallbackLibrary.js";
 import { ERECTOR_ARCHETYPE_SEEDS, COUNTRY_ARCHETYPE_MAP, archetypeSeedByNumber } from "../../../engines/erector/archetypeData.js";
@@ -171,6 +172,30 @@ describe("Erector scoring and route integration", () => {
     expect(determineVerdict(2)).toBe("blocked");
   });
 
+  it("blueprint launch schema accepts nullish contract and path fields", () => {
+    const empty = blueprintLaunchBodySchema.safeParse({});
+    expect(empty.success).toBe(true);
+    if (empty.success) {
+      expect(empty.data.selectedPath).toBe("current");
+      expect(empty.data.selectedBlueprintLevel).toBe("starter");
+      expect(empty.data.validationContractId).toBeUndefined();
+    }
+
+    const nullish = blueprintLaunchBodySchema.safeParse({
+      validationContractId: null,
+      validation_contract_id: null,
+      selectedPath: null,
+      selected_path: "",
+      tier: "growth",
+    });
+    expect(nullish.success).toBe(true);
+    if (nullish.success) {
+      expect(nullish.data.validationContractId).toBeUndefined();
+      expect(nullish.data.selectedPath).toBe("current");
+      expect(nullish.data.selectedBlueprintLevel).toBe("growth");
+    }
+  });
+
   it("low-resource hostile-economy input produces pivot-level score", () => {
     const scores = calculateAllScores({
       input: baseInput("Chad", {
@@ -207,7 +232,8 @@ describe("Erector scoring and route integration", () => {
     expect(launchGate).toContain("Reality Score below 2.5");
 
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain("Reality Context");
+    expect(onboarding).toContain("activateBlueprint");
+    expect(onboarding).toContain("validationContractId");
     expect(onboarding).toContain("/api/v1/validation/run");
     expect(onboarding).toContain("AlignedValidationResults");
     expect(onboarding).toContain("AlignedGoalIntake");
@@ -232,5 +258,11 @@ describe("Erector scoring and route integration", () => {
 
     const dashboard = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
     expect(dashboard).toContain("ExecutionContextPanel");
+
+    const blueprintRoutes = readRepo("artifacts/api-server/src/routes/blueprints.ts");
+    expect(blueprintRoutes).toContain("blueprintLaunchBodySchema");
+    expect(blueprintRoutes).toContain("nullishUuid");
+    expect(blueprintRoutes).toContain("resolveLaunchValidationContract");
+    expect(blueprintRoutes).toContain("/blueprints/:id/activate");
   });
 });

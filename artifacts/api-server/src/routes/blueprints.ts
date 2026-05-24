@@ -33,10 +33,91 @@ import {
   frameworkDecisions,
   behaviorPatterns,
   events,
+  validations,
 } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 
 const router = Router();
+
+const pathTypeSchema = z.enum(["current", "adjusted", "alternative"]);
+
+const nullishUuid = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.string().uuid().optional(),
+);
+
+const nullishPathType = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  pathTypeSchema.optional(),
+);
+
+export const blueprintLaunchBodySchema = z
+  .object({
+    selectedPath: nullishPathType,
+    selected_path_type: nullishPathType,
+    selectedPathType: nullishPathType,
+    selected_path: nullishPathType,
+    selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]).optional(),
+    blueprint_level: z.enum(["starter", "growth", "ultimate"]).optional(),
+    tier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    validationContractId: nullishUuid,
+    validation_contract_id: nullishUuid,
+    validationId: nullishUuid,
+    validation_id: nullishUuid,
+    domain: z.string().optional().default("general"),
+    timeframe: z.string().optional().default("1yr"),
+    commitment_level: z.string().optional().default("HIGH"),
+    purpose: z.string().optional().default(""),
+    confirmed: z.literal(true).optional(),
+  })
+  .transform((data) => ({
+    selectedPath:
+      data.selectedPath ?? data.selected_path_type ?? data.selectedPathType ?? data.selected_path ?? "current",
+    selectedBlueprintLevel: data.selectedBlueprintLevel ?? data.blueprint_level ?? data.tier ?? "starter",
+    validationContractId: data.validationContractId ?? data.validation_contract_id,
+    validationId: data.validationId ?? data.validation_id,
+    domain: data.domain,
+    timeframe: data.timeframe,
+    commitmentLevel: data.commitment_level,
+    purpose: data.purpose,
+  }));
+
+async function resolveLaunchValidationContract(
+  blueprintId: string,
+  userId: string,
+  hints: { validationContractId?: string; validationId?: string },
+): Promise<{ contractId: string; selectedPath?: string } | null> {
+  if (hints.validationContractId) {
+    return { contractId: hints.validationContractId };
+  }
+
+  if (hints.validationId) {
+    const [byId] = await db
+      .select({
+        contract_id: validations.contract_id,
+        selected_path: validations.selected_path,
+      })
+      .from(validations)
+      .where(and(eq(validations.id, hints.validationId), eq(validations.user_id, userId)))
+      .limit(1);
+    if (byId) {
+      return { contractId: byId.contract_id, selectedPath: byId.selected_path ?? undefined };
+    }
+  }
+
+  const [latest] = await db
+    .select({
+      contract_id: validations.contract_id,
+      selected_path: validations.selected_path,
+    })
+    .from(validations)
+    .where(and(eq(validations.blueprint_id, blueprintId), eq(validations.user_id, userId)))
+    .orderBy(desc(validations.updated_at))
+    .limit(1);
+
+  if (!latest) return null;
+  return { contractId: latest.contract_id, selectedPath: latest.selected_path ?? undefined };
+}
 
 // GET /api/blueprints/features — client-side feature gating manifest
 router.get("/blueprints/features", async (req, res) => {
@@ -77,13 +158,18 @@ router.post("/blueprints", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const schema = z.object({
-      goal:            z.string().min(1).max(2000).optional(),
-      rawGoal:         z.string().min(1).max(2000).optional(),
-      purpose:         z.string().max(500).optional().nullable(),
-      timeframeDays:   z.number().int().min(7).max(730).optional().nullable(),
-      domainHint:      z.string().optional().nullable(),
-      domain:          z.string().optional().nullable(),
-      commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional().nullable(),
+      goal: z.string().min(1).max(2000).optional(),
+      rawGoal: z.string().min(1).max(2000).optional(),
+      purpose: z.string().max(500).optional().default(""),
+      timeframeDays: z.number().int().min(7).max(730).optional().nullable(),
+      timeframe: z.string().optional().default("1yr"),
+      domainHint: z.string().optional().nullable(),
+      domain: z.string().optional().default("general"),
+      commitmentLevel: z.enum(["low", "medium", "high", "full"]).optional().default("medium"),
+      tier: z.enum(["starter", "growth", "ultimate"]).optional().default("starter"),
+      selected_path: pathTypeSchema.optional().default("current"),
+      validation_id: nullishUuid,
+      validationId: nullishUuid,
     });
 
     const parsed = schema.safeParse(req.body);
@@ -202,40 +288,44 @@ const blueprintLaunchHandler = async (req: import("express").Request, res: impor
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const schema = z.object({
-      selectedPath: z.enum(["current", "adjusted", "alternative"]).optional(),
-      selected_path_type: z.enum(["current", "adjusted", "alternative"]).optional(),
-      selectedBlueprintLevel: z.enum(["starter", "growth", "ultimate"]).optional(),
-      validationContractId: z.string().uuid().optional(),
-      validation_contract_id: z.string().uuid().optional(),
-      confirmed: z.literal(true).optional(),
-    });
-
-    const parsed = schema.safeParse(req.body);
+    const parsed = blueprintLaunchBodySchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      failure(res, "VALIDATION_ERROR", "Invalid launch request", 422);
+      const detail = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
+      failure(res, "VALIDATION_ERROR", detail || "Invalid launch request", 422);
       return;
     }
-    const body = parsed.data;
-    const validationContractId = body.validationContractId ?? body.validation_contract_id;
-    const selectedPathType = body.selectedPath ?? body.selected_path_type;
 
-    if (!validationContractId || !selectedPathType) {
+    const blueprintId = String(req.params.id ?? "");
+    const body = parsed.data;
+
+    const resolved = await resolveLaunchValidationContract(blueprintId, auth.userId, {
+      validationContractId: body.validationContractId,
+      validationId: body.validationId,
+    });
+
+    if (!resolved?.contractId) {
       failure(
         res,
         "VALIDATION_ERROR",
-        "validation_required: validation_contract_id and selected_path_type are required",
+        "validation_required: complete validation before launching this blueprint",
         400,
       );
       return;
     }
 
-    const blueprintId = String(req.params.id ?? "");
+    const selectedPathType = pathTypeSchema.safeParse(
+      body.selectedPath ?? resolved.selectedPath ?? "current",
+    );
+    if (!selectedPathType.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid selected path", 422);
+      return;
+    }
+
     const result = await BlueprintLaunchService.launch({
       blueprintId,
       userId: auth.userId,
-      validationContractId,
-      selectedPathType,
+      validationContractId: resolved.contractId,
+      selectedPathType: selectedPathType.data,
       selectedBlueprintLevel: body.selectedBlueprintLevel,
     });
     success(res, result);

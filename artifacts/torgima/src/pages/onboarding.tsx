@@ -253,6 +253,9 @@ export default function OnboardingPage() {
         payload = normalizeValidationPayload({
           ...payload,
           erectorValidationId: validationId,
+          validationContractId: String(
+            erectorResult.validationContractId ?? erectorResult.contract_id ?? payload.validationContractId ?? "",
+          ),
           intelligence: { ...(payload.intelligence ?? {}), erector: erectorResult },
           verdict: String(erectorResult.verdict ?? payload.verdict),
           paths: (erectorResult.paths as ValidationPayload["paths"]) ?? payload.paths,

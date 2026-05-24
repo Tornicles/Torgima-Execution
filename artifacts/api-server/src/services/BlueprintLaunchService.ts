@@ -6,6 +6,7 @@ import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
 import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { ValidationService } from "./ValidationService.js";
 import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
 
 function assertValidationReadyForLaunch(row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>): void {
   const selected = row.selected_path_type ?? row.selected_path;
@@ -65,15 +66,21 @@ export const BlueprintLaunchService = {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
 
+    const selectedPathType = input.selectedPathType ?? "current";
+    const selectedBlueprintLevel = (input.selectedBlueprintLevel ??
+      blueprint.selected_blueprint_level ??
+      blueprint.tier ??
+      "starter") as BlueprintTier;
+
     const validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
     if (validationRow.blueprint_id !== input.blueprintId || validationRow.user_id !== input.userId) {
       throw new TorgimaError("FORBIDDEN", "validation_contract_id does not belong to this blueprint");
     }
     assertValidationReadyForLaunch(validationRow);
 
-    if (input.selectedBlueprintLevel) {
+    if (selectedBlueprintLevel) {
       await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
-        tier: input.selectedBlueprintLevel,
+        tier: selectedBlueprintLevel,
         mode: blueprint.mode ?? "individual",
       });
     }
@@ -81,9 +88,9 @@ export const BlueprintLaunchService = {
     await ValidationService.selectValidationPath({
       blueprintId: input.blueprintId,
       userId: input.userId,
-      selectedPath: input.selectedPathType,
+      selectedPath: selectedPathType,
       validationContractId: input.validationContractId,
-      confirmAdjusted: input.selectedPathType === "adjusted",
+      confirmAdjusted: selectedPathType === "adjusted",
     });
 
     await ValidationService.assertLaunchAllowed(
@@ -95,8 +102,8 @@ export const BlueprintLaunchService = {
     await db
       .update(blueprints)
       .set({
-        selected_path: input.selectedPathType,
-        selected_blueprint_level: input.selectedBlueprintLevel ?? blueprint.selected_blueprint_level,
+        selected_path: selectedPathType,
+        selected_blueprint_level: selectedBlueprintLevel,
         validation_id: validationRow.id,
         ...(validationRow.validation_kind === ValidationKind.ERECTOR
           ? { erector_validation_id: validationRow.id }
