@@ -10,13 +10,8 @@ import {
   RefreshCw,
   User,
   BookOpen,
+  FileText,
   Settings,
-  Brain,
-  GraduationCap,
-  CalendarDays,
-  Trophy,
-  BarChart3,
-  Plug,
   ChevronRight,
   Bell,
   Sun,
@@ -26,21 +21,22 @@ import { useGetMe } from "@workspace/api-client-react";
 import { useTheme } from "@/components/theme-provider";
 import { useBlueprintStore } from "@/store/blueprintStore";
 import { ConditionBadge } from "@/components/ConditionBadge";
+import { sidebarMotivation } from "@/design";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/progress", label: "Progress", icon: Trophy },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/blueprint", label: "Blueprint", icon: Map },
+  { href: "/orders", label: "Orders", icon: ClipboardList },
+  { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/signals", label: "Signals", icon: Activity },
-  { href: "/academy", label: "Academy", icon: BookOpen },
-  { href: "/knowledge", label: "Capability", icon: GraduationCap },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/strategy", label: "Strategy", icon: Compass },
+  { href: "/recovery", label: "Recovery", icon: RefreshCw },
+  { href: "/character", label: "Character", icon: User },
+  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/reports", label: "Reports", icon: FileText },
 ];
+
+const NAV_SECONDARY = [{ href: "/settings", label: "Settings", icon: Settings }];
 
 interface LayoutProps {
   children: ReactNode;
@@ -70,7 +66,7 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-[#f9fafb]">
       <aside className="w-56 shrink-0 flex flex-col border-r border-gray-200 bg-white">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-gray-100">
           <div className="flex items-center gap-1">
@@ -102,18 +98,37 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
               </Link>
             );
           })}
+          <div className="pt-4 mt-2 border-t border-gray-100">
+            {NAV_SECONDARY.map((item) => {
+              const isActive = location === item.href || location.startsWith(item.href);
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all text-sm ${
+                      isActive
+                        ? "bg-green-50 text-green-700 font-semibold border-l-2 border-green-600"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-green-600" : "text-gray-400"}`} />
+                    {item.label}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
-        <div className="px-4 py-3 mx-3 mb-3 bg-green-50 rounded-xl border border-green-100">
-          <div className="flex items-center gap-1.5 mb-1">
-            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+        {(() => {
+          const key = Object.keys(sidebarMotivation).find((p) => p !== "default" && location.startsWith(p));
+          const card = sidebarMotivation[key ?? "default"] ?? sidebarMotivation.default;
+          return (
+            <div className="px-4 py-3 mx-3 mb-3 bg-green-50 rounded-xl border border-green-100">
+              <p className="text-xs font-semibold text-green-800">{card.title}</p>
+              <p className="text-xs text-green-600 mt-1">{card.body}</p>
             </div>
-            <p className="text-xs font-semibold text-green-800">Stay Consistent.</p>
-          </div>
-          <p className="text-xs font-semibold text-green-800">Build Reality.</p>
-          <p className="text-xs text-green-600 mt-1">The system works when you execute.</p>
-        </div>
+          );
+        })()}
 
         <div className="border-t border-gray-100 px-4 py-3">
           <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 rounded-lg p-1 -mx-1">
@@ -164,7 +179,7 @@ export function Layout({ children, pageTitle, pageSubtitle, headerRight, user: u
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto bg-white">{children}</main>
+        <main className="flex-1 overflow-auto bg-[#f9fafb]">{children}</main>
       </div>
     </div>
   );

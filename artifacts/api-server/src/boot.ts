@@ -55,6 +55,8 @@ export async function mountExpressApp(setListener: (fn: NodeListener) => void): 
   console.log(
     "[SERVER] Launch routes: POST /api/v1/validations/:id/launch | POST /api/v1/validation/:id/launch | POST /api/blueprints/:id/activate",
   );
+  const { logBhudhiProviderRouting } = await import("./bhudhi/bhudhiProviders.js");
+  logBhudhiProviderRouting();
 }
 
 export async function runBackgroundStartup(): Promise<void> {

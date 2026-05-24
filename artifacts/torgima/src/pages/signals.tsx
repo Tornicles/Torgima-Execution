@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Info, TrendingUp } from "lucide-react";
-import { getCurrentSignals, getSignalHistory, getCurrentCondition } from "@/lib/torgima-api";
+import { apiGet, getCurrentSignals, getSignalHistory, getCurrentCondition } from "@/lib/torgima-api";
 import { OperationalAwarenessStrip } from "@/components/operational/OperationalAwarenessStrip";
 import { useBlueprintStore } from "@/store/blueprintStore";
 import { ConditionState } from "@workspace/state-machine";
@@ -44,12 +44,18 @@ export default function SignalsPage() {
   const [history, setHistory] = useState<unknown[]>([]);
   const [conditionRow, setConditionRow] = useState<ConditionPayload | null>(null);
   const [enforcement, setEnforcement] = useState<EnforcementPayload | null>(null);
+  const [character, setCharacter] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const dash = useBlueprintStore((s) => s.dashboardProjection);
 
   useEffect(() => {
-    Promise.all([getCurrentSignals(), getSignalHistory(), getCurrentCondition()])
-      .then(([cur, hist, cond]) => {
+    Promise.all([
+      getCurrentSignals(),
+      getSignalHistory(),
+      getCurrentCondition(),
+      apiGet<{ character?: Record<string, number> }>("/api/character/current").catch(() => null),
+    ])
+      .then(([cur, hist, cond, charRes]) => {
         setSignals(cur as unknown as Record<string, unknown>);
         const snaps =
           (hist as { snapshots?: unknown[] })?.snapshots ??
@@ -61,6 +67,7 @@ export default function SignalsPage() {
         };
         setConditionRow(payload.condition ?? null);
         setEnforcement(payload.enforcement ?? null);
+        if (charRes?.character) setCharacter(charRes.character);
       })
       .catch(() => null)
       .finally(() => setLoading(false));
@@ -100,19 +107,23 @@ export default function SignalsPage() {
 
   const clamp10 = (n: number) => Math.min(10, Math.max(0, Number(n.toFixed(1))));
 
-  const CHARACTER_TRAITS = [
-    { label: "Completion signal", score: clamp10(completionRate / 10) },
-    { label: "Weighted execution score", score: clamp10(weightedNum) },
-    { label: "Momentum integer", score: clamp10(momentum / 1.5) },
-    {
-      label: "Composite signal read",
-      score: clamp10((completionRate / 10 + weightedNum) / 2),
-    },
-    {
-      label: "Confidence band (reported)",
-      score: confidence === "high" ? 8.5 : confidence === "medium" ? 6.5 : 4.0,
-    },
-  ];
+  const traitScore = (v: number) => clamp10(v <= 1 ? v * 10 : v);
+
+  const CHARACTER_TRAITS = character
+    ? [
+        { label: "Consistency", score: traitScore(character.consistency ?? 0) },
+        { label: "Discipline", score: traitScore(character.discipline ?? 0) },
+        { label: "Grit", score: traitScore(character.grit ?? 0) },
+        { label: "Execution Intelligence", score: traitScore(character.executionIntelligence ?? 0) },
+        { label: "Adaptability", score: traitScore(character.adaptability ?? 0) },
+      ]
+    : [
+        { label: "Consistency", score: clamp10(completionRate / 10) },
+        { label: "Discipline", score: clamp10(weightedNum) },
+        { label: "Grit", score: clamp10(momentum / 1.5) },
+        { label: "Execution Intelligence", score: clamp10((completionRate / 10 + weightedNum) / 2) },
+        { label: "Adaptability", score: confidence === "high" ? 8.5 : confidence === "medium" ? 6.5 : 4.0 },
+      ];
 
   const CONDITION_CONFIG: Record<string, { textColor: string; desc: string }> = {
     stability: {
@@ -140,7 +151,7 @@ export default function SignalsPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Signals Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Telemetry surfaced for blueprint conditioning — narration only.</p>
+          <p className="text-gray-500 text-sm mt-0.5">Your reality. Measured. Interpreted. Actionable.</p>
         </div>
         <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 bg-white">
           <span>Last 14 days</span>

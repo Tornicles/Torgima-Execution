@@ -249,8 +249,9 @@ describe("Erector scoring and route integration", () => {
     expect(webSearch).toContain("ERECTOR_ECONOMY_BRIEFING");
 
     const triggerRouter = readRepo("artifacts/api-server/src/bhudhi/TriggerRouter.ts");
-    expect(triggerRouter).toContain("web_search_20250305");
-    expect(triggerRouter).toContain("webSearchCalls");
+    expect(triggerRouter).toContain("invokeBhudhiModel");
+    expect(triggerRouter).toContain("callGeminiWithSearch");
+    expect(triggerRouter).not.toContain("web_search_20250305");
 
     const bhudhiCore = readRepo("artifacts/api-server/src/bhudhi/BhudhiCore.ts");
     expect(bhudhiCore).toContain("web_search_calls");

@@ -9,6 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
@@ -47,6 +48,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@playwright/test": "^1.56.1",
+    "vitest": "^3.2.4",
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
     "@workspace/state-machine": "workspace:*",

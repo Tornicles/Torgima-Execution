@@ -9,6 +9,8 @@ allowBuilds:
   "@swc/core": true
   msw: true
   unrs-resolver: true
+  '@google/genai': set this to true or false
+  protobufjs: set this to true or false
 
 # pnpm 11+ (strictDepBuilds default true) fails non-interactive CI when deps need build scripts
 # not listed above. Use `pnpm approve-builds` locally to grow the list over time.

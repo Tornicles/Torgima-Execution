@@ -30,22 +30,26 @@ import {
   incrementSessionOutput,
 } from "../engines/stability/StabilityEngine.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
-import { appendWebSearchInstruction, shouldUseWebSearch } from "./erectorWebSearch.js";
+import { appendWebSearchInstruction } from "./erectorWebSearch.js";
+import type { BhudhiProvider } from "./bhudhiProviders.js";
+import { providerForTrigger } from "./bhudhiProviders.js";
+import { geminiApiKeyConfigured } from "./gemini-client.js";
 
-/** Sole Anthropic transport — implemented only in TriggerRouter (Bhudhi B1). */
+/** Sole LLM transport — implemented only in TriggerRouter (Bhudhi B1). */
 export type BhudhiModelInvoker = (params: {
+  provider: BhudhiProvider;
   systemPrompt: string;
   userPrompt: string;
   maxTokens: number;
   temperature: number;
   timeoutMs: number;
-  webSearch?: boolean;
 }) => Promise<{
   text: string;
   inputTokens: number;
   outputTokens: number;
   webSearchCalls: number;
   intelligenceGrounded: boolean;
+  provider?: BhudhiProvider;
 }>;
 
 export type BhudhiPipelineDeps = {
@@ -244,6 +248,8 @@ export async function runBhudhiPipeline<T = unknown>(
     memoryContext,
   };
 
+  const provider: BhudhiProvider = contract.provider ?? providerForTrigger(request.triggerType);
+
   try {
     logId = await logUsage({
       userId:        request.userId,
@@ -252,6 +258,7 @@ export async function runBhudhiPipeline<T = unknown>(
       sourceEngine:  request.sourceEngine,
       promptName:    contract.name,
       promptVersion: contract.version,
+      provider,
       inputTokens:   0,
       outputTokens:  0,
       latencyMs:     0,
@@ -277,42 +284,32 @@ export async function runBhudhiPipeline<T = unknown>(
 
   try {
     const userPrompt = contract.buildUserPrompt(facts);
-    const apiKey =
-      process.env["ANTHROPIC_API_KEY"]?.trim() ||
-      process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
-    if (!apiKey) {
-      throw new Error("BHUDHI_NO_API_KEY");
+
+    if (provider === "claude") {
+      const apiKey =
+        process.env["ANTHROPIC_API_KEY"]?.trim() ||
+        process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
+      if (!apiKey) {
+        throw new Error("BHUDHI_NO_API_KEY");
+      }
+    } else if (!geminiApiKeyConfigured()) {
+      throw new Error("BHUDHI_NO_GEMINI_API_KEY");
     }
 
     const maxTokens = Math.min(contract.maxTokens, getMaxTokensForTrigger(request.triggerType));
-    const useWebSearch = shouldUseWebSearch(request.triggerType);
-    const systemPrompt = useWebSearch
-      ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
-      : contract.systemPrompt;
+    const systemPrompt =
+      provider === "gemini-search"
+        ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
+        : contract.systemPrompt;
 
-    const invoke = (webSearch: boolean) =>
-      deps.invokeModel({
-        systemPrompt,
-        userPrompt,
-        maxTokens,
-        temperature: contract.temperature,
-        timeoutMs: timeout,
-        webSearch,
-      });
-
-    let modelResult;
-    try {
-      modelResult = await invoke(useWebSearch);
-    } catch (firstErr) {
-      const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
-      if (useWebSearch && firstMsg === "BHUDHI_TIMEOUT") {
-        modelResult = await invoke(false);
-        webSearchCalls = 0;
-        intelligenceGrounded = false;
-      } else {
-        throw firstErr;
-      }
-    }
+    const modelResult = await deps.invokeModel({
+      provider,
+      systemPrompt,
+      userPrompt,
+      maxTokens,
+      temperature: contract.temperature,
+      timeoutMs: timeout,
+    });
 
     if (!modelResult) {
       throw new Error("BHUDHI_MODEL_EMPTY");

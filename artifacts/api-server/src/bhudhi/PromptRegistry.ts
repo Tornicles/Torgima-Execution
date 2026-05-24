@@ -3,11 +3,14 @@ import type { BhudhiTriggerType, BhudhiMode, BhudhiOutputType } from "../types/b
 import { bootstrapPromptRegistry } from "./promptRegistryBootstrap.js";
 import { OUTPUT_ENVELOPE_SCHEMAS } from "./schemas/outputSchemas.js";
 import { buildErectorFactsContext } from "./erectorWebSearch.js";
+import type { BhudhiProvider } from "./bhudhiProviders.js";
+import { providerForTrigger } from "./bhudhiProviders.js";
 
 export interface PromptContract {
   name:            string;
   version:         string;
   triggerType:     BhudhiTriggerType;
+  provider?:       BhudhiProvider;
   mode:            BhudhiMode;
   outputType:      BhudhiOutputType;
   maxTokens:       number;
@@ -1097,6 +1100,7 @@ for (const contract of ERECTOR_CONTRACTS) {
     name: contract.name,
     version: "1.0",
     triggerType: contract.triggerType,
+    provider: providerForTrigger(contract.triggerType),
     mode: "STRUCTURE",
     outputType: contract.outputType,
     maxTokens: 1400,

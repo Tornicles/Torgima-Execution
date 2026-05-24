@@ -319,6 +319,7 @@ export const bhudhiLogs = pgTable(
     validation_fail_reason: text("validation_fail_reason"),
     web_search_calls: integer("web_search_calls"),
     intelligence_grounded: boolean("intelligence_grounded"),
+    provider: text("provider").default("claude"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

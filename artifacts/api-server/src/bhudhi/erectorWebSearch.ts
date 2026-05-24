@@ -1,25 +1,23 @@
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { GEMINI_SEARCH_TRIGGERS } from "./bhudhiProviders.js";
 
-export const WEB_SEARCH_ERECTOR_TRIGGERS = new Set<BhudhiTriggerType>([
-  "ERECTOR_INDUSTRY_ANALYZE",
-  "ERECTOR_MARKET_ANALYZE",
-  "ERECTOR_COMPETITORS_IDENTIFY",
-  "ERECTOR_ECONOMY_BRIEFING",
-]);
+/** @deprecated Anthropic web_search tool removed — use Gemini `gemini-search` provider instead. */
+export const WEB_SEARCH_ERECTOR_TRIGGERS = GEMINI_SEARCH_TRIGGERS;
 
+/** @deprecated Use contract.provider === "gemini-search" in BhudhiCore. */
 export function shouldUseWebSearch(triggerType: BhudhiTriggerType | string): boolean {
-  return WEB_SEARCH_ERECTOR_TRIGGERS.has(triggerType as BhudhiTriggerType);
+  return GEMINI_SEARCH_TRIGGERS.has(triggerType as BhudhiTriggerType);
 }
 
 const WEB_SEARCH_APPEND: Partial<Record<BhudhiTriggerType, string>> = {
   ERECTOR_INDUSTRY_ANALYZE: `
-IMPORTANT: Use web search to find current information about this industry before responding. Search for: current state of the industry in the user's country/region, recent growth trends, market health in the current year, and key players. Base your analysis on what you find, not on potentially outdated training data. If search results conflict with training data, prefer the search results.`,
+IMPORTANT: Use Google Search grounding to find current information about this industry before responding. Search for: current state of the industry in the user's country/region, recent growth trends, market health in the current year, and key players. Base your analysis on what you find, not on potentially outdated training data. If search results conflict with training data, prefer the search results.`,
   ERECTOR_MARKET_ANALYZE: `
-IMPORTANT: Use web search to find current market data before responding. Search for: current market size for the business model in the user's country, demand trends in the current year, recent funding or growth signals in this space. Cite what you find.`,
+IMPORTANT: Use Google Search grounding to find current market data before responding. Search for: current market size for the business model in the user's country, demand trends in the current year, recent funding or growth signals in this space. Cite what you find.`,
   ERECTOR_COMPETITORS_IDENTIFY: `
-IMPORTANT: Use web search to identify real, currently operating competitors in this space. Search for: top tools/platforms in the user's market this year, alternatives to the stated goal, and market leaders in this category. Return only real companies that exist today.`,
+IMPORTANT: Use Google Search grounding to identify real, currently operating competitors in this space. Search for: top tools/platforms in the user's market this year, alternatives to the stated goal, and market leaders in this category. Return only real companies that exist today.`,
   ERECTOR_ECONOMY_BRIEFING: `
-IMPORTANT: Use web search to ground your economy briefing in current conditions. Search for: current economic conditions in the user's country this year, business environment, payment infrastructure, and recent regulatory changes affecting the business type. Reflect what is happening now, not historical patterns alone.`,
+IMPORTANT: Use Google Search grounding for your economy briefing. Search for: current economic conditions in the user's country this year, business environment, payment infrastructure, and recent regulatory changes affecting the business type. Reflect what is happening now, not historical patterns alone.`,
 };
 
 export function appendWebSearchInstruction(
@@ -28,7 +26,7 @@ export function appendWebSearchInstruction(
 ): string {
   const extra = WEB_SEARCH_APPEND[triggerType];
   if (!extra) return systemPrompt;
-  if (systemPrompt.includes("Use web search")) return systemPrompt;
+  if (systemPrompt.includes("Google Search")) return systemPrompt;
   return `${systemPrompt.trim()}${extra}`;
 }
 

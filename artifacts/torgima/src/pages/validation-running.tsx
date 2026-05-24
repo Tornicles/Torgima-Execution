@@ -43,7 +43,7 @@ export default function ValidationRunningPage() {
           status === "complete"
         ) {
           sessionStorage.setItem("torgima_validation_results", validationId);
-          setLocation(`/onboarding?id=${validationId}`);
+          setLocation(`/validation/${validationId}/results`);
           return;
         }
         if (status === ValidationStatus.FAILED || status === "invalid") {

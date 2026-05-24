@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-base";
 import { useParams, useLocation } from "wouter";
+import { FeedbackDashboardView } from "@/components/views/feedback/FeedbackDashboardView";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, MinusCircle, SkipForward, AlertTriangle, ChevronRight } from "lucide-react";
 import {
@@ -20,6 +21,13 @@ const STATUS_OPTIONS = [
 
 export default function FeedbackPage() {
   const { orderId } = useParams<{ orderId: string }>();
+  if (!orderId) {
+    return <FeedbackDashboardView />;
+  }
+  return <OrderFeedbackForm orderId={orderId} />;
+}
+
+function OrderFeedbackForm({ orderId }: { orderId: string }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");

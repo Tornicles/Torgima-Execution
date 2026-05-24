@@ -13,6 +13,8 @@ import { checkTriggerAllowed } from "../engines/stability/StabilityEngine.js";
 import { shouldTriggerDebate, runDebate } from "./DebateEngine.js";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
+import { callGemini, callGeminiWithSearch } from "./gemini-client.js";
+import type { BhudhiProvider } from "./bhudhiProviders.js";
 import {
   FORBIDDEN_MODES,
   type BhudhiMode,
@@ -61,18 +63,13 @@ function extractTextBlocks(response: { content: Array<{ type: string; text?: str
     .join("\n");
 }
 
-function countWebSearchToolUses(response: { content: Array<{ type: string }> }): number {
-  return response.content.filter((b) => b.type === "tool_use").length;
-}
-
-/** Only TriggerRouter invokes the Anthropic Messages API. */
+/** Only TriggerRouter invokes the Anthropic Messages API (Claude execution calls). */
 export async function invokeAnthropicModel(params: {
   systemPrompt: string;
   userPrompt: string;
   maxTokens: number;
   temperature: number;
   timeoutMs: number;
-  webSearch?: boolean;
 }): Promise<{
   text: string;
   inputTokens: number;
@@ -87,11 +84,6 @@ export async function invokeAnthropicModel(params: {
     temperature: params.temperature,
     system: params.systemPrompt,
     messages: [{ role: "user", content: params.userPrompt }],
-    ...(params.webSearch
-      ? {
-          tools: [{ type: "web_search_20250305" as "web_search_20250305", name: "web_search" }],
-        }
-      : {}),
   };
 
   const response = await Promise.race([
@@ -102,19 +94,72 @@ export async function invokeAnthropicModel(params: {
   ]);
 
   const text = extractTextBlocks(response).trim();
-  const webSearchCalls = params.webSearch ? countWebSearchToolUses(response) : 0;
-
-  if (params.webSearch && !text) {
-    throw new Error("BHUDHI_NO_TEXT_AFTER_WEB_SEARCH");
-  }
 
   return {
     text,
     inputTokens: response.usage?.input_tokens ?? 0,
     outputTokens: response.usage?.output_tokens ?? 0,
-    webSearchCalls,
-    intelligenceGrounded: webSearchCalls > 0,
+    webSearchCalls: 0,
+    intelligenceGrounded: false,
   };
+}
+
+export type BhudhiModelInvokeParams = {
+  provider: BhudhiProvider;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  timeoutMs: number;
+};
+
+/** Routes Bhudhi calls to Claude (execution) or Gemini (validation / search). */
+export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promise<{
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  webSearchCalls: number;
+  intelligenceGrounded: boolean;
+  provider: BhudhiProvider;
+}> {
+  if (params.provider === "gemini") {
+    const text = await Promise.race([
+      callGemini(params.userPrompt, params.systemPrompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
+      ),
+    ]);
+    if (!text) throw new Error("BHUDHI_GEMINI_EMPTY");
+    return {
+      text,
+      inputTokens: 0,
+      outputTokens: 0,
+      webSearchCalls: 0,
+      intelligenceGrounded: false,
+      provider: "gemini",
+    };
+  }
+
+  if (params.provider === "gemini-search") {
+    const text = await Promise.race([
+      callGeminiWithSearch(params.userPrompt, params.systemPrompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
+      ),
+    ]);
+    if (!text) throw new Error("BHUDHI_GEMINI_SEARCH_EMPTY");
+    return {
+      text,
+      inputTokens: 0,
+      outputTokens: 0,
+      webSearchCalls: 1,
+      intelligenceGrounded: true,
+      provider: "gemini-search",
+    };
+  }
+
+  const claude = await invokeAnthropicModel(params);
+  return { ...claude, provider: "claude" };
 }
 
 // ── Governed entry points ─────────────────────────────────────────────────────
@@ -259,7 +304,7 @@ export async function routeBhudhiRequest<T = unknown>(
 
   return runBhudhiPipeline<T>(
     { ...request, stateVersion },
-    { invokeModel: invokeAnthropicModel },
+    { invokeModel: invokeBhudhiModel },
   );
 }
 
@@ -419,7 +464,7 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
     userInput: typeof ctx.payload["userInput"] === "string" ? ctx.payload["userInput"] : undefined,
     facts: { ...ctx.payload, currentCondition: ctx.currentCondition },
     idempotencyKey: `${ctx.triggerType}:${ctx.userId}:${Date.now()}`,
-  }, { invokeModel: invokeAnthropicModel });
+  }, { invokeModel: invokeBhudhiModel });
 
   if (result.output) {
     const validation = await validateOutputLayers({

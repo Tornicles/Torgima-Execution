@@ -23,6 +23,8 @@ import UnsubscribePage from "@/pages/unsubscribe";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
+const ValidatePage = lazy(() => import("@/pages/validate"));
+const ValidationResultsPage = lazy(() => import("@/pages/validation-results"));
 const ValidationScoresPage = lazy(() => import("@/pages/validation-scores"));
 const ValidationRunningPage = lazy(() => import("@/pages/validation-running"));
 const BlueprintPage = lazy(() => import("@/pages/blueprint"));
@@ -37,6 +39,7 @@ const StrategyPage = lazy(() => import("@/pages/strategy"));
 const RecoveryPage = lazy(() => import("@/pages/recovery"));
 const CharacterPage = lazy(() => import("@/pages/character"));
 const KnowledgePage = lazy(() => import("@/pages/knowledge"));
+const ReportsPage = lazy(() => import("@/pages/reports"));
 const AcademyLearnPage = lazy(() => import("@/pages/academy"));
 const CalendarPage = lazy(() => import("@/pages/calendar"));
 const ChatPage = lazy(() => import("@/pages/chat"));
@@ -124,6 +127,8 @@ function protect(Page: RoutePage) {
 }
 
 const ProtectedOnboarding = protect(Onboarding);
+const ProtectedValidate = protect(ValidatePage);
+const ProtectedValidationResults = protect(ValidationResultsPage);
 const ProtectedValidationScores = protect(ValidationScoresPage);
 const ProtectedValidationRunning = protect(ValidationRunningPage);
 const ProtectedDashboard = protect(Dashboard);
@@ -139,6 +144,7 @@ const ProtectedStrategyPage = protect(StrategyPage);
 const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
+const ProtectedReportsPage = protect(ReportsPage);
 const ProtectedAcademyLearnPage = protect(AcademyLearnPage);
 const ProtectedCalendarPage = protect(CalendarPage);
 const ProtectedChatPage = protect(ChatPage);
@@ -160,8 +166,10 @@ function withAppLayout(Page: ComponentType) {
   return Wrapped;
 }
 
-/** Onboarding is a full-page flow (no app sidebar). */
+/** Pre-launch flows — no app sidebar. */
 const OnboardingRoute = ProtectedOnboarding;
+const ValidateRoute = ProtectedValidate;
+const ValidationResultsRoute = ProtectedValidationResults;
 const ValidationScoresRoute = ProtectedValidationScores;
 const DashboardRoute = withAppLayout(ProtectedDashboard);
 const TaskRoute = withAppLayout(ProtectedTaskPage);
@@ -176,6 +184,7 @@ const StrategyRoute = withAppLayout(ProtectedStrategyPage);
 const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
+const ReportsRoute = withAppLayout(ProtectedReportsPage);
 const AcademyLearnRoute = withAppLayout(ProtectedAcademyLearnPage);
 const CalendarRoute = withAppLayout(ProtectedCalendarPage);
 const ChatRoute = withAppLayout(ProtectedChatPage);
@@ -199,7 +208,9 @@ function AppRoutes() {
         <Route path="/verify" component={VerifyPage} />
         <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
-        <Route path="/onboarding/goal" component={OnboardingRoute} />
+        <Route path="/validate" component={ValidateRoute} />
+        <Route path="/validation/:id/results" component={ValidationResultsRoute} />
+        <Route path="/onboarding/goal" component={ValidateRoute} />
         <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/validation/:id/running" component={ProtectedValidationRunning} />
         <Route path="/validation/scores" component={ValidationScoresRoute} />
@@ -217,6 +228,7 @@ function AppRoutes() {
         <Route path="/recovery" component={RecoveryRoute} />
         <Route path="/character" component={CharacterRoute} />
         <Route path="/knowledge" component={KnowledgeRoute} />
+        <Route path="/reports" component={ReportsRoute} />
         <Route path="/academy/lesson/:lessonId" component={AcademyLearnRoute} />
         <Route path="/academy/course/:courseId" component={AcademyLearnRoute} />
         <Route path="/academy/tutor" component={AcademyLearnRoute} />

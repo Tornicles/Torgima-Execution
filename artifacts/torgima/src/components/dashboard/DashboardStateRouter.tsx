@@ -46,7 +46,7 @@ export function DashboardStateRouter({
 
   useEffect(() => {
     if (uiState === "NO_BLUEPRINT") {
-      setLocation("/onboarding");
+      setLocation("/validate");
     }
   }, [uiState, setLocation]);
 

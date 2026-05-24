@@ -1,0 +1,29 @@
+export const colors = {
+  primary: "var(--torgima-primary)",
+  primaryHover: "var(--torgima-primary-hover)",
+  pageBg: "var(--torgima-page-bg)",
+  cardBg: "var(--torgima-card-bg)",
+  border: "var(--torgima-border)",
+  text: "var(--torgima-text)",
+  muted: "var(--torgima-muted)",
+  blue: "var(--torgima-blue)",
+  orange: "var(--torgima-orange)",
+  purple: "var(--torgima-purple)",
+  red: "var(--torgima-red)",
+  amber: "var(--torgima-amber)",
+} as const;
+
+export const colorValues = {
+  primary: "#16a34a",
+  primaryHover: "#15803d",
+  pageBg: "#f9fafb",
+  cardBg: "#ffffff",
+  border: "#e5e7eb",
+  text: "#111827",
+  muted: "#6b7280",
+  blue: "#3b82f6",
+  orange: "#f97316",
+  purple: "#8b5cf6",
+  red: "#ef4444",
+  amber: "#f59e0b",
+} as const;
