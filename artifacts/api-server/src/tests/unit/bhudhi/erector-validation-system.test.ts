@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { erectorValidationInputSchema } from "../../../routes/validation.js";
 import { getContract } from "../../../bhudhi/PromptRegistry.js";
 import { hasFallbackKey } from "../../../bhudhi/FallbackLibrary.js";
 import { ERECTOR_ARCHETYPE_SEEDS, COUNTRY_ARCHETYPE_MAP, archetypeSeedByNumber } from "../../../engines/erector/archetypeData.js";
@@ -46,6 +47,27 @@ function resolution(archetypeNumber: number): ArchetypeResolutionOutput {
     economySpecificOpportunities: primaryArchetype.primaryOpportunityFactors.map((item) => item.description),
   };
 }
+
+describe("Erector validation run input schema", () => {
+  it("accepts minimal payload with safe defaults", () => {
+    const parsed = erectorValidationInputSchema.safeParse({
+      rawGoal: "Launch a niche SaaS product for small retailers",
+      purpose: "Build recurring revenue with a focused wedge offer",
+      timeframe: "90d",
+      commitmentLevel: "HIGH",
+      locationCountry: "United States",
+      businessModel: "SaaS",
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.targetCustomer).toBe(parsed.data.rawGoal);
+    expect(parsed.data.budgetAvailable).toBe(0);
+    expect(parsed.data.currentResources).toEqual([]);
+    expect(parsed.data.businessType).toBe("online");
+    expect(parsed.data.location.country).toBe("United States");
+    expect(parsed.data.currentContext).toContain("SaaS");
+  });
+});
 
 describe("Erector schema, archetypes, and contracts", () => {
   it("seeds all 30 economy archetypes and maps core countries", () => {

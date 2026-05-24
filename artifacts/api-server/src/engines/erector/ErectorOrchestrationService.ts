@@ -52,7 +52,20 @@ function rowToResult(row: typeof validations.$inferSelect): ErectorValidationRes
   };
 }
 
+function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
+  const country = input.location.country;
+  return {
+    ...input,
+    targetCustomer: input.targetCustomer || input.rawGoal,
+    currentContext: input.currentContext || `Building ${input.businessModel} in ${country}`,
+    budgetAvailable: input.budgetAvailable || 0,
+    desiredOutcome: input.desiredOutcome || input.purpose,
+    currentResources: input.currentResources?.length ? input.currentResources : [],
+  };
+}
+
 export async function runErectorValidation(input: ErectorValidationInput): Promise<ErectorValidationResult> {
+  input = normalizeErectorInput(input);
   await ensureEconomicArchetypesSeeded();
 
   const [existing] = await db

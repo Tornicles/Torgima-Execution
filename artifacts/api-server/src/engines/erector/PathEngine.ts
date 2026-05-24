@@ -25,7 +25,7 @@ function deterministicSimulations(
     weeklyOutputRequirements: ["Produce proof assets", "Validate demand signal", "Submit execution feedback"],
     estimatedRevenueTimeline:
       timeframe === "30d" ? "Validation, not dependable revenue." : "Possible after repeated proof and conversion tests.",
-    requiredCapitalBurn: Math.round(input.budgetAvailable * (0.15 + index * 0.1)),
+    requiredCapitalBurn: Math.round((input.budgetAvailable || 0) * (0.15 + index * 0.1)),
     executionIntensityLabel: index === 0 ? "very_high" : index === 1 ? "high" : "moderate",
     probabilityOfReachingGoal: Number(Math.max(0.05, Math.min(0.9, base + index * 0.07)).toFixed(2)),
     majorRiskPoints: ["Weak proof", "Distribution lag", "Budget/time mismatch"],

@@ -21,6 +21,10 @@ function erectorFacts(
   validationId: string,
 ): Record<string, unknown> {
   const primary = archetype.primaryArchetype;
+  const targetCustomer = input.targetCustomer || input.rawGoal;
+  const currentContext =
+    input.currentContext || `Building ${input.businessModel} in ${input.location.country}`;
+  const budgetAvailable = input.budgetAvailable || 0;
   return {
     validationId,
     rawGoal: input.rawGoal,
@@ -34,10 +38,11 @@ function erectorFacts(
     city: input.location.city,
     businessType: input.businessType,
     businessModel: input.businessModel,
-    budgetAvailable: input.budgetAvailable,
+    budgetAvailable,
     currency: input.currency,
     currentResources: input.currentResources,
-    targetCustomer: input.targetCustomer,
+    targetCustomer,
+    currentContext,
     knownBlockers: input.knownBlockers ?? [],
     archetypeNumber: primary.archetypeNumber,
     archetypeName: primary.name,

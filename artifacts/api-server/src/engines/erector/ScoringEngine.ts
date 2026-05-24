@@ -5,9 +5,10 @@ function clamp(score: number): number {
 }
 
 function budgetScore(input: ErectorValidationInput): number {
-  if (input.budgetAvailable >= 10000) return 8;
-  if (input.budgetAvailable >= 2500) return 6.5;
-  if (input.budgetAvailable >= 500) return 5;
+  const budget = input.budgetAvailable || 0;
+  if (budget >= 10000) return 8;
+  if (budget >= 2500) return 6.5;
+  if (budget >= 500) return 5;
   return 3.2;
 }
 

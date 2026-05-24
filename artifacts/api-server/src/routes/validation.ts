@@ -72,32 +72,71 @@ async function persistFirstWeekPlan(
   return stored;
 }
 
-const erectorValidationInputSchema = z.object({
-  blueprintId: z.string().uuid(),
-  idempotencyKey: z.string().min(8).max(200),
-  rawGoal: z.string().min(5).max(500),
-  purpose: z.string().min(3).max(1000),
-  timeframe: z.string().min(1).max(80),
-  customTimeframeDays: z.number().int().positive().optional(),
-  commitmentLevel: z.string().min(2).max(20),
-  desiredOutcome: z.string().min(3).max(500),
-  location: z.object({
-    country: z.string().min(2).max(120),
-    city: z.string().max(120).optional(),
-  }),
-  businessType: z.enum(["online", "offline", "hybrid"]),
-  businessModel: z.string().min(2).max(120),
-  budgetAvailable: z.number().min(0),
-  currency: z.string().min(2).max(12),
-  currentResources: z.array(z.string().min(1).max(80)).min(1),
-  targetCustomer: z.string().min(3).max(500),
-  knownBlockers: z.array(z.string().min(1).max(200)).optional(),
-  successSignal: z.string().max(500).optional(),
-  currentContext: z.string().max(1000).optional(),
-  domainHint: z.string().optional().nullable(),
-  tier: z.enum(["starter", "growth", "ultimate"]).optional(),
-  mode: z.enum(["individual", "team"]).optional(),
-});
+export const erectorValidationInputSchema = z
+  .object({
+    blueprintId: z.string().uuid().optional(),
+    idempotencyKey: z.string().min(8).max(200).optional(),
+    idempotency_key: z.string().min(8).max(200).optional(),
+    rawGoal: z.string().min(5).max(500),
+    purpose: z.string().min(3).max(1000),
+    timeframe: z.string().min(1).max(80),
+    customTimeframeDays: z.number().int().positive().optional(),
+    commitmentLevel: z.string().min(2).max(20),
+    desiredOutcome: z.string().max(500).optional().default(""),
+    location: z
+      .object({
+        country: z.string().min(2).max(120),
+        city: z.string().max(120).optional(),
+      })
+      .optional(),
+    locationCountry: z.string().min(2).max(120).optional(),
+    businessType: z.enum(["online", "offline", "hybrid"]).optional().default("online"),
+    businessModel: z.string().min(2).max(120),
+    budgetAvailable: z.number().min(0).optional().default(0),
+    currency: z.string().min(2).max(12).optional().default("USD"),
+    currentResources: z.array(z.string().min(1).max(80)).optional().default([]),
+    targetCustomer: z.string().max(500).optional().default(""),
+    knownBlockers: z.array(z.string().min(1).max(200)).optional().default([]),
+    successSignal: z.string().max(500).optional().default(""),
+    currentContext: z.string().max(1000).optional().default(""),
+    domainHint: z.string().optional().nullable(),
+    tier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    mode: z.enum(["individual", "team"]).optional(),
+  })
+  .transform((data) => {
+    const country = data.location?.country ?? data.locationCountry ?? "Unknown";
+    const blueprintId = data.blueprintId;
+    const idempotencyKey =
+      data.idempotencyKey ??
+      data.idempotency_key ??
+      (blueprintId ? `erector-run:${blueprintId}:${Date.now()}` : `erector-run:${Date.now()}`);
+    const businessModel = data.businessModel;
+    return {
+      blueprintId,
+      idempotencyKey,
+      rawGoal: data.rawGoal,
+      purpose: data.purpose,
+      timeframe: data.timeframe,
+      customTimeframeDays: data.customTimeframeDays,
+      commitmentLevel: data.commitmentLevel,
+      desiredOutcome: data.desiredOutcome?.trim() ? data.desiredOutcome : data.purpose,
+      location: { country, city: data.location?.city },
+      businessType: data.businessType,
+      businessModel,
+      budgetAvailable: data.budgetAvailable ?? 0,
+      currency: data.currency,
+      currentResources: data.currentResources ?? [],
+      targetCustomer: data.targetCustomer?.trim() ? data.targetCustomer : data.rawGoal,
+      knownBlockers: data.knownBlockers ?? [],
+      successSignal: data.successSignal?.trim() ? data.successSignal : undefined,
+      currentContext: data.currentContext?.trim()
+        ? data.currentContext
+        : `Building ${businessModel} in ${country}`,
+      domainHint: data.domainHint,
+      tier: data.tier,
+      mode: data.mode,
+    };
+  });
 
 const goalInputSchema = z.object({
   blueprintId: z.string().uuid(),
@@ -119,16 +158,39 @@ router.post("/v1/validation/run", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const parsed = erectorValidationInputSchema.safeParse(req.body);
     if (!parsed.success) {
-      console.error("[RUN_FAILURE]", { userId: auth.userId, reason: "invalid_input" });
+      console.error("[RUN_FAILURE]", { userId: auth.userId, reason: "invalid_input", issues: parsed.error.issues });
       failure(res, "VALIDATION_ERROR", "Invalid Erector validation input", 422);
       return;
     }
+
+    let blueprintId = parsed.data.blueprintId;
+    if (!blueprintId) {
+      const { db, blueprints } = await import("@workspace/db");
+      const { and, desc, eq, inArray } = await import("drizzle-orm");
+      const [draft] = await db
+        .select({ id: blueprints.id })
+        .from(blueprints)
+        .where(
+          and(
+            eq(blueprints.user_id, auth.userId),
+            inArray(blueprints.status, ["draft", "validating", "path_selection", "awaiting_selection"]),
+          ),
+        )
+        .orderBy(desc(blueprints.updated_at))
+        .limit(1);
+      blueprintId = draft?.id;
+    }
+    if (!blueprintId) {
+      failure(res, "VALIDATION_ERROR", "blueprintId is required (or create a goal draft first)", 422);
+      return;
+    }
+
     console.log("[RUN_START]", {
       userId: auth.userId,
-      blueprintId: parsed.data.blueprintId,
+      blueprintId,
       idempotencyKey: parsed.data.idempotencyKey,
     });
-    const result = await runErectorValidation({ ...parsed.data, userId: auth.userId });
+    const result = await runErectorValidation({ ...parsed.data, blueprintId, userId: auth.userId });
     const redirectTo = "/onboarding";
     console.log("[RUN_SUCCESS]", {
       validationId: result.validationId,

@@ -11,13 +11,15 @@ export function buildDeterministicErectorPayload(
 ) {
   const economy = archetype.primaryArchetype;
   const goal = input.rawGoal;
+  const targetCustomer = input.targetCustomer || input.rawGoal;
+  const budgetAvailable = input.budgetAvailable || 0;
   const purposeDecomposition = {
     problemClaim: input.purpose,
     valueClaim: input.desiredOutcome,
     changeClaim: goal,
     motivationProfile: input.commitmentLevel,
     contradictions: input.knownBlockers ?? [],
-    clarityScore: goal.length > 20 && input.targetCustomer.length > 5 ? 8 : 5.5,
+    clarityScore: goal.length > 20 && targetCustomer.length > 5 ? 8 : 5.5,
   };
   const industryIntelligence = {
     industryState: economy.marketCompetitionDensity > 8 ? "SATURATED" : economy.digitalAdoption > 7 ? "GROWING" : "FORMING",
@@ -60,14 +62,14 @@ export function buildDeterministicErectorPayload(
     keyOpportunities: archetype.economySpecificOpportunities.slice(0, 4),
   };
   const customerPainAnalysis = {
-    topPainPoints: [`Specific pain for ${input.targetCustomer}`, "Lack of trustworthy proof", "Slow implementation"],
+    topPainPoints: [`Specific pain for ${targetCustomer}`, "Lack of trustworthy proof", "Slow implementation"],
     urgencyLevel: economy.consumerPurchasingPower >= 6 ? "medium" : "low",
     willingnessToPay: economy.consumerPurchasingPower >= 7 ? "medium-high" : "constrained",
     emotionalTriggers: economy.consumerBehaviorPatterns,
     underservedFrustrations: ["Generic solutions", "Unclear ROI", "Weak follow-through"],
   };
   const technicalComplexity = Math.min(10, economy.digitalAdoption * 0.4 + (input.businessType === "online" ? 2 : 0));
-  const capitalRequirements = input.budgetAvailable < 500 ? 9 : input.budgetAvailable < 2500 ? 6.5 : 4;
+  const capitalRequirements = budgetAvailable < 500 ? 9 : budgetAvailable < 2500 ? 6.5 : 4;
   const salesComplexity = Math.min(10, economy.corruptionIndex * 0.35 + economy.marketCompetitionDensity * 0.25);
   const distributionDifficulty = Math.min(10, 11 - economy.infrastructureQuality);
   const regulatoryBurden = Math.min(10, economy.corruptionIndex * 0.5 + (10 - economy.regulatoryOpenness) * 0.3);
