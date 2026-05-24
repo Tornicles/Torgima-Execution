@@ -35,7 +35,7 @@ describe("Prompt 6 — Erector frontend additions", () => {
   it("post-launch redirect to dashboard", () => {
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
     expect(onboarding).toContain('setLocation("/dashboard")');
-    expect(onboarding).toContain("activateBlueprint");
+    expect(onboarding).toContain("launchValidationBlueprint");
   });
 
   it("validation scores route registered", () => {

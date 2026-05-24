@@ -52,6 +52,9 @@ export async function mountExpressApp(setListener: (fn: NodeListener) => void): 
     app(req, res);
   });
   console.log("[SERVER] API routes mounted");
+  console.log(
+    "[SERVER] Launch routes: POST /api/v1/validations/:id/launch | POST /api/v1/validation/:id/launch | POST /api/blueprints/:id/activate",
+  );
 }
 
 export async function runBackgroundStartup(): Promise<void> {

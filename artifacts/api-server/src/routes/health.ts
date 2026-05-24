@@ -147,4 +147,22 @@ router.get("/health/schema", async (_req, res) => {
   }
 });
 
+const KEY_API_ROUTES = [
+  "POST /api/v1/validations/:id/launch",
+  "POST /api/v1/validation/:id/launch",
+  "POST /api/blueprints/:id/activate",
+  "POST /api/v1/blueprints/:id/launch",
+  "POST /api/v1/validation/run",
+  "POST /api/v1/validation/:id/select-path",
+] as const;
+
+// GET /api/v1/health/routes — development / deploy smoke (not for production clients)
+router.get("/v1/health/routes", (_req, res) => {
+  if (process.env.NODE_ENV === "production" && process.env.EXPOSE_ROUTE_MANIFEST !== "true") {
+    res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Not found" } });
+    return;
+  }
+  success(res, { routes: KEY_API_ROUTES, mountedUnder: "/api" });
+});
+
 export default router;

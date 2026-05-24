@@ -46,6 +46,32 @@ export {
   getGetDashboardStateQueryKey,
 };
 
+export type ValidationLaunchDirection = {
+  path: "current" | "adjusted" | "alternative";
+  tier?: "starter" | "growth" | "ultimate";
+  mode?: "individual" | "team";
+};
+
+export type ValidationLaunchResult = {
+  success: boolean;
+  blueprint: { id: string };
+  blueprintId: string;
+  validationId: string;
+  redirect_to: string;
+  launched: boolean;
+  idempotent?: boolean;
+};
+
+/** POST /api/v1/validations/:id/launch — activate blueprint from completed validation. */
+export async function launchValidationBlueprint(
+  validationId: string,
+  selectedDirection: ValidationLaunchDirection,
+): Promise<ValidationLaunchResult> {
+  return apiPost<ValidationLaunchResult>(`/api/v1/validations/${validationId}/launch`, {
+    selected_direction: selectedDirection,
+  });
+}
+
 /** POST helper for routes not yet in OpenAPI — still uses customFetch (not raw fetch). */
 export async function apiPost<T = unknown>(path: string, body?: unknown): Promise<T> {
   return customFetch<T>(path, {

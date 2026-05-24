@@ -17,8 +17,14 @@ import {
   type CommitmentKey,
   type ErectorIntakeForm,
 } from "@/components/onboarding/erector-intake-types";
-import { activateBlueprint, ApiError } from "@workspace/api-client-react";
-import { apiFetchEnvelope, apiFetchResponseWithRetry, apiPost, completeOnboarding } from "@/lib/torgima-api";
+import { ApiError } from "@workspace/api-client-react";
+import {
+  apiFetchEnvelope,
+  apiFetchResponseWithRetry,
+  completeOnboarding,
+  launchValidationBlueprint,
+} from "@/lib/torgima-api";
+import { API_BASE_URL } from "@/lib/api-base";
 import { ValidationStatus } from "@workspace/state-machine";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -141,6 +147,7 @@ type ValidationPayload = ValidationScreenData & {
 export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
+  const [launching, setLaunching] = useState(false);
   const [error, setError] = useState("");
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<"current" | "adjusted" | "alternative">("current");
@@ -633,11 +640,14 @@ export default function OnboardingPage() {
   async function handleLaunch() {
     if (!validation?.blueprintId || !selectedTier || !selectedMode) return;
     const launchValidation = await resolveValidationContractId(validation);
-    const blueprintId = launchValidation.blueprintId;
-    const validationContractId =
-      launchValidation.erectorValidationContractId || launchValidation.validationContractId;
-    if (!blueprintId || !validationContractId) {
-      setError("Validation contract is missing. Re-run validation before launch.");
+    const validationId =
+      launchValidation.erectorValidationId ?? launchValidation.validationId ?? "";
+    if (!validationId) {
+      setError("Validation id is missing. Re-run validation before launch.");
+      return;
+    }
+    if (!launchValidation.blueprintId) {
+      setError("Blueprint draft is missing. Re-run validation before launch.");
       return;
     }
     if (validation.verdict === "blocked") {
@@ -648,10 +658,19 @@ export default function OnboardingPage() {
       setError("This validation requires the alternative path before launch.");
       return;
     }
-    setLoading(true);
+    if (launching) return;
+
+    const launchUrl = `${API_BASE_URL}/api/v1/validations/${validationId}/launch`;
+    const selectedDirection = {
+      path: selectedPath,
+      tier: selectedTier,
+      mode: selectedMode,
+    };
+
+    setLaunching(true);
     setError("");
     try {
-      const saved = await saveBlueprintSelection(blueprintId);
+      const saved = await saveBlueprintSelection(launchValidation.blueprintId);
       if (!saved) return;
 
       const erectorId = launchValidation.erectorValidationId ?? launchValidation.validationId;
@@ -673,20 +692,30 @@ export default function OnboardingPage() {
         });
       }
 
-      await activateBlueprint(blueprintId, {
-        validationContractId,
-        validation_contract_id: validationContractId,
-        selectedPath,
-        selected_path_type: selectedPath,
-        selectedBlueprintLevel: selectedTier,
-      });
+      const result = await launchValidationBlueprint(validationId, selectedDirection);
 
       await completeOnboarding();
-      setLocation("/dashboard");
+      setLocation(result.redirect_to ?? "/orders");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
+      const backendMessage =
+        err instanceof ApiError && err.data && typeof err.data === "object"
+          ? JSON.stringify(err.data)
+          : err instanceof Error
+            ? err.message
+            : "Unknown error";
+      const status = err instanceof ApiError ? err.status : "—";
+      setError(
+        [
+          `Launch failed (HTTP ${status})`,
+          `URL: ${launchUrl}`,
+          `Validation id: ${validationId}`,
+          `Selected direction: ${JSON.stringify(selectedDirection)}`,
+          backendMessage,
+        ].join("\n"),
+      );
+      console.error("[LAUNCH_BLUEPRINT]", { status, launchUrl, validationId, selectedDirection, err });
     } finally {
-      setLoading(false);
+      setLaunching(false);
     }
   }
 
@@ -817,7 +846,10 @@ export default function OnboardingPage() {
                           commitmentLevel: form.commitmentLevel,
                           businessModel: form.businessModel,
                         }}
-                        onPathSelected={() => setErectorPhase("blueprint")}
+                        onPathSelected={(path) => {
+                          setSelectedPath(path);
+                          setErectorPhase("blueprint");
+                        }}
                       />
                     )}
 
@@ -835,10 +867,10 @@ export default function OnboardingPage() {
                       <button
                         type="button"
                         onClick={() => void handleLaunch()}
-                        disabled={loading || !selectedTier || !selectedMode}
+                        disabled={launching || loading || !selectedTier || !selectedMode}
                         className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 disabled:opacity-40 text-sm"
                       >
-                        Launch blueprint
+                        {launching ? "Launching Blueprint…" : "Launch blueprint"}
                       </button>
                     )}
 

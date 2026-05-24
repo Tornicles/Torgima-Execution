@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
+import { logger } from "../lib/logger.js";
 import { ValidationService } from "../services/ValidationService.js";
+import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { runErectorValidation } from "../engines/erector/ErectorOrchestrationService.js";
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
@@ -13,6 +15,69 @@ import { resolveArchetype } from "../engines/erector/ArchetypeResolutionEngine.j
 import type { ErectorValidationInput } from "../types/erector.js";
 
 const router = Router();
+
+const pathTypeSchema = z.enum(["current", "adjusted", "alternative"]);
+const tierSchema = z.enum(["starter", "growth", "ultimate"]);
+const modeSchema = z.enum(["individual", "team"]);
+
+export const validationLaunchBodySchema = z.object({
+  selected_direction: z
+    .object({
+      path: pathTypeSchema.optional(),
+      selectedPath: pathTypeSchema.optional(),
+      tier: tierSchema.optional(),
+      blueprint_level: tierSchema.optional(),
+      mode: modeSchema.optional(),
+    })
+    .optional(),
+  selectedPath: pathTypeSchema.optional(),
+  selected_path: pathTypeSchema.optional(),
+  tier: tierSchema.optional(),
+  blueprint_level: tierSchema.optional(),
+  mode: modeSchema.optional(),
+});
+
+const validationLaunchHandler = async (req: import("express").Request, res: import("express").Response) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const validationId = String(req.params.id ?? "").trim();
+    if (!validationId) {
+      failure(res, "NOT_FOUND", "Validation id is required", 404);
+      return;
+    }
+
+    const parsed = validationLaunchBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      failure(res, "VALIDATION_ERROR", detail || "Invalid launch body", 400);
+      return;
+    }
+
+    const body = parsed.data;
+    logger.info(
+      {
+        route: "POST /api/v1/validations/:id/launch",
+        userId: auth.userId,
+        validationId,
+        selectedDirectionPresent: Boolean(body.selected_direction),
+      },
+      "Validation launch HTTP handler reached",
+    );
+
+    const result = await ValidationLaunchService.launch({
+      validationId,
+      userId: auth.userId,
+      selectedDirection: body.selected_direction,
+      selectedPath: body.selectedPath ?? body.selected_path,
+      tier: body.tier ?? body.blueprint_level,
+      mode: body.mode ?? body.selected_direction?.mode,
+    });
+
+    success(res, result, result.idempotent ? 200 : 201);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+};
 
 async function loadOwnedErectorValidation(validationId: string, userId: string) {
   const { db, validations } = await import("@workspace/db");
@@ -713,6 +778,12 @@ router.post("/validation/:id/edit-inputs", async (req, res) => {
     handleError(req, res, err);
   }
 });
+
+// POST /api/v1/validations/:id/launch — canonical launch from completed validation
+router.post("/v1/validations/:id/launch", validationLaunchHandler);
+
+// POST /api/v1/validation/:id/launch — singular alias (matches other v1 validation routes)
+router.post("/v1/validation/:id/launch", validationLaunchHandler);
 
 // GET /api/validation/:id/industry-intelligence
 router.get("/validation/:id/industry-intelligence", async (req, res) => {

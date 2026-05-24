@@ -232,8 +232,8 @@ describe("Erector scoring and route integration", () => {
     expect(launchGate).toContain("Reality Score below 2.5");
 
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain("activateBlueprint");
-    expect(onboarding).toContain("validationContractId");
+    expect(onboarding).toContain("launchValidationBlueprint");
+    expect(onboarding).toContain("/api/v1/validations/");
     expect(onboarding).toContain("/api/v1/validation/run");
     expect(onboarding).toContain("AlignedValidationResults");
     expect(onboarding).toContain("AlignedGoalIntake");
@@ -259,10 +259,12 @@ describe("Erector scoring and route integration", () => {
     const dashboard = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
     expect(dashboard).toContain("ExecutionContextPanel");
 
+    const validationRoutes = readRepo("artifacts/api-server/src/routes/validation.ts");
+    expect(validationRoutes).toContain('router.post("/v1/validations/:id/launch"');
+    expect(validationRoutes).toContain("ValidationLaunchService");
+
     const blueprintRoutes = readRepo("artifacts/api-server/src/routes/blueprints.ts");
     expect(blueprintRoutes).toContain("blueprintLaunchBodySchema");
-    expect(blueprintRoutes).toContain("nullishUuid");
-    expect(blueprintRoutes).toContain("resolveLaunchValidationContract");
     expect(blueprintRoutes).toContain("/blueprints/:id/activate");
   });
 });

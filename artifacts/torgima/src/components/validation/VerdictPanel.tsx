@@ -39,7 +39,7 @@ export function VerdictPanel({
           onClick={onLaunch}
           className="w-full py-3 rounded-xl font-semibold text-sm text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {launching ? "Launching…" : blocked ? "Launch Blocked" : "Launch Blueprint"}
+          {launching ? "Launching Blueprint…" : blocked ? "Launch Blocked" : "Launch Blueprint"}
         </button>
       )}
     </div>
