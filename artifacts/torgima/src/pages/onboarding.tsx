@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
 import {
   BlueprintSelectionPanel,
   type ModeId,
@@ -9,6 +8,7 @@ import {
 import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
+import type { FlowStepId } from "@/components/onboarding/TopProgressRail";
 import { AlignedGoalIntake, type AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
 import { AlignedValidationResults } from "@/components/validation/AlignedValidationResults";
 import {
@@ -23,8 +23,6 @@ import { ValidationStatus } from "@workspace/state-machine";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type ErectorReviewPhase = "briefing" | "scores" | "paths" | "blueprint";
-const TOTAL_STEPS = 7;
-
 function timeframeForGoalApi(form: ErectorIntakeForm): string {
   if (form.timeframeKey === "30d") return "30 days";
   if (form.timeframeKey === "90d") return "90 days";
@@ -49,7 +47,7 @@ function combinedContext(form: ErectorIntakeForm): string {
 
 const ERECTOR_ENGINE_MESSAGES = [
   "Preparing reality analysis...",
-  "Economy mapped — loading civilization intelligence...",
+  "Economy mapped â€” loading civilization intelligence...",
   "Understanding your goal and purpose...",
   "Analyzing industry conditions...",
   "Mapping market demand and competition...",
@@ -134,16 +132,6 @@ interface FormData extends ErectorIntakeForm {
   budget: string;
 }
 
-const STEPS = [
-  { number: 1, label: "Goal & Purpose", sub: "Outcome, purpose, timeframe" },
-  { number: 2, label: "Reality Context", sub: "Economy and business model" },
-  { number: 3, label: "Resources", sub: "Budget and assets" },
-  { number: 4, label: "Customer", sub: "ICP and success signals" },
-  { number: 5, label: "Constraints", sub: "Blockers and summary" },
-  { number: 6, label: "Structure", sub: "Refine goal before validation" },
-  { number: 7, label: "Validation", sub: "Erector briefing, scores, path, launch" },
-];
-
 type ValidationPayload = ValidationScreenData & {
   status?: string;
   validationId?: string;
@@ -225,11 +213,24 @@ export default function OnboardingPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryId = params.get("id") ?? params.get("validationId");
+    if (queryId) {
+      void loadValidationResults(queryId);
+      return;
+    }
     const pendingId = sessionStorage.getItem("torgima_validation_results");
     if (!pendingId) return;
     sessionStorage.removeItem("torgima_validation_results");
     void loadValidationResults(pendingId);
   }, []);
+
+  useEffect(() => {
+    if (step === 7 && erectorPhase === "blueprint" && !isValidationPayloadReady(validation)) {
+      setStep(1);
+      setErectorPhase("briefing");
+    }
+  }, [step, erectorPhase, validation]);
 
   async function loadValidationResults(validationId: string) {
     setLoading(true);
@@ -278,9 +279,17 @@ export default function OnboardingPage() {
   }
 
   async function handleAlignedStart(intake: AlignedIntakeForm) {
+    if (!intake.rawGoal || intake.rawGoal.trim().length < 10) {
+      setError("Enter your goal before continuing.");
+      return;
+    }
+
     setLoading(true);
     setError("");
+
     const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
+    const timeframe = tf.key === "custom" && tf.days ? "custom" : tf.key;
+
     setForm((f) => ({
       ...f,
       primaryGoal: intake.rawGoal,
@@ -291,16 +300,14 @@ export default function OnboardingPage() {
       desiredOutcome: intake.purpose,
       timeframeKey: tf.key,
       customTimeframeDays: tf.days,
-      targetCustomer: intake.rawGoal.slice(0, 120),
-      currentResources: ["Technical Skills"],
-      budgetAvailable: "1000",
     }));
+
     try {
       const goalEnvelope = await apiFetchEnvelope<ValidationPayload>(`/api/onboarding/goal`, {
         method: "POST",
         body: JSON.stringify({
           rawGoal: intake.rawGoal,
-          purpose: intake.purpose,
+          purpose: intake.purpose || intake.rawGoal,
           timeframe: timeframeForGoalApi({
             ...form,
             primaryGoal: intake.rawGoal,
@@ -333,65 +340,61 @@ export default function OnboardingPage() {
       });
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
         setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        setLoading(false);
         return;
       }
       const blueprintId = goalEnvelope.data.blueprintId;
-      const tfApi = timeframeForApi({
-        primaryGoal: intake.rawGoal,
-        purpose: intake.purpose,
-        timeframeKey: tf.key,
-        customTimeframeDays: tf.days,
-        commitmentLevel: intake.commitmentLevel,
-        desiredOutcome: intake.purpose,
-        locationCountry: intake.locationCountry,
-        locationCity: "",
-        businessType: "online",
-        businessModel: intake.businessModel,
-        currentContext: "",
-        currency: "USD",
-        budgetAvailable: "1000",
-        currentResources: ["Technical Skills"],
-        targetCustomer: intake.rawGoal.slice(0, 200),
-        successSignal: "",
-        contextTags: [],
-        knownBlockers: [],
-        additionalContext: "",
-        domain: "business",
-      });
+
       const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/run`, {
         method: "POST",
         body: JSON.stringify({
           blueprintId,
-          idempotencyKey: `erector-${blueprintId}-${idempotencyKeyRef.current}`,
+          idempotency_key: idempotencyKeyRef.current,
           rawGoal: intake.rawGoal,
-          purpose: intake.purpose,
-          ...tfApi,
-          commitmentLevel: intake.commitmentLevel,
-          desiredOutcome: intake.purpose,
-          location: { country: intake.locationCountry },
+          purpose: intake.purpose || intake.rawGoal,
+          timeframe: timeframe || "1yr",
+          customTimeframeDays: tf.days,
+          commitmentLevel: intake.commitmentLevel || "HIGH",
+          locationCountry: intake.locationCountry || "United States",
+          businessModel: intake.businessModel || "Other",
           businessType: "online",
-          businessModel: intake.businessModel,
           budgetAvailable: 0,
           currency: "USD",
           currentResources: [],
-          targetCustomer: intake.rawGoal.slice(0, 200),
+          targetCustomer: "",
+          desiredOutcome: intake.purpose || intake.rawGoal,
+          currentContext: "",
+          knownBlockers: [],
           tier: selectedTier ?? "starter",
           mode: selectedMode ?? "individual",
         }),
       });
-      if (!runEnvelope.ok || !runEnvelope.data) {
-        setError(runEnvelope.error?.message ?? "Erector validation failed to start.");
+
+      if (!runEnvelope.ok) {
+        setError(
+          runEnvelope.error?.message ??
+            `Server error ${runEnvelope.status || ""}`.trim(),
+        );
+        setLoading(false);
         return;
       }
-      const validationId = String(runEnvelope.data.validationId ?? "");
+
+      const runData = runEnvelope.data ?? {};
+      const validationId = String(
+        runData.validationId ?? runData.validation_id ?? runData.id ?? "",
+      );
       if (!validationId) {
-        setError("Validation id missing from server response.");
+        console.error("Full validation run response:", runData);
+        setError("Validation started but no ID returned. Check console.");
+        setLoading(false);
         return;
       }
+
       sessionStorage.setItem("torgima_validation_results", validationId);
       setLocation(`/validation/${validationId}/running`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
+      console.error("Validation error:", err);
+      setError("Connection failed. Check your internet and try again.");
     } finally {
       setLoading(false);
     }
@@ -684,79 +687,52 @@ export default function OnboardingPage() {
     }
   }
 
-  const WHY_THIS_MATTERS: Record<number, { title: string; points: string[]; quote: string; author: string }> = {
-    1: {
-      title: "Why this matters",
-      points: [
-        "Personalized execution plan",
-        "Daily actionable orders",
-        "Progress tracking",
-        "Adaptive strategy",
-      ],
-      quote: "A goal without a plan is just a wish.",
-      author: "Antoine de Saint-Exupéry",
-    },
-    2: {
-      title: "Why purpose matters",
-      points: [
-        "Fuels execution during hard days",
-        "Connects daily Orders to meaning",
-        "Prevents abandonment",
-        "Builds identity",
-      ],
-      quote: "He who has a why can endure any how.",
-      author: "Friedrich Nietzsche",
-    },
-    3: {
-      title: "Why timeframes matter",
-      points: ["Creates urgency without panic", "Breaks goals into phases", "Measures real progress", "Adjusts pace intelligently"],
-      quote: "A goal is a dream with a deadline.",
-      author: "Napoleon Hill",
-    },
-    4: {
-      title: "Why commitment matters",
-      points: ["Determines Order intensity", "Sets realistic daily output", "Calibrates difficulty", "Prevents burnout"],
-      quote: "Commitment is the foundation of great accomplishments.",
-      author: "Heidi Reeder",
-    },
-    5: {
-      title: "Why context matters",
-      points: [
-        "Orders match your operational reality",
-        "Constraints are accounted for",
-        "Resources are optimized",
-        "Execution is realistic",
-      ],
-      quote: "Context is everything.",
-      author: "The Torgima System",
-    },
-    6: {
-      title: "Why blueprint type matters",
-      points: [
-        "Tier controls depth and intelligence",
-        "Mode controls execution distribution",
-        "Structure stays fixed across all types",
-        "Launch is blocked until you confirm",
-      ],
-      quote: "Structure stays fixed. Tier defines intelligence. Mode defines distribution.",
-      author: "TORGIMA Master Blueprint",
-    },
-    7: {
-      title: "What happens next",
-      points: ["Blueprint generation", "Daily execution orders", "Progress tracking", "Adaptive strategy"],
-      quote: "The secret of getting ahead is getting started.",
-      author: "Mark Twain",
-    },
-  };
-
-  const sideInfo = WHY_THIS_MATTERS[step] ?? WHY_THIS_MATTERS[1];
-  const showStepNav =
-    !(step === 7 && !loading && validation && !error) && !(step === 6 && !goalStructured);
   const validated = isValidationPayloadReady(validation);
+
+  useEffect(() => {
+    if (step === 7 && erectorPhase === "blueprint" && validated && !validation?.verdict) {
+      setStep(1);
+      setErectorPhase("briefing");
+      setLocation("/onboarding");
+    }
+  }, [step, erectorPhase, validated, validation?.verdict, setLocation]);
+
+  const flowStep = useMemo((): FlowStepId => {
+    if (step <= 5) return 1;
+    if (step === 7 && erectorPhase === "blueprint") {
+      return selectedTier && selectedMode ? 4 : 3;
+    }
+    if (step === 7) return 2;
+    return 1;
+  }, [step, erectorPhase, selectedTier, selectedMode]);
+
+  const maxReachableStep = useMemo((): FlowStepId => {
+    if (!validated) return 1;
+    if (erectorPhase === "blueprint") return 3;
+    return 2;
+  }, [validated, erectorPhase]);
+
+  function handleFlowStepClick(target: FlowStepId) {
+    if (target === 1) {
+      setStep(1);
+      setErectorPhase("briefing");
+      setLocation("/onboarding");
+      return;
+    }
+    if (target === 2 && validated) {
+      setStep(7);
+      setErectorPhase("scores");
+      return;
+    }
+    if (target === 3 && validated) {
+      setStep(7);
+      setErectorPhase("blueprint");
+    }
+  }
 
   if (step <= 5) {
     return (
-      <OnboardingShell>
+      <OnboardingShell flowStep={1} maxReachableStep={maxReachableStep} onFlowStepClick={handleFlowStepClick}>
         <AlignedGoalIntake onSubmit={(intake) => void handleAlignedStart(intake)} isSubmitting={loading} />
         {error && <p className="text-center text-sm text-red-600 pb-8">{error}</p>}
       </OnboardingShell>
@@ -764,71 +740,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <header className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
-            <path d="M14 4L4 10V18L14 24L24 18V10L14 4Z" stroke="#111827" strokeWidth="2" fill="none" />
-            <path d="M9 13L14 10L19 13" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
-            <path d="M14 10V19" stroke="#111827" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span className="font-bold text-lg text-gray-900">TORGIMA</span>
-        </div>
-        <div className="flex-1 flex justify-center">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">Step {step} of {TOTAL_STEPS}</span>
-            <div className="w-48 bg-gray-200 rounded-full h-1.5">
-              <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(step / TOTAL_STEPS) * 100}%` }} />
-            </div>
-          </div>
-        </div>
-        <div className="w-8 h-8 rounded-full bg-gray-200" aria-hidden />
-      </header>
-
-      <div className="flex flex-1 min-h-0">
-        <aside className="w-64 border-r border-gray-200 p-6 space-y-1 shrink-0">
-          <div className="mb-6">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Welcome to</p>
-            <p className="text-xl font-bold text-gray-900">TORGIMA</p>
-            <p className="text-sm text-gray-500 mt-1">Let&apos;s set up your execution system in a few simple steps.</p>
-          </div>
-
-          {STEPS.map((s) => {
-            const isDone = s.number < step;
-            const isActive = s.number === step;
-            const isLocked = s.number > step;
-            return (
-              <div key={s.number} className={`flex items-start gap-3 p-3 rounded-xl transition-all ${isActive ? "bg-green-50" : ""}`}>
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${
-                    isDone ? "bg-green-500 text-white" : isActive ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"
-                  }`}
-                >
-                  {isDone ? <CheckCircle2 className="w-4 h-4" /> : s.number}
-                </div>
-                <div>
-                  <p className={`text-sm font-semibold ${isActive ? "text-gray-900" : isLocked ? "text-gray-400" : "text-gray-700"}`}>
-                    {s.label}
-                  </p>
-                  <p className={`text-xs ${isLocked ? "text-gray-300" : "text-gray-500"}`}>{s.sub}</p>
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="pt-6">
-            <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <ShieldCheck className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-gray-700">Your data is private and secure.</p>
-                <p className="text-xs text-gray-500 mt-0.5">We never share your information.</p>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="flex-1 flex flex-col lg:flex-row gap-8 p-6 lg:p-10 max-w-6xl overflow-y-auto">
-          <div className="flex-1 space-y-7 min-w-0">
+    <OnboardingShell flowStep={flowStep} maxReachableStep={maxReachableStep} onFlowStepClick={handleFlowStepClick}>
+      <div className="max-w-5xl mx-auto px-6 py-8 w-full space-y-7">
             {step === 6 && !goalStructured && (
               <OnboardingStructureStep
                 goal={form.primaryGoal}
@@ -883,7 +796,7 @@ export default function OnboardingPage() {
                   <div className="text-center py-12 space-y-4">
                     <p className="text-red-600 text-sm">{error}</p>
                     <button type="button" onClick={() => { setError(""); setStep(6); }} className="text-green-600 underline text-sm">
-                      ← Back to blueprint type
+                      â† Back to blueprint type
                     </button>
                   </div>
                 )}
@@ -897,6 +810,9 @@ export default function OnboardingPage() {
                           goal: form.primaryGoal,
                           purpose: form.purpose,
                           timeframe: timeframeForGoalApi(form),
+                          locationCountry: form.locationCountry,
+                          commitmentLevel: form.commitmentLevel,
+                          businessModel: form.businessModel,
                         }}
                         onPathSelected={() => setErectorPhase("blueprint")}
                       />
@@ -928,167 +844,8 @@ export default function OnboardingPage() {
                 )}
               </>
             )}
-
-            {showStepNav && (
-              <div className="pt-2">
-                {step < 7 && (
-                  <button
-                    type="button"
-                    onClick={() => void handleNext()}
-                    disabled={!canContinue()}
-                    className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm"
-                  >
-                    {step === 6 ? "Continue to validation →" : "Continue →"}
-                  </button>
-                )}
-                {step > 1 && step < 7 && (
-                  <p className="text-center text-xs text-gray-400 mt-3">
-                    <button type="button" onClick={() => setStep((s) => (s - 1) as Step)} className="hover:text-gray-600">
-                      ← Back
-                    </button>
-                  </p>
-                )}
-                <p className="text-center text-xs text-gray-400 mt-2">🔒 You can always edit these details later.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-72 shrink-0 space-y-4">
-            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center">
-                  <Target className="w-4 h-4 text-green-600" />
-                </div>
-                <p className="font-semibold text-gray-900 text-sm">{sideInfo.title}</p>
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Clear goals help TORGIMA create a blueprint that aligns with what truly matters to you.
-              </p>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-700">You&apos;ll get:</p>
-                {sideInfo.points.map((point, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                    </div>
-                    <p className="text-xs text-gray-600">{point}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-white rounded-xl border border-gray-100 p-4">
-                <p className="text-2xl text-gray-400 mb-1">&ldquo;</p>
-                <p className="text-sm text-gray-700 italic leading-relaxed">{sideInfo.quote}</p>
-                <p className="text-xs text-gray-400 mt-2">— {sideInfo.author}</p>
-              </div>
-            </div>
-
-            {step === 7 && !loading && validated && validation && erectorPhase === "paths" && (
-              <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 space-y-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 mb-1">Choose Your Path</h3>
-                  <p className="text-xs text-gray-500">
-                    Select the path that best fits your current reality. Launch stays blocked until you confirm a path.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {(["current", "adjusted", "alternative"] as const).map((pathKey) => {
-                    const path = validation.paths?.[pathKey];
-                    if (!path) return null;
-                    const isSelected = selectedPath === pathKey;
-                    const pathConfig = {
-                      current: { label: "Current Path", badge: "Recommended", icon: "🚩", badgeColor: "bg-green-100 text-green-700" },
-                      adjusted: { label: "Adjusted Path", badge: null, icon: "⚙️", badgeColor: "" },
-                      alternative: { label: "Alternative Path", badge: null, icon: "↗️", badgeColor: "" },
-                    }[pathKey];
-
-                    return (
-                      <button
-                        key={pathKey}
-                        type="button"
-                        onClick={() => setSelectedPath(pathKey)}
-                        className={`w-full text-left border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                          isSelected ? "border-green-500 bg-white shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span>{pathConfig.icon}</span>
-                            <p className="font-semibold text-sm text-gray-900">{pathConfig.label}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {pathConfig.badge && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pathConfig.badgeColor}`}>
-                                {pathConfig.badge}
-                              </span>
-                            )}
-                            <div
-                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                isSelected ? "border-green-500" : "border-gray-300"
-                              }`}
-                            >
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-green-500" />}
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 leading-relaxed">{String((path as { summary?: string }).summary ?? "")}</p>
-                        <div className="mt-2 space-y-1">
-                          {((path as { strengths?: string[] }).strengths ?? ["Aligned with validation"]).slice(0, 2).map((b: string, i: number) => (
-                            <div key={i} className="flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
-                              <p className="text-xs text-gray-600">{b}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPathConfirmed(true);
-                    setErectorPhase("blueprint");
-                  }}
-                  disabled={
-                    loading ||
-                    (validation.launchBlocked && selectedPath === "current") ||
-                    (validation.verdict === "pivot" && selectedPath === "current")
-                  }
-                  className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-all text-sm"
-                >
-                  Confirm path and choose blueprint tier →
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full border border-gray-200 text-gray-600 font-medium py-2.5 rounded-xl hover:bg-gray-50 text-sm"
-                >
-                  ↩ Save & Review Later
-                </button>
-
-                <div className="pt-2 space-y-2">
-                  <p className="text-xs font-semibold text-gray-700">What Happens Next?</p>
-                  {[
-                    { n: "1.", label: "Blueprint Generation", sub: "We'll create your personalized execution blueprint." },
-                    { n: "2.", label: "Daily Execution", sub: "You'll get actionable orders every day." },
-                    { n: "3.", label: "Track & Adapt", sub: "We track your progress and adapt as you grow." },
-                  ].map((item) => (
-                    <div key={item.n} className="flex items-start gap-2">
-                      <span className="text-xs font-bold text-gray-400 shrink-0">{item.n}</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700">{item.label}</p>
-                        <p className="text-xs text-gray-400">{item.sub}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
       </div>
-    </div>
+    </OnboardingShell>
   );
 }
+/* TRUNCATE_MARKER */

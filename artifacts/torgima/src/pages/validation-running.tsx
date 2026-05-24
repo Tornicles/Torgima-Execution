@@ -43,7 +43,7 @@ export default function ValidationRunningPage() {
           status === "complete"
         ) {
           sessionStorage.setItem("torgima_validation_results", validationId);
-          setLocation("/onboarding");
+          setLocation(`/onboarding?id=${validationId}`);
           return;
         }
         if (status === ValidationStatus.FAILED || status === "invalid") {
@@ -63,7 +63,7 @@ export default function ValidationRunningPage() {
   }, [validationId, setLocation]);
 
   return (
-    <OnboardingShell>
+    <OnboardingShell flowStep={2} maxReachableStep={2}>
       <div className="max-w-lg mx-auto py-24 text-center space-y-6">
         <div className="w-12 h-12 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <h1 className="text-xl font-bold text-gray-900">Running validation</h1>

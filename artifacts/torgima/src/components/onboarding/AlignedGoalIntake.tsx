@@ -126,22 +126,6 @@ export function AlignedGoalIntake({
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 pb-32">
-      <div className="flex items-center gap-3 mb-8 text-sm">
-        {["INPUT DETAILS", "VALIDATION", "RESULTS", "LAUNCH"].map((label, i) => (
-          <div key={label} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                i === 0 ? "bg-violet-600 text-white" : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              {i + 1}
-            </div>
-            <span className={i === 0 ? "font-semibold text-gray-900" : "text-gray-400"}>{label}</span>
-            {i < 3 && <span className="text-gray-300 mx-1">→</span>}
-          </div>
-        ))}
-      </div>
-
       <div className="flex flex-wrap items-start justify-between gap-6 mb-8">
         <div className="flex gap-4 max-w-xl">
           <Rocket className="w-10 h-10 text-violet-600 shrink-0" />
@@ -341,7 +325,7 @@ export function AlignedGoalIntake({
         </div>
       </section>
 
-      <div className="fixed bottom-0 left-[200px] right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-gray-600 flex items-center gap-2">
           <span className="text-green-600">✓</span>
           All fields are required to run validation

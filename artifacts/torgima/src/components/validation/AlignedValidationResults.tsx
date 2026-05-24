@@ -46,7 +46,14 @@ export function AlignedValidationResults({
   onPathSelected,
 }: {
   data: ValidationScreenData;
-  goalSummary?: { goal: string; purpose?: string; timeframe?: string };
+  goalSummary?: {
+    goal: string;
+    purpose?: string;
+    timeframe?: string;
+    locationCountry?: string;
+    commitmentLevel?: string;
+    businessModel?: string;
+  };
   onPathSelected?: (path: PathKey) => void;
 }) {
   const erector = data.intelligence?.["erector"] as Record<string, unknown> | undefined;
@@ -108,13 +115,20 @@ export function AlignedValidationResults({
     blocked: "Blueprint launch is blocked. Resolve the flagged requirements before proceeding.",
   };
 
+  const locationCountry = goalSummary?.locationCountry ?? "—";
+  const commitmentLevel = goalSummary?.commitmentLevel ?? "—";
+  const timeframeLabel = goalSummary?.timeframe ?? "—";
+  const businessModel = goalSummary?.businessModel ?? "—";
+
   return (
     <div className="space-y-8">
       {goalSummary && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <p className="text-xs font-semibold uppercase text-gray-500">Refined goal</p>
-          <p className="font-semibold text-gray-900 mt-1">{goalSummary.goal}</p>
-          {goalSummary.timeframe && <p className="text-sm text-gray-500 mt-1">Timeframe: {goalSummary.timeframe}</p>}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Validating</p>
+          <p className="text-base font-semibold text-gray-900">{goalSummary.goal}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {locationCountry} · {timeframeLabel} · {commitmentLevel}
+          </p>
         </div>
       )}
 
@@ -162,7 +176,22 @@ export function AlignedValidationResults({
         </div>
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
-            <IndustryIntelligencePanel panel={data.industryPanel} tier={tier} erector={erector} />
+            <IndustryIntelligencePanel
+              panel={data.industryPanel}
+              tier={tier}
+              erector={erector}
+              goal={
+                goalSummary
+                  ? {
+                      rawGoal: goalSummary.goal,
+                      locationCountry,
+                      businessModel,
+                      commitmentLevel,
+                      timeframe: timeframeLabel,
+                    }
+                  : undefined
+              }
+            />
           </div>
           <FeasibilityScoreCard
             score={executionScore * 10}
