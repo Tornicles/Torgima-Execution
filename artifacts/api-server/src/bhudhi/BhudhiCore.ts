@@ -30,6 +30,7 @@ import {
   incrementSessionOutput,
 } from "../engines/stability/StabilityEngine.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
+import { appendWebSearchInstruction, shouldUseWebSearch } from "./erectorWebSearch.js";
 
 /** Sole Anthropic transport — implemented only in TriggerRouter (Bhudhi B1). */
 export type BhudhiModelInvoker = (params: {
@@ -38,7 +39,14 @@ export type BhudhiModelInvoker = (params: {
   maxTokens: number;
   temperature: number;
   timeoutMs: number;
-}) => Promise<{ text: string; inputTokens: number; outputTokens: number }>;
+  webSearch?: boolean;
+}) => Promise<{
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  webSearchCalls: number;
+  intelligenceGrounded: boolean;
+}>;
 
 export type BhudhiPipelineDeps = {
   invokeModel: BhudhiModelInvoker;
@@ -264,6 +272,8 @@ export async function runBhudhiPipeline<T = unknown>(
   let rawOutput: unknown = null;
   let inputTokens = 0;
   let outputTokens = 0;
+  let webSearchCalls = 0;
+  let intelligenceGrounded = false;
 
   try {
     const userPrompt = contract.buildUserPrompt(facts);
@@ -275,17 +285,43 @@ export async function runBhudhiPipeline<T = unknown>(
     }
 
     const maxTokens = Math.min(contract.maxTokens, getMaxTokensForTrigger(request.triggerType));
+    const useWebSearch = shouldUseWebSearch(request.triggerType);
+    const systemPrompt = useWebSearch
+      ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
+      : contract.systemPrompt;
 
-    const modelResult = await deps.invokeModel({
-      systemPrompt: contract.systemPrompt,
-      userPrompt,
-      maxTokens,
-      temperature: contract.temperature,
-      timeoutMs: timeout,
-    });
+    const invoke = (webSearch: boolean) =>
+      deps.invokeModel({
+        systemPrompt,
+        userPrompt,
+        maxTokens,
+        temperature: contract.temperature,
+        timeoutMs: timeout,
+        webSearch,
+      });
+
+    let modelResult;
+    try {
+      modelResult = await invoke(useWebSearch);
+    } catch (firstErr) {
+      const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+      if (useWebSearch && firstMsg === "BHUDHI_TIMEOUT") {
+        modelResult = await invoke(false);
+        webSearchCalls = 0;
+        intelligenceGrounded = false;
+      } else {
+        throw firstErr;
+      }
+    }
+
+    if (!modelResult) {
+      throw new Error("BHUDHI_MODEL_EMPTY");
+    }
 
     inputTokens = modelResult.inputTokens;
     outputTokens = modelResult.outputTokens;
+    webSearchCalls = modelResult.webSearchCalls;
+    intelligenceGrounded = modelResult.intelligenceGrounded;
 
     const cleaned = modelResult.text.replace(/```json|```/g, "").trim();
     rawOutput = JSON.parse(cleaned) as unknown;
@@ -407,6 +443,8 @@ export async function runBhudhiPipeline<T = unknown>(
     outputJson: {
       confidenceTier: critic.confidenceTier,
       criticFlag: critic.flagReason,
+      web_search_calls: webSearchCalls,
+      intelligence_grounded: intelligenceGrounded,
     },
   }).catch(() => null);
 

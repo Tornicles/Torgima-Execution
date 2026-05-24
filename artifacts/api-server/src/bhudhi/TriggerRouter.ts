@@ -58,7 +58,11 @@ function extractTextBlocks(response: { content: Array<{ type: string; text?: str
   return response.content
     .filter((b): b is { type: "text"; text: string } => b.type === "text" && typeof b.text === "string")
     .map((b) => b.text)
-    .join("");
+    .join("\n");
+}
+
+function countWebSearchToolUses(response: { content: Array<{ type: string }> }): number {
+  return response.content.filter((b) => b.type === "tool_use").length;
 }
 
 /** Only TriggerRouter invokes the Anthropic Messages API. */
@@ -68,7 +72,14 @@ export async function invokeAnthropicModel(params: {
   maxTokens: number;
   temperature: number;
   timeoutMs: number;
-}): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+  webSearch?: boolean;
+}): Promise<{
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  webSearchCalls: number;
+  intelligenceGrounded: boolean;
+}> {
   const client = getAnthropicClient();
   const body: MessageCreateParamsNonStreaming = {
     model: BHUDHI_MODEL,
@@ -76,6 +87,11 @@ export async function invokeAnthropicModel(params: {
     temperature: params.temperature,
     system: params.systemPrompt,
     messages: [{ role: "user", content: params.userPrompt }],
+    ...(params.webSearch
+      ? {
+          tools: [{ type: "web_search_20250305" as "web_search_20250305", name: "web_search" }],
+        }
+      : {}),
   };
 
   const response = await Promise.race([
@@ -85,10 +101,19 @@ export async function invokeAnthropicModel(params: {
     ),
   ]);
 
+  const text = extractTextBlocks(response).trim();
+  const webSearchCalls = params.webSearch ? countWebSearchToolUses(response) : 0;
+
+  if (params.webSearch && !text) {
+    throw new Error("BHUDHI_NO_TEXT_AFTER_WEB_SEARCH");
+  }
+
   return {
-    text: extractTextBlocks(response),
+    text,
     inputTokens: response.usage?.input_tokens ?? 0,
     outputTokens: response.usage?.output_tokens ?? 0,
+    webSearchCalls,
+    intelligenceGrounded: webSearchCalls > 0,
   };
 }
 

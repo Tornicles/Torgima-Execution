@@ -58,12 +58,59 @@ function Block({
 export function IndustryIntelligencePanel({
   panel,
   tier,
+  erector,
 }: {
   panel?: Record<string, unknown>;
   tier?: string | null;
+  erector?: Record<string, unknown>;
 }) {
-  if (!panel) return null;
-  const p = panel as {
+  const industryIntel = (erector?.industryIntelligence ?? erector?.industry_intelligence) as
+    | Record<string, unknown>
+    | undefined;
+  const competitorAnalysis = (erector?.competitorAnalysis ?? erector?.competitor_analysis) as
+    | Array<Record<string, unknown>>
+    | undefined;
+  const economyBriefing = (erector?.economyBriefing ?? erector?.economy_briefing) as Record<string, unknown> | undefined;
+
+  if (!panel && !erector) return null;
+  const p = (panel ?? {
+    industryOverview: industryIntel
+      ? {
+          industry: String(industryIntel.industryState ?? industryIntel.industry ?? "—"),
+          health: String(industryIntel.industryHealth ?? "—"),
+          entryDifficulty: String(industryIntel.entryDifficulty ?? "Moderate"),
+        }
+      : undefined,
+    demandIntelligence: industryIntel
+      ? {
+          direction: String(industryIntel.trendDirection ?? "—"),
+          strength: String(industryIntel.saturationLevel ?? "—"),
+          topDrivers: (industryIntel.innovationPatterns as string[]) ?? [],
+        }
+      : undefined,
+    competitiveLandscape: {
+      threatLevel: String(industryIntel?.competitionDensity ?? "Medium"),
+      gapOpportunities:
+        competitorAnalysis?.map((c) => String(c.strategicGapForUser ?? c.name ?? "")).filter(Boolean).slice(0, 2) ??
+        [],
+    },
+    riskMap: industryIntel?.primaryRiskFactors
+      ? [
+          {
+            title: String((industryIntel.primaryRiskFactors as Array<{ name?: string }>)?.[0]?.name ?? "Execution risk"),
+            level: "medium",
+            trigger: String(industryIntel.primaryRiskFactors ?? "Market shift"),
+            prevention: "Validate assumptions with first paying customers.",
+          },
+        ]
+      : [],
+    verdictContext: {
+      mightWork: String(economyBriefing?.trustBuildingMechanism ?? economyBriefing?.briefingNarrative ?? "—"),
+      mightFail: String(
+        ((industryIntel?.historicalFailurePatterns as string[]) ?? [])[0] ?? "Underestimated execution load",
+      ),
+    },
+  }) as {
     industryOverview?: BlockData;
     demandIntelligence?: BlockData;
     competitiveLandscape?: BlockData;

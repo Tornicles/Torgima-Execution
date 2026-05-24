@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
 import {
@@ -6,15 +6,11 @@ import {
   type ModeId,
   type TierId,
 } from "@/components/blueprint/BlueprintSelectionPanel";
-import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
-import {
-  buildErectorValidationReport,
-  ErectorScoresDashboard,
-} from "@/components/validation/ErectorScoresDashboard";
-import { FirstWeekPlanPanel } from "@/components/validation/FirstWeekPlanPanel";
-import type { PathKey } from "@/components/validation/PathPanels";
+import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
-import { ErectorIntakeFlow } from "@/components/onboarding/ErectorIntakeFlow";
+import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
+import { AlignedGoalIntake, type AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
+import { AlignedValidationResults } from "@/components/validation/AlignedValidationResults";
 import {
   budgetNumber,
   timeframeForApi,
@@ -226,6 +222,179 @@ export default function OnboardingPage() {
 
   function removeBlocker(index: number) {
     setForm((p) => ({ ...p, knownBlockers: p.knownBlockers.filter((_, i) => i !== index) }));
+  }
+
+  useEffect(() => {
+    const pendingId = sessionStorage.getItem("torgima_validation_results");
+    if (!pendingId) return;
+    sessionStorage.removeItem("torgima_validation_results");
+    void loadValidationResults(pendingId);
+  }, []);
+
+  async function loadValidationResults(validationId: string) {
+    setLoading(true);
+    setError("");
+    setStep(7);
+    try {
+      const polled = await pollValidationUntilReady(validationId);
+      if (!polled) {
+        setError("Could not load validation results.");
+        return;
+      }
+      const resultRes = await fetchWithRetry(`/api/validation/${validationId}/result`, {
+        credentials: "include",
+      });
+      const resultJson = (await resultRes.json()) as { ok?: boolean; data?: ValidationPayload };
+      let payload = resultJson.ok && resultJson.data ? normalizeValidationPayload(resultJson.data) : polled;
+      const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/${validationId}`);
+      if (runEnvelope.ok && runEnvelope.data) {
+        const erectorResult = runEnvelope.data;
+        payload = normalizeValidationPayload({
+          ...payload,
+          erectorValidationId: validationId,
+          intelligence: { ...(payload.intelligence ?? {}), erector: erectorResult },
+          verdict: String(erectorResult.verdict ?? payload.verdict),
+          paths: (erectorResult.paths as ValidationPayload["paths"]) ?? payload.paths,
+        });
+      }
+      setValidation(payload);
+      setErectorPhase("scores");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load validation.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function deriveTimeframeKey(startDate: string, endDate: string): { key: FormData["timeframeKey"]; days?: number } {
+    const days = Math.round(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) / (24 * 3600 * 1000),
+    );
+    if (days <= 45) return { key: "30d" };
+    if (days <= 120) return { key: "90d" };
+    if (days <= 200) return { key: "6m" };
+    if (days <= 400) return { key: "1yr" };
+    return { key: "custom", days };
+  }
+
+  async function handleAlignedStart(intake: AlignedIntakeForm) {
+    setLoading(true);
+    setError("");
+    const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
+    setForm((f) => ({
+      ...f,
+      primaryGoal: intake.rawGoal,
+      purpose: intake.purpose,
+      locationCountry: intake.locationCountry,
+      businessModel: intake.businessModel,
+      commitmentLevel: intake.commitmentLevel,
+      desiredOutcome: intake.purpose,
+      timeframeKey: tf.key,
+      customTimeframeDays: tf.days,
+      targetCustomer: intake.rawGoal.slice(0, 120),
+      currentResources: ["Technical Skills"],
+      budgetAvailable: "1000",
+    }));
+    try {
+      const goalEnvelope = await apiFetchEnvelope<ValidationPayload>(`/api/onboarding/goal`, {
+        method: "POST",
+        body: JSON.stringify({
+          rawGoal: intake.rawGoal,
+          purpose: intake.purpose,
+          timeframe: timeframeForGoalApi({
+            ...form,
+            primaryGoal: intake.rawGoal,
+            purpose: intake.purpose,
+            timeframeKey: tf.key,
+            customTimeframeDays: tf.days,
+            commitmentLevel: intake.commitmentLevel,
+            locationCountry: intake.locationCountry,
+            businessModel: intake.businessModel,
+            desiredOutcome: intake.purpose,
+            currentContext: "",
+            locationCity: "",
+            businessType: "online",
+            currency: "USD",
+            budgetAvailable: "",
+            currentResources: [],
+            targetCustomer: "",
+            successSignal: "",
+            contextTags: [],
+            knownBlockers: [],
+            additionalContext: "",
+            domain: "business",
+          }),
+          commitmentLevel: commitmentForGoalApi(intake.commitmentLevel),
+          domain: intake.businessModel,
+          idempotencyKey: idempotencyKeyRef.current,
+          tier: selectedTier ?? "starter",
+          mode: selectedMode ?? "individual",
+        }),
+      });
+      if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
+        setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        return;
+      }
+      const blueprintId = goalEnvelope.data.blueprintId;
+      const tfApi = timeframeForApi({
+        primaryGoal: intake.rawGoal,
+        purpose: intake.purpose,
+        timeframeKey: tf.key,
+        customTimeframeDays: tf.days,
+        commitmentLevel: intake.commitmentLevel,
+        desiredOutcome: intake.purpose,
+        locationCountry: intake.locationCountry,
+        locationCity: "",
+        businessType: "online",
+        businessModel: intake.businessModel,
+        currentContext: "",
+        currency: "USD",
+        budgetAvailable: "1000",
+        currentResources: ["Technical Skills"],
+        targetCustomer: intake.rawGoal.slice(0, 200),
+        successSignal: "",
+        contextTags: [],
+        knownBlockers: [],
+        additionalContext: "",
+        domain: "business",
+      });
+      const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/run`, {
+        method: "POST",
+        body: JSON.stringify({
+          blueprintId,
+          idempotencyKey: `erector-${blueprintId}-${idempotencyKeyRef.current}`,
+          rawGoal: intake.rawGoal,
+          purpose: intake.purpose,
+          ...tfApi,
+          commitmentLevel: intake.commitmentLevel,
+          desiredOutcome: intake.purpose,
+          location: { country: intake.locationCountry },
+          businessType: "online",
+          businessModel: intake.businessModel,
+          budgetAvailable: 0,
+          currency: "USD",
+          currentResources: [],
+          targetCustomer: intake.rawGoal.slice(0, 200),
+          tier: selectedTier ?? "starter",
+          mode: selectedMode ?? "individual",
+        }),
+      });
+      if (!runEnvelope.ok || !runEnvelope.data) {
+        setError(runEnvelope.error?.message ?? "Erector validation failed to start.");
+        return;
+      }
+      const validationId = String(runEnvelope.data.validationId ?? "");
+      if (!validationId) {
+        setError("Validation id missing from server response.");
+        return;
+      }
+      sessionStorage.setItem("torgima_validation_results", validationId);
+      setLocation(`/validation/${validationId}/running`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Cannot connect to server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function canContinue(): boolean {
@@ -587,18 +756,10 @@ export default function OnboardingPage() {
 
   if (step <= 5) {
     return (
-      <ErectorIntakeFlow
-        step={step as 1 | 2 | 3 | 4 | 5}
-        form={form}
-        setField={setField}
-        toggleResource={toggleResource}
-        toggleContextTag={toggleContextTag}
-        addBlocker={addBlocker}
-        removeBlocker={removeBlocker}
-        onStepChange={(s) => setStep(s)}
-        onCompleteIntake={() => setStep(6)}
-        isSubmitting={loading}
-      />
+      <OnboardingShell>
+        <AlignedGoalIntake onSubmit={(intake) => void handleAlignedStart(intake)} isSubmitting={loading} />
+        {error && <p className="text-center text-sm text-red-600 pb-8">{error}</p>}
+      </OnboardingShell>
     );
   }
 
@@ -729,140 +890,16 @@ export default function OnboardingPage() {
 
                 {!loading && validated && validation && (
                   <>
-                    {erectorPhase === "briefing" && validation.intelligence?.["erector"] && (
-                      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">The Erector Reality Briefing</p>
-                            <h3 className="text-xl font-bold text-gray-900">
-                              {String(((validation.intelligence["erector"] as Record<string, unknown>)["archetypeResolution"] as Record<string, unknown> | undefined)?.["primaryArchetype"] ? (((validation.intelligence["erector"] as Record<string, unknown>)["archetypeResolution"] as Record<string, unknown>)["primaryArchetype"] as Record<string, unknown>)["name"] : "Economy mapped")}
-                            </h3>
-                          </div>
-                          <div className="rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700">
-                            Reality Score {String(((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<string, unknown> | undefined)?.["realityScore"] ?? "—")}
-                          </div>
-                        </div>
-                        <p className="text-sm leading-6 text-gray-700">
-                          {String(((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["briefingNarrative"] ?? "Economy intelligence loaded before blueprint launch.")}
-                        </p>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-xl bg-white p-4">
-                            <p className="text-xs font-bold uppercase text-amber-600">Warning</p>
-                            <p className="mt-2 text-sm text-gray-700">
-                              {String((((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["keyWarnings"] as unknown[] | undefined)?.[0] ?? "No critical economy warning.")}
-                            </p>
-                          </div>
-                          <div className="rounded-xl bg-white p-4">
-                            <p className="text-xs font-bold uppercase text-green-600">Opportunity</p>
-                            <p className="mt-2 text-sm text-gray-700">
-                              {String((((validation.intelligence["erector"] as Record<string, unknown>)["economyBriefing"] as Record<string, unknown> | undefined)?.["keyOpportunities"] as unknown[] | undefined)?.[0] ?? "Narrow first market and prove value quickly.")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {erectorPhase === "briefing" && (
-                      <button
-                        type="button"
-                        onClick={() => setErectorPhase("scores")}
-                        className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 text-sm"
-                      >
-                        View reality scores →
-                      </button>
-                    )}
-
-                    {erectorPhase === "scores" && validation.intelligence?.["erector"] && (
-                      <ErectorScoresDashboard
-                        report={buildErectorValidationReport({
-                          erector: validation.intelligence["erector"] as Record<string, unknown>,
-                          validation: {
-                            validationId: validation.validationId ?? validation.erectorValidationId,
-                            blueprintId: validation.blueprintId,
-                            verdict: validation.verdict,
-                            paths: validation.paths,
-                          },
-                          form: {
-                            primaryGoal: form.primaryGoal,
-                            purpose: form.purpose,
-                            targetCustomer: form.targetCustomer,
-                            desiredOutcome: form.desiredOutcome,
-                            timeframe: timeframeForGoalApi(form),
-                            commitmentLevel: form.commitmentLevel,
-                            knownBlockers: form.knownBlockers,
-                          },
-                          selectedPath,
-                        })}
-                        onLaunch={() => setErectorPhase("paths")}
-                      />
-                    )}
-
-                    {erectorPhase === "paths" && validation.intelligence?.["erector"] && (
-                      <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50 text-sm text-gray-700">
-                        <p className="font-semibold text-gray-900 mb-2">Timeframe simulations</p>
-                        <ul className="space-y-2">
-                          {(
-                            ((validation.intelligence["erector"] as Record<string, unknown>)["timeSimulations"] as Array<
-                              Record<string, unknown>
-                            >) ?? []
-                          ).map((sim) => (
-                            <li key={String(sim.timeframe)}>
-                              <span className="font-medium">{String(sim.timeframe)}</span>
-                              {" — "}
-                              {String(sim.executionIntensityLabel ?? "moderate")} intensity,{" "}
-                              {Math.round(Number(sim.probabilityOfReachingGoal ?? 0) * 100)}% goal probability
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {erectorPhase === "paths" && validation.intelligence?.["erector"] && (
-                      <FirstWeekPlanPanel
-                        erector={
-                          {
-                            plans: (
-                              (validation.paths?.[selectedPath] as Record<string, unknown> | undefined)?.[
-                                "firstWeekActionsPreview"
-                              ] as string[] | undefined
-                            )?.map((title) => ({
-                              title,
-                              action: "Smoke test — completes at blueprint launch.",
-                              smokeTest: true,
-                            })),
-                          } as Record<string, unknown>
-                        }
-                      />
-                    )}
-
-                    {erectorPhase === "paths" && (
-                      <ValidationScreen
+                    {erectorPhase !== "blueprint" && (
+                      <AlignedValidationResults
                         data={validation}
-                        tier={selectedTier}
-                        selectedPath={selectedPath}
-                        hideErectorDashboard
-                        onSelectPath={(p: PathKey) => {
-                          setSelectedPath(p);
-                          setPathConfirmed(false);
-                        }}
-                        onLaunch={pathConfirmed ? () => setErectorPhase("blueprint") : undefined}
-                        launching={loading}
                         goalSummary={{
                           goal: form.primaryGoal,
                           purpose: form.purpose,
                           timeframe: timeframeForGoalApi(form),
                         }}
+                        onPathSelected={() => setErectorPhase("blueprint")}
                       />
-                    )}
-
-                    {erectorPhase === "scores" && (
-                      <button
-                        type="button"
-                        onClick={() => setErectorPhase("paths")}
-                        className="w-full bg-gray-900 text-white font-semibold py-4 rounded-2xl hover:bg-gray-800 text-sm"
-                      >
-                        Choose execution path →
-                      </button>
                     )}
 
                     {erectorPhase === "blueprint" && (

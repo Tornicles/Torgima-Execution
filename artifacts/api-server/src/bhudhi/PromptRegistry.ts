@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { BhudhiTriggerType, BhudhiMode, BhudhiOutputType } from "../types/bhudhi.js";
 import { bootstrapPromptRegistry } from "./promptRegistryBootstrap.js";
 import { OUTPUT_ENVELOPE_SCHEMAS } from "./schemas/outputSchemas.js";
+import { buildErectorFactsContext } from "./erectorWebSearch.js";
 
 export interface PromptContract {
   name:            string;
@@ -1107,10 +1108,7 @@ for (const contract of ERECTOR_CONTRACTS) {
       `\nYou are supporting The Erector validation system. ${contract.purpose}` +
       `\nThe rule engine owns all scores and launch decisions. Use probability language only. Return ONLY valid JSON matching the envelope.`,
     buildUserPrompt: (ctx) => `
-Goal: ${String(ctx["goal"] ?? ctx["rawGoal"] ?? "")}
-Purpose: ${String(ctx["purpose"] ?? "")}
-Archetype profile: ${JSON.stringify(ctx["archetype"] ?? ctx["primaryArchetype"] ?? {})}
-Prior engine outputs: ${JSON.stringify(ctx["priorOutputs"] ?? {})}
+${buildErectorFactsContext(ctx)}
 
 Return ONLY JSON:
 {

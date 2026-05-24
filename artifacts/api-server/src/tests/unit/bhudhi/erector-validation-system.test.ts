@@ -185,11 +185,28 @@ describe("Erector scoring and route integration", () => {
     expect(launchGate).toContain("Reality Score below 2.5");
 
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain("Reality context");
+    expect(onboarding).toContain("Reality Context");
     expect(onboarding).toContain("/api/v1/validation/run");
-    expect(onboarding).toContain("The Erector Reality Briefing");
-    expect(onboarding).toContain("ErectorScoresDashboard");
-    expect(onboarding).toContain("resolve-archetype");
+    expect(onboarding).toContain("AlignedValidationResults");
+    expect(onboarding).toContain("AlignedGoalIntake");
+    expect(onboarding).toContain("/validation/");
+
+    const appRoutes = readRepo("artifacts/torgima/src/App.tsx");
+    expect(appRoutes).toContain("/validation/:id/running");
+
+    const webSearch = readRepo("artifacts/api-server/src/bhudhi/erectorWebSearch.ts");
+    expect(webSearch).toContain("ERECTOR_INDUSTRY_ANALYZE");
+    expect(webSearch).toContain("ERECTOR_MARKET_ANALYZE");
+    expect(webSearch).toContain("ERECTOR_COMPETITORS_IDENTIFY");
+    expect(webSearch).toContain("ERECTOR_ECONOMY_BRIEFING");
+
+    const triggerRouter = readRepo("artifacts/api-server/src/bhudhi/TriggerRouter.ts");
+    expect(triggerRouter).toContain("web_search_20250305");
+    expect(triggerRouter).toContain("webSearchCalls");
+
+    const bhudhiCore = readRepo("artifacts/api-server/src/bhudhi/BhudhiCore.ts");
+    expect(bhudhiCore).toContain("web_search_calls");
+    expect(bhudhiCore).toContain("intelligence_grounded");
 
     const dashboard = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
     expect(dashboard).toContain("ExecutionContextPanel");

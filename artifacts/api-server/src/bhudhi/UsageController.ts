@@ -159,6 +159,8 @@ export async function logUsage(params: {
         status: params.status,
         fallbackReason: params.fallbackReason,
         errorCode: params.errorCode,
+        web_search_calls: (params as { webSearchCalls?: number }).webSearchCalls,
+        intelligence_grounded: (params as { intelligenceGrounded?: boolean }).intelligenceGrounded,
       },
       prompt_version: params.promptVersion,
       model_used: process.env.BHUDHI_MODEL ?? "claude-sonnet-4-20250514",
@@ -195,6 +197,12 @@ export async function updateBhudhiLog(params: {
   if (params.outputTokens !== undefined) patch["token_count_out"] = params.outputTokens;
   if (params.latencyMs !== undefined) patch["latency_ms"] = params.latencyMs;
   patch["output_json"] = params.outputJson ?? { estimated_cost_usd: cost };
+  if (params.outputJson?.web_search_calls != null) {
+    patch["web_search_calls"] = Number(params.outputJson.web_search_calls);
+  }
+  if (params.outputJson?.intelligence_grounded != null) {
+    patch["intelligence_grounded"] = Boolean(params.outputJson.intelligence_grounded);
+  }
 
   await db
     .update(bhudhiLogs)
