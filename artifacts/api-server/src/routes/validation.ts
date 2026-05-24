@@ -256,7 +256,15 @@ router.post("/v1/validation/run", async (req, res) => {
       idempotencyKey: parsed.data.idempotencyKey,
     });
     const result = await runErectorValidation({ ...parsed.data, blueprintId, userId: auth.userId });
-    const redirectTo = "/onboarding";
+    const redirectTo = `/onboarding?id=${result.validationId}`;
+    const { db: runDb, validations: runValidations } = await import("@workspace/db");
+    const { sql: runSql } = await import("drizzle-orm");
+    const [runCount] = await runDb
+      .select({ count: runSql<number>`count(*)::int` })
+      .from(runValidations)
+      .catch(() => [{ count: -1 }]);
+    console.log("[VALIDATION RUN] Created validation ID:", result.validationId);
+    console.log("[VALIDATION RUN] DB confirmed write — count now:", runCount?.count ?? "unknown");
     console.log("[RUN_SUCCESS]", {
       validationId: result.validationId,
       verdict: result.verdict,

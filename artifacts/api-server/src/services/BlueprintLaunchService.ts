@@ -78,18 +78,17 @@ export const BlueprintLaunchService = {
     }
     assertValidationReadyForLaunch(validationRow);
 
-    if (selectedBlueprintLevel) {
-      await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
-        tier: selectedBlueprintLevel,
-        mode: blueprint.mode ?? "individual",
-      });
-    }
+    await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
+      tier: selectedBlueprintLevel,
+      mode: blueprint.mode ?? "individual",
+    });
 
     await ValidationService.selectValidationPath({
       blueprintId: input.blueprintId,
       userId: input.userId,
       selectedPath: selectedPathType,
       validationContractId: input.validationContractId,
+      validationIdHint: validationRow.id,
       confirmAdjusted: selectedPathType === "adjusted",
     });
 

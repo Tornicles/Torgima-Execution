@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { validations, blueprints, featureFlags } from "@workspace/db";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { TorgimaError } from "../lib/errors.js";
 import { validatePayload } from "../lib/validationPayloadSchemas.js";
@@ -69,6 +69,136 @@ function rowToResult(row: typeof validations.$inferSelect, blueprintId: string):
     blueprintContract: row.blueprint_contract as Record<string, unknown> | null,
     systemsProgress: intel?.systemsProgress,
   };
+}
+
+function isErectorValidationComplete(row: typeof validations.$inferSelect): boolean {
+  if (row.validation_kind !== ValidationKind.ERECTOR) return false;
+  const stage = row.erector_validation_stage ?? row.validation_stage ?? row.status;
+  return (
+    stage === ErectorValidationStage.COMPLETE ||
+    stage === ValidationStatus.COMPLETE ||
+    stage === "complete"
+  );
+}
+
+function isIntelligenceValidationComplete(row: typeof validations.$inferSelect): boolean {
+  return (
+    row.validation_kind === ValidationKind.INTELLIGENCE && row.status === ValidationStatus.COMPLETE
+  );
+}
+
+/** Resolve validation row for path selection / launch (Erector + Intelligence). */
+async function findValidationForBlueprint(params: {
+  blueprintId?: string;
+  userId: string;
+  validationContractId?: string;
+  validationIdHint?: string;
+}): Promise<typeof validations.$inferSelect | null> {
+  const { blueprintId, userId, validationContractId, validationIdHint } = params;
+
+  logger.info(
+    { blueprintId: blueprintId || null, userId, validationContractId, validationIdHint },
+    "[LAUNCH] Looking up validation record",
+  );
+
+  if (validationIdHint) {
+    const [byId] = await db
+      .select()
+      .from(validations)
+      .where(and(eq(validations.id, validationIdHint), eq(validations.user_id, userId)))
+      .limit(1);
+    if (byId) {
+      logger.info({ validationId: byId.id, kind: byId.validation_kind }, "[LAUNCH] Found by validation id");
+      return byId;
+    }
+    const [byContractAsId] = await db
+      .select()
+      .from(validations)
+      .where(and(eq(validations.contract_id, validationIdHint), eq(validations.user_id, userId)))
+      .limit(1);
+    if (byContractAsId) {
+      logger.info(
+        { validationId: byContractAsId.id, kind: byContractAsId.validation_kind },
+        "[LAUNCH] Found by contract_id matching URL id",
+      );
+      return byContractAsId;
+    }
+  }
+
+  if (validationContractId && blueprintId) {
+    const [byContract] = await db
+      .select()
+      .from(validations)
+      .where(
+        and(eq(validations.contract_id, validationContractId), eq(validations.blueprint_id, blueprintId)),
+      )
+      .limit(1);
+    if (byContract) {
+      logger.info({ validationId: byContract.id, kind: byContract.validation_kind }, "[LAUNCH] Found by contract_id");
+      return byContract;
+    }
+  }
+
+  if (!blueprintId) {
+    const [fallbackUser] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.user_id, userId))
+      .orderBy(desc(validations.updated_at))
+      .limit(1);
+    if (fallbackUser) {
+      logger.warn(
+        { validationId: fallbackUser.id, blueprintId: fallbackUser.blueprint_id },
+        "[LAUNCH] Fallback — user's most recent validation (no blueprint id in request)",
+      );
+    }
+    return fallbackUser ?? null;
+  }
+
+  const blueprintRows = await db
+    .select()
+    .from(validations)
+    .where(and(eq(validations.blueprint_id, blueprintId), eq(validations.user_id, userId)))
+    .orderBy(desc(validations.updated_at))
+    .limit(10);
+
+  const completeForBlueprint = blueprintRows.find(
+    (row) => isErectorValidationComplete(row) || isIntelligenceValidationComplete(row),
+  );
+  if (completeForBlueprint) {
+    logger.info(
+      { validationId: completeForBlueprint.id, kind: completeForBlueprint.validation_kind },
+      "[LAUNCH] Found latest complete validation for blueprint",
+    );
+    return completeForBlueprint;
+  }
+
+  const [fallbackUser] = await db
+    .select()
+    .from(validations)
+    .where(eq(validations.user_id, userId))
+    .orderBy(desc(validations.updated_at))
+    .limit(1);
+
+  if (fallbackUser) {
+    logger.warn(
+      { validationId: fallbackUser.id, blueprintId: fallbackUser.blueprint_id },
+      "[LAUNCH] Fallback — using user's most recent validation row",
+    );
+  }
+
+  const [countRow] = await db.select({ count: sql<number>`count(*)::int` }).from(validations);
+  const sample = await db.select({ id: validations.id }).from(validations).limit(5);
+  logger.info(
+    {
+      found: Boolean(fallbackUser),
+      totalValidations: countRow?.count ?? 0,
+      sampleIds: sample.map((s) => s.id),
+    },
+    "[LAUNCH] DB validation inventory",
+  );
+
+  return fallbackUser ?? null;
 }
 
 function assertIntelligencePayload(row: typeof validations.$inferSelect): ValidationIntelligencePayload {
@@ -205,12 +335,15 @@ export const ValidationService = {
     };
   },
 
+  findValidationForBlueprint,
+
   async selectValidationPath(params: {
     blueprintId: string;
     userId: string;
     selectedPath: "current" | "adjusted" | "alternative";
     confirmAdjusted?: boolean;
     validationContractId?: string;
+    validationIdHint?: string;
   }): Promise<{ selected: boolean; blueprintContract: Record<string, unknown> | null }> {
     const bpRows = await db
       .select({ id: blueprints.id, status: blueprints.status, goal: blueprints.goal })
@@ -224,39 +357,24 @@ export const ValidationService = {
     if (
       bp.status !== BlueprintStatus.PATH_SELECTION &&
       bp.status !== BlueprintStatus.AWAITING_SELECTION &&
-      bp.status !== BlueprintStatus.DRAFT
+      bp.status !== BlueprintStatus.DRAFT &&
+      bp.status !== BlueprintStatus.VALIDATING
     ) {
       throw new TorgimaError("STALE_STATE", `Blueprint is not in path selection state (current: ${bp.status})`);
     }
 
-    const validationRows =
-      params.validationContractId ?
-        await db
-          .select()
-          .from(validations)
-          .where(
-            and(
-              eq(validations.contract_id, params.validationContractId),
-              eq(validations.blueprint_id, params.blueprintId),
-              eq(validations.validation_kind, ValidationKind.INTELLIGENCE),
-            ),
-          )
-          .limit(1)
-      : await db
-          .select()
-          .from(validations)
-          .where(
-            and(
-              eq(validations.blueprint_id, params.blueprintId),
-              eq(validations.validation_kind, ValidationKind.INTELLIGENCE),
-              eq(validations.status, ValidationStatus.COMPLETE),
-            ),
-          )
-          .orderBy(desc(validations.created_at))
-          .limit(1);
+    const validation = await findValidationForBlueprint({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      validationContractId: params.validationContractId,
+      validationIdHint: params.validationIdHint,
+    });
 
-    const validation = validationRows[0];
     if (!validation) {
+      logger.error(
+        { blueprintId: params.blueprintId, validationContractId: params.validationContractId },
+        "[LAUNCH] Validation record not found — NOT IN DB",
+      );
       throw new TorgimaError("NOT_FOUND", "Validation record not found. Run validation first.");
     }
 
@@ -274,66 +392,84 @@ export const ValidationService = {
       );
     }
 
-    const intel = assertIntelligencePayload(validation);
     let blueprintContract = validation.blueprint_contract as Record<string, unknown> | null;
 
-    if (intel) {
-      const contract = buildValidationToBlueprintContract({
-        intelligence: intel,
-        selectedPath: params.selectedPath,
-        paths: intel.paths,
-        tier: parseTier(validation.tier ?? intel.tier),
-      });
-      blueprintContract = contract as unknown as Record<string, unknown>;
-    }
+    if (validation.validation_kind === ValidationKind.ERECTOR) {
+      await db
+        .update(validations)
+        .set({
+          selected_path: params.selectedPath,
+          selected_path_type: params.selectedPath,
+          selected_at: new Date(),
+          adjusted_path_confirmed:
+            params.selectedPath === "adjusted" || Boolean(params.confirmAdjusted),
+          readiness:
+            validation.verdict === "adjust" && params.selectedPath !== "adjusted" ?
+              "ready_with_adjustment"
+            : "ready_proceed",
+        })
+        .where(eq(validations.id, validation.id));
+    } else {
+      const intel = assertIntelligencePayload(validation);
 
-    await db
-      .update(validations)
-      .set({
-        selected_path: params.selectedPath,
-        selected_path_type: params.selectedPath,
-        selected_at: new Date(),
-        blueprint_contract: blueprintContract,
-        adjusted_path_confirmed:
-          params.selectedPath === "adjusted" || Boolean(params.confirmAdjusted),
-        readiness:
-          validation.verdict === "adjust" && params.selectedPath !== "adjusted" ?
-            "ready_with_adjustment"
-          : "ready_proceed",
-      })
-      .where(eq(validations.id, validation.id));
+      if (intel) {
+        const contract = buildValidationToBlueprintContract({
+          intelligence: intel,
+          selectedPath: params.selectedPath,
+          paths: intel.paths,
+          tier: parseTier(validation.tier ?? intel.tier),
+        });
+        blueprintContract = contract as unknown as Record<string, unknown>;
+      }
 
-    const goalText = bp.goal ?? "";
-    await recordValidationMemory({
-      userId: params.userId,
-      blueprintId: params.blueprintId,
-      validationId: validation.id,
-      rawGoal: goalText,
-      verdict: validation.verdict,
-      clarityScore: validation.clarity_score,
-      feasibilityScore: validation.feasibility_score,
-      realismScore: validation.realism_score,
-      industryLabel:
-        (intel?.industryPanel as { industryLabel?: string } | undefined)?.industryLabel ?? null,
-      selectedPath: params.selectedPath,
-      payload: { selected_path: params.selectedPath },
-    }).catch(() => null);
+      await db
+        .update(validations)
+        .set({
+          selected_path: params.selectedPath,
+          selected_path_type: params.selectedPath,
+          selected_at: new Date(),
+          blueprint_contract: blueprintContract,
+          adjusted_path_confirmed:
+            params.selectedPath === "adjusted" || Boolean(params.confirmAdjusted),
+          readiness:
+            validation.verdict === "adjust" && params.selectedPath !== "adjusted" ?
+              "ready_with_adjustment"
+            : "ready_proceed",
+        })
+        .where(eq(validations.id, validation.id));
 
-    const assumptions =
-      (intel as { strategic_assumptions?: string[] } | null)?.strategic_assumptions ??
-      (intel?.paths?.current as { strategic_assumptions?: string[] } | undefined)
-        ?.strategic_assumptions ??
-      [];
-
-    if (assumptions.length > 0) {
-      await recordStrategicAssumptions({
+      const goalText = bp.goal ?? "";
+      await recordValidationMemory({
         userId: params.userId,
         blueprintId: params.blueprintId,
         validationId: validation.id,
-        assumptions,
-        industryContext:
+        rawGoal: goalText,
+        verdict: validation.verdict,
+        clarityScore: validation.clarity_score,
+        feasibilityScore: validation.feasibility_score,
+        realismScore: validation.realism_score,
+        industryLabel:
           (intel?.industryPanel as { industryLabel?: string } | undefined)?.industryLabel ?? null,
+        selectedPath: params.selectedPath,
+        payload: { selected_path: params.selectedPath },
       }).catch(() => null);
+
+      const assumptions =
+        (intel as { strategic_assumptions?: string[] } | null)?.strategic_assumptions ??
+        (intel?.paths?.current as { strategic_assumptions?: string[] } | undefined)
+          ?.strategic_assumptions ??
+        [];
+
+      if (assumptions.length > 0) {
+        await recordStrategicAssumptions({
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+          validationId: validation.id,
+          assumptions,
+          industryContext:
+            (intel?.industryPanel as { industryLabel?: string } | undefined)?.industryLabel ?? null,
+        }).catch(() => null);
+      }
     }
 
     logger.info({ blueprintId: params.blueprintId, selectedPath: params.selectedPath }, "[ValidationService] Path selected");

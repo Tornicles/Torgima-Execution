@@ -57,6 +57,7 @@ export type ValidationLaunchResult = {
   blueprint: { id: string };
   blueprintId: string;
   validationId: string;
+  redirectTo: string;
   redirect_to: string;
   launched: boolean;
   idempotent?: boolean;

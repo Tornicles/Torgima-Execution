@@ -20,11 +20,19 @@ const TRIGGER_MAX_TOKENS: Record<string, number> = {
   INACTIVITY_RESTART: 400,
 };
 
+/** Minimum daily AI call cap (Erector validation uses many Bhudhi/web-search calls). Override on Railway: BHUDHI_DAILY_CAP=200 */
+const BHUDHI_DAILY_CAP = parseInt(process.env.BHUDHI_DAILY_CAP ?? "200", 10);
+
 const DAILY_CAPS: Record<string, number> = {
   starter: 20,
   growth: 50,
   ultimate: 200,
 };
+
+function dailyCallCapForTier(tier: string): number {
+  const tierCap = DAILY_CAPS[tier] ?? DAILY_CAPS.starter;
+  return Math.max(tierCap, BHUDHI_DAILY_CAP);
+}
 
 const TIMEOUT_MS = 10000;
 const TASK_TIMEOUT_MS = 5000;
@@ -92,7 +100,7 @@ export async function checkUsageAllowed(params: {
     return { allowed: true };
   }
 
-  const dailyCap = DAILY_CAPS[tier] ?? DAILY_CAPS.starter;
+  const dailyCap = dailyCallCapForTier(tier);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 

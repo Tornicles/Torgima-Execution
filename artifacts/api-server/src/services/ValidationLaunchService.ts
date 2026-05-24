@@ -1,9 +1,8 @@
-import { db, validations } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchService.js";
 import { BlueprintService } from "./BlueprintService.js";
+import { ValidationService } from "./ValidationService.js";
 import type { Blueprint } from "../types/blueprint.js";
 
 export type SelectedDirection = {
@@ -28,12 +27,16 @@ export interface ValidationLaunchResult {
   blueprint: Blueprint;
   blueprintId: string;
   validationId: string;
-  redirect_to: "/orders";
+  redirectTo: "/dashboard";
+  redirect_to: "/dashboard";
   launched: true;
   idempotent?: boolean;
 }
 
-function resolvePath(input: ValidationLaunchInput, row: typeof validations.$inferSelect): LaunchPathType {
+function resolvePath(
+  input: ValidationLaunchInput,
+  row: NonNullable<Awaited<ReturnType<typeof ValidationService.findValidationForBlueprint>>>,
+): LaunchPathType {
   const fromDirection = input.selectedDirection?.path ?? input.selectedDirection?.selectedPath;
   const path = input.selectedPath ?? fromDirection ?? row.selected_path_type ?? row.selected_path;
   if (!path || !["current", "adjusted", "alternative"].includes(path)) {
@@ -48,7 +51,7 @@ function resolvePath(input: ValidationLaunchInput, row: typeof validations.$infe
 
 function resolveTier(
   input: ValidationLaunchInput,
-  row: typeof validations.$inferSelect,
+  row: NonNullable<Awaited<ReturnType<typeof ValidationService.findValidationForBlueprint>>>,
 ): "starter" | "growth" | "ultimate" {
   const raw =
     input.tier ??
@@ -62,14 +65,19 @@ function resolveTier(
 
 export const ValidationLaunchService = {
   async launch(input: ValidationLaunchInput): Promise<ValidationLaunchResult> {
-    const [row] = await db
-      .select()
-      .from(validations)
-      .where(and(eq(validations.id, input.validationId), eq(validations.user_id, input.userId)))
-      .limit(1);
+    logger.info(
+      { validationId: input.validationId, userId: input.userId },
+      "[LAUNCH] ValidationLaunchService — resolving validation row",
+    );
+
+    const row = await ValidationService.findValidationForBlueprint({
+      blueprintId: "",
+      userId: input.userId,
+      validationIdHint: input.validationId,
+    });
 
     if (!row) {
-      throw new TorgimaError("NOT_FOUND", `Validation not found: ${input.validationId}`);
+      throw new TorgimaError("NOT_FOUND", "Validation record not found. Run validation first.");
     }
     if (!row.blueprint_id) {
       throw new TorgimaError("VALIDATION_ERROR", "Validation has no linked blueprint", false);
@@ -90,32 +98,35 @@ export const ValidationLaunchService = {
       {
         event: "validation.launch",
         userId: input.userId,
-        validationId: input.validationId,
+        validationId: row.id,
         blueprintId: row.blueprint_id,
         selectedDirectionPresent: Boolean(input.selectedDirection),
         selectedPath: selectedPathType,
         tier,
         mode,
+        validationKind: row.validation_kind,
       },
-      "Validation launch route — starting blueprint activation",
+      "Validation launch — starting blueprint activation",
     );
-
-    await BlueprintService.configureSelection(row.blueprint_id, input.userId, { tier, mode });
 
     let idempotent = false;
     try {
-      await BlueprintLaunchService.launch({
+      const launchResult = await BlueprintLaunchService.launch({
         blueprintId: row.blueprint_id,
         userId: input.userId,
         validationContractId: row.contract_id,
         selectedPathType,
         selectedBlueprintLevel: tier,
       });
+      logger.info(
+        { blueprintId: launchResult.blueprintId, validationId: row.id },
+        "Validation launch — BlueprintEngine.activateBlueprint completed",
+      );
     } catch (err) {
       if (err instanceof TorgimaError && err.code === "BLUEPRINT_ALREADY_ACTIVE") {
         idempotent = true;
         logger.info(
-          { validationId: input.validationId, blueprintId: row.blueprint_id },
+          { validationId: row.id, blueprintId: row.blueprint_id },
           "Validation launch — blueprint already active (idempotent)",
         );
       } else {
@@ -129,7 +140,7 @@ export const ValidationLaunchService = {
       {
         event: "validation.launch.complete",
         userId: input.userId,
-        validationId: input.validationId,
+        validationId: row.id,
         blueprintId: row.blueprint_id,
         selectedPath: selectedPathType,
         tier,
@@ -143,7 +154,8 @@ export const ValidationLaunchService = {
       blueprint,
       blueprintId: row.blueprint_id,
       validationId: row.id,
-      redirect_to: "/orders",
+      redirectTo: "/dashboard",
+      redirect_to: "/dashboard",
       launched: true,
       ...(idempotent ? { idempotent: true } : {}),
     };

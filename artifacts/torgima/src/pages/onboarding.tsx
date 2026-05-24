@@ -401,7 +401,10 @@ export default function OnboardingPage() {
       }
 
       sessionStorage.setItem("torgima_validation_results", validationId);
-      setLocation(`/validation/${validationId}/running`);
+      const runRedirect = String(runData.redirectTo ?? runData.redirect_to ?? "");
+      setLocation(
+        runRedirect.startsWith("/") ? runRedirect : `/validation/${validationId}/running`,
+      );
     } catch (err) {
       console.error("Validation error:", err);
       setError("Connection failed. Check your internet and try again.");
@@ -613,13 +616,20 @@ export default function OnboardingPage() {
           setError("Validation did not return a blueprint id.");
           return;
         }
+        const resultsPath =
+          String(runData.redirectTo ?? runData.redirect_to ?? "") ||
+          `/onboarding?id=${payload.erectorValidationId ?? runData.validationId ?? ""}`;
         console.log("[VALIDATION_NAVIGATE]", {
-          to: runData.redirectTo ?? "/onboarding",
-          erectorPhase: "briefing",
+          to: resultsPath,
+          erectorPhase: "scores",
           validationId: payload.erectorValidationId,
         });
         setValidation(payload);
-        setErectorPhase("briefing");
+        setErectorPhase("scores");
+        setStep(7);
+        if (resultsPath.startsWith("/onboarding")) {
+          setLocation(resultsPath);
+        }
         setPathConfirmed(false);
       } else if (payload?.status === "needs_clarification") {
         setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
@@ -695,7 +705,7 @@ export default function OnboardingPage() {
       const result = await launchValidationBlueprint(validationId, selectedDirection);
 
       await completeOnboarding();
-      setLocation(result.redirect_to ?? "/orders");
+      setLocation(result.redirectTo ?? result.redirect_to ?? "/dashboard");
     } catch (err) {
       const backendMessage =
         err instanceof ApiError && err.data && typeof err.data === "object"

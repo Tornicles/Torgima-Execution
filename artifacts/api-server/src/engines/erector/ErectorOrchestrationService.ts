@@ -1,5 +1,5 @@
 import { db, validations, validationArchetypeMaps } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { writeEvent } from "../../services/EventService.js";
 import { EventTypes } from "../../types/eventContracts.js";
 import { validatePayload } from "../../lib/validationPayloadSchemas.js";
@@ -108,6 +108,13 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
         .returning();
 
   if (!created) throw new Error("Could not create Erector validation");
+
+  const [countAfterCreate] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(validations)
+    .catch(() => [{ count: -1 }]);
+  console.log("[VALIDATION RUN] Created validation ID:", created.id);
+  console.log("[VALIDATION RUN] DB confirmed write — count now:", countAfterCreate?.count ?? "unknown");
 
   await writeEvent({
     eventType: EventTypes.ERECTOR_VALIDATION_STARTED,
