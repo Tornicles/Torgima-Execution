@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, ShieldCheck, Target } from "lucide-react";
 import {
@@ -14,6 +14,13 @@ import {
 import { FirstWeekPlanPanel } from "@/components/validation/FirstWeekPlanPanel";
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
+import { ErectorIntakeFlow } from "@/components/onboarding/ErectorIntakeFlow";
+import {
+  budgetNumber,
+  timeframeForApi,
+  type CommitmentKey,
+  type ErectorIntakeForm,
+} from "@/components/onboarding/erector-intake-types";
 import { activateBlueprint, ApiError } from "@workspace/api-client-react";
 import { apiFetchEnvelope, apiFetchResponseWithRetry, apiPost, completeOnboarding } from "@/lib/torgima-api";
 import { ValidationStatus } from "@workspace/state-machine";
@@ -22,23 +29,27 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type ErectorReviewPhase = "briefing" | "scores" | "paths" | "blueprint";
 const TOTAL_STEPS = 7;
 
-const DOMAINS = [
-  { id: "business", label: "Business", icon: "💼" },
-  { id: "health", label: "Health", icon: "❤️" },
-  { id: "financial", label: "Financial", icon: "💰" },
-  { id: "relationships", label: "Relationships", icon: "👥" },
-  { id: "personal_growth", label: "Personal Growth", icon: "🌱" },
-  { id: "impact", label: "Impact", icon: "🌍" },
-  { id: "creative", label: "Creative", icon: "✏️" },
-  { id: "other", label: "Other", icon: "···" },
-];
+function timeframeForGoalApi(form: ErectorIntakeForm): string {
+  if (form.timeframeKey === "30d") return "30 days";
+  if (form.timeframeKey === "90d") return "90 days";
+  if (form.timeframeKey === "6m") return "6 months";
+  if (form.timeframeKey === "1yr") return "1 year";
+  if (form.timeframeKey === "custom" && form.customTimeframeDays) return `${form.customTimeframeDays} days`;
+  return "90 days";
+}
 
-const COMMITMENT_OPTIONS = [
-  { value: "low", label: "Low", sub: "A few hours per week" },
-  { value: "medium", label: "Medium", sub: "Daily focused work" },
-  { value: "high", label: "High", sub: "My primary focus" },
-  { value: "full", label: "Full", sub: "All in — everything toward this" },
-];
+function commitmentForGoalApi(level: CommitmentKey): "low" | "medium" | "high" | "full" {
+  if (level === "LOW") return "low";
+  if (level === "HIGH") return "high";
+  if (level === "INTENSE") return "full";
+  return "medium";
+}
+
+function combinedContext(form: ErectorIntakeForm): string {
+  const tags = form.contextTags.length ? `\nContext: ${form.contextTags.join(", ")}` : "";
+  const extra = form.additionalContext.trim() ? `\n${form.additionalContext.trim()}` : "";
+  return `${form.currentContext.trim()}${tags}${extra}`.trim();
+}
 
 const ERECTOR_ENGINE_MESSAGES = [
   "Preparing reality analysis...",
@@ -115,41 +126,26 @@ function normalizeValidationPayload(payload: ValidationPayload): ValidationPaylo
   };
 }
 
-interface FormData {
-  primaryGoal: string;
+interface FormData extends ErectorIntakeForm {
   secondaryGoals: string;
   domain: string;
   specificTarget: string;
-  purpose: string;
   purposeDeep: string;
-  timeframe: string;
   targetDate: string;
-  commitmentLevel: string;
   hoursPerWeek: string;
-  currentContext: string;
   resources: string;
-  currentResources: string[];
   experience: string;
-  knownBlockers: string;
   budget: string;
-  locationCountry: string;
-  locationCity: string;
-  businessType: "online" | "offline" | "hybrid";
-  businessModel: string;
-  budgetAvailable: string;
-  currency: string;
-  targetCustomer: string;
-  desiredOutcome: string;
 }
 
 const STEPS = [
-  { number: 1, label: "Your Goals", sub: "What do you want to achieve?" },
-  { number: 2, label: "Purpose", sub: "Why is this important?" },
-  { number: 3, label: "Timeframe", sub: "When will you achieve this?" },
-  { number: 4, label: "Commitment", sub: "Your level of commitment" },
-  { number: 5, label: "Reality Context", sub: "Economy, resources, and market context" },
+  { number: 1, label: "Goal & Purpose", sub: "Outcome, purpose, timeframe" },
+  { number: 2, label: "Reality Context", sub: "Economy and business model" },
+  { number: 3, label: "Resources", sub: "Budget and assets" },
+  { number: 4, label: "Customer", sub: "ICP and success signals" },
+  { number: 5, label: "Constraints", sub: "Blockers and summary" },
   { number: 6, label: "Structure", sub: "Refine goal before validation" },
-  { number: 7, label: "Validation", sub: "Economy briefing, scores, path, launch" },
+  { number: 7, label: "Validation", sub: "Erector briefing, scores, path, launch" },
 ];
 
 type ValidationPayload = ValidationScreenData & {
@@ -169,34 +165,39 @@ export default function OnboardingPage() {
   const [goalStructured, setGoalStructured] = useState(false);
   const [erectorPhase, setErectorPhase] = useState<ErectorReviewPhase>("briefing");
   const [pathConfirmed, setPathConfirmed] = useState(false);
-  const [archetypePreview, setArchetypePreview] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+
+  const idempotencyKeyRef = useRef(crypto.randomUUID());
 
   const [form, setForm] = useState<FormData>({
     primaryGoal: "",
-    secondaryGoals: "",
-    domain: "",
-    specificTarget: "",
     purpose: "",
-    purposeDeep: "",
-    timeframe: "90 days",
-    targetDate: "",
-    commitmentLevel: "medium",
-    hoursPerWeek: "",
-    currentContext: "",
-    resources: "",
-    currentResources: [],
-    experience: "",
-    knownBlockers: "",
-    budget: "",
+    timeframeKey: "90d",
+    customTimeframeDays: undefined,
+    commitmentLevel: "MEDIUM",
+    desiredOutcome: "",
     locationCountry: "",
     locationCity: "",
     businessType: "online",
     businessModel: "",
-    budgetAvailable: "",
+    currentContext: "",
     currency: "USD",
+    budgetAvailable: "",
+    currentResources: [],
     targetCustomer: "",
-    desiredOutcome: "",
+    successSignal: "",
+    contextTags: [],
+    knownBlockers: [],
+    additionalContext: "",
+    domain: "business",
+    secondaryGoals: "",
+    specificTarget: "",
+    purposeDeep: "",
+    targetDate: "",
+    hoursPerWeek: "",
+    resources: "",
+    experience: "",
+    budget: "",
   });
 
   function setField<K extends keyof FormData>(k: K, v: FormData[K]) {
@@ -212,60 +213,23 @@ export default function OnboardingPage() {
     }));
   }
 
-  async function previewArchetypeForCountry() {
-    if (!form.locationCountry.trim()) return;
-    try {
-      const res = await fetchWithRetry(`/api/v1/validation/resolve-archetype`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          country: form.locationCountry.trim(),
-          city: form.locationCity.trim() || undefined,
-        }),
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        data?: { primaryArchetype?: { name?: string } };
-      };
-      if (json.ok && json.data?.primaryArchetype?.name) {
-        setArchetypePreview(json.data.primaryArchetype.name);
-      }
-    } catch {
-      setArchetypePreview(null);
-    }
+  function toggleContextTag(tag: string) {
+    setForm((p) => ({
+      ...p,
+      contextTags: p.contextTags.includes(tag) ? p.contextTags.filter((t) => t !== tag) : [...p.contextTags, tag],
+    }));
   }
 
-  function commitmentForErector(level: string): string {
-    if (level === "full") return "INTENSE";
-    return level.toUpperCase();
+  function addBlocker(text: string) {
+    setForm((p) => ({ ...p, knownBlockers: [...p.knownBlockers, text] }));
   }
 
-  function budgetNumber(): number {
-    const direct = Number(form.budgetAvailable.replace(/[^0-9.]/g, ""));
-    if (Number.isFinite(direct) && direct > 0) return direct;
-    if (form.budget.includes("10000")) return 10000;
-    if (form.budget.includes("5000")) return 5000;
-    if (form.budget.includes("1000")) return 1000;
-    return 0;
+  function removeBlocker(index: number) {
+    setForm((p) => ({ ...p, knownBlockers: p.knownBlockers.filter((_, i) => i !== index) }));
   }
 
   function canContinue(): boolean {
-    if (step === 1) return !!form.primaryGoal.trim() && !!form.domain;
-    if (step === 2) return !!form.purpose.trim();
-    if (step === 3) return !!form.timeframe.trim();
-    if (step === 4) return !!form.commitmentLevel;
-    if (step === 5) {
-      return Boolean(
-        form.locationCountry.trim() &&
-          form.businessType &&
-          form.businessModel.trim() &&
-          form.budgetAvailable.trim() &&
-          form.currentResources.length > 0 &&
-          form.targetCustomer.trim() &&
-          form.desiredOutcome.trim(),
-      );
-    }
+    if (step <= 5) return true;
     if (step === 6) return goalStructured;
     return true;
   }
@@ -362,23 +326,25 @@ export default function OnboardingPage() {
     setValidation(null);
     console.log("[VALIDATION_START]", {
       goal: form.primaryGoal.slice(0, 80),
-      timeframe: form.timeframe,
+      timeframe: timeframeForGoalApi(form),
       tier: selectedTier,
       mode: selectedMode,
     });
     try {
+      const tf = timeframeForApi(form);
       const goalEnvelope = await apiFetchEnvelope<ValidationPayload>(`/api/onboarding/goal`, {
         method: "POST",
         body: JSON.stringify({
           rawGoal: form.primaryGoal,
           purpose: form.purpose,
-          timeframe: form.timeframe,
-          commitmentLevel: form.commitmentLevel,
-          currentContext: form.currentContext,
-          successSignal: form.specificTarget,
-          knownBlockers: form.knownBlockers,
-          domainHints: form.domain ? [form.domain] : undefined,
-          idempotencyKey: `onboarding-${Date.now()}`,
+          timeframe: timeframeForGoalApi(form),
+          commitmentLevel: commitmentForGoalApi(form.commitmentLevel),
+          currentContext: combinedContext(form),
+          successSignal: form.successSignal || form.specificTarget || undefined,
+          knownBlockers: form.knownBlockers.length ? form.knownBlockers.join(", ") : undefined,
+          domain: form.domain,
+          domainHints: form.domain ? [form.domain, ...form.contextTags] : form.contextTags,
+          idempotencyKey: idempotencyKeyRef.current,
           tier: selectedTier ?? "starter",
           mode: selectedMode ?? "individual",
         }),
@@ -410,22 +376,22 @@ export default function OnboardingPage() {
           method: "POST",
           body: JSON.stringify({
             blueprintId: payload!.blueprintId,
-            idempotencyKey: `erector-${payload!.blueprintId}-${form.locationCountry}-${form.businessModel}`,
+            idempotencyKey: `erector-${payload!.blueprintId}-${idempotencyKeyRef.current}`,
             rawGoal: form.primaryGoal,
             purpose: form.purpose,
-            timeframe: form.timeframe,
-            commitmentLevel: commitmentForErector(form.commitmentLevel),
+            ...tf,
+            commitmentLevel: form.commitmentLevel,
             desiredOutcome: form.desiredOutcome,
             location: { country: form.locationCountry, city: form.locationCity || undefined },
             businessType: form.businessType,
             businessModel: form.businessModel,
-            budgetAvailable: budgetNumber(),
+            budgetAvailable: budgetNumber(form),
             currency: form.currency,
             currentResources: form.currentResources,
             targetCustomer: form.targetCustomer,
-            knownBlockers: form.knownBlockers ? form.knownBlockers.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
-            successSignal: form.specificTarget,
-            currentContext: form.currentContext,
+            knownBlockers: form.knownBlockers.length ? form.knownBlockers : undefined,
+            successSignal: form.successSignal || form.specificTarget || undefined,
+            currentContext: combinedContext(form),
             domainHint: form.domain,
             tier: selectedTier ?? "starter",
             mode: selectedMode ?? "individual",
@@ -619,6 +585,23 @@ export default function OnboardingPage() {
     !(step === 7 && !loading && validation && !error) && !(step === 6 && !goalStructured);
   const validated = isValidationPayloadReady(validation);
 
+  if (step <= 5) {
+    return (
+      <ErectorIntakeFlow
+        step={step as 1 | 2 | 3 | 4 | 5}
+        form={form}
+        setField={setField}
+        toggleResource={toggleResource}
+        toggleContextTag={toggleContextTag}
+        addBlocker={addBlocker}
+        removeBlocker={removeBlocker}
+        onStepChange={(s) => setStep(s)}
+        onCompleteIntake={() => setStep(6)}
+        isSubmitting={loading}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
@@ -685,431 +668,12 @@ export default function OnboardingPage() {
 
         <main className="flex-1 flex flex-col lg:flex-row gap-8 p-6 lg:p-10 max-w-6xl overflow-y-auto">
           <div className="flex-1 space-y-7 min-w-0">
-            {step === 1 && (
-              <>
-                <div className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-6 space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-green-700">Welcome to TORGIMA</p>
-                  <h2 className="text-2xl font-bold text-gray-900">Turn your ambition into daily execution</h2>
-                  <p className="text-sm text-gray-600 max-w-xl">
-                    In the next few minutes you will define your goal, calibrate commitment, and receive a validated blueprint with
-                    daily orders — not another planner.
-                  </p>
-                </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">What are your goals?</h2>
-                  <p className="text-gray-500 mt-1">Define what you want to achieve so TORGIMA can build your personalized blueprint.</p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Primary Goal <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-xs text-gray-400">What is the one main outcome you want to achieve?</p>
-                  <textarea
-                    value={form.primaryGoal}
-                    onChange={(e) => setField("primaryGoal", e.target.value)}
-                    placeholder="e.g., Build a profitable SaaS business"
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Secondary Goals <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    value={form.secondaryGoals}
-                    onChange={(e) => setField("secondaryGoals", e.target.value)}
-                    placeholder="e.g., Financial freedom, Help 1M people, Travel the world"
-                    rows={3}
-                    maxLength={300}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                  />
-                  <div className="text-right text-xs text-gray-400">{form.secondaryGoals.length} / 300</div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Domain / Focus Area <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={form.domain}
-                    onChange={(e) => setField("domain", e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                  >
-                    <option value="">Select a domain</option>
-                    {DOMAINS.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                    {DOMAINS.map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => setField("domain", d.id)}
-                        className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition-all ${
-                          form.domain === d.id
-                            ? "border-green-500 bg-green-50 text-green-700"
-                            : "border-gray-200 text-gray-600 hover:border-gray-300"
-                        }`}
-                      >
-                        <span className="text-xl">{d.icon}</span>
-                        {d.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Specific Target <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    value={form.specificTarget}
-                    onChange={(e) => setField("specificTarget", e.target.value)}
-                    placeholder="e.g., $10,000 MRR, 100K users, Launch by Dec 31, 2025"
-                    rows={2}
-                    maxLength={150}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                  />
-                  <div className="text-right text-xs text-gray-400">{form.specificTarget.length} / 150</div>
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">Why is this important?</h2>
-                  <p className="text-gray-500 mt-1">
-                    Understanding your purpose helps us build a blueprint that stays aligned with what truly matters to you.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Primary Purpose <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={form.purpose}
-                    onChange={(e) => setField("purpose", e.target.value)}
-                    placeholder="e.g., I want financial freedom so I can spend more time with family…"
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Deep Why <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    value={form.purposeDeep}
-                    onChange={(e) => setField("purposeDeep", e.target.value)}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                  />
-                </div>
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">When will you achieve this?</h2>
-                  <p className="text-gray-500 mt-1">Setting a realistic timeframe helps us create the right execution pace for you.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">
-                      Timeframe <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={form.timeframe}
-                      onChange={(e) => setField("timeframe", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                    >
-                      <option value="30 days">30 days</option>
-                      <option value="60 days">60 days</option>
-                      <option value="90 days">90 days</option>
-                      <option value="6 months">6 months</option>
-                      <option value="12 months">12 months</option>
-                      <option value="2 years">2 years</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">
-                      Target Date <span className="text-gray-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={form.targetDate}
-                      onChange={(e) => setField("targetDate", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Select</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {["30 days", "60 days", "90 days", "6 months", "12 months", "2 years"].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setField("timeframe", t)}
-                        className={`py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all ${
-                          form.timeframe === t ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600 hover:border-gray-300"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 4 && (
-              <>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">Your level of commitment</h2>
-                  <p className="text-gray-500 mt-1">Be honest — this helps us calibrate your daily workload and Order difficulty.</p>
-                </div>
-                <div className="space-y-3">
-                  {COMMITMENT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setField("commitmentLevel", opt.value)}
-                      className={`w-full text-left flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        form.commitmentLevel === opt.value ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          form.commitmentLevel === opt.value ? "border-green-500" : "border-gray-300"
-                        }`}
-                      >
-                        {form.commitmentLevel === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
-                      </div>
-                      <div>
-                        <p className={`font-semibold text-sm ${form.commitmentLevel === opt.value ? "text-green-800" : "text-gray-900"}`}>
-                          {opt.label}
-                        </p>
-                        <p className="text-xs text-gray-500">{opt.sub}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Hours per week <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.hoursPerWeek}
-                    onChange={(e) => setField("hoursPerWeek", e.target.value)}
-                    placeholder="e.g., 20+ hours per week"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                  />
-                </div>
-              </>
-            )}
-
-            {step === 5 && (
-              <>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">Reality context</h2>
-                  <p className="text-gray-500 mt-1">The Erector validates your goal against your economy, resources, customer, and timeframe.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Country <span className="text-red-500">*</span></label>
-                    <input
-                      value={form.locationCountry}
-                      onChange={(e) => {
-                        setField("locationCountry", e.target.value);
-                        setArchetypePreview(null);
-                      }}
-                      onBlur={() => void previewArchetypeForCountry()}
-                      placeholder="United States, Nigeria, Germany..."
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                    />
-                    {archetypePreview && (
-                      <p className="text-xs text-blue-600">Economy preview: {archetypePreview}</p>
-                    )}
-                    {form.locationCountry && !archetypePreview && (
-                      <p className="text-xs text-gray-500">Economy archetype resolves when you leave this field.</p>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">City <span className="text-gray-400 font-normal">(Optional)</span></label>
-                    <input
-                      value={form.locationCity}
-                      onChange={(e) => setField("locationCity", e.target.value)}
-                      placeholder="City or region"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Business Type <span className="text-red-500">*</span></label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(["online", "offline", "hybrid"] as const).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setField("businessType", type)}
-                          className={`rounded-xl border px-3 py-2 text-sm font-medium capitalize ${form.businessType === type ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Business Model <span className="text-red-500">*</span></label>
-                    <select
-                      value={form.businessModel}
-                      onChange={(e) => setField("businessModel", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                    >
-                      <option value="">Select model</option>
-                      {["SaaS", "Service", "Content", "Ecommerce", "Creator", "Consulting", "Local Business", "Agency", "Other"].map((model) => (
-                        <option key={model} value={model}>{model}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[1fr_120px] gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Budget Available <span className="text-red-500">*</span></label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={form.budgetAvailable}
-                      onChange={(e) => setField("budgetAvailable", e.target.value)}
-                      placeholder="2500"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Currency</label>
-                    <select
-                      value={form.currency}
-                      onChange={(e) => setField("currency", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                    >
-                      {["USD", "EUR", "GBP", "NGN", "INR", "BRL", "AED"].map((currency) => (
-                        <option key={currency} value={currency}>{currency}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Current Resources <span className="text-red-500">*</span></label>
-                  <div className="flex flex-wrap gap-2">
-                    {["Audience", "Team", "Equipment", "Skills", "Network", "Customers", "None yet"].map((resource) => (
-                      <button
-                        key={resource}
-                        type="button"
-                        onClick={() => toggleResource(resource)}
-                        className={`rounded-full border px-4 py-2 text-xs font-semibold ${form.currentResources.includes(resource) ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600"}`}
-                      >
-                        {resource}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Target Customer <span className="text-red-500">*</span></label>
-                    <input
-                      value={form.targetCustomer}
-                      onChange={(e) => setField("targetCustomer", e.target.value)}
-                      placeholder="Who specifically will pay for this?"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Desired Outcome <span className="text-red-500">*</span></label>
-                    <input
-                      value={form.desiredOutcome}
-                      onChange={(e) => setField("desiredOutcome", e.target.value)}
-                      placeholder="What does success look like in your timeframe?"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Current Situation</label>
-                  <textarea
-                    value={form.currentContext}
-                    onChange={(e) => setField("currentContext", e.target.value)}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none placeholder:text-gray-300"
-                    placeholder="e.g., Full-time role, building on the side…"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Available Resources</label>
-                    <input
-                      value={form.resources}
-                      onChange={(e) => setField("resources", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                      placeholder="e.g., Laptop, savings"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Experience Level</label>
-                    <select
-                      value={form.experience}
-                      onChange={(e) => setField("experience", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                    >
-                      <option value="">Select level</option>
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                      <option value="expert">Expert</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Known Blockers</label>
-                    <input
-                      value={form.knownBlockers}
-                      onChange={(e) => setField("knownBlockers", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-300"
-                      placeholder="e.g., Limited time"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Budget Range</label>
-                    <select
-                      value={form.budget}
-                      onChange={(e) => setField("budget", e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                    >
-                      <option value="">Select budget</option>
-                      <option value="$0">$0 — Bootstrap only</option>
-                      <option value="$0-$1000">$0 – $1,000</option>
-                      <option value="$1000-$5000">$1,000 – $5,000</option>
-                      <option value="$5000-$10000">$5,000 – $10,000</option>
-                      <option value="$10000+">$10,000+</option>
-                    </select>
-                  </div>
-                </div>
-              </>
-            )}
-
             {step === 6 && !goalStructured && (
               <OnboardingStructureStep
                 goal={form.primaryGoal}
                 purpose={form.purpose}
-                timeframe={form.timeframe}
-                commitmentLevel={form.commitmentLevel}
+                timeframe={timeframeForGoalApi(form)}
+                commitmentLevel={commitmentForGoalApi(form.commitmentLevel)}
                 domain={form.domain}
                 onStructured={(refined) => {
                   setField("primaryGoal", refined);
@@ -1223,7 +787,7 @@ export default function OnboardingPage() {
                             purpose: form.purpose,
                             targetCustomer: form.targetCustomer,
                             desiredOutcome: form.desiredOutcome,
-                            timeframe: form.timeframe,
+                            timeframe: timeframeForGoalApi(form),
                             commitmentLevel: form.commitmentLevel,
                             knownBlockers: form.knownBlockers,
                           },
@@ -1286,7 +850,7 @@ export default function OnboardingPage() {
                         goalSummary={{
                           goal: form.primaryGoal,
                           purpose: form.purpose,
-                          timeframe: form.timeframe,
+                          timeframe: timeframeForGoalApi(form),
                         }}
                       />
                     )}

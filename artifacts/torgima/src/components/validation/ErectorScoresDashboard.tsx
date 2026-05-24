@@ -157,19 +157,21 @@ export function buildErectorValidationReport(opts: {
     desiredOutcome?: string;
     timeframe?: string;
     commitmentLevel?: string;
-    knownBlockers?: string;
+    knownBlockers?: string[] | string;
   };
   selectedPath?: PathKey;
 }): ErectorValidationReport {
   const erector = opts.erector ?? {};
   const scores = (erector.scores ?? {}) as Record<string, number | string | undefined>;
   const archetype = (erector.archetypeResolution ?? {}) as Record<string, unknown>;
-  const blockersRaw = opts.form?.knownBlockers?.trim();
-  const knownBlockers = blockersRaw
-    ? blockersRaw.includes(",")
-      ? blockersRaw.split(",").map((s) => s.trim()).filter(Boolean)
-      : [blockersRaw]
-    : [];
+  const blockersRaw = opts.form?.knownBlockers;
+  const knownBlockers = Array.isArray(blockersRaw)
+    ? blockersRaw
+    : typeof blockersRaw === "string" && blockersRaw.trim()
+      ? blockersRaw.includes(",")
+        ? blockersRaw.split(",").map((s) => s.trim()).filter(Boolean)
+        : [blockersRaw.trim()]
+      : [];
   const reality = Number(scores.realityScore ?? erector.realityScore ?? NaN);
 
   return {
