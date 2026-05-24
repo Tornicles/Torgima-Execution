@@ -510,10 +510,13 @@ export class BlueprintEngine {
             why_it_matters: "Creates the first proof signal after validation.",
             time_estimate_minutes: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
             time_estimate_mins: tier === "starter" ? 30 : tier === "growth" ? 45 : 60,
-            proof_required: true,
-            proof_type: "text",
-            proof_description: "Submit the artifact or a concise written proof of completion.",
-            difficulty: tier === "starter" ? "easy" : tier === "growth" ? "moderate" : "hard",
+            proof_required: i === 0,
+            proof_type: i === 0 ? undefined : "text",
+            proof_description:
+              i === 0
+                ? undefined
+                : "Submit the artifact or a concise written proof of completion.",
+            difficulty: i === 0 ? "very_easy" : tier === "starter" ? "easy" : tier === "growth" ? "moderate" : "hard",
             priority: 10 - i,
             domain: resolvedDomain,
             condition_at_generation: CONDITIONS.NOTHINGNESS,

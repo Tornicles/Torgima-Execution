@@ -111,7 +111,43 @@ export async function guaranteeTask(params: {
 
   const mode = params.generationMode ?? "post_feedback";
 
+  const [{ totalOrderCount } = { totalOrderCount: 0 }] = await db
+    .select({ totalOrderCount: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(and(eq(orders.blueprint_id, blueprintId), eq(orders.user_id, userId)));
+
   const existingOrder = await findActionableOrder(blueprintId, userId);
+
+  if (!existingOrder && (totalOrderCount ?? 0) === 0) {
+    logger.info({ blueprintId }, "[Guarantee] No orders yet — forcing first-task generation");
+    try {
+      const first = await generate({
+        blueprintId,
+        userId,
+        generationMode: "initial",
+        generationTrigger: "blueprint_launched",
+        enforcementPackageId: params.enforcementPackageId,
+        causationEventId: params.causationEventId,
+      });
+      if (first.orders_generated > 0 && first.order_ids[0]) {
+        return applyDependencyPublicationGate({
+          blueprintId,
+          userId,
+          orderId: first.order_ids[0],
+          fallbackState: "PUBLISH_PRIMARY",
+        });
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          blueprintId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "[Guarantee] First-task generation failed — continuing fallbacks",
+      );
+    }
+  }
+
   if (existingOrder && (await shouldSatisfyExistingOrder(blueprintId, userId, existingOrder, mode))) {
     logger.info({ blueprintId, orderId: existingOrder }, "[Guarantee] SATISFIED — task already exists");
     return applyDependencyPublicationGate({
@@ -133,13 +169,19 @@ export async function guaranteeTask(params: {
   }
 
   const trigger = params.generationTrigger ?? "guarantee_check";
+  const forceInitial =
+    !existingOrder &&
+    (trigger === "blueprint_launch" ||
+      trigger === "blueprint_launched" ||
+      trigger === "cold_start" ||
+      mode === "initial");
 
   try {
     const result = await generate({
       blueprintId,
       userId,
-      generationMode: mode,
-      generationTrigger: trigger,
+      generationMode: forceInitial ? "initial" : mode,
+      generationTrigger: forceInitial ? "blueprint_launched" : trigger,
       enforcementPackageId: params.enforcementPackageId,
       causationEventId: params.causationEventId,
     });

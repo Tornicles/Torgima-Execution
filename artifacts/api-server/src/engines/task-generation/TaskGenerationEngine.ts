@@ -352,6 +352,8 @@ function normalizeGenerationTrigger(raw: string): (typeof taskGenerationLog.$inf
     guarantee_fallback: "recovery_triggered",
     enforcement_package_created: "feedback_submitted",
     inactivity_detected: "user_inactive",
+    blueprint_launch: "blueprint_launched",
+    blueprint_launched: "blueprint_launched",
     blueprint_resumed: "daily_cycle",
     resume: "daily_cycle",
     pivot_continue: "manual_regeneration",
@@ -1088,6 +1090,41 @@ function buildContentHash(title: string, instruction: string): string {
   return crypto.createHash("sha256").update(`${title}:${instruction}`).digest("hex").slice(0, 16);
 }
 
+/** Ensures required order text fields are non-empty before DB insert. */
+export function ensureTaskContentFields(
+  content: BuiltContent,
+  goal: string,
+  options?: { firstTask?: boolean },
+): BuiltContent {
+  const fallbackGoal = goal.trim() || "your validated goal";
+  const required: Array<keyof BuiltContent> = [
+    "title",
+    "instruction",
+    "expected_output",
+    "definition_of_done",
+    "why_it_matters",
+  ];
+
+  const next = { ...content };
+  for (const field of required) {
+    const raw = next[field];
+    if (typeof raw !== "string" || raw.trim() === "") {
+      const filled =
+        field === "title"
+          ? `Take the next step toward: ${fallbackGoal.slice(0, 80)}`
+          : `Complete this action for your goal: ${fallbackGoal}`;
+      (next as Record<string, unknown>)[field] = filled;
+      logger.warn({ field }, "[TaskGen] Field was empty — used fallback");
+    }
+  }
+
+  if (options?.firstTask) {
+    next.proof_required = false;
+  }
+
+  return next;
+}
+
 async function insertGenerationLog(params: {
   blueprintId: string;
   userId: string;
@@ -1474,6 +1511,21 @@ export async function generate(params: {
   });
 
   const domainGen = ctx.blueprint.current_domain ?? "delivery";
+
+  const isFirstBlueprintTask =
+    countActive === 0 &&
+    (genTrigNorm === "blueprint_launched" ||
+      params.generationTrigger === "blueprint_launch" ||
+      params.generationMode === "initial");
+
+  content = ensureTaskContentFields(content, ctx.blueprint.goal, {
+    firstTask: isFirstBlueprintTask,
+  });
+
+  if (isFirstBlueprintTask) {
+    difficulty = "very_easy";
+    content.proof_required = false;
+  }
 
   const orderId = await db.transaction(async (tx: Tx) => {
     const [order] = await tx

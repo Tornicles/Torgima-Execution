@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetDashboardStateQueryKey } from "@workspace/api-client-react";
+import { CurrentActionPanel } from "@/components/dashboard/CurrentActionPanel";
+import {
+  DashboardFeedbackForm,
+  GenerateFirstOrderButton,
+} from "@/components/dashboard/DashboardFeedbackForm";
+import { getDashboardUiState } from "@/lib/dashboard-types";
 import {
   ArrowUpRight,
   Calendar,
@@ -41,7 +49,11 @@ function isCompleted(status: string): boolean {
 
 export function MainDashboardView({ state }: { state: DashboardProjection }) {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [trendPoints, setTrendPoints] = useState<number[]>([]);
+  const [starting, setStarting] = useState(false);
+  const uiState = getDashboardUiState(state);
+  const currentAction = state.currentAction as Record<string, unknown> | null | undefined;
 
   const displayName =
     state.user?.displayName ?? state.user?.email?.split("@")[0] ?? "Builder";
@@ -103,6 +115,22 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
   const greeting =
     greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
+  const actionOrderId =
+    (currentAction?.orderId as string | undefined) ?? (currentAction?.id as string | undefined);
+  const blueprintId = state.activeBlueprint?.id;
+
+  async function handleStart() {
+    if (!actionOrderId) return;
+    setStarting(true);
+    try {
+      const { startOrder } = await import("@/lib/torgima-api");
+      await startOrder(actionOrderId);
+      await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
+    } finally {
+      setStarting(false);
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 bg-[#f9fafb] min-h-full">
       <header className="flex items-start justify-between gap-4 flex-wrap">
@@ -146,60 +174,98 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Today&apos;s Orders</h2>
-            <Link href="/orders" className="text-sm text-emerald-600 font-medium hover:underline">
-              View All Orders →
-            </Link>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="font-semibold text-gray-900">
-                {completedCount} / {orders.length || totalOrders} completed
-              </span>
-              <span className="text-gray-500">{ordersPct}%</span>
+        <div className="lg:col-span-2 space-y-6">
+          {(blueprint?.rawGoal ?? blueprint?.title) ? (
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Active goal</p>
+              <p className="text-sm font-medium text-gray-900">{blueprint?.rawGoal ?? blueprint?.title}</p>
             </div>
-            <ProgressBar value={ordersPct} />
-          </div>
-          <ul className="divide-y divide-gray-100">
-            {orders.length === 0 ? (
-              <li className="py-6 text-center text-sm text-gray-500">No orders scheduled for today.</li>
-            ) : (
-              orders.slice(0, 8).map((order) => {
-                const done = isCompleted(order.status);
-                return (
-                  <li key={order.id} className="flex items-center gap-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setLocation(done ? `/feedback/${order.id}` : `/tasks/${order.id}`)}
-                      className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-                        done ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"
-                      }`}
-                      aria-label={done ? "Submit feedback" : "Open order"}
-                    >
-                      {done && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${done ? "text-emerald-700 line-through" : "text-gray-900"}`}>
-                        {order.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderTag(order.type)}`}>
-                          {blueprint?.title ?? order.type}
-                        </span>
-                        {order.estimatedMinutes != null && (
-                          <span className="text-xs text-gray-400">{order.estimatedMinutes}m</span>
-                        )}
+          ) : null}
+
+          {currentAction && actionOrderId ? (
+            <div>
+              <CurrentActionPanel
+                uiState={uiState}
+                action={currentAction}
+                onStart={() => void handleStart()}
+                starting={starting}
+              />
+              <div className="rounded-b-2xl border border-t-0 border-gray-200 bg-white px-6 pb-6 shadow-sm -mt-2">
+                <DashboardFeedbackForm
+                  orderId={actionOrderId}
+                  blueprintId={blueprintId}
+                  onSubmitted={() =>
+                    void queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() })
+                  }
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+              <p className="text-gray-500 mb-2">Generating your first order…</p>
+              <p className="text-xs text-gray-400 mb-4">
+                If this persists after 60 seconds, request generation manually.
+              </p>
+              <GenerateFirstOrderButton blueprintId={blueprintId} />
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Today&apos;s Orders</h2>
+              <Link href="/orders" className="text-sm text-emerald-600 font-medium hover:underline">
+                View All Orders →
+              </Link>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold text-gray-900">
+                  {completedCount} / {orders.length || totalOrders} completed
+                </span>
+                <span className="text-gray-500">{ordersPct}%</span>
+              </div>
+              <ProgressBar value={ordersPct} />
+            </div>
+            <ul className="divide-y divide-gray-100">
+              {orders.length === 0 ? (
+                <li className="py-6 text-center text-sm text-gray-500">No orders scheduled for today.</li>
+              ) : (
+                orders.slice(0, 8).map((order) => {
+                  const done = isCompleted(order.status);
+                  return (
+                    <li key={order.id} className="flex items-center gap-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setLocation(done ? `/feedback/${order.id}` : `/tasks/${order.id}`)}
+                        className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                          done ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"
+                        }`}
+                        aria-label={done ? "Submit feedback" : "Open order"}
+                      >
+                        {done && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-medium truncate ${done ? "text-emerald-700 line-through" : "text-gray-900"}`}
+                        >
+                          {order.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderTag(order.type)}`}
+                          >
+                            {blueprint?.title ?? order.type}
+                          </span>
+                          {order.estimatedMinutes != null && (
+                            <span className="text-xs text-gray-400">{order.estimatedMinutes}m</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-          <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">
-            Submit feedback for completed tasks. Help the system adjust to your reality.
+                    </li>
+                  );
+                })
+              )}
+            </ul>
           </div>
         </div>
 

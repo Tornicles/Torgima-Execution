@@ -36,6 +36,7 @@ import mobileRouter from "./mobile.js";
 import analyticsRouter from "./analytics.js";
 import integrationsRouter from "./integrations.js";
 import profilesRouter from "./profiles.js";
+import debugRouter from "./debug.js";
 
 const router = Router();
 
@@ -76,5 +77,6 @@ router.use(mobileRouter);
 router.use(analyticsRouter);
 router.use(integrationsRouter);
 router.use(profilesRouter);
+router.use(debugRouter);
 
 export default router;

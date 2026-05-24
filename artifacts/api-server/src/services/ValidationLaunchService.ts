@@ -4,6 +4,9 @@ import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchSe
 import { BlueprintService } from "./BlueprintService.js";
 import { ValidationService } from "./ValidationService.js";
 import type { Blueprint } from "../types/blueprint.js";
+import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
+import { dispatchPendingEvents } from "./EventDispatcher.js";
+import { writeEvent, EVENT_TYPES } from "./EventService.js";
 
 export type SelectedDirection = {
   path?: LaunchPathType;
@@ -135,6 +138,37 @@ export const ValidationLaunchService = {
     }
 
     const blueprint = await BlueprintService.get(row.blueprint_id, input.userId);
+
+    await writeEvent({
+      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+      entityType: "blueprint",
+      entityId: row.blueprint_id,
+      userId: input.userId,
+      blueprintId: row.blueprint_id,
+      payload: {
+        trigger: "blueprint_launch",
+        force: true,
+        generation_mode: "initial",
+      },
+      idempotencyKey: `task_gen_launch:${row.blueprint_id}`,
+    }).catch(() => null);
+
+    const ensured = await ensureActiveOrder(input.userId);
+    logger.info(
+      {
+        blueprintId: row.blueprint_id,
+        orderId: ensured.orderId,
+        taskTypeGenerated: ensured.taskTypeGenerated,
+      },
+      "[BlueprintLaunch] Task generation job queued / order ensured after launch",
+    );
+
+    await dispatchPendingEvents().catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "[BlueprintLaunch] Event dispatch after launch failed (non-fatal)",
+      );
+    });
 
     logger.info(
       {
