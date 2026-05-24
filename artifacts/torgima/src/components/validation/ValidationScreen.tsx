@@ -36,6 +36,7 @@ export function ValidationScreen({
   onLaunch,
   launching,
   goalSummary,
+  hideErectorDashboard,
 }: {
   data: ValidationScreenData;
   tier?: TierId | null;
@@ -44,6 +45,8 @@ export function ValidationScreen({
   onLaunch?: () => void;
   launching?: boolean;
   goalSummary?: { goal: string; purpose?: string; timeframe?: string };
+  /** When true, skip embedded scores dashboard (e.g. onboarding shows full Erector report). */
+  hideErectorDashboard?: boolean;
 }) {
   const reasoning =
     data.intelligence?.verdictReasoning ??
@@ -71,7 +74,7 @@ export function ValidationScreen({
 
       <IntelligenceStatusBar progress={data.systemsProgress} />
 
-      {erectorScores && (
+      {erectorScores && !hideErectorDashboard && (
         <ErectorScoresDashboard
           scores={erectorScores}
           realityScore={Number(erectorScores.realityScore ?? erector?.["realityScore"] ?? NaN) || undefined}

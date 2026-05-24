@@ -7,7 +7,10 @@ import {
   type TierId,
 } from "@/components/blueprint/BlueprintSelectionPanel";
 import { ValidationScreen, type ValidationScreenData } from "@/components/validation/ValidationScreen";
-import { ErectorScoresDashboard } from "@/components/validation/ErectorScoresDashboard";
+import {
+  buildErectorValidationReport,
+  ErectorScoresDashboard,
+} from "@/components/validation/ErectorScoresDashboard";
 import { FirstWeekPlanPanel } from "@/components/validation/FirstWeekPlanPanel";
 import type { PathKey } from "@/components/validation/PathPanels";
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
@@ -1207,25 +1210,26 @@ export default function OnboardingPage() {
 
                     {erectorPhase === "scores" && validation.intelligence?.["erector"] && (
                       <ErectorScoresDashboard
-                        scores={
-                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
-                            string,
-                            number | string | undefined
-                          >) ?? {}
-                        }
-                        realityScore={Number(
-                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
-                            string,
-                            unknown
-                          > | undefined)?.["realityScore"] ?? NaN,
-                        )}
-                        verdict={String(validation.verdict ?? "")}
-                        recommendedBlueprintLevel={String(
-                          ((validation.intelligence["erector"] as Record<string, unknown>)["scores"] as Record<
-                            string,
-                            unknown
-                          > | undefined)?.["recommendedBlueprintLevel"] ?? "",
-                        )}
+                        report={buildErectorValidationReport({
+                          erector: validation.intelligence["erector"] as Record<string, unknown>,
+                          validation: {
+                            validationId: validation.validationId ?? validation.erectorValidationId,
+                            blueprintId: validation.blueprintId,
+                            verdict: validation.verdict,
+                            paths: validation.paths,
+                          },
+                          form: {
+                            primaryGoal: form.primaryGoal,
+                            purpose: form.purpose,
+                            targetCustomer: form.targetCustomer,
+                            desiredOutcome: form.desiredOutcome,
+                            timeframe: form.timeframe,
+                            commitmentLevel: form.commitmentLevel,
+                            knownBlockers: form.knownBlockers,
+                          },
+                          selectedPath,
+                        })}
+                        onLaunch={() => setErectorPhase("paths")}
                       />
                     )}
 
@@ -1267,16 +1271,17 @@ export default function OnboardingPage() {
                       />
                     )}
 
-                    {(erectorPhase === "scores" || erectorPhase === "paths") && (
+                    {erectorPhase === "paths" && (
                       <ValidationScreen
                         data={validation}
                         tier={selectedTier}
                         selectedPath={selectedPath}
+                        hideErectorDashboard
                         onSelectPath={(p: PathKey) => {
                           setSelectedPath(p);
                           setPathConfirmed(false);
                         }}
-                        onLaunch={erectorPhase === "paths" && pathConfirmed ? () => setErectorPhase("blueprint") : undefined}
+                        onLaunch={pathConfirmed ? () => setErectorPhase("blueprint") : undefined}
                         launching={loading}
                         goalSummary={{
                           goal: form.primaryGoal,

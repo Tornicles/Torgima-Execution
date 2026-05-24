@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { apiFetch } from "@/lib/api-base";
-import { apiGet } from "@/lib/torgima-api";
+import { apiFetchEnvelope } from "@/lib/torgima-api";
 import { ValidationLayout } from "@/components/validation/ValidationLayout";
-import { ErectorScoresDashboard } from "@/components/validation/ErectorScoresDashboard";
+import {
+  ErectorScoresDashboard,
+  type ErectorValidationReport,
+} from "@/components/validation/ErectorScoresDashboard";
 
 type ActiveDraft = {
   blueprintId: string;
@@ -13,45 +15,44 @@ type ActiveDraft = {
 
 function ValidationScoresContent() {
   const [, setLocation] = useLocation();
-  const [scores, setScores] = useState<Record<string, number | string | undefined> | null>(null);
-  const [realityScore, setRealityScore] = useState<number | undefined>();
-  const [verdict, setVerdict] = useState("");
+  const [report, setReport] = useState<ErectorValidationReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void apiGet<ActiveDraft | null>("/api/v1/validation/active-draft")
-      .then(async (draft) => {
-        const validationId = draft?.erectorValidationId ?? draft?.validationId;
-        if (!validationId) {
-          setLocation("/onboarding/goal");
-          return;
-        }
-        const res = await apiFetch(`/api/v1/validation/${validationId}/scores`);
-        const json = (await res.json()) as {
-          ok?: boolean;
-          data?: {
-            scores?: Record<string, number | string | undefined>;
-            realityScore?: number;
-            verdict?: string;
-          };
-        };
-        if (json.ok && json.data?.scores) {
-          setScores(json.data.scores);
-          setRealityScore(json.data.realityScore);
-          setVerdict(String(json.data.verdict ?? ""));
-        }
-      })
-      .finally(() => setLoading(false));
+    void (async () => {
+      const draftEnvelope = await apiFetchEnvelope<ActiveDraft | null>("/api/v1/validation/active-draft");
+      const validationId =
+        draftEnvelope.data?.erectorValidationId ?? draftEnvelope.data?.validationId;
+      if (!validationId) {
+        setLocation("/onboarding");
+        return;
+      }
+      const detailEnvelope = await apiFetchEnvelope<ErectorValidationReport>(
+        `/api/v1/validation/${validationId}`,
+      );
+      console.log("[ERECTOR_DASHBOARD_LOAD]", {
+        ok: detailEnvelope.ok,
+        validationId,
+        data: detailEnvelope.data,
+      });
+      if (detailEnvelope.ok && detailEnvelope.data) {
+        setReport({
+          ...detailEnvelope.data,
+          validationId,
+          blueprintId: detailEnvelope.data.blueprintId ?? draftEnvelope.data?.blueprintId,
+        });
+      }
+    })().finally(() => setLoading(false));
   }, [setLocation]);
 
   if (loading) {
-    return <p className="p-8 text-sm text-gray-500">Loading scores…</p>;
+    return <p className="p-8 text-sm text-gray-500">Loading validation report…</p>;
   }
 
-  if (!scores) {
+  if (!report?.scores) {
     return (
       <div className="p-8 space-y-3">
-        <p className="text-sm text-gray-600">Validation scores are not ready yet.</p>
+        <p className="text-sm text-gray-600">Validation report is not ready yet.</p>
         <button
           type="button"
           className="text-sm font-semibold text-gray-900 underline"
@@ -64,12 +65,11 @@ function ValidationScoresContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 lg:p-10 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-100 p-4 lg:p-8 max-w-6xl mx-auto">
       <ErectorScoresDashboard
-        scores={scores}
-        realityScore={realityScore}
-        verdict={verdict}
-        recommendedBlueprintLevel={String(scores.recommendedBlueprintLevel ?? "")}
+        report={report}
+        onLaunch={() => setLocation("/onboarding")}
+        onDownload={() => window.print()}
       />
     </div>
   );
