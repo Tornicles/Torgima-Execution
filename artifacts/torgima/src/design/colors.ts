@@ -14,9 +14,10 @@ export const colors = {
 } as const;
 
 export const colorValues = {
-  primary: "#16a34a",
-  primaryHover: "#15803d",
-  pageBg: "#f9fafb",
+  primary: "#1a8c3a",
+  primaryHover: "#157a33",
+  primaryLight: "#f0faf3",
+  pageBg: "#ffffff",
   cardBg: "#ffffff",
   border: "#e5e7eb",
   text: "#111827",

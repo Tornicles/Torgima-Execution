@@ -91,6 +91,12 @@ export function OrdersDashboardView() {
             )}
           </div>
           <div className={cards.padded}>
+            <p className="text-xs font-bold uppercase text-gray-500 mb-3">Knowledge</p>
+            <Link href="/knowledge" className="text-xs text-[var(--torgima-primary)] font-medium">
+              View All Knowledge →
+            </Link>
+          </div>
+          <div className={cards.padded}>
             <p className="text-xs font-bold uppercase text-gray-500 mb-3">Condition Guidance</p>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div>
@@ -160,20 +166,48 @@ export function OrdersDashboardView() {
                         )}
                       </div>
                       {expanded && (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setLocation(`/tasks/${order.id}`)}
-                            className="inline-flex items-center gap-1 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-lg"
-                          >
-                            <Play className="w-4 h-4" /> Start
-                          </button>
-                          <Link href={`/feedback/${order.id}`}>
-                            <span className="inline-block border border-gray-200 bg-white text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
-                              Complete
-                            </span>
-                          </Link>
-                        </div>
+                        <>
+                          <div className="mt-4 grid md:grid-cols-3 gap-4 text-xs">
+                            <div>
+                              <p className="font-bold uppercase text-gray-400 mb-1">Instruction</p>
+                              <p className="text-gray-700">
+                                {order.instructions ?? order.description ?? "Execute this order with focus and proof."}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-bold uppercase text-gray-400 mb-1">Output Required</p>
+                              <p className="text-gray-700">
+                                {(order as { expectedOutput?: string }).expectedOutput ?? "Deliverable that proves completion."}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-bold uppercase text-gray-400 mb-1">Why This Matters</p>
+                              <p className="text-gray-700">
+                                {(order as { whyThisMatters?: string }).whyThisMatters ?? "Moves your blueprint forward with measurable progress."}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setLocation(`/tasks/${order.id}`)}
+                              className="inline-flex items-center gap-1 bg-[var(--torgima-primary)] text-white text-sm font-semibold px-4 py-2 rounded-lg"
+                            >
+                              <Play className="w-4 h-4" /> Start
+                            </button>
+                            <Link href={`/feedback/${order.id}`}>
+                              <span className="inline-block border border-gray-200 bg-white text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer">
+                                Complete
+                              </span>
+                            </Link>
+                            <button
+                              type="button"
+                              className="inline-block border border-gray-200 bg-white text-sm font-semibold px-4 py-2 rounded-lg text-gray-600"
+                            >
+                              Skip
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                     {!expanded && <ChevronRight className="w-4 h-4 text-gray-300" />}

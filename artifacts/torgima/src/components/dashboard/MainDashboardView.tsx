@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
-import { getGetDashboardStateQueryKey } from "@workspace/api-client-react";
-import { CurrentActionPanel } from "@/components/dashboard/CurrentActionPanel";
-import {
-  DashboardFeedbackForm,
-  GenerateFirstOrderButton,
-} from "@/components/dashboard/DashboardFeedbackForm";
-import { getDashboardUiState } from "@/lib/dashboard-types";
 import {
   ArrowUpRight,
   Calendar,
@@ -16,15 +8,19 @@ import {
   ClipboardList,
   MessageSquare,
   Shield,
+  Star,
   Target,
   TrendingUp,
 } from "lucide-react";
+import { getDashboardUiState } from "@/lib/dashboard-types";
 import type { DashboardProjection } from "@/lib/dashboard-types";
 import type { Order } from "@workspace/api-client-react";
 import { StatCard } from "@/components/design-system/StatCard";
 import { ProgressBar } from "@/components/design-system/ProgressBar";
 import { TrendChart } from "@/components/design-system/TrendChart";
+import { PageHeaderActions } from "@/components/design-system/PageHeaderActions";
 import { getSignalHistory } from "@/lib/torgima-api";
+import { buttons } from "@/design";
 
 const TAG_COLORS: Record<string, string> = {
   default: "bg-gray-100 text-gray-700",
@@ -49,14 +45,9 @@ function isCompleted(status: string): boolean {
 
 export function MainDashboardView({ state }: { state: DashboardProjection }) {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const [trendPoints, setTrendPoints] = useState<number[]>([]);
-  const [starting, setStarting] = useState(false);
   const uiState = getDashboardUiState(state);
-  const currentAction = state.currentAction as Record<string, unknown> | null | undefined;
-
-  const displayName =
-    state.user?.displayName ?? state.user?.email?.split("@")[0] ?? "Builder";
+  const displayName = state.user?.displayName ?? state.user?.email?.split("@")[0] ?? "Builder";
   const blueprint = state.activeBlueprint;
   const signals = state.signals;
   const signalExtra = (state.signalProjection ?? {}) as Record<string, unknown>;
@@ -76,32 +67,35 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
   const streak = state.streakDays ?? signals?.streak ?? 0;
 
   const orders = (state.activeOrders ?? []) as Order[];
-  const completedCount = orders.filter((o) => isCompleted(o.status)).length;
-  const totalOrders = Math.max(orders.length, completedCount, 1);
-  const ordersPct = Math.round((completedCount / totalOrders) * 100);
+  const pendingOrders = orders.filter((o) => !isCompleted(o.status));
+  const completedOrders = orders.filter((o) => isCompleted(o.status));
+  const displayOrders = [...pendingOrders, ...completedOrders].slice(0, 6);
+  const completedCount = completedOrders.length;
+  const totalOrders = orders.length;
+  const ordersPct = totalOrders ? Math.round((completedCount / totalOrders) * 100) : 0;
 
   const journeyDay = useMemo(() => {
     if (!blueprint?.activatedAt) return blueprint?.phase ?? 1;
     const start = new Date(blueprint.activatedAt).getTime();
-    const days = Math.floor((Date.now() - start) / (1000 * 60 * 60 * 24)) + 1;
-    return Math.max(1, days);
+    return Math.max(1, Math.floor((Date.now() - start) / (1000 * 60 * 60 * 24)) + 1);
   }, [blueprint]);
 
-  const phaseLabel = blueprint ? `Phase ${blueprint.phase}${blueprint.totalPhases ? ` of ${blueprint.totalPhases}` : ""}` : "—";
+  const phaseLabel = blueprint
+    ? `Phase ${blueprint.phase}${blueprint.totalPhases ? ` of ${blueprint.totalPhases}` : ""}`
+    : "—";
   const overallProgress = Math.min(
     100,
-    Math.round(((blueprint?.phase ?? 1) / (blueprint?.totalPhases ?? 4)) * 100) || 26,
+    Math.round(((blueprint?.phase ?? 1) / (blueprint?.totalPhases ?? 4)) * 100),
   );
 
   useEffect(() => {
     void getSignalHistory()
       .then((hist) => {
         const snaps =
-          (hist as { snapshots?: Array<{ completionRate?: number; weightedScore?: number }> })?.snapshots ??
+          (hist as { snapshots?: Array<{ completionRate?: number }> })?.snapshots ??
           (Array.isArray(hist) ? hist : []);
         const pts = snaps.slice(-7).map((s) => {
-          const row = s as { completionRate?: number; weightedScore?: number };
-          const cr = row.completionRate ?? 0;
+          const cr = (s as { completionRate?: number }).completionRate ?? 0;
           return cr <= 1 ? cr * 100 : cr;
         });
         setTrendPoints(pts.length ? pts : [completionRate]);
@@ -110,36 +104,37 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
   }, [completionRate]);
 
   const trendLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"].slice(-trendPoints.length);
-
   const greetingHour = new Date().getHours();
   const greeting =
     greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
-  const actionOrderId =
-    (currentAction?.orderId as string | undefined) ?? (currentAction?.id as string | undefined);
-  const blueprintId = state.activeBlueprint?.id;
+  const blueprintHref = blueprint?.id ? `/blueprint/${blueprint.id}` : "/blueprint";
 
-  async function handleStart() {
-    if (!actionOrderId) return;
-    setStarting(true);
-    try {
-      const { startOrder } = await import("@/lib/torgima-api");
-      await startOrder(actionOrderId);
-      await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
-    } finally {
-      setStarting(false);
-    }
+  if (uiState === "NO_BLUEPRINT") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+        <Target className="w-12 h-12 text-[var(--torgima-primary)] mb-4" />
+        <h2 className="text-xl font-bold text-gray-900">Start your execution journey.</h2>
+        <p className="text-sm text-gray-500 mt-2 max-w-md">
+          Validate your goal to create your blueprint and receive today&apos;s orders.
+        </p>
+        <button type="button" onClick={() => setLocation("/validate")} className={`mt-6 ${buttons.primary}`}>
+          Get Started →
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 bg-[#f9fafb] min-h-full">
-      <header className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 min-h-full">
+      <header className="flex items-start justify-between gap-4 flex-wrap border-b border-gray-100 pb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             {greeting}, {displayName}.
           </h1>
           <p className="text-sm text-gray-500 mt-1">Day {journeyDay} of your execution journey.</p>
         </div>
+        <PageHeaderActions />
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -147,188 +142,220 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
           label="Condition"
           value={conditionLabel}
           sub="You're in a productive state."
-          accentClass="text-emerald-600"
-          icon={<Shield className="w-5 h-5 text-emerald-500" />}
+          accentClass="text-[var(--torgima-primary)]"
+          icon={<Shield className="w-5 h-5 text-[var(--torgima-primary)]" />}
         />
         <StatCard
           label="Day"
           value={String(journeyDay)}
-          sub="of your journey."
+          sub="of your journey"
           accentClass="text-gray-900"
           icon={<Calendar className="w-5 h-5 text-gray-400" />}
         />
         <StatCard
           label="Week Rate"
           value={`${completionRate}%`}
-          sub={<span className="text-emerald-600">↑ vs last week</span>}
-          accentClass="text-emerald-600"
-          icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
+          sub={<span className="text-[var(--torgima-primary)]">+ vs last week</span>}
+          accentClass="text-[var(--torgima-primary)]"
+          icon={<TrendingUp className="w-5 h-5 text-[var(--torgima-primary)]" />}
         />
         <StatCard
           label="Momentum"
           value={`${momentum >= 0 ? "+" : ""}${momentum}%`}
-          sub={<span className="text-emerald-600">↑ Improving</span>}
-          accentClass="text-emerald-600"
-          icon={<Target className="w-5 h-5 text-emerald-500" />}
+          sub={<span className="text-[var(--torgima-primary)]">{momentum >= 0 ? "Improving" : "Declining"}</span>}
+          accentClass="text-[var(--torgima-primary)]"
+          icon={<ArrowUpRight className="w-5 h-5 text-[var(--torgima-primary)]" />}
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {(blueprint?.rawGoal ?? blueprint?.title) ? (
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Active goal</p>
-              <p className="text-sm font-medium text-gray-900">{blueprint?.rawGoal ?? blueprint?.title}</p>
-            </div>
-          ) : null}
-
-          {currentAction && actionOrderId ? (
-            <div>
-              <CurrentActionPanel
-                uiState={uiState}
-                action={currentAction}
-                onStart={() => void handleStart()}
-                starting={starting}
-              />
-              <div className="rounded-b-2xl border border-t-0 border-gray-200 bg-white px-6 pb-6 shadow-sm -mt-2">
-                <DashboardFeedbackForm
-                  orderId={actionOrderId}
-                  blueprintId={blueprintId}
-                  onSubmitted={() =>
-                    void queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() })
-                  }
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
-              <p className="text-gray-500 mb-2">Generating your first order…</p>
-              <p className="text-xs text-gray-400 mb-4">
-                If this persists after 60 seconds, request generation manually.
-              </p>
-              <GenerateFirstOrderButton blueprintId={blueprintId} />
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Today&apos;s Orders</h2>
-              <Link href="/orders" className="text-sm text-emerald-600 font-medium hover:underline">
-                View All Orders →
-              </Link>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-semibold text-gray-900">
-                  {completedCount} / {orders.length || totalOrders} completed
-                </span>
-                <span className="text-gray-500">{ordersPct}%</span>
-              </div>
-              <ProgressBar value={ordersPct} />
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {orders.length === 0 ? (
-                <li className="py-6 text-center text-sm text-gray-500">No orders scheduled for today.</li>
-              ) : (
-                orders.slice(0, 8).map((order) => {
-                  const done = isCompleted(order.status);
-                  return (
-                    <li key={order.id} className="flex items-center gap-3 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setLocation(done ? `/feedback/${order.id}` : `/tasks/${order.id}`)}
-                        className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-                          done ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"
-                        }`}
-                        aria-label={done ? "Submit feedback" : "Open order"}
-                      >
-                        {done && <CheckCircle2 className="w-3.5 h-3.5" />}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-sm font-medium truncate ${done ? "text-emerald-700 line-through" : "text-gray-900"}`}
-                        >
-                          {order.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderTag(order.type)}`}
-                          >
-                            {blueprint?.title ?? order.type}
-                          </span>
-                          {order.estimatedMinutes != null && (
-                            <span className="text-xs text-gray-400">{order.estimatedMinutes}m</span>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })
-              )}
-            </ul>
+      <div className="grid lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 rounded-lg border border-gray-200 bg-white p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Today&apos;s Orders</h2>
+            <Link href="/orders" className="text-sm text-[var(--torgima-primary)] font-medium hover:underline">
+              View All Orders →
+            </Link>
           </div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="font-semibold text-gray-900">
+              {completedCount} / {totalOrders || "—"} completed
+            </span>
+            <span className="text-gray-500">{ordersPct}%</span>
+          </div>
+          <ProgressBar value={ordersPct} className="mb-4" />
+          <ul className="divide-y divide-gray-100">
+            {displayOrders.length === 0 ? (
+              <li className="py-8 text-center text-sm text-gray-500">
+                No orders for today. Orders will appear once your blueprint is active.
+              </li>
+            ) : (
+              displayOrders.map((order) => {
+                const done = isCompleted(order.status);
+                return (
+                  <li key={order.id} className="flex items-center gap-3 py-3 group">
+                    <span
+                      className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                        done ? "bg-[var(--torgima-primary)] border-[var(--torgima-primary)] text-white" : "border-gray-300"
+                      }`}
+                    >
+                      {done && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${done ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                        {order.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderTag(order.type)}`}>
+                          {blueprint?.title ?? order.type}
+                        </span>
+                        {order.estimatedMinutes != null && (
+                          <span className="text-xs text-gray-400">{order.estimatedMinutes}m</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLocation(done ? `/feedback/${order.id}` : `/tasks/${order.id}`)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500"
+                      aria-label="Open order"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          {completedCount > 0 && (
+            <Link href="/feedback">
+              <div className="mt-4 flex items-center justify-between gap-2 rounded-lg bg-[var(--torgima-primary-light)] border border-green-100 px-4 py-3 cursor-pointer hover:bg-green-50">
+                <p className="text-sm text-gray-700">
+                  Submit feedback for completed tasks. Help the system adjust to your reality.
+                </p>
+                <ChevronRight className="w-4 h-4 text-[var(--torgima-primary)] shrink-0" />
+              </div>
+            </Link>
+          )}
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
             <p className="text-xs font-bold uppercase text-gray-500 mb-3">Current Condition</p>
-            <Shield className="w-10 h-10 text-emerald-500 mb-2" />
-            <p className="text-lg font-bold text-emerald-600 uppercase">{conditionLabel}</p>
+            <Shield className="w-10 h-10 text-[var(--torgima-primary)] mb-2" />
+            <p className="text-xl font-bold text-[var(--torgima-primary)] uppercase">{conditionLabel}</p>
             <p className="text-sm text-gray-500 mt-1">You&apos;re in a productive state. Maintain consistency.</p>
             <button
               type="button"
               onClick={() => setLocation("/signals")}
-              className="mt-4 text-sm text-gray-600 hover:text-emerald-600 flex items-center gap-1"
+              className="mt-3 text-sm text-gray-600 hover:text-[var(--torgima-primary)] flex items-center gap-1"
             >
               View Details <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
             <p className="text-xs font-bold uppercase text-gray-500">Key Metrics</p>
             {[
-              { label: "Completion Rate", value: `${completionRate}%`, color: "text-emerald-600" },
-              { label: "Daily Score", value: `${dailyScore}/10`, color: "text-gray-900" },
-              { label: "Momentum", value: `${momentum >= 0 ? "+" : ""}${momentum}%`, color: "text-emerald-600" },
-              { label: "Current Streak", value: `${streak} days`, color: "text-orange-500" },
+              { label: "Completion Rate", value: `${completionRate}%`, icon: CheckCircle2, color: "text-[var(--torgima-primary)]" },
+              { label: "Daily Score", value: `${dailyScore}/10`, icon: Star, color: "text-gray-900" },
+              { label: "Momentum", value: `${momentum >= 0 ? "+" : ""}${momentum}%`, icon: TrendingUp, color: "text-[var(--torgima-primary)]" },
+              { label: "Current Streak", value: `${streak} days`, icon: Target, color: "text-orange-500" },
             ].map((m) => (
-              <div key={m.label} className="flex justify-between text-sm">
-                <span className="text-gray-600">{m.label}</span>
+              <div key={m.label} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-gray-600">
+                  <m.icon className="w-4 h-4 text-gray-400" />
+                  {m.label}
+                </span>
                 <span className={`font-bold ${m.color}`}>{m.value}</span>
               </div>
             ))}
             <button
               type="button"
               onClick={() => setLocation("/signals")}
-              className="text-sm text-emerald-600 font-medium pt-1"
+              className="text-sm text-[var(--torgima-primary)] font-medium"
             >
               View Signals →
             </button>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold uppercase text-gray-500">7-Day Trend</p>
+              <button
+                type="button"
+                onClick={() => setLocation("/signals")}
+                className="text-xs text-[var(--torgima-primary)] font-medium"
+              >
+                View Full Signals →
+              </button>
+            </div>
+            <TrendChart points={trendPoints} labels={trendLabels} height={100} />
+            <p className="text-sm text-gray-700 mt-3 font-medium">
+              You&apos;re trending in the right direction. Keep building.
+            </p>
           </div>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">7-Day Trend</h2>
-            <button type="button" onClick={() => setLocation("/signals")} className="text-sm text-emerald-600 font-medium">
-              View Full Signals →
-            </button>
+        <div className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Active Blueprint</h2>
+            <Link href={blueprintHref} className="text-sm text-[var(--torgima-primary)] font-medium">
+              View Blueprint →
+            </Link>
           </div>
-          <TrendChart points={trendPoints} labels={trendLabels} />
-          <p className="text-sm text-emerald-700 mt-4 font-medium">
-            You&apos;re trending in the right direction. Keep building.
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-lg font-bold text-gray-900">{blueprint?.title ?? "Blueprint"}</h3>
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[var(--torgima-primary-light)] text-[var(--torgima-primary)]">
+              Active
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mb-1">Overall Progress</p>
+          <ProgressBar value={overallProgress} />
+          <p className="text-right text-sm font-semibold text-[var(--torgima-primary)] mt-1">{overallProgress}%</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-sm">
+            <div>
+              <p className="text-gray-500 text-xs">Current Plan</p>
+              <p className="font-semibold text-gray-900 mt-0.5">{blueprint?.domain ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Current Phase</p>
+              <p className="font-semibold text-gray-900 mt-0.5">{phaseLabel}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Projects</p>
+              <p className="font-semibold text-gray-900 mt-0.5">
+                {blueprint?.completedProjects ?? completedCount} / {blueprint?.totalProjects ?? totalOrders || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Journey</p>
+              <p className="font-semibold text-gray-900 mt-0.5">Day {journeyDay}</p>
+            </div>
+          </div>
         </div>
+
         <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs text-gray-500 font-medium">Next Up</p>
-            <p className="text-sm font-semibold text-gray-900 mt-2">
-              Tomorrow: {Math.max(1, orders.length - completedCount)} tasks scheduled
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Focus: Complete high-impact tasks.</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-xs font-bold uppercase text-gray-500 mb-3">Next Up</p>
+            <div className="flex items-start gap-2 mb-3">
+              <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Tomorrow: {Math.max(0, pendingOrders.length)} tasks scheduled
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Target className="w-4 h-4 text-gray-400 mt-0.5" />
+              <Link href="/orders" className="text-sm text-gray-700 hover:text-[var(--torgima-primary)]">
+                Focus: Complete high-impact tasks
+              </Link>
+            </div>
           </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-1">
             <p className="text-xs font-bold uppercase text-gray-500 mb-2">Quick Actions</p>
             {[
               { label: "View Orders", href: "/orders", icon: ClipboardList },
@@ -336,51 +363,13 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
               { label: "Strategy Review", href: "/strategy", icon: ArrowUpRight },
             ].map((a) => (
               <Link key={a.href} href={a.href}>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700 cursor-pointer">
+                <div className="flex items-center gap-2 px-2 py-2.5 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700 cursor-pointer">
                   <a.icon className="w-4 h-4 text-gray-400" />
                   {a.label}
                   <ChevronRight className="w-4 h-4 ml-auto text-gray-300" />
                 </div>
               </Link>
             ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Active Blueprint</h2>
-          <Link href="/blueprint" className="text-sm text-emerald-600 font-medium">
-            View Blueprint →
-          </Link>
-        </div>
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-bold text-gray-900">{blueprint?.title ?? "Blueprint"}</h3>
-          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-            Active
-          </span>
-        </div>
-        <p className="text-sm text-gray-500 mb-2">Overall Progress</p>
-        <ProgressBar value={overallProgress} />
-        <p className="text-right text-sm font-semibold text-emerald-600 mt-1">{overallProgress}%</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 text-sm">
-          <div>
-            <p className="text-gray-500 text-xs">Current Plan</p>
-            <p className="font-semibold text-gray-900 mt-0.5">{blueprint?.domain ?? "MVP Foundation"}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-xs">Current Phase</p>
-            <p className="font-semibold text-gray-900 mt-0.5">{phaseLabel}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-xs">Projects</p>
-            <p className="font-semibold text-gray-900 mt-0.5">
-              {completedCount}/{orders.length || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 text-xs">Journey</p>
-            <p className="font-semibold text-gray-900 mt-0.5">Day {journeyDay}</p>
           </div>
         </div>
       </div>

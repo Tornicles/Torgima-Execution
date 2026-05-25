@@ -1,23 +1,12 @@
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
 import { MainDashboardView } from "@/components/dashboard/MainDashboardView";
-import { toDashboardProjection, getDashboardUiState } from "@/lib/dashboard-types";
-import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { toDashboardProjection } from "@/lib/dashboard-types";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 
 export default function Dashboard() {
   const { checking } = useAppRouteGuard("post-launch");
   const { data, isLoading, isError, refetch } = useDashboardProjection();
-  const [, setLocation] = useLocation();
-
   const projection = data ? toDashboardProjection(data) : null;
-  const uiState = getDashboardUiState(projection);
-
-  useEffect(() => {
-    if (!checking && uiState === "NO_BLUEPRINT") {
-      setLocation("/validate");
-    }
-  }, [checking, uiState, setLocation]);
 
   if (checking || (isLoading && !data)) {
     return (
@@ -43,9 +32,11 @@ export default function Dashboard() {
     );
   }
 
-  if (!projection || uiState === "NO_BLUEPRINT") {
+  if (!projection) {
     return (
-      <div className="p-8 text-center text-sm text-gray-500">Redirecting to validation…</div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+        <p className="text-gray-500 text-sm">Loading execution state…</p>
+      </div>
     );
   }
 

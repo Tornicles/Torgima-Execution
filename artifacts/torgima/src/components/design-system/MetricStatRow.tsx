@@ -10,12 +10,14 @@ export function MetricStatCard({
   value,
   sub,
   icon,
+  footer,
   valueClassName = "text-gray-900",
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
   icon?: ReactNode;
+  footer?: ReactNode;
   valueClassName?: string;
 }) {
   return (
@@ -26,6 +28,7 @@ export function MetricStatCard({
       </div>
       <p className={`mt-2 text-2xl font-bold ${valueClassName}`}>{value}</p>
       {sub && <div className="mt-1 text-xs text-gray-500">{sub}</div>}
+      {footer}
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import { spacing } from "@/design";
+import { PageHeaderActions } from "@/components/design-system/PageHeaderActions";
 
 export function DashboardPageLayout({
   title,
   subtitle,
   headerRight,
+  showHeaderActions = true,
   stats,
   children,
   rightRail,
@@ -14,14 +16,15 @@ export function DashboardPageLayout({
   title: string;
   subtitle?: string;
   headerRight?: ReactNode;
+  showHeaderActions?: boolean;
   stats?: ReactNode;
   children: ReactNode;
   rightRail?: ReactNode;
   footer?: ReactNode;
 }) {
   return (
-    <div className={`min-h-full bg-[#f9fafb] ${spacing.pageX} ${spacing.pageY} max-w-[1600px] mx-auto`}>
-      <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div className={`min-h-full bg-white ${spacing.pageX} ${spacing.pageY} max-w-[1600px] mx-auto`}>
+      <header className="flex flex-wrap items-center justify-between gap-4 mb-6 min-h-14 border-b border-gray-100 pb-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -29,7 +32,10 @@ export function DashboardPageLayout({
           </div>
           {subtitle && <p className="text-sm text-gray-500 mt-0.5 max-w-2xl">{subtitle}</p>}
         </div>
-        {headerRight && <div className="flex flex-wrap items-center gap-2">{headerRight}</div>}
+        <div className="flex flex-wrap items-center gap-2">
+          {headerRight}
+          {showHeaderActions && <PageHeaderActions />}
+        </div>
       </header>
 
       {stats && <div className="mb-6">{stats}</div>}

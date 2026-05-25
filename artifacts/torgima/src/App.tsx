@@ -40,18 +40,11 @@ const RecoveryPage = lazy(() => import("@/pages/recovery"));
 const CharacterPage = lazy(() => import("@/pages/character"));
 const KnowledgePage = lazy(() => import("@/pages/knowledge"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
-const AcademyLearnPage = lazy(() => import("@/pages/academy"));
-const CalendarPage = lazy(() => import("@/pages/calendar"));
-const ChatPage = lazy(() => import("@/pages/chat"));
-const GamificationPage = lazy(() => import("@/pages/gamification"));
-const AnalyticsPage = lazy(() => import("@/pages/analytics"));
-const IntegrationsPage = lazy(() => import("@/pages/integrations"));
 const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
 const PrincipleEntryPage = lazy(() => import("@/pages/principle-entry"));
 const ProfileSettingsPage = lazy(() => import("@/pages/profile-settings"));
 const ProfileWidgetPage = lazy(() => import("@/pages/profile-widget"));
 const ProfileDayPage = lazy(() => import("@/pages/profile-day"));
-const IntelligencePage = lazy(() => import("@/pages/intelligence"));
 
 setBaseUrl(API_BASE_URL);
 
@@ -145,14 +138,7 @@ const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
 const ProtectedReportsPage = protect(ReportsPage);
-const ProtectedAcademyLearnPage = protect(AcademyLearnPage);
-const ProtectedCalendarPage = protect(CalendarPage);
-const ProtectedChatPage = protect(ChatPage);
-const ProtectedGamificationPage = protect(GamificationPage);
-const ProtectedAnalyticsPage = protect(AnalyticsPage);
-const ProtectedIntegrationsPage = protect(IntegrationsPage);
 const ProtectedProfileSettingsPage = protect(ProfileSettingsPage);
-const ProtectedIntelligencePage = protect(IntelligencePage);
 
 function withAppLayout(Page: ComponentType) {
   function Wrapped() {
@@ -185,14 +171,7 @@ const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
 const ReportsRoute = withAppLayout(ProtectedReportsPage);
-const AcademyLearnRoute = withAppLayout(ProtectedAcademyLearnPage);
-const CalendarRoute = withAppLayout(ProtectedCalendarPage);
-const ChatRoute = withAppLayout(ProtectedChatPage);
-const GamificationRoute = withAppLayout(ProtectedGamificationPage);
-const AnalyticsRoute = withAppLayout(ProtectedAnalyticsPage);
-const IntegrationsRoute = withAppLayout(ProtectedIntegrationsPage);
 const ProfileSettingsRoute = withAppLayout(ProtectedProfileSettingsPage);
-const IntelligenceRoute = withAppLayout(ProtectedIntelligencePage);
 
 function AppRoutes() {
   return (
@@ -222,24 +201,12 @@ function AppRoutes() {
         <Route path="/feedback/:orderId" component={FeedbackRoute} />
         <Route path="/feedback" component={FeedbackRoute} />
         <Route path="/signals" component={SignalsRoute} />
-        <Route path="/intelligence" component={IntelligenceRoute} />
         <Route path="/orders" component={OrdersRoute} />
         <Route path="/strategy" component={StrategyRoute} />
         <Route path="/recovery" component={RecoveryRoute} />
         <Route path="/character" component={CharacterRoute} />
         <Route path="/knowledge" component={KnowledgeRoute} />
         <Route path="/reports" component={ReportsRoute} />
-        <Route path="/academy/lesson/:lessonId" component={AcademyLearnRoute} />
-        <Route path="/academy/course/:courseId" component={AcademyLearnRoute} />
-        <Route path="/academy/tutor" component={AcademyLearnRoute} />
-        <Route path="/academy/progress" component={AcademyLearnRoute} />
-        <Route path="/academy" component={AcademyLearnRoute} />
-        <Route path="/calendar" component={CalendarRoute} />
-        <Route path="/chat" component={ChatRoute} />
-        <Route path="/progress" component={GamificationRoute} />
-        <Route path="/gamification" component={GamificationRoute} />
-        <Route path="/analytics" component={AnalyticsRoute} />
-        <Route path="/integrations" component={IntegrationsRoute} />
         <Route path="/profiles/:username/entry/:entryDate" component={ProfileDayPage} />
         <Route path="/profiles/:username" component={PublicProfilePage} />
         <Route path="/principles/entry/:shareToken" component={PrincipleEntryPage} />

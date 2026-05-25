@@ -24,6 +24,7 @@ import {
   completeOnboarding,
   launchValidationBlueprint,
 } from "@/lib/torgima-api";
+import { postValidationRun, validationRunNavigatePath } from "@/lib/validation-run";
 import { API_BASE_URL } from "@/lib/api-base";
 import { ValidationStatus } from "@workspace/state-machine";
 
@@ -159,6 +160,7 @@ export default function OnboardingPage() {
   const [, setLocation] = useLocation();
 
   const idempotencyKeyRef = useRef(crypto.randomUUID());
+  const isSubmittingRef = useRef(false);
 
   const [form, setForm] = useState<FormData>({
     primaryGoal: "",
@@ -289,11 +291,13 @@ export default function OnboardingPage() {
   }
 
   async function handleAlignedStart(intake: AlignedIntakeForm) {
+    if (isSubmittingRef.current) return;
     if (!intake.rawGoal || intake.rawGoal.trim().length < 10) {
       setError("Enter your goal before continuing.");
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
     setError("");
 
@@ -350,65 +354,49 @@ export default function OnboardingPage() {
       });
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
         setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        isSubmittingRef.current = false;
         setLoading(false);
         return;
       }
       const blueprintId = goalEnvelope.data.blueprintId;
 
-      const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/run`, {
-        method: "POST",
-        body: JSON.stringify({
-          blueprintId,
-          idempotency_key: idempotencyKeyRef.current,
-          rawGoal: intake.rawGoal,
-          purpose: intake.purpose || intake.rawGoal,
-          timeframe: timeframe || "1yr",
-          customTimeframeDays: tf.days,
-          commitmentLevel: intake.commitmentLevel || "HIGH",
-          locationCountry: intake.locationCountry || "United States",
-          businessModel: intake.businessModel || "Other",
-          businessType: "online",
-          budgetAvailable: 0,
-          currency: "USD",
-          currentResources: [],
-          targetCustomer: "",
-          desiredOutcome: intake.purpose || intake.rawGoal,
-          currentContext: "",
-          knownBlockers: [],
-          tier: selectedTier ?? "starter",
-          mode: selectedMode ?? "individual",
-        }),
+      const runResult = await postValidationRun({
+        blueprintId,
+        idempotency_key: idempotencyKeyRef.current,
+        idempotencyKey: idempotencyKeyRef.current,
+        rawGoal: intake.rawGoal,
+        purpose: intake.purpose || intake.rawGoal,
+        timeframe: timeframe || "1yr",
+        customTimeframeDays: tf.days,
+        commitmentLevel: intake.commitmentLevel || "HIGH",
+        locationCountry: intake.locationCountry || "United States",
+        businessModel: intake.businessModel || "Other",
+        businessType: "online",
+        budgetAvailable: 0,
+        currency: "USD",
+        currentResources: [],
+        targetCustomer: "",
+        desiredOutcome: intake.purpose || intake.rawGoal,
+        currentContext: "",
+        knownBlockers: [],
+        tier: selectedTier ?? "starter",
+        mode: selectedMode ?? "individual",
       });
 
-      if (!runEnvelope.ok) {
-        setError(
-          runEnvelope.error?.message ??
-            `Server error ${runEnvelope.status || ""}`.trim(),
-        );
+      if (!runResult.ok || !runResult.validationId) {
+        setError(runResult.errorMessage ?? "Validation failed.");
+        isSubmittingRef.current = false;
         setLoading(false);
         return;
       }
 
-      const runData = runEnvelope.data ?? {};
-      const validationId = String(
-        runData.validationId ?? runData.validation_id ?? runData.id ?? "",
-      );
-      if (!validationId) {
-        console.error("Full validation run response:", runData);
-        setError("Validation started but no ID returned. Check console.");
-        setLoading(false);
-        return;
-      }
-
-      sessionStorage.setItem("torgima_validation_results", validationId);
-      const runRedirect = String(runData.redirectTo ?? runData.redirect_to ?? "");
-      setLocation(
-        runRedirect.startsWith("/") ? runRedirect : `/validation/${validationId}/running`,
-      );
+      sessionStorage.setItem("torgima_validation_results", runResult.validationId);
+      setLocation(validationRunNavigatePath(runResult.validationId, runResult.redirectTo));
+      return;
     } catch (err) {
       console.error("Validation error:", err);
       setError("Connection failed. Check your internet and try again.");
-    } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }

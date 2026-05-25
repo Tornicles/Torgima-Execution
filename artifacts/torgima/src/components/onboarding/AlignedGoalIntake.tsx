@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart2,
   Calendar,
@@ -72,6 +72,7 @@ export function AlignedGoalIntake({
   isSubmitting?: boolean;
 }) {
   const idempotencyRef = useRef(crypto.randomUUID());
+  const isSubmittingRef = useRef(false);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const defaultEnd = useMemo(() => {
     const d = new Date();
@@ -90,6 +91,10 @@ export function AlignedGoalIntake({
     businessModel: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof AlignedIntakeForm, string>>>({});
+
+  useEffect(() => {
+    if (!isSubmitting) isSubmittingRef.current = false;
+  }, [isSubmitting]);
 
   const durationLabel = useMemo(() => {
     const start = new Date(form.startDate);
@@ -115,7 +120,9 @@ export function AlignedGoalIntake({
   }
 
   function handleStart() {
+    if (isSubmittingRef.current || isSubmitting) return;
     if (!validate()) return;
+    isSubmittingRef.current = true;
     const commitment = COMMITMENT_MAP[form.commitmentLevel as unknown as string] ?? PACE_MAP[form.pace] ?? form.commitmentLevel;
     onSubmit({
       ...form,
@@ -335,7 +342,8 @@ export function AlignedGoalIntake({
           type="button"
           disabled={isSubmitting}
           onClick={handleStart}
-          className="rounded-lg bg-violet-600 text-white font-semibold px-6 py-3 hover:bg-violet-700 disabled:opacity-50 text-sm"
+          aria-busy={isSubmitting}
+          className="rounded-lg bg-violet-600 text-white font-semibold px-6 py-3 hover:bg-violet-700 disabled:opacity-50 disabled:pointer-events-none text-sm"
         >
           {isSubmitting ? "Starting validation…" : "Start Validation →"}
         </button>

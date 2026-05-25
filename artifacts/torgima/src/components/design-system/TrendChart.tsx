@@ -40,14 +40,14 @@ export function TrendChart({
       <svg className="w-full" viewBox={`0 0 700 ${height}`} preserveAspectRatio="none" style={{ height }} aria-hidden>
         <defs>
           <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+            <stop offset="0%" stopColor="#1a8c3a" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#1a8c3a" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={path.area} fill="url(#trendFill)" />
-        <path d={path.line} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+        <path d={path.line} fill="none" stroke="#1a8c3a" strokeWidth="2.5" strokeLinecap="round" />
         {path.coords.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="4" fill="white" stroke="#22c55e" strokeWidth="2" />
+          <circle key={i} cx={x} cy={y} r="4" fill="white" stroke="#1a8c3a" strokeWidth="2" />
         ))}
       </svg>
       {labels && labels.length > 0 && (

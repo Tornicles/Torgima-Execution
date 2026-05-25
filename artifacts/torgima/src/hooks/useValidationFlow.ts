@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import type { AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
+import { postValidationRun, validationRunNavigatePath } from "@/lib/validation-run";
 
 function deriveTimeframeKey(startDate: string, endDate: string): { key: string; days?: number } {
   const days = Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / (24 * 3600 * 1000));
@@ -27,13 +28,16 @@ export function useValidationFlow() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const idempotencyKeyRef = useRef(crypto.randomUUID());
+  const isSubmittingRef = useRef(false);
 
   async function startValidation(intake: AlignedIntakeForm) {
+    if (isSubmittingRef.current) return;
     if (!intake.rawGoal || intake.rawGoal.trim().length < 10) {
       setError("Enter your goal before continuing.");
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
     setError("");
 
@@ -57,51 +61,46 @@ export function useValidationFlow() {
 
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
         setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
 
       const blueprintId = goalEnvelope.data.blueprintId;
 
-      const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/run`, {
-        method: "POST",
-        body: JSON.stringify({
-          blueprintId,
-          idempotency_key: idempotencyKeyRef.current,
-          rawGoal: intake.rawGoal,
-          purpose: intake.purpose || intake.rawGoal,
-          timeframe,
-          customTimeframeDays: tf.days,
-          commitmentLevel: intake.commitmentLevel || "HIGH",
-          locationCountry: intake.locationCountry || "United States",
-          businessModel: intake.businessModel || "Other",
-          businessType: "online",
-          budgetAvailable: 0,
-          currency: "USD",
-          currentResources: [],
-          targetCustomer: "",
-          desiredOutcome: intake.purpose || intake.rawGoal,
-          currentContext: "",
-          knownBlockers: [],
-        }),
+      const runResult = await postValidationRun({
+        blueprintId,
+        idempotency_key: idempotencyKeyRef.current,
+        idempotencyKey: idempotencyKeyRef.current,
+        rawGoal: intake.rawGoal,
+        purpose: intake.purpose || intake.rawGoal,
+        timeframe,
+        customTimeframeDays: tf.days,
+        commitmentLevel: intake.commitmentLevel || "HIGH",
+        locationCountry: intake.locationCountry || "United States",
+        businessModel: intake.businessModel || "Other",
+        businessType: "online",
+        budgetAvailable: 0,
+        currency: "USD",
+        currentResources: [],
+        targetCustomer: "",
+        desiredOutcome: intake.purpose || intake.rawGoal,
+        currentContext: "",
+        knownBlockers: [],
       });
 
-      if (!runEnvelope.ok) {
-        setError(runEnvelope.error?.message ?? `Server error ${runEnvelope.status || ""}`.trim());
+      if (!runResult.ok || !runResult.validationId) {
+        setError(runResult.errorMessage ?? "Validation failed.");
+        isSubmittingRef.current = false;
+        setLoading(false);
         return;
       }
 
-      const runData = runEnvelope.data ?? {};
-      const validationId = String(runData.validationId ?? runData.validation_id ?? runData.id ?? "");
-      if (!validationId) {
-        setError("Validation started but no ID returned.");
-        return;
-      }
-
-      sessionStorage.setItem("torgima_validation_results", validationId);
-      setLocation(`/validation/${validationId}/running`);
+      sessionStorage.setItem("torgima_validation_results", runResult.validationId);
+      setLocation(validationRunNavigatePath(runResult.validationId, runResult.redirectTo));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed.");
-    } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }

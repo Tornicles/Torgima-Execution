@@ -1,5 +1,5 @@
-import { useLocation } from "wouter";
-import { AlertTriangle, Clock, Shield, Target, TrendingDown } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { AlertTriangle, CheckCircle2, Clock, Shield, Target, TrendingDown } from "lucide-react";
 import { DashboardPageLayout } from "@/components/shell/DashboardPageLayout";
 import { MetricStatCard, MetricStatRow } from "@/components/design-system/MetricStatRow";
 import { ProgressBar } from "@/components/design-system/ProgressBar";
@@ -15,22 +15,39 @@ const STEPS = [
   { label: "Restore Power", status: "pending" },
 ];
 
+function isDone(status: string) {
+  return ["completed", "done", "finished"].includes(status.toLowerCase());
+}
+
 export function RecoveryDashboardView() {
   const [, setLocation] = useLocation();
-  const { orders, completionRate, dailyScore, streak, conditionLabel, conditionRaw, isLoading } =
+  const { orders, completionRate, dailyScore, streak, momentum, conditionLabel, conditionRaw, isLoading } =
     useDashboardMetrics();
 
-  const isDanger = ["danger", "urgency"].includes(conditionRaw.toLowerCase());
-  const displayCondition = isDanger ? "DANGER" : conditionLabel;
+  const needsRecovery = ["danger", "urgency"].includes(conditionRaw.toLowerCase());
 
   if (isLoading) return <PageLoading />;
 
-  const recoveryOrders = orders.length
-    ? orders.slice(0, 5)
-    : [
-        { id: "r1", title: "Review what went wrong this week", type: "Reflection" },
-        { id: "r2", title: "Complete one high-impact order", type: "Execution" },
-      ];
+  if (!needsRecovery) {
+    return (
+      <DashboardPageLayout title="Recovery" subtitle="Reset, realign, and rebuild momentum. The system adapts with you.">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <CheckCircle2 className="w-14 h-14 text-[var(--torgima-primary)] mb-4" />
+          <h2 className="text-xl font-bold text-gray-900">No recovery needed. Keep executing.</h2>
+          <p className="text-sm text-gray-500 mt-2 max-w-md">
+            You are currently in <span className="font-semibold text-gray-800">{conditionLabel}</span> state.
+          </p>
+          <Link href="/signals" className={`mt-6 ${buttons.primary} inline-flex items-center gap-2`}>
+            View Signals →
+          </Link>
+        </div>
+      </DashboardPageLayout>
+    );
+  }
+
+  const recoveryOrders = orders.slice(0, 5);
+  const completed = recoveryOrders.filter((o) => isDone(o.status)).length;
+  const pct = recoveryOrders.length ? Math.round((completed / recoveryOrders.length) * 100) : 0;
 
   return (
     <DashboardPageLayout
@@ -38,11 +55,11 @@ export function RecoveryDashboardView() {
       subtitle="Reset, realign, and rebuild momentum. The system adapts with you."
       stats={
         <MetricStatRow>
-          <MetricStatCard label="Current Condition" value={displayCondition} sub="Needs attention" valueClassName="text-red-600" icon={<Shield className="w-5 h-5 text-red-500" />} />
-          <MetricStatCard label="Impact Level" value="High" sub="Significant impact" valueClassName="text-purple-600" icon={<AlertTriangle className="w-5 h-5 text-purple-500" />} />
-          <MetricStatCard label="Momentum Drop" value="-18%" sub="vs last week" valueClassName="text-orange-500" icon={<TrendingDown className="w-5 h-5 text-orange-500" />} />
-          <MetricStatCard label="Recovery Priority" value="High" sub="Focus and execute" valueClassName="text-blue-600" icon={<Target className="w-5 h-5 text-blue-500" />} />
-          <MetricStatCard label="Est. Recovery" value="5–7 days" sub="With consistency" valueClassName="text-emerald-600" icon={<Clock className="w-5 h-5 text-emerald-500" />} />
+          <MetricStatCard label="Current Condition" value="DANGER" sub="Needs Immediate Attention" valueClassName="text-orange-600" icon={<Shield className="w-5 h-5 text-orange-500" />} />
+          <MetricStatCard label="Impact Level" value="High" sub="Significant impact detected" valueClassName="text-red-600" icon={<AlertTriangle className="w-5 h-5 text-red-500" />} />
+          <MetricStatCard label="Momentum Drop" value={`${momentum < 0 ? "" : "-"}${Math.abs(momentum)}%`} sub="vs last week" valueClassName="text-red-600" icon={<TrendingDown className="w-5 h-5 text-red-500" />} />
+          <MetricStatCard label="Recovery Priority" value="High" sub="Focus and execute" valueClassName="text-red-600" icon={<Target className="w-5 h-5 text-red-500" />} />
+          <MetricStatCard label="Est. Recovery" value="5–7 days" sub="With consistent actions" valueClassName="text-[var(--torgima-primary)]" icon={<Clock className="w-5 h-5 text-[var(--torgima-primary)]" />} />
         </MetricStatRow>
       }
       rightRail={
@@ -56,16 +73,12 @@ export function RecoveryDashboardView() {
             </ul>
           </div>
           <div className={cards.padded}>
-            <p className="text-xs font-bold uppercase text-gray-500 mb-3">Condition repair</p>
-            {["Focus", "Discipline", "Consistency", "Execution Intelligence", "Adaptability"].map((t, i) => (
-              <div key={t} className="mb-2">
-                <div className="flex justify-between text-xs mb-1">
-                  <span>{t}</span>
-                  <span>{[60, 40, 40, 45, 70][i]}%</span>
-                </div>
-                <ProgressBar value={[60, 40, 40, 45, 70][i]} />
-              </div>
-            ))}
+            <p className="text-xs font-bold uppercase text-gray-500 mb-3">What you should avoid</p>
+            <ul className="text-sm text-red-700 space-y-2">
+              <li>✕ Adding new projects or tasks</li>
+              <li>✕ Skipping daily feedback</li>
+              <li>✕ Overcommitting on scope</li>
+            </ul>
           </div>
         </>
       }
@@ -81,46 +94,95 @@ export function RecoveryDashboardView() {
       }
     >
       <div className={cards.padded}>
-        <p className="text-xs font-bold uppercase text-gray-500 mb-3">1. Current situation</p>
-        <p className="text-sm text-gray-700">
-          Completion rate is {completionRate}% with daily score {dailyScore}/10. Streak: {streak} days. The rule
-          engine assigned <strong>{displayCondition}</strong> — recovery orders help rebuild momentum.
-        </p>
+        <p className="text-xs font-bold uppercase text-gray-500 mb-4">1. Current Situation</p>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-2">What Happened?</p>
+            <p className="text-sm text-gray-600">
+              Your completion rate dropped to {completionRate}%. Daily score is {dailyScore}/10. The system detected
+              inconsistent execution and adjusted your condition to {conditionLabel}.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
+              <div>
+                <p className="text-xs text-gray-500">Completion</p>
+                <p className="font-bold text-red-600">{completionRate}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Daily Score</p>
+                <p className="font-bold text-red-600">{dailyScore}/10</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Streak</p>
+                <p className="font-bold text-orange-500">{streak} days</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Trend</p>
+                <p className="font-bold text-red-600">Declining</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-2">Impact on Your Journey</p>
+            <ul className="text-sm text-gray-600 space-y-2 list-disc pl-4">
+              <li>Slower blueprint progress</li>
+              <li>Increased execution risk</li>
+              <li>Lower momentum until recovery completes</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <div className={cards.padded}>
-        <p className="text-xs font-bold uppercase text-gray-500 mb-4">2. Recovery plan</p>
-        <div className="flex flex-wrap gap-2 justify-between">
-          {STEPS.map((s) => (
-            <div key={s.label} className="text-center flex-1 min-w-[80px]">
+        <p className="text-xs font-bold uppercase text-gray-500 mb-4">2. Recovery Plan</p>
+        <div className="flex flex-wrap gap-4 justify-between">
+          {STEPS.map((step) => (
+            <div key={step.label} className="flex flex-col items-center text-center min-w-[100px] flex-1">
               <div
-                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold ${
-                  s.status === "done"
-                    ? "bg-emerald-500 text-white"
-                    : s.status === "active"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-400"
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                  step.status === "done"
+                    ? "bg-[var(--torgima-primary)] text-white"
+                    : step.status === "active"
+                      ? "border-2 border-blue-500 text-blue-600"
+                      : "border border-gray-200 text-gray-400"
                 }`}
               >
-                {s.status === "done" ? "✓" : "•"}
+                {step.status === "done" ? "✓" : "○"}
               </div>
-              <p className="text-[10px] mt-2 text-gray-600">{s.label}</p>
+              <p className="text-xs font-medium text-gray-700 mt-2">{step.label}</p>
+              <p className="text-[10px] text-gray-400 capitalize">{step.status}</p>
             </div>
           ))}
         </div>
       </div>
 
       <div className={cards.padded}>
-        <p className="text-xs font-bold uppercase text-gray-500 mb-4">3. Recovery orders (today)</p>
-        <ul className="space-y-2">
-          {recoveryOrders.map((o, i) => (
-            <li key={o.id} className="flex items-center gap-2 text-sm py-2 border-b border-gray-50 last:border-0">
-              <input type="checkbox" className="rounded" defaultChecked={i < 2} />
-              <span className="flex-1">{o.title}</span>
-              <span className="text-xs text-gray-400">{o.type}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-xs font-bold uppercase text-gray-500">3. Recovery Orders (Today)</p>
+          <Link href="/orders" className="text-sm text-[var(--torgima-primary)] font-medium">
+            View All Orders →
+          </Link>
+        </div>
+        <p className="text-sm text-gray-600 mb-2">
+          {completed} / {recoveryOrders.length} completed
+        </p>
+        <ProgressBar value={pct} className="mb-4" />
+        {recoveryOrders.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No recovery orders for today.</p>
+        ) : (
+          <ol className="space-y-2">
+            {recoveryOrders.map((order) => (
+              <li key={order.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs ${isDone(order.status) ? "bg-[var(--torgima-primary)] text-white border-[var(--torgima-primary)]" : "border-gray-300"}`}>
+                  {isDone(order.status) ? "✓" : ""}
+                </span>
+                <span className={`text-sm flex-1 ${isDone(order.status) ? "line-through text-gray-400" : "text-gray-900"}`}>
+                  {order.title}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{order.type}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
     </DashboardPageLayout>
   );
