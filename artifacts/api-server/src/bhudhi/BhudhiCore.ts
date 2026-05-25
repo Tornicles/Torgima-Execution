@@ -30,7 +30,7 @@ import {
   incrementSessionOutput,
 } from "../engines/stability/StabilityEngine.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
-import { appendWebSearchInstruction } from "./erectorWebSearch.js";
+import { appendErectorSearchUserPrompt, appendWebSearchInstruction } from "./erectorWebSearch.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
 import { geminiApiKeyConfigured } from "./gemini-client.js";
@@ -283,7 +283,10 @@ export async function runBhudhiPipeline<T = unknown>(
   let intelligenceGrounded = false;
 
   try {
-    const userPrompt = contract.buildUserPrompt(facts);
+    let userPrompt = contract.buildUserPrompt(facts);
+    if (provider === "gemini-search") {
+      userPrompt = appendErectorSearchUserPrompt(request.triggerType, facts, userPrompt);
+    }
 
     if (provider === "claude") {
       const apiKey =
@@ -320,7 +323,11 @@ export async function runBhudhiPipeline<T = unknown>(
     webSearchCalls = modelResult.webSearchCalls;
     intelligenceGrounded = modelResult.intelligenceGrounded;
 
-    const cleaned = modelResult.text.replace(/```json|```/g, "").trim();
+    const cleaned = modelResult.text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
     rawOutput = JSON.parse(cleaned) as unknown;
 
     if (contract.outputSchema) {

@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { BhudhiTriggerType, BhudhiMode, BhudhiOutputType } from "../types/bhudhi.js";
 import { bootstrapPromptRegistry } from "./promptRegistryBootstrap.js";
 import { OUTPUT_ENVELOPE_SCHEMAS } from "./schemas/outputSchemas.js";
-import { buildErectorFactsContext } from "./erectorWebSearch.js";
+import { buildErectorFactsContext, ERECTOR_JSON_PREFIX } from "./erectorWebSearch.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
 
@@ -1108,6 +1108,7 @@ for (const contract of ERECTOR_CONTRACTS) {
     memoryAllowed: true,
     fallbackKey: contract.fallbackKey,
     systemPrompt:
+      ERECTOR_JSON_PREFIX +
       STANDARD_SYSTEM_HEADER +
       `\nYou are supporting The Erector validation system. ${contract.purpose}` +
       `\nThe rule engine owns all scores and launch decisions. Use probability language only. Return ONLY valid JSON matching the envelope.`,
@@ -1133,6 +1134,33 @@ Return ONLY JSON:
 }
 
 bootstrapPromptRegistry({ registry, modeRegistry, byName });
+
+/** Execution / blueprint intelligence stays on Claude (Gemini is validation-only). */
+const CLAUDE_EXECUTION_TRIGGERS: BhudhiTriggerType[] = [
+  "GOAL_STRUCTURING",
+  "TASK_DRAFTING",
+  "FEEDBACK_CLASSIFICATION",
+  "STATE_EXPLANATION",
+  "RECOVERY_COPY",
+  "BLUEPRINT_GENERATION",
+  "REALITY_INTELLIGENCE",
+  "ROOT_CAUSE_ASSIST",
+  "OUTCOME_EVIDENCE_SUMMARY",
+  "KNOWLEDGE_INJECTION",
+  "EXECUTION_SUPPORT",
+  "OVERNIGHT_CYCLE",
+  "WORLD_STATE_UPDATE",
+  "COMPRESSION_CYCLE",
+  "SELF_IMPROVEMENT_CYCLE",
+  "ACADEMY_SUPPORT",
+  "DOMAIN_RESOLUTION",
+  "BLUEPRINT_INTERPRETATION",
+  "EIS_INDUSTRY_RESEARCH",
+];
+for (const triggerType of CLAUDE_EXECUTION_TRIGGERS) {
+  const contract = registry.get(triggerType);
+  if (contract) contract.provider = "claude";
+}
 
 export function getContract(triggerType: BhudhiTriggerType): PromptContract | null {
   return registry.get(triggerType) ?? null;

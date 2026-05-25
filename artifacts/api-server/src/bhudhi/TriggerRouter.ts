@@ -13,7 +13,7 @@ import { checkTriggerAllowed } from "../engines/stability/StabilityEngine.js";
 import { shouldTriggerDebate, runDebate } from "./DebateEngine.js";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
-import { callGemini, callGeminiWithSearch } from "./gemini-client.js";
+import { callGeminiRaw } from "./gemini-client.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import {
   FORBIDDEN_MODES,
@@ -122,39 +122,47 @@ export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promis
   intelligenceGrounded: boolean;
   provider: BhudhiProvider;
 }> {
-  if (params.provider === "gemini") {
-    const text = await Promise.race([
-      callGemini(params.userPrompt, params.systemPrompt),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
-      ),
-    ]);
-    if (!text) throw new Error("BHUDHI_GEMINI_EMPTY");
-    return {
-      text,
-      inputTokens: 0,
-      outputTokens: 0,
-      webSearchCalls: 0,
-      intelligenceGrounded: false,
-      provider: "gemini",
-    };
-  }
+  if (params.provider === "gemini" || params.provider === "gemini-search") {
+    const invokeOnce = () =>
+      Promise.race([
+        callGeminiRaw({
+          prompt: params.userPrompt,
+          systemPrompt: params.systemPrompt,
+          useSearch: params.provider === "gemini-search",
+          maxTokens: params.provider === "gemini-search" ? 2500 : params.maxTokens,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
+        ),
+      ]);
 
-  if (params.provider === "gemini-search") {
-    const text = await Promise.race([
-      callGeminiWithSearch(params.userPrompt, params.systemPrompt),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
-      ),
-    ]);
-    if (!text) throw new Error("BHUDHI_GEMINI_SEARCH_EMPTY");
+    let text: string;
+    try {
+      text = await invokeOnce();
+    } catch (firstErr) {
+      if (firstErr instanceof Error && firstErr.message === "BHUDHI_TIMEOUT") {
+        text = await Promise.race([
+          callGeminiRaw({
+            prompt: params.userPrompt,
+            systemPrompt: params.systemPrompt,
+            useSearch: params.provider === "gemini-search",
+            maxTokens: params.provider === "gemini-search" ? 2500 : params.maxTokens,
+          }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), 5_000)),
+        ]);
+      } else {
+        throw firstErr;
+      }
+    }
+
+    if (!text) throw new Error(params.provider === "gemini-search" ? "BHUDHI_GEMINI_SEARCH_EMPTY" : "BHUDHI_GEMINI_EMPTY");
     return {
       text,
       inputTokens: 0,
       outputTokens: 0,
-      webSearchCalls: 1,
-      intelligenceGrounded: true,
-      provider: "gemini-search",
+      webSearchCalls: params.provider === "gemini-search" ? 1 : 0,
+      intelligenceGrounded: params.provider === "gemini-search",
+      provider: params.provider,
     };
   }
 

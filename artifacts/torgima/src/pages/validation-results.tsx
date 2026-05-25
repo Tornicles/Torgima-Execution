@@ -58,7 +58,14 @@ export default function ValidationResultsPage() {
             erectorResult.validationContractId ?? erectorResult.contract_id ?? payload?.validationContractId ?? "",
           ),
           blueprintId: String(erectorResult.blueprintId ?? payload?.blueprintId ?? ""),
-          intelligence: { ...(payload?.intelligence ?? {}), erector: erectorResult },
+          intelligence: {
+            ...(payload?.intelligence ?? {}),
+            erector: {
+              ...(typeof payload?.intelligence?.erector === "object" ? (payload.intelligence.erector as object) : {}),
+              ...erectorResult,
+              scores: erectorResult.scores ?? erectorResult,
+            },
+          },
           verdict: String(erectorResult.verdict ?? payload?.verdict ?? "adjust"),
           paths: (erectorResult.paths as ValidationPayload["paths"]) ?? payload?.paths,
           launchBlocked: erectorResult.verdict === "blocked" || erectorResult.verdict === "pivot",
@@ -150,6 +157,7 @@ export default function ValidationResultsPage() {
     <PreLaunchShell step={3}>
       <ValidationResultsDashboard
         data={validation}
+        validationId={validationId}
         completedLabel="Completed"
         selectedPath={selectedPath}
         onSelectPath={setSelectedPath}
@@ -157,6 +165,12 @@ export default function ValidationResultsPage() {
         onDownload={handleDownload}
         launching={launching}
         launchError={launchError}
+        onDataUpdate={(next) => {
+          setValidation(next);
+          const rec: PathKey =
+            next.verdict === "adjust" ? "adjusted" : next.verdict === "pivot" ? "alternative" : "current";
+          setSelectedPath(rec);
+        }}
       />
     </PreLaunchShell>
   );
