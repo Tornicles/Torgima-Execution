@@ -13,6 +13,7 @@
     "test:contracts": "vitest run src/tests/contracts",
     "test:acceptance": "vitest run src/tests/acceptance",
     "test:integration": "vitest run src/tests/integration",
+    "test:benchmarks": "vitest run src/tests/benchmarks",
     "seed:test-fixtures": "pnpm exec tsx ../../scripts/seedTestFixtures.ts",
     "seed:archetypes": "tsx src/engines/erector/seedArchetypes.ts",
     "workers:start": "node --enable-source-maps ./dist/workers/start.mjs"

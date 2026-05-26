@@ -56,6 +56,11 @@ import { selectPackage, packageToInjection } from "../../bhudhi/agents/Knowledge
 import { fetchRecoveryCoachingCopy } from "../../bhudhi/AdvancedIntelligenceBridge.js";
 import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
 import { enforceCapabilityDifficulty } from "../capability/CapabilityDifficulty.js";
+import {
+  applyArchetypeTaskLimits,
+  computeAdditionalTasksToGenerate,
+  parseTaskLimits,
+} from "./taskLimits.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -84,6 +89,8 @@ async function loadContext(params: {
   generationMode: string;
   generationTrigger: string;
   enforcementPackageId?: string;
+  miniPlanKey?: string;
+  planIdOverride?: string;
 }) {
   const { blueprintId, userId } = params;
 
@@ -141,7 +148,18 @@ async function loadContext(params: {
   }
 
   let currentPlan: typeof plans.$inferSelect | null = null;
-  if (blueprint.current_plan_id) {
+  if (params.planIdOverride) {
+    const [pl] = await db.select().from(plans).where(eq(plans.id, params.planIdOverride)).limit(1);
+    currentPlan = pl ?? null;
+  } else if (params.miniPlanKey) {
+    const planRows = await db.select().from(plans).where(eq(plans.blueprint_id, blueprintId));
+    currentPlan =
+      planRows.find((p) => {
+        const n = p.name.toLowerCase();
+        const k = params.miniPlanKey!.toLowerCase();
+        return n === k || (k === "operations" && n === "validation") || (k === "growth" && n === "scale");
+      }) ?? null;
+  } else if (blueprint.current_plan_id) {
     const [pl] = await db.select().from(plans).where(eq(plans.id, blueprint.current_plan_id)).limit(1);
     currentPlan = pl ?? null;
   }
@@ -251,12 +269,18 @@ async function loadContext(params: {
     }
   }
 
-  let taskLimits = (pkg.task_limits as { min?: number; max?: number }) ?? { min: 1, max: 3 };
+  const parsedLimits = parseTaskLimits(pkg.task_limits);
+  const conditionCode = String(pkg.condition ?? blueprint.current_condition ?? "nothingness").toLowerCase();
+  let taskLimits = applyArchetypeTaskLimits(conditionCode, blueprint.archetype_execution_mult);
+  taskLimits = {
+    min: Math.max(parsedLimits.min, taskLimits.min),
+    max: Math.max(parsedLimits.max, taskLimits.max),
+  };
   const tierRules = getTierRules(parseTier(blueprint.tier));
   const tierMax = tierRules.maxDailyOrders;
   taskLimits = {
-    min: Math.min(taskLimits.min ?? 1, tierMax),
-    max: Math.min(taskLimits.max ?? tierMax, tierMax),
+    min: Math.min(taskLimits.min, tierMax),
+    max: Math.min(taskLimits.max, tierMax),
   };
   const overrideFlags = (pkg.override_flags as Record<string, unknown>) ?? {};
 
@@ -725,6 +749,67 @@ function truncate(s: string, max: number): string {
   return s.length <= max ? s : s.slice(0, max - 3) + "...";
 }
 
+const FALLBACK_TASK_TEMPLATES = [
+  {
+    title: "Define your first target customer",
+    instruction:
+      "Write down exactly who you are building this for. Name their problem in one sentence.",
+    expected_output: "A written description of your target customer and their main problem.",
+    definition_of_done:
+      "You have written at least 3 sentences describing who this is for and why they need it.",
+    why_it_matters: "Every decision in your blueprint depends on knowing who you are serving.",
+  },
+  {
+    title: "Research 3 people doing something similar",
+    instruction:
+      "Find 3 people or businesses already operating in your space. Write down what they do and what they charge.",
+    expected_output: "Names and short descriptions of 3 competitors or similar businesses.",
+    definition_of_done:
+      "You have found and documented at least 3 examples with their pricing if visible.",
+    why_it_matters: "Understanding what already exists helps you find where you can stand out.",
+  },
+  {
+    title: "Write your first offer in one sentence",
+    instruction: "Complete this sentence: I help [who] achieve [what] by [how].",
+    expected_output: "A single clear sentence describing what you offer and who it is for.",
+    definition_of_done:
+      "You have a sentence that a stranger would understand without explanation.",
+    why_it_matters: "A clear offer is the foundation everything else is built on.",
+  },
+  {
+    title: "Identify your biggest obstacle right now",
+    instruction:
+      "Write down the one thing that would stop this from working if you do not solve it.",
+    expected_output: "A written statement of your primary obstacle and one possible solution.",
+    definition_of_done:
+      "You have named the obstacle and written at least one way to address it.",
+    why_it_matters: "Facing the real obstacle early prevents bigger problems later.",
+  },
+  {
+    title: "Set your goal for the next 7 days",
+    instruction:
+      "Write down one specific, measurable thing you will have done by this time next week.",
+    expected_output: "A specific 7-day target with a clear success condition.",
+    definition_of_done:
+      "Your target can be answered with yes or no when you check it next week.",
+    why_it_matters: "Weekly targets turn a large goal into a sequence of real steps.",
+  },
+] as const;
+
+export function buildFallbackTaskContent(position: number, goal: string): BuiltContent {
+  const task = FALLBACK_TASK_TEMPLATES[(position - 1) % FALLBACK_TASK_TEMPLATES.length]!;
+  const g = goal.trim() || "your validated goal";
+  return {
+    title: task.title,
+    instruction: `${task.instruction}\n\nYour goal: "${truncate(g, 150)}"`,
+    expected_output: task.expected_output,
+    definition_of_done: task.definition_of_done,
+    why_it_matters: task.why_it_matters,
+    time_estimate_minutes: 20,
+    proof_required: false,
+  };
+}
+
 export function buildDeterministicTaskCopy(params: {
   domain?: string;
   actionType?: string;
@@ -1169,6 +1254,15 @@ export async function generate(params: {
   generationTrigger: string;
   enforcementPackageId?: string;
   causationEventId?: string;
+  /** Fill queue up to enforcement min/max (launch, guarantee, force). */
+  queueFill?: boolean;
+  targetCount?: number;
+  _batchIteration?: number;
+  generatedThisInvocation?: number;
+  miniPlanKey?: string;
+  planIdOverride?: string;
+  taskSchedule?: { dayOffset: number; miniPlanKey?: string };
+  createdFromCondition?: string;
 }): Promise<GenerationResult> {
   const { isBlueprintExecutionLocked } = await import("../health/ExecutionLock.js");
   const lock = await isBlueprintExecutionLocked(params.blueprintId);
@@ -1187,6 +1281,8 @@ export async function generate(params: {
     ...params,
     generationMode: genModeNorm,
     generationTrigger: genTrigNorm,
+    miniPlanKey: params.miniPlanKey ?? params.taskSchedule?.miniPlanKey,
+    planIdOverride: params.planIdOverride,
   });
 
   await emitArchetypeContextMissingIfNeeded({
@@ -1231,10 +1327,22 @@ export async function generate(params: {
 
   const countActive = existingCount ?? 0;
 
+  logger.info(
+    {
+      blueprintId: params.blueprintId,
+      pending: countActive,
+      taskMin: enforcement.task_limits.min,
+      taskMax: enforcement.task_limits.max,
+      trigger: genTrigNorm,
+      mode: genModeNorm,
+    },
+    "[TaskGen] Queue check",
+  );
+
   if (countActive >= enforcement.task_limits.max) {
     logger.info(
       { blueprintId: params.blueprintId, existingCount: countActive },
-      "[TaskEngine] Already at max tasks — skipping",
+      "[TaskGen] Task queue is full — skipping generation",
     );
     await insertGenerationLog({
       blueprintId: params.blueprintId,
@@ -1422,7 +1530,11 @@ export async function generate(params: {
         usedBhudhi = !academy.fallbackUsed;
         if (academy.fallbackUsed) usedFallback = true;
       }
-    } catch {
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "[TaskGen] Bhudhi recovery coaching failed — using fallback copy",
+      );
       usedFallback = true;
     }
   } else if (aiFlag?.enabled && bhudhiEligibleTypes.has(taskType)) {
@@ -1443,7 +1555,14 @@ export async function generate(params: {
       content = enriched.content;
       commandContext = enriched.commandContext;
       if (enriched.usedAi) usedBhudhi = true;
-    } catch {
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), taskType },
+        "[TaskGen] Bhudhi failed — using fallback task",
+      );
+      const position = countActive + (params.generatedThisInvocation ?? 0) + 1;
+      content = buildFallbackTaskContent(position, ctx.blueprint.goal);
+      commandContext = {};
       usedFallback = true;
     }
   }
@@ -1527,6 +1646,28 @@ export async function generate(params: {
     content.proof_required = false;
   }
 
+  const schedule = params.taskSchedule;
+  const miniPlanKeyForFocus = params.miniPlanKey ?? schedule?.miniPlanKey;
+  if (miniPlanKeyForFocus && ["Foundation", "Operations", "Growth"].includes(miniPlanKeyForFocus)) {
+    const { getMiniPlanTaskFocus } = await import("../mini-plan/MiniPlanAllocationEngine.js");
+    const focus = getMiniPlanTaskFocus(
+      enforcement.condition_code,
+      miniPlanKeyForFocus as "Foundation" | "Operations" | "Growth",
+    );
+    content.instruction = `${content.instruction}\n\nMini plan focus: ${focus}`;
+  }
+
+  const dayOffset = schedule?.dayOffset ?? 0;
+  const visibilityDate = (() => {
+    const base = new Date();
+    const start = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
+    start.setUTCDate(start.getUTCDate() + dayOffset);
+    return start;
+  })();
+  const isVisible = dayOffset <= 0;
+  const orderStatus =
+    dayOffset > 0 ? ("pre_generated" as const) : ("pending" as const);
+
   const orderId = await db.transaction(async (tx: Tx) => {
     const [order] = await tx
       .insert(orders)
@@ -1535,6 +1676,7 @@ export async function generate(params: {
         user_id: params.userId,
         action_id: ctx.action?.id,
         linked_plan_id: ctx.plan?.id,
+        plan_id: ctx.plan?.id,
         linked_target_id: ctx.target?.id,
         linked_phase_id: ctx.phase?.id,
         linked_project_id: ctx.project?.id,
@@ -1566,7 +1708,11 @@ export async function generate(params: {
           mode: parseMode(ctx.blueprint.mode),
           generationReason: `${params.generationTrigger}:${params.generationMode}`,
         }),
-        status: "pending",
+        status: orderStatus,
+        is_visible: isVisible,
+        visibility_date: visibilityDate,
+        mini_plan_key: params.miniPlanKey ?? schedule?.miniPlanKey ?? null,
+        created_from_condition: params.createdFromCondition ?? enforcement.condition_code,
         command_context: commandContext as typeof orders.$inferInsert["command_context"],
       })
       .returning({ id: orders.id });
@@ -1613,11 +1759,70 @@ export async function generate(params: {
   }
 
   logger.info(
-    { blueprintId: params.blueprintId, orderId, taskType, difficulty, usedBhudhi },
-    "[TaskEngine] Order created",
+    { blueprintId: params.blueprintId, orderId, taskType, difficulty, usedBhudhi, usedFallback },
+    "[TaskGen] Order created",
   );
 
-  return { orders_generated: 1, order_ids: [orderId], used_bhudhi: usedBhudhi, used_fallback: usedFallback };
+  const generatedSoFar = (params.generatedThisInvocation ?? 0) + 1;
+  const result: GenerationResult = {
+    orders_generated: 1,
+    order_ids: [orderId],
+    used_bhudhi: usedBhudhi,
+    used_fallback: usedFallback,
+  };
+
+  const [{ pendingNow } = { pendingNow: countActive + 1 }] = await db
+    .select({ pendingNow: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.blueprint_id, params.blueprintId),
+        eq(orders.user_id, params.userId),
+        inArray(orders.status, ["pending", "active"]),
+      ),
+    );
+
+  const additional = computeAdditionalTasksToGenerate({
+    pendingCount: pendingNow ?? countActive + 1,
+    min: enforcement.task_limits.min,
+    max: enforcement.task_limits.max,
+    generationMode: genModeNorm,
+    generationTrigger: genTrigNorm,
+    queueFill: params.queueFill,
+    targetCount: params.targetCount,
+    generatedThisInvocation: generatedSoFar,
+  });
+
+  const iteration = params._batchIteration ?? 0;
+  if (additional > 0 && iteration < 8) {
+    logger.info(
+      { blueprintId: params.blueprintId, additional, pending: pendingNow, iteration },
+      "[TaskGen] Generating additional tasks for queue",
+    );
+    const next = await generate({
+      ...params,
+      _batchIteration: iteration + 1,
+      generatedThisInvocation: generatedSoFar,
+      queueFill: true,
+    });
+    return {
+      orders_generated: result.orders_generated + next.orders_generated,
+      order_ids: [...result.order_ids, ...next.order_ids],
+      used_bhudhi: result.used_bhudhi || next.used_bhudhi,
+      used_fallback: result.used_fallback || next.used_fallback,
+    };
+  }
+
+  logger.info(
+    {
+      blueprintId: params.blueprintId,
+      totalGenerated: generatedSoFar,
+      pending: pendingNow,
+    },
+    "[TaskGen] Batch complete",
+  );
+
+  return result;
 }
 
 function orderTemplateKindForTaskType(taskType: string): OrderTemplateKind {

@@ -13,6 +13,7 @@ import type { BhudhiMode } from "../types/bhudhi.js";
 import { getFallback } from "./FallbackLibrary.js";
 import { validateOutput } from "./OutputValidator.js";
 import { retrieveMemory } from "./MemoryService.js";
+import { memoryGraph } from "./kernel/memory/memory-graph/MemoryGraph.js";
 import {
   checkUsageAllowed,
   getMaxTokensForTrigger,
@@ -34,6 +35,20 @@ import { appendErectorSearchUserPrompt, appendWebSearchInstruction } from "./ere
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
 import { geminiApiKeyConfigured } from "./gemini-client.js";
+import { economicsEngine } from "./economics/EconomicsEngine.js";
+import { beliefEngine } from "./beliefs/belief-engine/BeliefEngine.js";
+import { worldEngine } from "./world/world-engine/WorldEngine.js";
+import { identityEngine } from "./identity/identity-engine/IdentityEngine.js";
+import { organizationEngine } from "./organization/organization-engine/OrganizationEngine.js";
+import { teamEngine } from "./teams/team-engine/TeamEngine.js";
+import { temporalEngine } from "./temporal/temporal-engine/TemporalEngine.js";
+import { metaGovernor } from "./governor/governor-engine/MetaGovernor.js";
+import { reliabilityEngine } from "./reliability/reliability-engine/ReliabilityEngine.js";
+import { securityEngine } from "./security/security-engine/SecurityEngine.js";
+import { infrastructureEngine } from "./infrastructure/infrastructure-engine/InfrastructureEngine.js";
+import { erectorRuntime } from "./erector/runtime/ErectorRuntime.js";
+import { civilizationEngine } from "./civilization/civilization-engine/CivilizationEngine.js";
+import { expansionEngine } from "./expansion/expansion-engine/ExpansionEngine.js";
 
 /** Sole LLM transport — implemented only in TriggerRouter (Bhudhi B1). */
 export type BhudhiModelInvoker = (params: {
@@ -227,7 +242,14 @@ export async function runBhudhiPipeline<T = unknown>(
   }
 
   let memoryContext = "";
+  let unifiedMemoryContext = "";
   if (contract.memoryAllowed) {
+    try {
+      const graphMemory = await memoryGraph.queryForContext(request.blueprintId);
+      if (graphMemory) unifiedMemoryContext = graphMemory;
+    } catch {
+      /* graph optional */
+    }
     try {
       memoryContext = await retrieveMemory({
         userId:      request.userId,
@@ -239,6 +261,351 @@ export async function runBhudhiPipeline<T = unknown>(
       logger.warn({ msg }, "[BhudhiCore] Memory retrieval failed — continuing without memory");
       memoryContext = "";
     }
+    if (unifiedMemoryContext && memoryContext) {
+      memoryContext = `${unifiedMemoryContext} | ${memoryContext}`.slice(0, 800);
+    } else if (unifiedMemoryContext) {
+      memoryContext = unifiedMemoryContext;
+    }
+  }
+
+  let beliefContext = "";
+  try {
+    const beliefs = await beliefEngine.process({
+      blueprintId: request.blueprintId,
+      userId: request.userId,
+      trigger: request.triggerType,
+      memory: memoryContext || undefined,
+      signals: request.facts?.signals as Record<string, unknown> | undefined,
+      research: request.facts?.research as Record<string, unknown> | undefined,
+      simulation: request.facts?.simulation as Record<string, unknown> | undefined,
+      decision: request.facts?.decision as Record<string, unknown> | undefined,
+      feedback: request.facts?.feedback as Record<string, unknown> | undefined,
+    });
+    beliefContext = beliefEngine.formatBeliefContext(beliefs);
+    if (beliefs.drift?.action === "governance") {
+      logger.warn(
+        { blueprintId: request.blueprintId, drift: beliefs.drift },
+        "[BhudhiCore] Belief drift detected — governance may be required",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Belief processing skipped — continuing");
+  }
+
+  let worldContext = "";
+  try {
+    const world = await worldEngine.sync({
+      blueprintId: request.blueprintId,
+      userId: request.userId,
+      trigger: request.triggerType,
+      memory: memoryContext || undefined,
+      signals: request.facts?.signals as Record<string, unknown> | undefined,
+      conditions: request.facts?.conditions as Record<string, unknown> | undefined,
+      blueprint: request.facts?.blueprint as Record<string, unknown> | undefined,
+      life: request.facts?.life as Record<string, unknown> | undefined,
+      simulation: request.facts?.simulation as Record<string, unknown> | undefined,
+      feedback: request.facts?.feedback as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+    });
+    worldContext = worldEngine.formatWorldContext(world);
+    if (world.sync?.drift) {
+      logger.warn(
+        { blueprintId: request.blueprintId, sync: world.sync },
+        "[BhudhiCore] World reality drift detected",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] World model sync skipped — continuing");
+  }
+
+  let identityContext = "";
+  try {
+    const identity = await identityEngine.process({
+      blueprintId: request.blueprintId,
+      userId: request.userId,
+      trigger: request.triggerType,
+      memory: memoryContext || undefined,
+      signals: request.facts?.signals as Record<string, unknown> | undefined,
+      blueprint: request.facts?.blueprint as Record<string, unknown> | undefined,
+      life: request.facts?.life as Record<string, unknown> | undefined,
+      beliefs: request.facts?.beliefs as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      feedback: request.facts?.feedback as Record<string, unknown> | undefined,
+      history: request.facts?.history as Record<string, unknown> | undefined,
+    });
+    identityContext = identityEngine.formatIdentityContext(identity);
+    if (identity.drift?.action === "escalate" || identity.drift?.action === "pause") {
+      logger.warn(
+        { blueprintId: request.blueprintId, drift: identity.drift },
+        "[BhudhiCore] Identity drift — personalization guard active",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Identity processing skipped — continuing");
+  }
+
+  let organizationContext = "";
+  try {
+    const org = await organizationEngine.process({
+      blueprintId: request.blueprintId,
+      name: "Blueprint Organization",
+      users: [{ userId: request.userId, role: "OWNER", department: "strategy" }],
+      strategy: (request.facts?.strategy as Record<string, unknown> | undefined) ?? {
+        vision: "Blueprint execution",
+      },
+      projects: Array.isArray(request.facts?.projects)
+        ? (request.facts.projects as Array<{
+            id: string;
+            name: string;
+            ownerId?: string;
+            status?: string;
+          }>)
+        : undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      identity: request.facts?.identity as Record<string, unknown> | undefined,
+      signals: request.facts?.signals as Record<string, unknown> | undefined,
+    });
+    organizationContext = organizationEngine.formatOrganizationContext(org);
+    if (org.health.action === "escalate") {
+      logger.warn(
+        { blueprintId: request.blueprintId, health: org.health },
+        "[BhudhiCore] Organization health — escalate",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Organization OS skipped — continuing");
+  }
+
+  let teamContext = "";
+  try {
+    const team = await teamEngine.create({
+      blueprintId: request.blueprintId,
+      name: "Blueprint Team",
+      members: [
+        { userId: request.userId, role: "OWNER" },
+        { userId: "bhudhi-agent", role: "ASSISTANT", isAgent: true },
+      ],
+      identity: request.facts?.identity as Record<string, unknown> | undefined,
+      projects: Array.isArray(request.facts?.projects)
+        ? (request.facts.projects as Array<{ id: string; name: string; ownerId?: string; status?: string }>)
+        : undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      organization: request.facts?.organization as Record<string, unknown> | undefined,
+    });
+    teamContext = teamEngine.formatTeamContext(team);
+    if (team.health?.action === "escalate") {
+      logger.warn(
+        { blueprintId: request.blueprintId, health: team.health },
+        "[BhudhiCore] Team health — escalate",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Team engine skipped — continuing");
+  }
+
+  let erectorContext = "";
+  try {
+    const simulation = await erectorRuntime.create({
+      blueprintId: request.blueprintId,
+      goal: request.triggerType,
+      validation: request.facts?.validation as Record<string, unknown> | undefined,
+      blueprint: request.facts?.blueprint as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      identity: request.facts?.identity as Record<string, unknown> | undefined,
+      time: request.facts?.temporal as Record<string, unknown> | undefined,
+      constraints: request.facts?.constraints as string[] | undefined,
+      seed: request.blueprintId,
+      mode: "STANDARD",
+      scenario: "realistic",
+    });
+    erectorContext = erectorRuntime.formatErectorContext(simulation);
+    if (!simulation.outcomes.survived) {
+      logger.warn(
+        { blueprintId: request.blueprintId, simulationId: simulation.simulationId },
+        "[BhudhiCore] Erector — synthetic reality did not survive pressure",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Erector runtime skipped — continuing");
+  }
+
+  let civilizationContext = "";
+  try {
+    const civilization = await civilizationEngine.create({
+      blueprintId: request.blueprintId,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      economy: request.facts?.economicsPlan as Record<string, unknown> | undefined,
+      teams: Array.isArray(request.facts?.teams)
+        ? (request.facts.teams as Array<Record<string, unknown>>)
+        : [{ name: "Blueprint Team" }],
+      organizations: request.facts?.organization
+        ? [request.facts.organization as Record<string, unknown>]
+        : [{ name: "Blueprint Organization" }],
+      time: request.facts?.temporal as Record<string, unknown> | undefined,
+      simulation: request.facts?.simulation as Record<string, unknown> | undefined,
+      seed: request.blueprintId,
+    });
+    civilizationContext = civilizationEngine.formatCivilizationContext(civilization);
+    if (civilization.evolutionMode === "collapsing") {
+      logger.warn(
+        { blueprintId: request.blueprintId, civilizationId: civilization.civilizationId },
+        "[BhudhiCore] Civilization — collapsing trajectory advisory",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Civilization engine skipped — continuing");
+  }
+
+  let temporalContext = "";
+  try {
+    const temporal = await temporalEngine.analyze({
+      blueprintId: request.blueprintId,
+      goal: request.triggerType,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      identity: request.facts?.identity as Record<string, unknown> | undefined,
+      life: request.facts?.life as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      signals: request.facts?.signals as Record<string, unknown> | undefined,
+      memory: memoryContext || undefined,
+    });
+    temporalContext = temporalEngine.formatTemporalContext(temporal);
+    if (temporal.window.window === "avoid" && temporal.urgency > 0.7) {
+      logger.warn(
+        { blueprintId: request.blueprintId, urgency: temporal.urgency },
+        "[BhudhiCore] Temporal avoid window with high urgency",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Temporal engine skipped — continuing");
+  }
+
+  let governorContext = "";
+  try {
+    const governor = await metaGovernor.observe({
+      blueprintId: request.blueprintId,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      beliefs: request.facts?.beliefs as Record<string, unknown> | undefined,
+      decisions: request.facts?.decisions as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      economics: request.facts?.economicsPlan as Record<string, unknown> | undefined,
+      identity: request.facts?.identity as Record<string, unknown> | undefined,
+      organization: request.facts?.organization as Record<string, unknown> | undefined,
+      time: { urgency: request.facts?.temporalUrgency },
+    });
+    governorContext = metaGovernor.formatGovernorContext(governor);
+    if (governor.health?.systemHealth === "critical") {
+      logger.warn(
+        { blueprintId: request.blueprintId, health: governor.health },
+        "[BhudhiCore] Meta governor — system health critical",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Meta governor skipped — continuing");
+  }
+
+  let expansionContext = "";
+  try {
+    const expansion = await expansionEngine.discover({
+      blueprintId: request.blueprintId,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      decisions: request.facts?.decisions as Record<string, unknown> | undefined,
+      beliefs: request.facts?.beliefs as Record<string, unknown> | undefined,
+      experiments: request.facts?.experiments as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      memory: memoryContext ? { context: memoryContext } : undefined,
+      results: request.facts?.results as Record<string, unknown> | undefined,
+      seed: request.blueprintId,
+    });
+    expansionContext = expansionEngine.formatExpansionContext(expansion);
+    if (expansion.risk > 0.75 && !expansion.approval) {
+      logger.warn(
+        { blueprintId: request.blueprintId, risk: expansion.risk },
+        "[BhudhiCore] Expansion — high-risk capability candidates require governance",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Expansion engine skipped — continuing");
+  }
+
+  let infrastructureContext = "";
+  try {
+    const infrastructure = await infrastructureEngine.observe({
+      blueprintId: request.blueprintId,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      economics: request.facts?.economicsPlan as Record<string, unknown> | undefined,
+      traffic: request.facts?.traffic as Record<string, unknown> | undefined,
+      security: request.facts?.security as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      governor: request.facts?.governor as Record<string, unknown> | undefined,
+    });
+    infrastructureContext = infrastructureEngine.formatInfrastructureContext(infrastructure);
+    if (!infrastructure.capacity.canSupport) {
+      logger.warn(
+        { blueprintId: request.blueprintId, capacity: infrastructure.capacity },
+        "[BhudhiCore] Infrastructure capacity constrained",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Infrastructure engine skipped — continuing");
+  }
+
+  let securityContext = "";
+  try {
+    const security = await securityEngine.verify({
+      blueprintId: request.blueprintId,
+      actorId: request.userId,
+      identity: {
+        userId: request.userId,
+        verified: true,
+        role: request.facts?.role ?? "user",
+      },
+      governance: request.facts?.governance as Record<string, unknown> | undefined,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      organization: request.facts?.organization as Record<string, unknown> | undefined,
+      capabilities: Array.isArray(request.facts?.capabilities)
+        ? (request.facts.capabilities as Array<{
+            capability: string;
+            level: "PUBLIC" | "LIMITED" | "PRIVILEGED" | "CRITICAL" | "IMMUTABLE";
+            scope?: string;
+          }>)
+        : [{ capability: "bhudhi.invoke", level: "LIMITED", scope: request.blueprintId }],
+      requestedPermission: "execute",
+    });
+    securityContext = securityEngine.formatSecurityContext(security);
+    if (security.decision === "deny") {
+      logger.warn(
+        { blueprintId: request.blueprintId, decision: security.decision },
+        "[BhudhiCore] Security — default deny triggered",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Security engine skipped — continuing");
+  }
+
+  let reliabilityContext = "";
+  try {
+    const reliability = await reliabilityEngine.check({
+      blueprintId: request.blueprintId,
+      execution: request.facts?.execution as Record<string, unknown> | undefined,
+      world: request.facts?.world as Record<string, unknown> | undefined,
+      decision: request.facts?.decisions as Record<string, unknown> | undefined,
+      economics: request.facts?.economicsPlan as Record<string, unknown> | undefined,
+      memory: memoryContext ? { context: memoryContext } : undefined,
+      simulation: request.facts?.simulation as Record<string, unknown> | undefined,
+      governance: request.facts?.governance as Record<string, unknown> | undefined,
+    });
+    reliabilityContext = reliabilityEngine.formatReliabilityContext(reliability);
+    if (reliability.continuityMode === "OFFLINE" || reliability.failureProbability > 0.8) {
+      logger.warn(
+        { blueprintId: request.blueprintId, reliability },
+        "[BhudhiCore] Reliability — elevated failure risk",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Reliability engine skipped — continuing");
   }
 
   const facts: Record<string, unknown> = {
@@ -246,7 +613,75 @@ export async function runBhudhiPipeline<T = unknown>(
     stateVersion: request.stateVersion,
     userInput:    request.userInput,
     memoryContext,
+    beliefContext,
+    worldContext,
+    identityContext,
+    organizationContext,
+    teamContext,
+    erectorContext,
+    civilizationContext,
+    temporalContext,
+    governorContext,
+    expansionContext,
+    infrastructureContext,
+    securityContext,
+    reliabilityContext,
   };
+
+  let economicsSessionId = "";
+  let economicsMaxTokens: number | undefined;
+
+  try {
+    const economics = await economicsEngine.applyBeforeInvoke({
+      userId: request.userId,
+      blueprintId: request.blueprintId,
+      triggerType: request.triggerType,
+      task: request.triggerType,
+      trigger: request.triggerType,
+      confidence:
+        typeof request.facts?.confidence === "number"
+          ? request.facts.confidence
+          : undefined,
+      memoryBytes: memoryContext.length > 0 ? memoryContext.length : undefined,
+      simulation: Boolean(request.facts?.simulation),
+      priority:
+        request.facts?.priority === "critical" ||
+        request.facts?.priority === "high" ||
+        request.facts?.priority === "low"
+          ? request.facts.priority
+          : "normal",
+    });
+
+    if (economics.blocked) {
+      exitAgentChain(chainId);
+      const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);
+      await logFallbackUsage({
+        triggerType: request.triggerType,
+        promptName: contract.name,
+        reason: economics.plan.blockReason ?? "economics_blocked",
+        userId: request.userId,
+      }).catch(() => null);
+      return {
+        ok: true,
+        output: fallback as BhudhiOutputEnvelope<T>,
+        fallbackUsed: true,
+        logId: "",
+        failureReason: economics.plan.blockReason ?? "economics_blocked",
+      };
+    }
+
+    economicsSessionId = economics.sessionId;
+    economicsMaxTokens = economics.maxTokens;
+    facts.economicsPlan = {
+      route: economics.plan.compute.route,
+      executionMode: economics.plan.compute.executionMode,
+      modelId: economics.plan.compute.modelId,
+      valueScore: economics.plan.compute.valueScore,
+      roiAction: economics.plan.roi.action,
+    };
+  } catch (err) {
+    logger.warn({ err }, "[BhudhiCore] Economics planning skipped — continuing");
+  }
 
   const provider: BhudhiProvider = contract.provider ?? providerForTrigger(request.triggerType);
 
@@ -299,7 +734,11 @@ export async function runBhudhiPipeline<T = unknown>(
       throw new Error("BHUDHI_NO_GEMINI_API_KEY");
     }
 
-    const maxTokens = Math.min(contract.maxTokens, getMaxTokensForTrigger(request.triggerType));
+    const maxTokens = Math.min(
+      economicsMaxTokens ?? contract.maxTokens,
+      contract.maxTokens,
+      getMaxTokensForTrigger(request.triggerType),
+    );
     const systemPrompt =
       provider === "gemini-search"
         ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
@@ -438,6 +877,8 @@ export async function runBhudhiPipeline<T = unknown>(
     };
   }
 
+  const estimatedCostUsd = inputTokens * 0.000003 + outputTokens * 0.000015;
+
   await updateBhudhiLog({
     logId,
     inputTokens,
@@ -449,8 +890,20 @@ export async function runBhudhiPipeline<T = unknown>(
       criticFlag: critic.flagReason,
       web_search_calls: webSearchCalls,
       intelligence_grounded: intelligenceGrounded,
+      estimated_cost_usd: estimatedCostUsd,
     },
   }).catch(() => null);
+
+  if (economicsSessionId) {
+    await economicsEngine
+      .recordInvokeResult(economicsSessionId, {
+        costUsd: estimatedCostUsd,
+        latencyMs: latency,
+        tokensIn: inputTokens,
+        tokensOut: outputTokens,
+      })
+      .catch(() => null);
+  }
 
   incrementSessionOutput(request.userId);
   exitAgentChain(chainId);

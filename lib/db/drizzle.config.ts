@@ -32,7 +32,7 @@ const drizzleConnectionUrl = resolveDrizzleConnectionUrl(connectionUrl);
 
 /** Match schema modules (explicit list is reliable for drizzle-kit on Windows). */
 export default defineConfig({
-  schema: ["./src/schema/enums.ts", "./src/schema/tables.ts"],
+  schema: ["./src/schema/enums.ts", "./src/schema/tables.ts", "./src/schema/bhudhiTables.ts"],
   out: "../../migrations",
   dialect: "postgresql",
   dbCredentials: {

@@ -7,6 +7,12 @@ import { explainSignal } from "../engines/signal/SignalCalculationEngine.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { parseMode } from "../engines/blueprint/BlueprintRuleEngine.js";
 import { readTeamSignalFromConfig } from "../engines/blueprint/infrastructure/TeamSignalAggregationService.js";
+import {
+  frameworkSignalsToApiPayload,
+  readPermanentFrameworkSignals,
+  recalculatePermanentFrameworkSignals,
+} from "../services/PermanentFrameworkSignalService.js";
+import { getConditionDisplaySpec } from "../engines/condition/ConditionDeterminationEngine.js";
 
 const router = Router();
 
@@ -51,7 +57,21 @@ router.get("/signals/current", async (req, res) => {
       .limit(1);
 
     if (!signal) {
-      success(res, { signal: null, condition: null });
+      const frameworkOnly = await readPermanentFrameworkSignals(bp.id);
+      success(res, {
+        signal: null,
+        frameworkSignals: frameworkOnly ? frameworkSignalsToApiPayload(frameworkOnly) : null,
+        conditionDisplay: getConditionDisplaySpec(condition?.condition ?? "nothingness"),
+        condition: condition
+          ? {
+              condition: condition.condition,
+              durationDays: condition.duration_days,
+              escalationLevel: condition.escalation_level,
+              recoveryRequired: condition.recovery_required,
+            }
+          : null,
+        mode: bp.mode,
+      });
       return;
     }
 
@@ -73,7 +93,12 @@ router.get("/signals/current", async (req, res) => {
     const teamSignal =
       parseMode(bp.mode) === "team" ? readTeamSignalFromConfig(bp.blueprint_config) : null;
 
+    const frameworkBundle = await readPermanentFrameworkSignals(bp.id);
+    const conditionKey = condition?.condition ?? assigned;
+
     success(res, {
+      frameworkSignals: frameworkBundle ? frameworkSignalsToApiPayload(frameworkBundle) : null,
+      conditionDisplay: getConditionDisplaySpec(conditionKey),
       signal: {
         id: signal.id,
         completionRate: signal.completion_rate,
@@ -106,6 +131,50 @@ router.get("/signals/current", async (req, res) => {
       return;
     }
     failure(res, "INTERNAL_ERROR", "Failed to get signal", 500);
+  }
+});
+
+router.get("/signals/framework", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId =
+      typeof req.query.blueprintId === "string" ? req.query.blueprintId : undefined;
+    const recalc = req.query.recalc === "true";
+
+    const [bp] = blueprintId
+      ? await db
+          .select({ id: blueprints.id })
+          .from(blueprints)
+          .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)))
+          .limit(1)
+      : await db
+          .select({ id: blueprints.id })
+          .from(blueprints)
+          .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
+          .limit(1);
+
+    if (!bp) {
+      success(res, { frameworkSignals: null });
+      return;
+    }
+
+    const bundle = recalc
+      ? await recalculatePermanentFrameworkSignals({
+          blueprintId: bp.id,
+          userId: auth.userId,
+        })
+      : await readPermanentFrameworkSignals(bp.id);
+
+    success(res, {
+      blueprintId: bp.id,
+      frameworkSignals: bundle ? frameworkSignalsToApiPayload(bundle) : null,
+    });
+  } catch (e) {
+    if (isTorgimaError(e)) {
+      failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
+      return;
+    }
+    failure(res, "INTERNAL_ERROR", "Failed to load framework signals", 500);
   }
 });
 

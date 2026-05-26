@@ -415,7 +415,7 @@ export class BlueprintEngine {
       const restrictedActions = restrictedActionsForTier(tier);
       const baseMax = tier === "starter" ? 2 : tier === "growth" ? 3 : 4;
       const adjustedLimits = applyArchetypeToTaskLimits(1, baseMax, lockedIntel?.archetypeExecutionMult);
-      const taskLimits = { taskLimit: { min: adjustedLimits.min, max: adjustedLimits.max } };
+      const taskLimits = { min: adjustedLimits.min, max: adjustedLimits.max };
       const [enforcementPackage] = await tx.insert(enforcementPackages).values({
         blueprint_id:        blueprintId,
         user_id:             userId,

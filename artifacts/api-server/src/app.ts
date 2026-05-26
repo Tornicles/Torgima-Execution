@@ -6,6 +6,8 @@ import router from "./routes/index.js";
 import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
+import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
+
 const app: Express = express();
 
 // CORS + GET /health are registered on the root app in index.ts before this mounts.
@@ -45,6 +47,8 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/api", bhudhiRateLimitMiddleware);
 
 app.use("/api/auth", authRouter);
 app.use("/api", router);

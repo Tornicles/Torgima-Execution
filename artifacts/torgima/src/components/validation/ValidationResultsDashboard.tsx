@@ -732,7 +732,7 @@ export function ValidationResultsDashboard({
                 >
                   <p className="font-bold text-gray-900">{card.title}</p>
                   <p className="text-sm text-gray-600 mt-2">
-                    {String(card.path.description ?? card.path.summary ?? mod0 || "A different way to reach the same goal.")}
+                    {String(card.path.description ?? card.path.summary ?? (mod0 || "A different way to reach the same goal."))}
                   </p>
                   <p className="text-xs text-gray-500 mt-3">
                     <span className="font-medium">What changes:</span> {mod0 || "Focus and scope adjust."}

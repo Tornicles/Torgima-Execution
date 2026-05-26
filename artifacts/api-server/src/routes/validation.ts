@@ -12,6 +12,10 @@ import { EventTypes } from "../types/eventContracts.js";
 import { emitErectorFirstWeekGenerated } from "../engines/erector/emitErectorEvents.js";
 import { generateFirstWeek } from "../engines/erector/PathEngine.js";
 import { resolveArchetype } from "../engines/erector/ArchetypeResolutionEngine.js";
+import { SequenceTrackingService } from "../services/SequenceTrackingService.js";
+import { ErectorRefinementService } from "../services/ErectorRefinementService.js";
+import { runErectorTwentyStages } from "../engines/erector/ErectorStageRunner.js";
+import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
 
 const router = Router();
@@ -93,7 +97,9 @@ function erectorInputFromRow(row: typeof import("@workspace/db").validations.$in
     blueprintId: row.blueprint_id,
     idempotencyKey: row.idempotency_key ?? `erector:${row.id}`,
     rawGoal: row.raw_goal ?? row.desired_outcome ?? "Execution goal",
-    purpose: row.purpose ?? row.desired_outcome ?? "Execution purpose",
+    goalFinal: row.goal_final ?? undefined,
+    purpose: row.purpose_final ?? row.purpose ?? row.desired_outcome ?? "Execution purpose",
+    purposeFinal: row.purpose_final ?? undefined,
     timeframe: "90d",
     commitmentLevel: row.commitment_level ?? "MEDIUM",
     desiredOutcome: row.desired_outcome ?? "Proof and traction",
@@ -250,34 +256,134 @@ router.post("/v1/validation/run", async (req, res) => {
       return;
     }
 
+    const { db: refineDb, validations: refineValidations, blueprints } = await import("@workspace/db");
+    const { and: refineAnd, desc: refineDesc, eq: refineEq } = await import("drizzle-orm");
+    const [refineRow] = await refineDb
+      .select()
+      .from(refineValidations)
+      .where(refineAnd(refineEq(refineValidations.blueprint_id, blueprintId), refineEq(refineValidations.user_id, auth.userId)))
+      .orderBy(refineDesc(refineValidations.created_at))
+      .limit(1);
+
+    const [bpRow] = await refineDb
+      .select({ goal_final: blueprints.goal_final, purpose_final: blueprints.purpose_final, refinement_status: blueprints.refinement_status })
+      .from(blueprints)
+      .where(refineEq(blueprints.id, blueprintId))
+      .limit(1);
+
+    const goalFinal = refineRow?.goal_final ?? bpRow?.goal_final ?? parsed.data.rawGoal;
+    const purposeFinal = refineRow?.purpose_final ?? bpRow?.purpose_final ?? parsed.data.purpose;
+    const useTwentyStage =
+      Boolean(goalFinal && purposeFinal) &&
+      (bpRow?.refinement_status === "complete" || refineRow?.refinement_locked);
+
+    if (useTwentyStage) {
+      try {
+        if (refineRow) ErectorRefinementService.assertReadyForValidation(refineRow);
+      } catch (refineErr) {
+        failure(
+          res,
+          "VALIDATION_ERROR",
+          refineErr instanceof Error ? refineErr.message : "Complete goal/purpose refinement and validation feed first",
+          422,
+        );
+        return;
+      }
+    }
+
     console.log("[RUN_START]", {
       userId: auth.userId,
       blueprintId,
       idempotencyKey: parsed.data.idempotencyKey,
+      pipeline: useTwentyStage ? "20_stage" : "legacy_erector",
     });
-    const result = await runErectorValidation({ ...parsed.data, blueprintId, userId: auth.userId });
-    const redirectTo = `/onboarding?id=${result.validationId}`;
+
+    let validationId: string;
+    let result: Awaited<ReturnType<typeof runErectorValidation>> | null = null;
+
+    if (useTwentyStage) {
+      const feed: ValidationFeedInput = {
+        blueprintId,
+        userId: auth.userId,
+        idempotencyKey: parsed.data.idempotencyKey,
+        goal_final: goalFinal,
+        purpose_final: purposeFinal,
+        country: refineRow?.location_country ?? parsed.data.location.country,
+        economic_type: refineRow?.economic_type ?? undefined,
+        business_type: refineRow?.business_type ?? parsed.data.businessModel,
+        business_model: refineRow?.business_model ?? parsed.data.businessModel,
+        commitment_level: refineRow?.commitment_level ?? parsed.data.commitmentLevel,
+        budget: refineRow?.budget_available ?? parsed.data.budgetAvailable,
+        resources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
+        target_customer: refineRow?.target_customer ?? parsed.data.targetCustomer,
+        currency: refineRow?.currency ?? parsed.data.currency,
+        location_city: refineRow?.location_city ?? parsed.data.location.city,
+        tier: parsed.data.tier,
+      };
+      const run = await runErectorTwentyStages(feed);
+      validationId = run.validationId;
+    } else {
+      result = await runErectorValidation({
+        ...parsed.data,
+        blueprintId,
+        userId: auth.userId,
+        rawGoal: refineRow?.raw_goal ?? parsed.data.rawGoal,
+        goalFinal,
+        purposeFinal,
+        purpose: purposeFinal,
+        location: {
+          country: refineRow?.location_country ?? parsed.data.location.country,
+          city: refineRow?.location_city ?? parsed.data.location.city,
+        },
+        businessType: (refineRow?.business_type as "online" | "offline" | "hybrid") ?? parsed.data.businessType,
+        businessModel: refineRow?.business_model ?? parsed.data.businessModel,
+        budgetAvailable: refineRow?.budget_available ?? parsed.data.budgetAvailable,
+        targetCustomer: refineRow?.target_customer ?? parsed.data.targetCustomer,
+        currentResources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
+      });
+      validationId = result.validationId;
+    }
+    await SequenceTrackingService.recordContext(blueprintId, parsed.data.tier, {
+      timeframe: parsed.data.customTimeframeDays ?? undefined,
+      location: parsed.data.location.country,
+      businessType: parsed.data.businessType,
+      commitment: parsed.data.commitmentLevel,
+      budget: parsed.data.budgetAvailable,
+    }).catch(() => null);
     const { db: runDb, validations: runValidations } = await import("@workspace/db");
-    const { sql: runSql } = await import("drizzle-orm");
+    const { sql: runSql, eq: runEq } = await import("drizzle-orm");
+    const [finalRow] = await runDb.select().from(runValidations).where(runEq(runValidations.id, validationId)).limit(1);
+    const verdictForSeq = result?.verdict ?? finalRow?.verdict ?? "adjust";
+    await SequenceTrackingService.recordValidation(blueprintId, parsed.data.tier, {
+      verdict: verdictForSeq,
+      realityScore: result?.scores.realityScore ?? finalRow?.reality_score ?? undefined,
+      paths: (result?.paths ?? {
+        current: finalRow?.path_current,
+        adjusted: finalRow?.path_adjusted,
+        alternative: finalRow?.path_alternative,
+      }) as unknown as Record<string, unknown>,
+      feasibility: result?.scores.realityScore ?? finalRow?.reality_score ?? undefined,
+    }).catch(() => null);
+    const redirectTo = `/onboarding?id=${validationId}`;
     const [runCount] = await runDb
       .select({ count: runSql<number>`count(*)::int` })
       .from(runValidations)
       .catch(() => [{ count: -1 }]);
-    console.log("[VALIDATION RUN] Created validation ID:", result.validationId);
+    console.log("[VALIDATION RUN] Created validation ID:", validationId);
     console.log("[VALIDATION RUN] DB confirmed write — count now:", runCount?.count ?? "unknown");
-    console.log("[RUN_SUCCESS]", {
-      validationId: result.validationId,
-      verdict: result.verdict,
-      redirectTo,
-    });
+
+    const verdict = result?.verdict ?? finalRow?.verdict ?? "adjust";
+
+    console.log("[RUN_SUCCESS]", { validationId, verdict, redirectTo });
     success(res, {
       success: true,
-      validationId: result.validationId,
-      validationContractId: result.validationContractId,
-      blueprintId: result.blueprintId,
-      verdict: result.verdict,
-      result,
+      validationId,
+      validationContractId: finalRow?.contract_id ?? result?.validationContractId,
+      blueprintId,
+      verdict,
+      result: result ?? { validationId, blueprintId, verdict },
       redirectTo,
+      pipeline: useTwentyStage ? "20_stage" : "legacy",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -529,7 +635,7 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Current path cannot launch when Reality Score requires pivot.", 422);
       return;
     }
-    const { db, validations } = await import("@workspace/db");
+    const { db, validations, blueprints } = await import("@workspace/db");
     const { eq } = await import("drizzle-orm");
     await db
       .update(validations)
@@ -541,6 +647,9 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       })
       .where(eq(validations.id, row.id));
     const firstWeekPlan = await persistFirstWeekPlan(row, auth.userId, selected);
+    const [bp] = await db.select({ tier: blueprints.tier }).from(blueprints).where(eq(blueprints.id, row.blueprint_id)).limit(1);
+    await SequenceTrackingService.recordValidationResult(row.blueprint_id, bp?.tier, selected).catch(() => null);
+
     await writeEvent({
       eventType: EventTypes.ERECTOR_PATH_SELECTED,
       entityType: "validation",

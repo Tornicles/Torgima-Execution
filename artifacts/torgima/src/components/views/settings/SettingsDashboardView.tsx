@@ -106,7 +106,7 @@ export function SettingsDashboardView() {
                   <input className="w-full border border-gray-200 rounded-lg px-3 py-2" defaultValue={displayName} readOnly />
                 </label>
                 <label className="text-sm">
-                  <span className="text-gray-500 block mb-1">Daily task target</span>
+                  <span className="text-gray-500 block mb-1">Daily Order target</span>
                   <input
                     type="number"
                     min={1}

@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./types/bhudhi": "./src/types/bhudhi.ts",
+    "./bhudhi-seed-data": "./src/bhudhi-seed-data.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
@@ -13,7 +15,9 @@
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "check": "drizzle-kit check --config ./drizzle.config.ts",
     "seed": "tsx src/seed.ts",
-    "verify": "tsx src/verify-db.ts"
+    "seed:bhudhi": "tsx src/bhudhi-seed.ts",
+    "verify": "tsx src/verify-db.ts",
+    "verify:bhudhi": "tsx src/bhudhi-seed.ts --verify-only"
   },
   "dependencies": {
     "@workspace/state-machine": "workspace:*",

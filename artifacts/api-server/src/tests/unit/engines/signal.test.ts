@@ -138,24 +138,24 @@ describe("assignCondition", () => {
     };
     expect(assignCondition(m, "urgency")).toBe("danger");
   });
-  it("assigns power for strong metrics + momentum", () => {
+  it("assigns power for strong production + operations", () => {
     const m = {
-      completion_rate: 0.75,
-      weighted_score: 7.5,
-      momentum: 5,
+      completion_rate: 0.88,
+      weighted_score: 7.8,
+      momentum: 2,
       trend: "rising",
       confidence: "high",
       tasks_in_window: 8,
       blocker_ratio: 0,
       skip_ratio: 0,
-      raw_score: 7.5,
+      raw_score: 7.8,
       avg_difficulty_felt: null,
     };
     expect(assignCondition(m, "stability")).toBe("power");
   });
-  it("assigns affluence for top metrics", () => {
+  it("assigns affluence for peak framework signals", () => {
     const m = {
-      completion_rate: 0.9,
+      completion_rate: 0.92,
       weighted_score: 9.0,
       momentum: 8,
       trend: "rising",

@@ -57,8 +57,8 @@ export const CONDITION_COLORS: Record<
   nothingness: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-300" },
   danger: { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-400" },
   urgency: { bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-400" },
-  stability: { bg: "bg-blue-100", text: "text-blue-700", ring: "ring-blue-400" },
-  power: { bg: "bg-green-100", text: "text-green-700", ring: "ring-green-400" },
+  stability: { bg: "bg-emerald-100", text: "text-emerald-800", ring: "ring-emerald-400" },
+  power: { bg: "bg-blue-100", text: "text-blue-800", ring: "ring-blue-400" },
   affluence: { bg: "bg-purple-100", text: "text-purple-700", ring: "ring-purple-400" },
   power_change: { bg: "bg-yellow-100", text: "text-yellow-700", ring: "ring-yellow-400" },
 };

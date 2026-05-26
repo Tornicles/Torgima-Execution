@@ -1,9 +1,14 @@
-import { db, feedback, signalSnapshots, orders, targets, blueprints } from "@workspace/db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { db, feedback, signalSnapshots, orders, targets, blueprints, activeFeedbackSessions } from "@workspace/db";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import type { SignalMetrics as ExportedSignalMetrics } from "./SignalCalculationEngine.types.js";
 import type { OperationalMathematicsDocument } from "./SignalOperationalMathematicsEngine.js";
 import { computeOperationalMathematics } from "./SignalOperationalMathematicsEngine.js";
+import { assignConditionFromMetrics } from "../condition/ConditionDeterminationEngine.js";
+import {
+  recalculatePermanentFrameworkSignals,
+  readPermanentFrameworkSignals,
+} from "../../services/PermanentFrameworkSignalService.js";
 import {
   archetypeSignalWindowDays,
   emitArchetypeContextMissingIfNeeded,
@@ -126,7 +131,37 @@ export async function calculate(params: {
       ),
     );
 
-  const metrics = calculateMetrics(feedbackInWindow, priorFeedback);
+  const structuredInWindow = await db
+    .select()
+    .from(activeFeedbackSessions)
+    .where(
+      and(
+        eq(activeFeedbackSessions.blueprint_id, params.blueprintId),
+        eq(activeFeedbackSessions.user_id, params.userId),
+        gte(activeFeedbackSessions.created_at, windowStart),
+        lte(activeFeedbackSessions.created_at, windowEnd),
+        sql`${activeFeedbackSessions.completed_at} IS NOT NULL`,
+      ),
+    )
+    .orderBy(activeFeedbackSessions.created_at);
+
+  const priorStructured = await db
+    .select()
+    .from(activeFeedbackSessions)
+    .where(
+      and(
+        eq(activeFeedbackSessions.blueprint_id, params.blueprintId),
+        eq(activeFeedbackSessions.user_id, params.userId),
+        gte(activeFeedbackSessions.created_at, priorStart),
+        lte(activeFeedbackSessions.created_at, priorEnd),
+        sql`${activeFeedbackSessions.completed_at} IS NOT NULL`,
+      ),
+    );
+
+  let metrics = calculateMetrics(feedbackInWindow, priorFeedback);
+  if (structuredInWindow.length > 0) {
+    metrics = mergeStructuredFeedbackMetrics(metrics, structuredInWindow, priorStructured);
+  }
 
   const [prevSnapshot] = await db
     .select()
@@ -169,8 +204,40 @@ export async function calculate(params: {
   });
 
   const prevCondition = prevSnapshot?.assigned_condition ?? "nothingness";
+  const latestStructured = structuredInWindow.at(-1);
 
-  const assignedCondition = assignCondition(metrics, prevCondition ?? "nothingness");
+  const frameworkBundle = await recalculatePermanentFrameworkSignals({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+  }).catch(async () => readPermanentFrameworkSignals(params.blueprintId));
+
+  const structuredSignals = frameworkBundle
+    ? {
+        production_signal: frameworkBundle.signals.Production.value,
+        operations_signal: frameworkBundle.signals.Operations.value,
+        growth_signal: frameworkBundle.signals.Growth.value,
+        scale_signal: frameworkBundle.signals.Scale.value,
+        momentum: frameworkBundle.signals.Production.momentum,
+      }
+    : (latestStructured?.engine_metrics as
+        | {
+            production_signal?: number;
+            operations_signal?: number;
+            growth_signal?: number;
+            scale_signal?: number;
+            momentum?: number;
+          }
+        | undefined) ?? null;
+
+  const omWithFramework = {
+    ...operationalMathematics,
+    frameworkSignals: frameworkBundle ?? undefined,
+  } as OperationalMathematicsDocument & { frameworkSignals?: unknown };
+
+  const assignedCondition = assignCondition(metrics, prevCondition ?? "nothingness", {
+    operationalMathematics: omWithFramework,
+    structuredSignals,
+  });
 
   const sanitized = sanitizeNumericSignalMetrics(metrics);
 
@@ -196,7 +263,9 @@ export async function calculate(params: {
         confidence: sanitized.confidence,
         blocker_ratio: sanitized.blocker_ratio,
         skip_ratio: sanitized.skip_ratio,
-        operational_mathematics_json: operationalMathematics as unknown as Record<string, unknown>,
+        execution_score: structuredInWindow.at(-1)?.execution_score ?? metrics.completion_rate,
+        feedback_confidence: structuredInWindow.at(-1)?.confidence ?? null,
+        operational_mathematics_json: omWithFramework as unknown as Record<string, unknown>,
         assigned_condition: assignedCondition as typeof signalSnapshots.$inferInsert["assigned_condition"],
         is_current: true,
         ...(params.causationEventId ? { causation_event_id: params.causationEventId } : {}),
@@ -223,6 +292,45 @@ export async function calculate(params: {
 }
 
 // ── METRIC CALCULATIONS ───────────────────────────────────────────────────────
+
+export function mergeStructuredFeedbackMetrics(
+  base: SignalMetrics,
+  sessions: (typeof activeFeedbackSessions.$inferSelect)[],
+  priorSessions: (typeof activeFeedbackSessions.$inferSelect)[],
+): SignalMetrics {
+  const latest = sessions.at(-1);
+  if (!latest?.engine_metrics) return base;
+
+  const em = latest.engine_metrics as {
+    completion_rate?: number;
+    final_execution_score?: number;
+    momentum?: number;
+    confidence?: number;
+  };
+
+  const completion_rate = em.completion_rate ?? base.completion_rate;
+  const weighted_score = (em.final_execution_score ?? base.completion_rate) * 10;
+  const priorExec = priorSessions.at(-1)?.execution_score;
+  const momentum =
+    priorExec != null && latest.execution_score != null
+      ? Math.round((latest.execution_score - priorExec) * 10)
+      : base.momentum;
+
+  return {
+    ...base,
+    completion_rate,
+    weighted_score,
+    raw_score: weighted_score,
+    momentum,
+    confidence:
+      (em.confidence ?? 0.9) >= 0.85
+        ? "high"
+        : (em.confidence ?? 0.5) >= 0.7
+          ? "medium"
+          : "low",
+    tasks_in_window: Math.max(base.tasks_in_window, sessions.length),
+  };
+}
 
 export function calculateMetrics(
   rows: (typeof feedback.$inferSelect)[],
@@ -377,59 +485,21 @@ function calcAvgDifficulty(rows: (typeof feedback.$inferSelect)[]): string | nul
 
 // ── CONDITION ASSIGNMENT ──────────────────────────────────────────────────────
 
-export function assignCondition(metrics: SignalMetrics, _previousCondition: string): string {
-  const { completion_rate, weighted_score, momentum, trend, confidence, tasks_in_window } = metrics;
-
-  if (
-    confidence === "insufficient_data" ||
-    tasks_in_window < 3 ||
-    (completion_rate < 0.1 && weighted_score < 2.0)
-  )
-    return "nothingness";
-
-  if (
-    completion_rate < 0.3 &&
-    weighted_score < 4.0 &&
-    (trend === "declining" || momentum === 0)
-  )
-    return "danger";
-
-  if (
-    completion_rate >= 0.3 &&
-    completion_rate < 0.5 &&
-    weighted_score >= 4.0 &&
-    weighted_score < 5.5 &&
-    (trend === "flat" || trend === "declining")
-  )
-    return "urgency";
-
-  if (
-    completion_rate >= 0.5 &&
-    completion_rate < 0.7 &&
-    weighted_score >= 5.5 &&
-    weighted_score < 7.0 &&
-    (trend === "stable" || trend === "recovering")
-  )
-    return "stability";
-
-  if (
-    completion_rate >= 0.7 &&
-    completion_rate < 0.85 &&
-    weighted_score >= 7.0 &&
-    weighted_score < 8.5 &&
-    (trend === "stable" || trend === "rising") &&
-    momentum >= 3
-  )
-    return "power";
-
-  if (completion_rate > 0.85 && weighted_score > 8.5 && trend === "rising" && momentum >= 7)
-    return "affluence";
-
-  if (completion_rate < 0.3) return "danger";
-  if (completion_rate < 0.5) return "urgency";
-  if (completion_rate < 0.7) return "stability";
-  if (completion_rate < 0.85) return "power";
-  return "affluence";
+export function assignCondition(
+  metrics: SignalMetrics,
+  previousCondition: string,
+  options?: {
+    operationalMathematics?: OperationalMathematicsDocument;
+    structuredSignals?: {
+      production_signal?: number;
+      operations_signal?: number;
+      growth_signal?: number;
+      scale_signal?: number;
+      momentum?: number;
+    } | null;
+  },
+): string {
+  return assignConditionFromMetrics(metrics, previousCondition, options);
 }
 
 /** Rank for delta checks; `power_change` is treated as stability-tier volatility. */

@@ -10,6 +10,9 @@ import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStruc
 import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
 import type { FlowStepId } from "@/components/onboarding/TopProgressRail";
 import { AlignedGoalIntake, type AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
+import { ErectorGoalPurposeRefinement } from "@/components/onboarding/ErectorGoalPurposeRefinement";
+import { ErectorValidationFeed } from "@/components/onboarding/ErectorValidationFeed";
+import { saveValidationFeed } from "@/lib/erector-refinement-api";
 import { AlignedValidationResults } from "@/components/validation/AlignedValidationResults";
 import {
   budgetNumber,
@@ -155,6 +158,12 @@ export default function OnboardingPage() {
   const [selectedTier, setSelectedTier] = useState<TierId | null>(null);
   const [selectedMode, setSelectedMode] = useState<ModeId | null>("individual");
   const [goalStructured, setGoalStructured] = useState(false);
+  const [refinementBlueprintId, setRefinementBlueprintId] = useState<string | null>(null);
+  const [refinementLocked, setRefinementLocked] = useState(false);
+  const [feedReady, setFeedReady] = useState(false);
+  const [finalGoalText, setFinalGoalText] = useState("");
+  const [finalPurposeText, setFinalPurposeText] = useState("");
+  const [pendingIntake, setPendingIntake] = useState<AlignedIntakeForm | null>(null);
   const [erectorPhase, setErectorPhase] = useState<ErectorReviewPhase>("briefing");
   const [pathConfirmed, setPathConfirmed] = useState(false);
   const [, setLocation] = useLocation();
@@ -359,13 +368,53 @@ export default function OnboardingPage() {
         return;
       }
       const blueprintId = goalEnvelope.data.blueprintId;
+      setRefinementBlueprintId(blueprintId);
+      setPendingIntake(intake);
+      isSubmittingRef.current = false;
+      setLoading(false);
+      return;
+    } catch (err) {
+      console.error("Validation error:", err);
+      setError("Connection failed. Check your internet and try again.");
+      isSubmittingRef.current = false;
+      setLoading(false);
+    }
+  }
+
+  async function runValidationAfterRefinement(
+    blueprintId: string,
+    intake: AlignedIntakeForm,
+    goalFinal: string,
+    purposeFinal: string,
+  ) {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setError("");
+
+    const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
+    const timeframe = tf.key === "custom" && tf.days ? "custom" : tf.key;
+
+    try {
+      await saveValidationFeed(blueprintId, {
+        goal_final: goalFinal,
+        purpose_final: purposeFinal,
+        country: intake.locationCountry || "United States",
+        business_type: intake.businessModel || "Other",
+        business_model: intake.businessModel || "Other",
+        commitment_level: intake.commitmentLevel || "HIGH",
+        budget: 0,
+        resources: [],
+        target_customer: intake.locationCountry ? `Users in ${intake.locationCountry}` : "Early adopters",
+        timeframe: { duration_days: tf.days ?? 90 },
+      });
 
       const runResult = await postValidationRun({
         blueprintId,
         idempotency_key: idempotencyKeyRef.current,
         idempotencyKey: idempotencyKeyRef.current,
         rawGoal: intake.rawGoal,
-        purpose: intake.purpose || intake.rawGoal,
+        purpose: purposeFinal,
         timeframe: timeframe || "1yr",
         customTimeframeDays: tf.days,
         commitmentLevel: intake.commitmentLevel || "HIGH",
@@ -376,7 +425,7 @@ export default function OnboardingPage() {
         currency: "USD",
         currentResources: [],
         targetCustomer: "",
-        desiredOutcome: intake.purpose || intake.rawGoal,
+        desiredOutcome: purposeFinal,
         currentContext: "",
         knownBlockers: [],
         tier: selectedTier ?? "starter",
@@ -763,7 +812,43 @@ export default function OnboardingPage() {
   if (step <= 5) {
     return (
       <OnboardingShell flowStep={1} maxReachableStep={maxReachableStep} onFlowStepClick={handleFlowStepClick}>
-        <AlignedGoalIntake onSubmit={(intake) => void handleAlignedStart(intake)} isSubmitting={loading} />
+        {!refinementBlueprintId ? (
+          <AlignedGoalIntake onSubmit={(intake) => void handleAlignedStart(intake)} isSubmitting={loading} />
+        ) : !refinementLocked ? (
+          <ErectorGoalPurposeRefinement
+            blueprintId={refinementBlueprintId}
+            onLocked={(goalFinal, purposeFinal) => {
+              setRefinementLocked(true);
+              setFinalGoalText(goalFinal);
+              setFinalPurposeText(purposeFinal);
+              setForm((f) => ({
+                ...f,
+                primaryGoal: goalFinal,
+                purpose: purposeFinal,
+                desiredOutcome: purposeFinal,
+              }));
+            }}
+          />
+        ) : !feedReady ? (
+          <ErectorValidationFeed
+            blueprintId={refinementBlueprintId}
+            goalFinal={finalGoalText}
+            purposeFinal={finalPurposeText}
+            onSubmitted={() => {
+              setFeedReady(true);
+              if (pendingIntake) {
+                void runValidationAfterRefinement(
+                  refinementBlueprintId,
+                  pendingIntake,
+                  finalGoalText,
+                  finalPurposeText,
+                );
+              }
+            }}
+          />
+        ) : (
+          <p className="text-center text-sm text-muted-foreground py-8">Running 20-stage Erector validation…</p>
+        )}
         {error && <p className="text-center text-sm text-red-600 pb-8">{error}</p>}
       </OnboardingShell>
     );

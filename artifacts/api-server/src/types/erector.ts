@@ -7,7 +7,11 @@ export interface ErectorValidationInput {
   blueprintId: string;
   idempotencyKey: string;
   rawGoal: string;
+  /** Locked refined goal — source of truth when set */
+  goalFinal?: string;
   purpose: string;
+  /** Locked refined purpose — source of truth when set */
+  purposeFinal?: string;
   timeframe: "30d" | "90d" | "6m" | "1yr" | "custom" | string;
   customTimeframeDays?: number;
   commitmentLevel: "LOW" | "MEDIUM" | "HIGH" | "INTENSE" | string;

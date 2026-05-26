@@ -40,6 +40,30 @@ const RecoveryPage = lazy(() => import("@/pages/recovery"));
 const CharacterPage = lazy(() => import("@/pages/character"));
 const KnowledgePage = lazy(() => import("@/pages/knowledge"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
+const BhudhiPage = lazy(() => import("@/pages/bhudhi"));
+const GovernanceConsolePage = lazy(() => import("@/pages/governance-console"));
+const BhudhiEconomicsPage = lazy(() => import("@/pages/bhudhi-economics"));
+const BhudhiDecisionPage = lazy(() => import("@/pages/bhudhi-decision"));
+const BhudhiBeliefsPage = lazy(() => import("@/pages/bhudhi-beliefs"));
+const BhudhiWorldPage = lazy(() => import("@/pages/bhudhi-world"));
+const BhudhiIdentityPage = lazy(() => import("@/pages/bhudhi-identity"));
+const BhudhiOrganizationPage = lazy(() => import("@/pages/bhudhi-organization"));
+const BhudhiExperimentsPage = lazy(() => import("@/pages/bhudhi-experiments"));
+const BhudhiTemporalPage = lazy(() => import("@/pages/bhudhi-temporal"));
+const BhudhiMetaGovernorPage = lazy(() => import("@/pages/bhudhi-governor"));
+const BhudhiReliabilityPage = lazy(() => import("@/pages/bhudhi-reliability"));
+const BhudhiSecurityPage = lazy(() => import("@/pages/bhudhi-security"));
+const BhudhiInfrastructurePage = lazy(() => import("@/pages/bhudhi-infrastructure"));
+const BhudhiTeamsPage = lazy(() => import("@/pages/bhudhi-teams"));
+const BhudhiErectorPage = lazy(() => import("@/pages/bhudhi-erector"));
+const BhudhiCivilizationPage = lazy(() => import("@/pages/bhudhi-civilization"));
+const BhudhiExpansionPage = lazy(() => import("@/pages/bhudhi-expansion"));
+const BhudhiKernelPage = lazy(() => import("@/pages/bhudhi-kernel"));
+const BhudhiMemoryPage = lazy(() => import("@/pages/bhudhi-memory"));
+const BhudhiProtocolPage = lazy(() => import("@/pages/bhudhi-protocol"));
+const BhudhiUniversalPage = lazy(() => import("@/pages/bhudhi-universal"));
+const BhudhiLaunchOnboardingPage = lazy(() => import("@/pages/bhudhi-launch-onboarding"));
+const TorgimaBhudhiPage = lazy(() => import("@/pages/torgima-bhudhi"));
 const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
 const PrincipleEntryPage = lazy(() => import("@/pages/principle-entry"));
 const ProfileSettingsPage = lazy(() => import("@/pages/profile-settings"));
@@ -138,6 +162,7 @@ const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
 const ProtectedReportsPage = protect(ReportsPage);
+const ProtectedBhudhiPage = protect(BhudhiPage);
 const ProtectedProfileSettingsPage = protect(ProfileSettingsPage);
 
 function withAppLayout(Page: ComponentType) {
@@ -171,6 +196,30 @@ const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
 const ReportsRoute = withAppLayout(ProtectedReportsPage);
+const BhudhiRoute = withAppLayout(ProtectedBhudhiPage);
+const BhudhiEconomicsRoute = withAppLayout(protect(BhudhiEconomicsPage));
+const BhudhiDecisionRoute = withAppLayout(protect(BhudhiDecisionPage));
+const BhudhiBeliefsRoute = withAppLayout(protect(BhudhiBeliefsPage));
+const BhudhiWorldRoute = withAppLayout(protect(BhudhiWorldPage));
+const BhudhiIdentityRoute = withAppLayout(protect(BhudhiIdentityPage));
+const BhudhiOrganizationRoute = withAppLayout(protect(BhudhiOrganizationPage));
+const BhudhiExperimentsRoute = withAppLayout(protect(BhudhiExperimentsPage));
+const BhudhiTemporalRoute = withAppLayout(protect(BhudhiTemporalPage));
+const BhudhiMetaGovernorRoute = withAppLayout(protect(BhudhiMetaGovernorPage));
+const BhudhiReliabilityRoute = withAppLayout(protect(BhudhiReliabilityPage));
+const BhudhiSecurityRoute = withAppLayout(protect(BhudhiSecurityPage));
+const BhudhiInfrastructureRoute = withAppLayout(protect(BhudhiInfrastructurePage));
+const BhudhiTeamsRoute = withAppLayout(protect(BhudhiTeamsPage));
+const BhudhiErectorRoute = withAppLayout(protect(BhudhiErectorPage));
+const BhudhiCivilizationRoute = withAppLayout(protect(BhudhiCivilizationPage));
+const BhudhiExpansionRoute = withAppLayout(protect(BhudhiExpansionPage));
+const BhudhiKernelRoute = withAppLayout(protect(BhudhiKernelPage));
+const BhudhiMemoryRoute = withAppLayout(protect(BhudhiMemoryPage));
+const BhudhiProtocolRoute = withAppLayout(protect(BhudhiProtocolPage));
+const BhudhiUniversalRoute = withAppLayout(protect(BhudhiUniversalPage));
+const BhudhiLaunchOnboardingRoute = withAppLayout(protect(BhudhiLaunchOnboardingPage));
+const TorgimaBhudhiRoute = withAppLayout(protect(TorgimaBhudhiPage));
+const GovernanceConsoleRoute = withAppLayout(protect(GovernanceConsolePage));
 const ProfileSettingsRoute = withAppLayout(ProtectedProfileSettingsPage);
 
 function AppRoutes() {
@@ -207,6 +256,45 @@ function AppRoutes() {
         <Route path="/character" component={CharacterRoute} />
         <Route path="/knowledge" component={KnowledgeRoute} />
         <Route path="/reports" component={ReportsRoute} />
+        <Route path="/bhudhi" component={BhudhiRoute} />
+        <Route path="/console/governance" component={GovernanceConsoleRoute} />
+        <Route path="/bhudhi/economics" component={BhudhiEconomicsRoute} />
+        <Route path="/app/bhudhi/economics" component={BhudhiEconomicsRoute} />
+        <Route path="/bhudhi/decision" component={BhudhiDecisionRoute} />
+        <Route path="/app/bhudhi/decision" component={BhudhiDecisionRoute} />
+        <Route path="/bhudhi/beliefs" component={BhudhiBeliefsRoute} />
+        <Route path="/app/bhudhi/beliefs" component={BhudhiBeliefsRoute} />
+        <Route path="/bhudhi/world" component={BhudhiWorldRoute} />
+        <Route path="/app/bhudhi/world" component={BhudhiWorldRoute} />
+        <Route path="/bhudhi/identity" component={BhudhiIdentityRoute} />
+        <Route path="/app/bhudhi/identity" component={BhudhiIdentityRoute} />
+        <Route path="/bhudhi/organization" component={BhudhiOrganizationRoute} />
+        <Route path="/app/bhudhi/organization" component={BhudhiOrganizationRoute} />
+        <Route path="/bhudhi/experiments" component={BhudhiExperimentsRoute} />
+        <Route path="/app/bhudhi/experiments" component={BhudhiExperimentsRoute} />
+        <Route path="/bhudhi/temporal" component={BhudhiTemporalRoute} />
+        <Route path="/app/bhudhi/temporal" component={BhudhiTemporalRoute} />
+        <Route path="/bhudhi/governor" component={BhudhiMetaGovernorRoute} />
+        <Route path="/app/bhudhi/governor" component={BhudhiMetaGovernorRoute} />
+        <Route path="/bhudhi/reliability" component={BhudhiReliabilityRoute} />
+        <Route path="/app/bhudhi/reliability" component={BhudhiReliabilityRoute} />
+        <Route path="/bhudhi/security" component={BhudhiSecurityRoute} />
+        <Route path="/app/bhudhi/security" component={BhudhiSecurityRoute} />
+        <Route path="/bhudhi/infrastructure" component={BhudhiInfrastructureRoute} />
+        <Route path="/app/bhudhi/infrastructure" component={BhudhiInfrastructureRoute} />
+        <Route path="/bhudhi/teams" component={BhudhiTeamsRoute} />
+        <Route path="/app/bhudhi/teams" component={BhudhiTeamsRoute} />
+        <Route path="/bhudhi/erector" component={BhudhiErectorRoute} />
+        <Route path="/app/bhudhi/erector" component={BhudhiErectorRoute} />
+        <Route path="/bhudhi/civilization" component={BhudhiCivilizationRoute} />
+        <Route path="/app/bhudhi/civilization" component={BhudhiCivilizationRoute} />
+        <Route path="/bhudhi/expansion" component={BhudhiExpansionRoute} />
+        <Route path="/app/bhudhi/expansion" component={BhudhiExpansionRoute} />
+        <Route path="/app/torgima-bhudhi" component={TorgimaBhudhiRoute} />
+        <Route path="/app/bhudhi/onboarding" component={BhudhiLaunchOnboardingRoute} />
+        <Route path="/app/bhudhi" component={BhudhiUniversalRoute} />
+        <Route path="/app/bhudhi/:section" component={BhudhiUniversalRoute} />
+        <Route path="/bhudhi/:section" component={BhudhiUniversalRoute} />
         <Route path="/profiles/:username/entry/:entryDate" component={ProfileDayPage} />
         <Route path="/profiles/:username" component={PublicProfilePage} />
         <Route path="/principles/entry/:shareToken" component={PrincipleEntryPage} />

@@ -28,8 +28,10 @@ function erectorFacts(
   return {
     validationId,
     rawGoal: input.rawGoal,
-    goal: input.rawGoal,
-    purpose: input.purpose,
+    goal: input.goalFinal ?? input.rawGoal,
+    goalFinal: input.goalFinal ?? input.rawGoal,
+    purpose: input.purposeFinal ?? input.purpose,
+    purposeFinal: input.purposeFinal ?? input.purpose,
     desiredOutcome: input.desiredOutcome,
     timeframe: input.timeframe,
     commitmentLevel: input.commitmentLevel,

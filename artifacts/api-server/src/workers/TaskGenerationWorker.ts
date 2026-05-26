@@ -31,6 +31,13 @@ workerRegistry.register({
           generationTrigger: (p?.["generation_trigger"] as string) ?? "task_generation_requested",
           enforcementPackageId: p?.["enforcement_package_id"] as string | undefined,
           causationEventId: data.eventId,
+          queueFill: Boolean(p?.["queue_fill"] ?? p?.["queueFill"]),
+          targetCount:
+            typeof p?.["targetCount"] === "number"
+              ? (p["targetCount"] as number)
+              : typeof p?.["count"] === "number"
+                ? (p["count"] as number)
+                : undefined,
         });
 
         await incrementStateVersion(blueprintId, "task_generation_completed", data.eventId);

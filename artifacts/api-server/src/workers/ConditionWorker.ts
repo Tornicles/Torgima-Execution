@@ -1,6 +1,7 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { evaluate } from "../engines/condition/ConditionEvaluationEngine.js";
+import { onConditionChanged } from "../engines/mini-plan/MiniPlanAllocationEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
@@ -53,6 +54,21 @@ workerRegistry.register({
           idempotencyKey: `enforcement:${blueprintId}:${result.conditionId}:${signalSnapshotId}`,
           causationEventId: data.eventId,
         });
+
+        if (result.conditionChanged) {
+          await onConditionChanged({
+            blueprintId,
+            userId,
+            newCondition: result.condition,
+            previousCondition: result.previousCondition,
+            causationEventId: data.eventId,
+          }).catch((err: unknown) => {
+            logger.warn(
+              { blueprintId, err: err instanceof Error ? err.message : String(err) },
+              "[ConditionWorker] Mini plan allocation failed",
+            );
+          });
+        }
 
         await recordOperatingLoopStage({
           blueprintId,

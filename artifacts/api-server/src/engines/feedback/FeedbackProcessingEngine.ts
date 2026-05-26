@@ -19,6 +19,8 @@ import { runPsychologyPostFeedback } from "../psychology/PsychologyPipeline.js";
 import { classifyFailureWithRecord } from "../failure/FailureClassificationRecord.js";
 import { capabilityEngine } from "../capability/CapabilityEngine.js";
 import { behaviorPatternEngine } from "../behavior/BehaviorPatternEngine.js";
+import { runBhudhiFeedbackCycle } from "../../bhudhi/integration/TorgimaIntegration.js";
+import type { TaskFeedbackBhudhiResult } from "../../bhudhi/integration/TorgimaIntegration.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -44,6 +46,7 @@ export interface FeedbackResult {
   requiresInterrogation: boolean;
   interrogationQuestion?: string;
   eventId: string;
+  bhudhi?: TaskFeedbackBhudhiResult | null;
 }
 
 export async function processFeedback(input: FeedbackInput): Promise<FeedbackResult> {
@@ -241,9 +244,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
       ? "failed"
       : input.completionStatus === "skipped"
         ? "skipped"
-        : input.completionStatus === "partial"
-          ? "needs_feedback"
-          : "completed";
+        : "completed";
 
   let feedbackIdOut = "";
 
@@ -284,6 +285,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
       .set({
         status: newOrderStatus as typeof orders.$inferInsert["status"],
         finished_at: new Date(),
+        completed_at: newOrderStatus === "completed" ? new Date() : null,
         output_summary: ref.slice(0, 500),
       })
       .where(eq(orders.id, input.orderId));
@@ -440,6 +442,47 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     });
   }
 
+  if (!requiresInterrogation) {
+    await writeEvent({
+      eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
+      entityType: "feedback",
+      entityId: feedbackIdOut,
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      payload: {
+        trigger: "feedback_submitted",
+        feedback_id: feedbackIdOut,
+        order_id: input.orderId,
+        completion_status: input.completionStatus,
+        score: input.score,
+      },
+      idempotencyKey: `signal_recalc:feedback:${feedbackIdOut}`,
+      causationEventId: eventId,
+    }).catch(() => null);
+
+    await writeEvent({
+      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+      entityType: "feedback",
+      entityId: feedbackIdOut,
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      payload: {
+        generation_mode: "post_feedback",
+        generation_trigger: "feedback_submitted",
+        previous_order_id: input.orderId,
+        previous_verdict: input.completionStatus,
+        queue_fill: true,
+      },
+      idempotencyKey: `task_gen:feedback:${feedbackIdOut}`,
+      causationEventId: eventId,
+    }).catch(() => null);
+
+    logger.info(
+      { blueprintId: input.blueprintId, feedbackId: feedbackIdOut },
+      "[Feedback] Signal + task generation jobs queued",
+    );
+  }
+
   logger.info(
     {
       blueprintId: input.blueprintId,
@@ -447,9 +490,16 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
       completion: input.completionStatus,
       confidence,
       requiresInterrogation,
+      orderStatus: newOrderStatus,
     },
-    "[FeedbackEngine] Feedback processed",
+    "[Feedback] Feedback processed",
   );
+
+  const bhudhi = await runBhudhiFeedbackCycle(input.blueprintId, input.orderId, {
+    completionStatus: input.completionStatus,
+    score: input.score,
+    feedbackText: input.feedbackText,
+  });
 
   return {
     feedbackId: feedbackIdOut,
@@ -459,6 +509,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     requiresInterrogation,
     interrogationQuestion,
     eventId,
+    bhudhi,
   };
 }
 

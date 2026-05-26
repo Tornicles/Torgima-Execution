@@ -1,6 +1,6 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
-import { db, feedback, orders } from "@workspace/db";
+import { blueprints, db, feedback, orders } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { isVerifiedFeedbackEvidence } from "../engines/intelligence/IdentityContinuityEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
@@ -13,6 +13,7 @@ import { classifyFailureWithRecord } from "../engines/failure/FailureClassificat
 import { runPsychologyPostFeedback } from "../engines/psychology/PsychologyPipeline.js";
 import { recordCompulsionLoopStage } from "../engines/intelligence/CompulsionLoopEngine.js";
 import { logger } from "../lib/logger.js";
+import { processFeedbackRegeneration } from "../engines/sequence/sequenceRegenerationEngine.js";
 
 // FeedbackWorker — bridge from feedback to signal recalculation.
 // If the feedback requires interrogation, the chain is paused until the
@@ -77,6 +78,21 @@ workerRegistry.register({
           }).catch(() => null);
 
           const score = Number(payloadRec?.["score"] ?? 7);
+          const [bpTier] = await db
+            .select({ tier: blueprints.tier })
+            .from(blueprints)
+            .where(eq(blueprints.id, blueprintId))
+            .limit(1)
+            .catch(() => []);
+          await processFeedbackRegeneration({
+            blueprintId,
+            userId,
+            tier: bpTier?.tier,
+            completion: completionStatus,
+            score,
+            reflection: payloadRec?.["reflection"] as string | undefined,
+          }).catch(() => null);
+
           const { handleAcademyFeedback } = await import(
             "../engines/academy/AcademyFeedbackHandler.js"
           );

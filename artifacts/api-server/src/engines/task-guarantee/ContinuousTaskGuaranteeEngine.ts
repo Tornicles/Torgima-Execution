@@ -17,6 +17,10 @@ import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
 import { BlueprintStatus, ConditionState, OrderStatus, PivotReviewStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { generate } from "../task-generation/TaskGenerationEngine.js";
+import {
+  ensureContinuousVisibleTasks,
+  fillBlueprintTaskQueue,
+} from "../task-engine/TaskEngine.js";
 import { resolvePublishableOrder } from "../execution-loop/DependencyEngine.js";
 
 async function applyDependencyPublicationGate(params: {
@@ -66,6 +70,8 @@ export async function guaranteeTask(params: {
   generationTrigger?: string;
   enforcementPackageId?: string;
   causationEventId?: string;
+  targetCount?: number;
+  queueFill?: boolean;
 }): Promise<{ state: GuaranteeState; orderId?: string }> {
   const { blueprintId, userId } = params;
 
@@ -116,6 +122,17 @@ export async function guaranteeTask(params: {
     .from(orders)
     .where(and(eq(orders.blueprint_id, blueprintId), eq(orders.user_id, userId)));
 
+  if (params.queueFill) {
+    await fillBlueprintTaskQueue({
+      blueprintId,
+      userId,
+      generationMode: mode,
+      generationTrigger: params.generationTrigger ?? "queue_fill",
+      enforcementPackageId: params.enforcementPackageId,
+      causationEventId: params.causationEventId,
+    }).catch(() => null);
+  }
+
   const existingOrder = await findActionableOrder(blueprintId, userId);
 
   if (!existingOrder && (totalOrderCount ?? 0) === 0) {
@@ -128,6 +145,7 @@ export async function guaranteeTask(params: {
         generationTrigger: "blueprint_launched",
         enforcementPackageId: params.enforcementPackageId,
         causationEventId: params.causationEventId,
+        queueFill: true,
       });
       if (first.orders_generated > 0 && first.order_ids[0]) {
         return applyDependencyPublicationGate({
@@ -184,6 +202,14 @@ export async function guaranteeTask(params: {
       generationTrigger: forceInitial ? "blueprint_launched" : trigger,
       enforcementPackageId: params.enforcementPackageId,
       causationEventId: params.causationEventId,
+      queueFill:
+        params.queueFill ??
+        (forceInitial ||
+          trigger === "guarantee_check" ||
+          trigger === "guarantee_worker" ||
+          trigger === "manual_force" ||
+          trigger === "api_guarantee"),
+      targetCount: params.targetCount,
     });
 
     if (result.orders_generated > 0 && result.order_ids[0]) {
@@ -223,6 +249,16 @@ export async function guaranteeTask(params: {
     }
   } catch {
     /* continue */
+  }
+
+  const continuityId = await ensureContinuousVisibleTasks(blueprintId, userId, blueprint.goal);
+  if (continuityId) {
+    return applyDependencyPublicationGate({
+      blueprintId,
+      userId,
+      orderId: continuityId,
+      fallbackState: "RECOVER_EMPTY",
+    });
   }
 
   const holdTaskId = await createHoldTask(blueprintId, userId, blueprint.goal);
@@ -325,6 +361,7 @@ async function findActionableOrder(blueprintId: string, userId: string): Promise
       and(
         eq(orders.blueprint_id, blueprintId),
         eq(orders.user_id, userId),
+        eq(orders.is_visible, true),
         inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
       ),
     )

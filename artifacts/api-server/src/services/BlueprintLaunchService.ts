@@ -6,6 +6,12 @@ import { verifyBlueprintLaunchSchema } from "../lib/verifySchema.js";
 import { BlueprintRepository } from "../repositories/BlueprintRepository.js";
 import { ValidationService } from "./ValidationService.js";
 import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { SequenceTrackingService } from "./SequenceTrackingService.js";
+import { recordExecutionStructureFromBlueprint } from "../engines/sequence/sequenceExecutionStructureService.js";
+import { syncTaskGenerationSequence } from "../engines/sequence/sequenceTaskQueueService.js";
+import { initializeStarterAllocation } from "../engines/mini-plan/MiniPlanAllocationEngine.js";
+import { fillBlueprintTaskQueue } from "../engines/task-engine/TaskEngine.js";
+import { initializePermanentFrameworkSignals } from "./PermanentFrameworkSignalService.js";
 import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
 
 function assertValidationReadyForLaunch(row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>): void {
@@ -78,6 +84,16 @@ export const BlueprintLaunchService = {
     }
     assertValidationReadyForLaunch(validationRow);
 
+    const usesTwentyStage =
+      validationRow.validation_version != null || validationRow.stage_final_decision != null;
+    if (usesTwentyStage && !validationRow.is_finalized) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Validation must be finalized before blueprint launch. Complete the workspace and finalize first.",
+        false,
+      );
+    }
+
     await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
       tier: selectedBlueprintLevel,
       mode: blueprint.mode ?? "individual",
@@ -98,9 +114,18 @@ export const BlueprintLaunchService = {
       input.validationContractId,
     );
 
+    const handoff = validationRow.handoff_package as Record<string, unknown> | null;
+    const goalFromHandoff = (handoff?.goal_final as string) ?? validationRow.goal_final;
+    const purposeFromHandoff = (handoff?.purpose_final as string) ?? validationRow.purpose_final;
+
     await db
       .update(blueprints)
       .set({
+        goal: goalFromHandoff ?? blueprint.goal,
+        purpose: purposeFromHandoff ?? blueprint.purpose,
+        goal_final: goalFromHandoff ?? blueprint.goal_final,
+        purpose_final: purposeFromHandoff ?? blueprint.purpose_final,
+        economic_type: (handoff?.economic_type as string) ?? validationRow.economic_type,
         selected_path: selectedPathType,
         selected_blueprint_level: selectedBlueprintLevel,
         validation_id: validationRow.id,
@@ -110,10 +135,31 @@ export const BlueprintLaunchService = {
       })
       .where(eq(blueprints.id, input.blueprintId));
 
-    return blueprintEngine.activateBlueprint(
+    await SequenceTrackingService.recordBlueprintTier(input.blueprintId, selectedBlueprintLevel).catch(() => null);
+    await SequenceTrackingService.recordLaunchStack(input.blueprintId, selectedBlueprintLevel, {
+      goal: validationRow.goal_final ?? blueprint.goal_final ?? blueprint.goal,
+      purpose: validationRow.purpose_final ?? blueprint.purpose_final ?? blueprint.purpose ?? undefined,
+      selectedPath: selectedPathType,
+    }).catch(() => null);
+
+    const result = await blueprintEngine.activateBlueprint(
       input.blueprintId,
       input.userId,
       input.validationContractId,
     );
+
+    await recordExecutionStructureFromBlueprint(input.blueprintId, selectedBlueprintLevel).catch(() => null);
+    await initializePermanentFrameworkSignals(input.blueprintId).catch(() => null);
+    await initializeStarterAllocation(input.blueprintId, input.userId).catch(() => null);
+    await fillBlueprintTaskQueue({
+      blueprintId: input.blueprintId,
+      userId: input.userId,
+      tier: selectedBlueprintLevel,
+      generationMode: "initial",
+      generationTrigger: "blueprint_launched",
+    }).catch(() => null);
+    await syncTaskGenerationSequence(input.blueprintId, selectedBlueprintLevel).catch(() => null);
+
+    return result;
   },
 };

@@ -86,22 +86,22 @@ describe("assignCondition — representative matrix", () => {
   it("assigns nothingness when fewer than 3 tasks in window", () =>
     expect(assignCondition(makemetrics({ tasks_in_window: 2 }), "urgency")).toBe("nothingness"));
 
-  it("assigns danger when completion < 0.30 AND score < 4.0 AND declining", () =>
+  it("assigns danger when production signal critical", () =>
     expect(assignCondition(makemetrics({ completion_rate: 0.2, weighted_score: 3.5, trend: "declining", momentum: 0 }), "urgency")).toBe("danger"));
 
-  it("assigns urgency for low-moderate performance", () =>
-    expect(assignCondition(makemetrics({ completion_rate: 0.4, weighted_score: 5.0, trend: "flat" }), "stability")).toBe(
+  it("assigns urgency when both core signals below 0.70", () =>
+    expect(assignCondition(makemetrics({ completion_rate: 0.65, weighted_score: 6.0, trend: "flat" }), "stability")).toBe(
       "urgency",
     ));
 
-  it("assigns stability for consistent moderate performance", () =>
-    expect(assignCondition(makemetrics({ completion_rate: 0.6, weighted_score: 6.0, trend: "stable" }), "urgency")).toBe(
+  it("assigns stability for balanced healthy signals", () =>
+    expect(assignCondition(makemetrics({ completion_rate: 0.78, weighted_score: 6.5, trend: "stable" }), "urgency")).toBe(
       "stability",
     ));
 
-  it("assigns power for strong performance with streak", () =>
+  it("assigns power when production and operations excel", () =>
     expect(
-      assignCondition(makemetrics({ completion_rate: 0.75, weighted_score: 7.5, momentum: 4, trend: "rising" }), "stability"),
+      assignCondition(makemetrics({ completion_rate: 0.88, weighted_score: 7.8, momentum: 2, trend: "rising" }), "stability"),
     ).toBe("power"));
 
   it("assigns affluence for exceptional performance", () =>

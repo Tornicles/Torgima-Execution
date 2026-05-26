@@ -1,0 +1,14 @@
+/** Map Prompt 6 / doc naming to canonical seed framework names. */
+export const FRAMEWORK_NAME_ALIASES: Record<string, string> = {
+  ALIGNMENT___ACCOUNTABILITY: "ALIGNMENT_ACCOUNTABILITY",
+  GOVERNANCE___RISK: "GOVERNANCE_RISK",
+  CULTUREDYNAMICS: "CULTURE_DYNAMICS",
+  DECISIONVELOCITY: "DECISION_VELOCITY",
+  ADAPTIVEINTELLIGENCE: "ADAPTIVE_INTELLIGENCE",
+  REGENERATION___EXIT: "REGENERATION_EXIT",
+  PERSONAL_STRATEGY: "INDIVIDUAL_MASTERY",
+};
+
+export function normalizeFrameworkName(name: string): string {
+  return FRAMEWORK_NAME_ALIASES[name] ?? name;
+}

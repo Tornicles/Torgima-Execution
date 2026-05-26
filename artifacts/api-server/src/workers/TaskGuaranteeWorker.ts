@@ -56,9 +56,10 @@ workerRegistry.register({
           await guaranteeTask({
             blueprintId,
             userId,
-            generationMode: "recovery",
-            generationTrigger: "queue_empty_detected",
+            generationMode: "post_feedback",
+            generationTrigger: "guarantee_worker",
             causationEventId: data.eventId,
+            queueFill: true,
           }).catch(() => null);
 
           logger.warn({ blueprintId }, "[TaskGuaranteeWorker] Queue empty — recovery generation");

@@ -1,99 +1,221 @@
 /**
- * Deterministic condition operational contracts — authority for allowed behavior per condition.
+
+ * CONDITION_SYSTEM_SPECIFICATION.md — operational contracts per condition.
+
  */
 
+
+
+import { dailyTasksForCondition } from "../../../constants/conditionSpec.js";
+
+
+
 export interface ConditionOperationalContract {
+
   condition: string;
+
   allowedOrderIntensity: "minimal" | "low" | "normal" | "high";
+
   allowedProgression: "frozen" | "recovery_only" | "controlled" | "normal" | "accelerated";
+
   allowedAdaptation: "none" | "stabilize" | "feedback" | "optimize";
+
   allowedExpansion: boolean;
+
   allowedOptimization: boolean;
+
   taskMin: number;
+
   taskMax: number;
+
   scalingAllowed: boolean;
+
+  recoveryRequired: boolean;
+
+  difficultyCap: "very_easy" | "easy" | "moderate" | "hard";
+
 }
+
+
+
+function contract(
+
+  condition: string,
+
+  partial: Omit<ConditionOperationalContract, "condition" | "taskMin" | "taskMax">,
+
+): ConditionOperationalContract {
+
+  const daily = dailyTasksForCondition(condition);
+
+  return {
+
+    condition,
+
+    taskMin: daily,
+
+    taskMax: daily,
+
+    ...partial,
+
+  };
+
+}
+
+
 
 export const CONDITION_ENFORCEMENT_MATRIX: Record<string, ConditionOperationalContract> = {
-  nothingness: {
-    condition: "nothingness",
+
+  nothingness: contract("nothingness", {
+
     allowedOrderIntensity: "minimal",
+
     allowedProgression: "recovery_only",
+
     allowedAdaptation: "none",
+
     allowedExpansion: false,
+
     allowedOptimization: false,
-    taskMin: 1,
-    taskMax: 2,
+
     scalingAllowed: false,
-  },
-  danger: {
-    condition: "danger",
+
+    recoveryRequired: false,
+
+    difficultyCap: "easy",
+
+  }),
+
+  danger: contract("danger", {
+
     allowedOrderIntensity: "minimal",
+
     allowedProgression: "frozen",
+
     allowedAdaptation: "stabilize",
+
     allowedExpansion: false,
+
     allowedOptimization: false,
-    taskMin: 1,
-    taskMax: 1,
+
     scalingAllowed: false,
-  },
-  urgency: {
-    condition: "urgency",
+
+    recoveryRequired: true,
+
+    difficultyCap: "very_easy",
+
+  }),
+
+  urgency: contract("urgency", {
+
     allowedOrderIntensity: "low",
+
     allowedProgression: "controlled",
+
     allowedAdaptation: "stabilize",
+
     allowedExpansion: false,
+
     allowedOptimization: false,
-    taskMin: 1,
-    taskMax: 2,
+
     scalingAllowed: false,
-  },
-  stability: {
-    condition: "stability",
+
+    recoveryRequired: false,
+
+    difficultyCap: "easy",
+
+  }),
+
+  stability: contract("stability", {
+
     allowedOrderIntensity: "normal",
+
     allowedProgression: "normal",
+
     allowedAdaptation: "feedback",
-    allowedExpansion: false,
-    allowedOptimization: false,
-    taskMin: 2,
-    taskMax: 3,
-    scalingAllowed: false,
-  },
-  power: {
-    condition: "power",
-    allowedOrderIntensity: "high",
-    allowedProgression: "accelerated",
-    allowedAdaptation: "feedback",
+
     allowedExpansion: true,
+
     allowedOptimization: false,
-    taskMin: 2,
-    taskMax: 4,
+
     scalingAllowed: true,
-  },
-  affluence: {
-    condition: "affluence",
+
+    recoveryRequired: false,
+
+    difficultyCap: "moderate",
+
+  }),
+
+  power: contract("power", {
+
     allowedOrderIntensity: "high",
+
     allowedProgression: "accelerated",
-    allowedAdaptation: "optimize",
+
+    allowedAdaptation: "feedback",
+
     allowedExpansion: true,
+
     allowedOptimization: true,
-    taskMin: 2,
-    taskMax: 5,
+
     scalingAllowed: true,
-  },
-  power_change: {
-    condition: "power_change",
+
+    recoveryRequired: false,
+
+    difficultyCap: "hard",
+
+  }),
+
+  affluence: contract("affluence", {
+
+    allowedOrderIntensity: "high",
+
+    allowedProgression: "accelerated",
+
+    allowedAdaptation: "optimize",
+
+    allowedExpansion: true,
+
+    allowedOptimization: true,
+
+    scalingAllowed: true,
+
+    recoveryRequired: false,
+
+    difficultyCap: "hard",
+
+  }),
+
+  power_change: contract("power_change", {
+
     allowedOrderIntensity: "low",
+
     allowedProgression: "controlled",
+
     allowedAdaptation: "stabilize",
+
     allowedExpansion: false,
+
     allowedOptimization: false,
-    taskMin: 1,
-    taskMax: 2,
+
     scalingAllowed: false,
-  },
+
+    recoveryRequired: false,
+
+    difficultyCap: "moderate",
+
+  }),
+
 };
 
+
+
 export function getConditionContract(condition: string): ConditionOperationalContract {
-  return CONDITION_ENFORCEMENT_MATRIX[condition] ?? CONDITION_ENFORCEMENT_MATRIX.stability;
+
+  const key = condition.toLowerCase().replace(/\s+/g, "_");
+
+  return CONDITION_ENFORCEMENT_MATRIX[key] ?? CONDITION_ENFORCEMENT_MATRIX.stability;
+
 }
+
+

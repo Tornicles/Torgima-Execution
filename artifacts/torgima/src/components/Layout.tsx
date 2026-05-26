@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 import { sidebarMotivation } from "@/design";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/signals", label: "Signals", icon: Activity },
+  { href: "/app/bhudhi", label: "Bhudhi", icon: Sparkles },
   { href: "/strategy", label: "Strategy", icon: Target },
   { href: "/recovery", label: "Recovery", icon: RefreshCw },
   { href: "/character", label: "Character", icon: User },
@@ -84,9 +86,11 @@ function NavLink({
 
 interface LayoutProps {
   children: ReactNode;
+  pageTitle?: string;
+  pageSubtitle?: string;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: me } = useGetMe();

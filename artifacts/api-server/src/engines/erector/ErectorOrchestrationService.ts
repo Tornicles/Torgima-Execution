@@ -10,56 +10,21 @@ import { buildErectorOutputs, ensureEconomicArchetypesSeeded } from "./ErectorIn
 import { buildTimeSimulations, generatePaths } from "./PathEngine.js";
 import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
 import { emitArchetypeResolved } from "./emitErectorEvents.js";
-
-function rowToResult(row: typeof validations.$inferSelect): ErectorValidationResult {
-  return {
-    validationId: row.id,
-    validationContractId: row.contract_id,
-    blueprintId: row.blueprint_id,
-    validationStage: row.validation_stage ?? row.status,
-    verdict: (row.verdict ?? "adjust") as ErectorValidationResult["verdict"],
-    scores: {
-      marketScore: row.market_score ?? 0,
-      executionScore: row.execution_score ?? 0,
-      timingScore: row.timing_score ?? 0,
-      competitionScore: row.competition_score ?? 0,
-      scalabilityScore: row.scalability_score ?? 0,
-      localEconomyScore: row.local_economy_score ?? 0,
-      resourceScore: row.resource_score ?? 0,
-      blueprintDifficultyScore: row.blueprint_difficulty_score ?? 0,
-      riskScore: row.risk_score ?? 0,
-      momentumPotential: row.momentum_potential ?? 0,
-      trustBuildingScore: row.trust_building_score ?? 0,
-      realityScore: row.reality_score ?? 0,
-      verdict: (row.verdict ?? "adjust") as ErectorValidationResult["verdict"],
-      recommendedBlueprintLevel: (row.recommended_blueprint_level ?? "starter") as ErectorValidationResult["recommendedBlueprintLevel"],
-    },
-    archetypeResolution: row.archetype_resolution as ErectorValidationResult["archetypeResolution"],
-    purposeDecomposition: (row.purpose_decomposition as Record<string, unknown>) ?? {},
-    industryIntelligence: (row.industry_intelligence as Record<string, unknown>) ?? {},
-    marketAnalysis: (row.market_analysis as Record<string, unknown>) ?? {},
-    competitorAnalysis: (row.competitor_analysis as Record<string, unknown>) ?? {},
-    economyBriefing: (row.economy_briefing as Record<string, unknown>) ?? {},
-    customerPainAnalysis: (row.customer_pain_analysis as Record<string, unknown>) ?? {},
-    executionDifficulty: (row.execution_difficulty as Record<string, unknown>) ?? {},
-    timeSimulations: (row.time_simulations as ErectorValidationResult["timeSimulations"]) ?? [],
-    paths: {
-      current: row.path_current as ErectorValidationResult["paths"]["current"],
-      adjusted: row.path_adjusted as ErectorValidationResult["paths"]["adjusted"],
-      alternative: row.path_alternative as ErectorValidationResult["paths"]["alternative"],
-    },
-    recommendedBlueprintLevel: (row.recommended_blueprint_level ?? "starter") as ErectorValidationResult["recommendedBlueprintLevel"],
-  };
-}
+import { rowToErectorResult } from "./ErectorOrchestrationHelpers.js";
+import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
 
 function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
   const country = input.location.country;
+  const goal = input.goalFinal ?? input.rawGoal;
+  const purpose = input.purposeFinal ?? input.purpose;
   return {
     ...input,
-    targetCustomer: input.targetCustomer || input.rawGoal,
+    rawGoal: goal,
+    purpose,
+    targetCustomer: input.targetCustomer || goal,
     currentContext: input.currentContext || `Building ${input.businessModel} in ${country}`,
     budgetAvailable: input.budgetAvailable || 0,
-    desiredOutcome: input.desiredOutcome || input.purpose,
+    desiredOutcome: input.desiredOutcome || purpose,
     currentResources: input.currentResources?.length ? input.currentResources : [],
   };
 }
@@ -74,7 +39,7 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     .where(eq(validations.idempotency_key, input.idempotencyKey))
     .limit(1)
     .catch(() => [] as Array<typeof validations.$inferSelect>);
-  if (existing?.validation_stage === ValidationStatus.COMPLETE) return rowToResult(existing);
+  if (existing?.validation_stage === ValidationStatus.COMPLETE) return rowToErectorResult(existing);
 
   const [created] = existing
     ? await db.update(validations).set({ validation_kind: ValidationKind.ERECTOR, payload_version: 1, validation_stage: ValidationStatus.RUNNING, status: ValidationStatus.RUNNING }).where(eq(validations.id, existing.id)).returning()
@@ -90,6 +55,8 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
           validation_stage: ValidationStatus.RUNNING,
           tier: input.tier ?? null,
           raw_goal: input.rawGoal,
+          goal_final: input.goalFinal ?? null,
+          purpose_final: input.purposeFinal ?? null,
           purpose: input.purpose,
           current_context: input.currentContext ?? null,
           success_signal: input.successSignal ?? null,
@@ -245,5 +212,12 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     idempotencyKey: `erector_complete:${created.id}`,
   }).catch(() => null);
 
-  return rowToResult(complete ?? created);
+  const result = rowToErectorResult(complete ?? created);
+  await populateWorkspaceAfterRun(created.id, result, {
+    ...input,
+    goalFinal: input.goalFinal,
+    purposeFinal: input.purposeFinal,
+    economicType: archetypeResolution.primaryArchetype.name,
+  }).catch(() => null);
+  return result;
 }

@@ -117,6 +117,17 @@ router.get("/health", async (req, res) => {
   }
 });
 
+// Prompt 37 — metrics bundle for monitoring dashboard (platform + Bhudhi)
+router.get("/metrics", async (req, res) => {
+  try {
+    const { collectBhudhiMetrics } = await import("../monitoring/metricsCollector.js");
+    const metrics = await collectBhudhiMetrics();
+    res.status(200).json(metrics);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // GET /api/health/current — user-safe, never reveals internal failure detail.
 router.get("/health/current", async (req, res) => {
   try {

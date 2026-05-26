@@ -3,6 +3,7 @@ import { useRoute } from "wouter";
 import { ApiError } from "@workspace/api-client-react";
 import { PreLaunchShell } from "@/components/shell/PreLaunchShell";
 import { ValidationResultsDashboard } from "@/components/validation/ValidationResultsDashboard";
+import { ValidationWorkspacePanel } from "@/components/validation/ValidationWorkspacePanel";
 import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
 import type { PathKey } from "@/components/validation/PathPanels";
 import type { TierId, ModeId } from "@/components/blueprint/BlueprintSelectionPanel";
@@ -155,6 +156,7 @@ export default function ValidationResultsPage() {
 
   return (
     <PreLaunchShell step={3}>
+      <div className="max-w-5xl mx-auto px-4 space-y-6 pb-12">
       <ValidationResultsDashboard
         data={validation}
         validationId={validationId}
@@ -172,6 +174,8 @@ export default function ValidationResultsPage() {
           setSelectedPath(rec);
         }}
       />
+      {validationId ? <ValidationWorkspacePanel validationId={validationId} /> : null}
+      </div>
     </PreLaunchShell>
   );
 }

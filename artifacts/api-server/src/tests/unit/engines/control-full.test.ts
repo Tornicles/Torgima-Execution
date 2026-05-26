@@ -20,9 +20,9 @@ describe("ControlEngine — enforcement rules (Prompt 16)", () => {
     });
   });
 
-  it("danger: taskMax = 1, difficultyCap = very_easy", () => {
+  it("danger: low task cap, difficultyCap = very_easy", () => {
     const r = getBaseRules("danger");
-    expect(r.taskMax).toBe(1);
+    expect(r.taskMax).toBe(4);
     expect(r.difficultyCap).toBe("very_easy");
     expect(r.recoveryRequired).toBe(true);
     expect(r.scalingAllowed).toBe(false);

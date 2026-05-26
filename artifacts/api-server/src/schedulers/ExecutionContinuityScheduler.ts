@@ -8,6 +8,10 @@ import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 import { runDailyLoopsForAllActiveBlueprints } from "../engines/execution-loop/DailyLoopEngine.js";
+import {
+  revealAllDueTasksGlobal,
+  topOffTaskQueuesForActiveBlueprints,
+} from "../engines/task-engine/TaskEngine.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 const timers: ReturnType<typeof setInterval>[] = [];
@@ -27,6 +31,10 @@ export async function runHourlyInactivityScan(): Promise<void> {
 }
 
 export async function runDailyTaskCycle(): Promise<void> {
+  const revealed = await revealAllDueTasksGlobal().catch(() => 0);
+  const toppedOff = await topOffTaskQueuesForActiveBlueprints().catch(() => 0);
+  logger.info({ revealed, toppedOff }, "[ExecutionContinuity] Visibility reveal + queue top-off complete");
+
   const dayKey = new Date().toISOString().slice(0, 10);
   const active = await db
     .select({ id: blueprints.id, user_id: blueprints.user_id })

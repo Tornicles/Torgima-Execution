@@ -2,18 +2,121 @@ import { Router } from "express";
 import {
   db,
   blueprints,
+  users,
   orders,
   feedback,
   signalSnapshots,
+  conditions,
+  blueprintFrameworkSignals,
   events,
+  enforcementPackages,
+  sql,
 } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { success, handleError } from "../lib/utils.js";
 import { logger } from "../lib/logger.js";
 import { BlueprintStatus, EventStatus, OrderStatus } from "@workspace/state-machine";
+import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
+import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
 
 const router = Router();
+
+/**
+ * GET /api/v1/debug/system-state — BHUDHI deploy diagnostic (counts + active blueprint).
+ */
+router.get("/v1/debug/system-state", async (req, res) => {
+  try {
+    await requireAuth(req, "USER_SESSION");
+
+    const [
+      userCountRow,
+      blueprintCountRow,
+      orderCountRow,
+      feedbackCountRow,
+      signalCountRow,
+      frameworkSignalCountRow,
+    ] = await Promise.all([
+      db.select({ c: sql<number>`count(*)::int` }).from(users),
+      db.select({ c: sql<number>`count(*)::int` }).from(blueprints),
+      db.select({ c: sql<number>`count(*)::int` }).from(orders),
+      db.select({ c: sql<number>`count(*)::int` }).from(feedback),
+      db.select({ c: sql<number>`count(*)::int` }).from(signalSnapshots),
+      db.select({ c: sql<number>`count(*)::int` }).from(blueprintFrameworkSignals),
+    ]);
+
+    const [activeBlueprint] = await db
+      .select({
+        id: blueprints.id,
+        status: blueprints.status,
+        current_condition: blueprints.current_condition,
+        goal_final: blueprints.goal_final,
+        purpose_final: blueprints.purpose_final,
+        raw_goal_input: blueprints.raw_goal_input,
+        economic_type: blueprints.economic_type,
+        refinement_status: blueprints.refinement_status,
+      })
+      .from(blueprints)
+      .where(eq(blueprints.active, true))
+      .orderBy(desc(blueprints.created_at))
+      .limit(1);
+
+    const pendingOrders = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(
+        activeBlueprint
+          ? and(
+              eq(orders.blueprint_id, activeBlueprint.id),
+              inArray(orders.status, ["pending", "pre_generated"]),
+            )
+          : sql`false`,
+      );
+
+    const [currentCondition] = activeBlueprint
+      ? await db
+          .select()
+          .from(conditions)
+          .where(
+            and(eq(conditions.blueprint_id, activeBlueprint.id), eq(conditions.is_current, true)),
+          )
+          .limit(1)
+      : [];
+
+    const recentFramework = activeBlueprint
+      ? await db
+          .select({
+            signal_key: blueprintFrameworkSignals.signal_key,
+            value: blueprintFrameworkSignals.value,
+            momentum: blueprintFrameworkSignals.momentum,
+            updated_at: blueprintFrameworkSignals.updated_at,
+          })
+          .from(blueprintFrameworkSignals)
+          .where(eq(blueprintFrameworkSignals.blueprint_id, activeBlueprint.id))
+      : [];
+
+    const payload = {
+      counts: {
+        userCount: userCountRow[0]?.c ?? 0,
+        blueprintCount: blueprintCountRow[0]?.c ?? 0,
+        orderCount: orderCountRow[0]?.c ?? 0,
+        feedbackCount: feedbackCountRow[0]?.c ?? 0,
+        signalCount: signalCountRow[0]?.c ?? 0,
+        frameworkSignalCount: frameworkSignalCountRow[0]?.c ?? 0,
+      },
+      activeBlueprint,
+      pendingOrders: pendingOrders[0]?.c ?? 0,
+      currentCondition: currentCondition ?? null,
+      frameworkSignals: recentFramework,
+    };
+
+    logger.info({ diagnostic: payload }, "[DIAGNOSTIC] system-state");
+    success(res, payload);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
 
 /**
  * GET /api/v1/debug/loop-state
@@ -33,9 +136,7 @@ router.get("/v1/debug/loop-state", async (req, res) => {
         created_at: blueprints.created_at,
       })
       .from(blueprints)
-      .where(
-        and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)),
-      )
+      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
       .orderBy(desc(blueprints.created_at))
       .limit(1);
 
@@ -54,8 +155,12 @@ router.get("/v1/debug/loop-state", async (req, res) => {
           .from(orders)
           .where(eq(orders.blueprint_id, blueprintId))
           .orderBy(desc(orders.created_at))
-          .limit(10)
       : [];
+
+    const ordersByStatus = orderRows.reduce<Record<string, number>>((acc, o) => {
+      acc[o.status] = (acc[o.status] ?? 0) + 1;
+      return acc;
+    }, {});
 
     const feedbackRows = await db
       .select({
@@ -67,7 +172,7 @@ router.get("/v1/debug/loop-state", async (req, res) => {
       .from(feedback)
       .where(eq(feedback.user_id, auth.userId))
       .orderBy(desc(feedback.created_at))
-      .limit(10);
+      .limit(20);
 
     const signalRows = blueprintId
       ? await db
@@ -81,6 +186,27 @@ router.get("/v1/debug/loop-state", async (req, res) => {
           .orderBy(desc(signalSnapshots.created_at))
           .limit(5)
       : [];
+
+    const [enforcementPkg] = blueprintId
+      ? await db
+          .select({
+            id: enforcementPackages.id,
+            task_limits: enforcementPackages.task_limits,
+            difficulty_cap: enforcementPackages.difficulty_cap,
+            phase_permission: enforcementPackages.phase_permission,
+            condition: enforcementPackages.condition,
+          })
+          .from(enforcementPackages)
+          .where(
+            and(
+              eq(enforcementPackages.blueprint_id, blueprintId),
+              eq(enforcementPackages.is_current, true),
+            ),
+          )
+          .limit(1)
+      : [undefined];
+
+    const limits = parseTaskLimits(enforcementPkg?.task_limits);
 
     const pendingEvents = await db
       .select({
@@ -106,33 +232,105 @@ router.get("/v1/debug/loop-state", async (req, res) => {
             status: blueprint.status,
             active: blueprint.active,
             condition: blueprint.current_condition,
+            tier: null,
             goal: blueprint.goal?.slice(0, 120),
             created_at: blueprint.created_at,
           }
         : null,
-      orders_count: orderRows.length,
-      orders: orderRows.map((o) => ({
-        id: o.id,
+      orders_total: orderRows.length,
+      orders_by_status: ordersByStatus,
+      orders_list: orderRows.slice(0, 10).map((o) => ({
+        id: o.id.slice(0, 8),
+        title: o.title?.slice(0, 40),
         status: o.status,
-        title: o.title,
         generation_reason: o.generation_reason,
-        task_type: o.task_type,
       })),
-      pending_actionable_orders: orderRows.filter((o) =>
-        o.status === OrderStatus.PENDING || o.status === OrderStatus.ACTIVE,
+      pending_actionable_orders: orderRows.filter(
+        (o) => o.status === OrderStatus.PENDING || o.status === OrderStatus.ACTIVE,
       ).length,
-      feedbacks_count: feedbackRows.length,
+      feedbacks_total: feedbackRows.length,
       feedbacks: feedbackRows,
-      signals_count: signalRows.length,
+      signals_total: signalRows.length,
       signals: signalRows,
+      enforcement: enforcementPkg
+        ? {
+            id: enforcementPkg.id,
+            task_limit_min: limits.min,
+            task_limit_max: limits.max,
+            difficulty_cap: enforcementPkg.difficulty_cap,
+            phase_permission: enforcementPkg.phase_permission,
+            condition: enforcementPkg.condition,
+          }
+        : null,
       pending_events_count: pendingEvents.length,
       pending_events: pendingEvents,
       blueprint_status_active: blueprint?.status === BlueprintStatus.ACTIVE,
     };
 
-    logger.info({ userId: auth.userId, loopState: payload }, "[Debug] loop-state snapshot");
+    logger.info({ userId: auth.userId, loopDiagnostic: payload }, "[LOOP DIAGNOSTIC]");
 
     success(res, payload);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * POST /api/v1/debug/force-generate
+ * Queue task generation for the active blueprint (fills queue up to enforcement max).
+ */
+router.post("/v1/debug/force-generate", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+
+    const [blueprint] = await db
+      .select({ id: blueprints.id })
+      .from(blueprints)
+      .where(and(eq(blueprints.user_id, auth.userId), eq(blueprints.active, true)))
+      .orderBy(desc(blueprints.created_at))
+      .limit(1);
+
+    if (!blueprint) {
+      success(res, { ok: false, error: "No active blueprint" }, 404);
+      return;
+    }
+
+    const count =
+      typeof (req.body as { count?: number })?.count === "number"
+        ? Math.min(8, Math.max(1, Math.round((req.body as { count: number }).count)))
+        : 5;
+
+    await writeEvent({
+      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+      entityType: "blueprint",
+      entityId: blueprint.id,
+      userId: auth.userId,
+      blueprintId: blueprint.id,
+      payload: {
+        generation_mode: "post_feedback",
+        generation_trigger: "manual_force",
+        queue_fill: true,
+        count,
+      },
+      idempotencyKey: `debug_force_gen:${blueprint.id}:${Date.now()}`,
+    });
+
+    const result = await guaranteeTask({
+      blueprintId: blueprint.id,
+      userId: auth.userId,
+      generationMode: "post_feedback",
+      generationTrigger: "manual_force",
+      queueFill: true,
+      targetCount: count,
+    });
+
+    success(res, {
+      ok: true,
+      blueprint_id: blueprint.id,
+      guarantee_state: result.state,
+      order_id: result.orderId,
+      requested_count: count,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

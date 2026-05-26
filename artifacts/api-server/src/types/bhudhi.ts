@@ -96,7 +96,28 @@ export type BhudhiTriggerType =
   | "ERECTOR_PAIN_ANALYZE"
   | "ERECTOR_SIMULATE_TIMEFRAMES"
   | "ERECTOR_PATHS_GENERATE"
-  | "ERECTOR_FIRST_WEEK";
+  | "ERECTOR_FIRST_WEEK"
+  | "ERECTOR_GOAL_REFINE"
+  | "ERECTOR_PURPOSE_REFINE"
+  | "VALIDATE_STAGE_2_DECOMPOSITION"
+  | "VALIDATE_STAGE_3_ECONOMIC"
+  | "VALIDATE_STAGE_4_PATTERNS"
+  | "VALIDATE_STAGE_5_TIMING"
+  | "VALIDATE_STAGE_6_MARKET"
+  | "VALIDATE_STAGE_7_CHANNELS"
+  | "VALIDATE_STAGE_8_PROS"
+  | "VALIDATE_STAGE_9_CONS"
+  | "VALIDATE_STAGE_10_FEASIBILITY"
+  | "VALIDATE_STAGE_11_VIABILITY"
+  | "VALIDATE_STAGE_12_BOOTSTRAP"
+  | "VALIDATE_STAGE_13_FEATURES"
+  | "VALIDATE_STAGE_14_CUSTOMER"
+  | "VALIDATE_STAGE_15_POSITIONING"
+  | "VALIDATE_STAGE_16_DIFFICULTY"
+  | "VALIDATE_STAGE_17_REVENUE"
+  | "VALIDATE_STAGE_18_90DAYS"
+  | "VALIDATE_STAGE_19_PATHS"
+  | "VALIDATE_STAGE_20_DECISION";
 
 export type BhudhiOutputType =
   | "structured_goal"
@@ -188,3 +209,45 @@ export interface BhudhiTriggerResult<T = unknown> {
   logId:           string;
   failureReason?:  string;
 }
+
+// ── BHUDHI PROMPT 1 — Intelligence catalog models (Drizzle-backed) ───────────
+export type {
+  BhudhiSystem,
+  BhudhiSystemId,
+  BhudhiEngine,
+  BhudhiEngineType,
+  BhudhiEngineMetrics,
+  BhudhiFramework,
+  BhudhiDomain,
+  BhudhiDomainName,
+  BhudhiSignal,
+  BhudhiSignalMetrics,
+  BhudhiFrameworkSignalEntry,
+  GlobalSignal,
+  BhudhiInvestigation,
+  BhudhiInvestigationFindings,
+  BhudhiRecommendation,
+  BhudhiExpectedImpact,
+  BhudhiExecutionEvent,
+  BhudhiFrameworkLearning,
+  BhudhiExternalConnection,
+  BhudhiExternalData,
+  FrameworkRole,
+  InvestigationSubject,
+  BhudhiExecutionEventType,
+  BhudhiLearningType,
+  BhudhiRecommendationIntelligenceMeta,
+} from "@workspace/db/types/bhudhi";
+
+export type {
+  EnrichedRecommendation,
+  FrameworkAnalysis,
+} from "../bhudhi/intelligence/types.js";
+export type { StoredRecommendation } from "../bhudhi/intelligence/IntelligenceService.js";
+export { intelligenceService } from "../bhudhi/intelligence/IntelligenceService.js";
+export { operatingService } from "../bhudhi/operating/OperatingService.js";
+export type { OperatingExecutionResult } from "../bhudhi/operating/types.js";
+export { OPERATING_ENGINE_NAMES } from "../bhudhi/operating/types.js";
+export { signalService } from "../bhudhi/signals/SignalService.js";
+export { frameworksService } from "../bhudhi/frameworks/FrameworksService.js";
+export type { FrameworkEvaluationResult } from "../bhudhi/frameworks/types.js";

@@ -162,11 +162,19 @@ async function seedGlobalKnowledge() {
   console.log(`Seeded ${objects.length} global knowledge objects`);
 }
 
+async function seedBhudhiIntelligenceCatalog() {
+  const { seedBhudhiCatalog, verifyBhudhiRelationships } = await import("./bhudhi-seed.js");
+  await seedBhudhiCatalog();
+  const ok = await verifyBhudhiRelationships();
+  if (!ok) throw new Error("Bhudhi catalog relationship verification failed");
+}
+
 async function main() {
   console.log("Starting seed...");
   await seedFeatureFlags();
   await seedDevUsers();
   await seedGlobalKnowledge();
+  await seedBhudhiIntelligenceCatalog();
   console.log("Seed complete.");
 }
 

@@ -16,6 +16,8 @@ import {
 import { isPowerChange } from "../signal/SignalCalculationEngine.js";
 import type { SignalState } from "../../types/signal.js";
 import type { Condition } from "../../constants/conditions.js";
+import { CONDITION_RULES } from "../../constants/conditions.js";
+import { dailyTasksForCondition } from "../../constants/conditionSpec.js";
 import { ensureFrameworkSignalPlaceholders } from "../signals/FrameworkSignalPlaceholders.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -34,6 +36,7 @@ const ESCALATION_THRESHOLDS: Record<string, number[]> = {
 export interface ConditionEvaluationResult {
   conditionId: string;
   condition: string;
+  previousCondition: string;
   conditionChanged: boolean;
   durationDays: number;
   escalationLevel: number;
@@ -223,6 +226,7 @@ export async function evaluate(params: {
   return {
     conditionId,
     condition: finalCondition,
+    previousCondition: previousConditionName,
     conditionChanged,
     durationDays: tenureDays,
     escalationLevel,
@@ -351,11 +355,11 @@ export class ConditionEvaluationEngine {
     return signals.condition;
   }
 
-  getAllowedTaskTypes(_condition: Condition): string[] {
-    return [];
+  getAllowedTaskTypes(condition: Condition): string[] {
+    return CONDITION_RULES[condition]?.allowedTypes ?? [];
   }
 
-  getMaxDailyTasks(_condition: Condition): number {
-    return 1;
+  getMaxDailyTasks(condition: Condition): number {
+    return dailyTasksForCondition(condition);
   }
 }

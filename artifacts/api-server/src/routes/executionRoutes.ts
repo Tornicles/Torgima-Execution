@@ -9,6 +9,7 @@ import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuara
 import { routeTrigger } from "../bhudhi/TriggerRouter.js";
 import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
 import { ExecutionLoopService } from "../services/ExecutionLoopService.js";
+import { torgimaIntegration } from "../bhudhi/integration/TorgimaIntegration.js";
 import { BlueprintStatus, OrderStatus } from "../types/stateMachine.js";
 
 const router = Router();
@@ -100,7 +101,12 @@ router.post("/execution/next-task", async (req, res) => {
       userId: auth.userId,
     });
 
-    success(res, result);
+    const bhudhi = await torgimaIntegration.getNextTaskBhudhiPayload(blueprintId).catch(() => null);
+
+    success(res, {
+      ...result,
+      bhudhiRecommendation: bhudhi,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

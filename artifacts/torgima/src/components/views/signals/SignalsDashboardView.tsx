@@ -80,10 +80,10 @@ export function SignalsDashboardView() {
       apiGet<{ character?: Record<string, number> }>("/api/character/current").catch(() => null),
     ])
       .then(([cur, hist, cond, charRes]) => {
-        setSignals(cur as Record<string, unknown>);
+        setSignals(cur as unknown as Record<string, unknown>);
         const snaps =
           (hist as { snapshots?: Array<Record<string, unknown>> })?.snapshots ??
-          (Array.isArray(hist) ? (hist as Array<Record<string, unknown>>) : []);
+          (Array.isArray(hist) ? (hist as unknown as Array<Record<string, unknown>>) : []);
         setHistory(snaps.slice(-14));
         const payload = cond as { condition?: { condition?: string; transitionReason?: string | null } };
         setConditionRow(payload.condition ?? null);

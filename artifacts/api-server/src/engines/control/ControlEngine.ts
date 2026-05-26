@@ -40,8 +40,8 @@ export interface BaseConditionRules {
 
 const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
   nothingness: {
-    taskMin: 1,
-    taskMax: 2,
+    taskMin: 3,
+    taskMax: 3,
     difficultyCap: "easy",
     allowedActions: ["task_execution", "feedback_submission", "academy_tasks"],
     blockedActions: ["scaling_operations", "target_expansion", "phase_checkpoint"],
@@ -53,8 +53,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   danger: {
-    taskMin: 1,
-    taskMax: 1,
+    taskMin: 3,
+    taskMax: 3,
     difficultyCap: "very_easy",
     allowedActions: ["task_execution", "feedback_submission", "academy_tasks"],
     blockedActions: [
@@ -72,8 +72,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   urgency: {
-    taskMin: 1,
-    taskMax: 2,
+    taskMin: 6,
+    taskMax: 6,
     difficultyCap: "easy",
     allowedActions: [
       "task_execution",
@@ -92,8 +92,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   stability: {
-    taskMin: 2,
-    taskMax: 3,
+    taskMin: 9,
+    taskMax: 9,
     difficultyCap: "moderate",
     allowedActions: [
       "task_execution",
@@ -116,8 +116,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   power: {
-    taskMin: 2,
-    taskMax: 4,
+    taskMin: 12,
+    taskMax: 12,
     difficultyCap: "hard",
     allowedActions: [
       "task_execution",
@@ -142,8 +142,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: true,
   },
   affluence: {
-    taskMin: 2,
-    taskMax: 6,
+    taskMin: 12,
+    taskMax: 12,
     difficultyCap: "very_hard",
     allowedActions: [
       "task_execution",
@@ -169,8 +169,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: true,
   },
   power_change: {
-    taskMin: 1,
-    taskMax: 2,
+    taskMin: 6,
+    taskMax: 6,
     difficultyCap: "moderate",
     allowedActions: [
       "task_execution",
@@ -361,7 +361,7 @@ export async function generateEnforcementPackage(params: {
   let rules = CONDITION_BASE_RULES[params.condition] ?? CONDITION_BASE_RULES.urgency;
 
   if (params.condition === "danger" && params.escalationLevel >= 2) {
-    rules = { ...rules, taskMin: 1, taskMax: 1 };
+    rules = { ...rules, taskMin: 2, taskMax: 2 };
   }
 
   rules = applyTierOverrides(rules, tier);

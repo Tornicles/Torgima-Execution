@@ -11,7 +11,10 @@ import {
   Star,
   Target,
   TrendingUp,
+  Sparkles,
 } from "lucide-react";
+import { BhudhiSection } from "@/components/bhudhi/BhudhiSection";
+import { fetchBhudhiStatus, type BhudhiStatusPayload } from "@/lib/bhudhi-api";
 import { getDashboardUiState } from "@/lib/dashboard-types";
 import type { DashboardProjection } from "@/lib/dashboard-types";
 import type { Order } from "@workspace/api-client-react";
@@ -46,6 +49,8 @@ function isCompleted(status: string): boolean {
 export function MainDashboardView({ state }: { state: DashboardProjection }) {
   const [, setLocation] = useLocation();
   const [trendPoints, setTrendPoints] = useState<number[]>([]);
+  const [bhudhiOpen, setBhudhiOpen] = useState(false);
+  const [bhudhiStatus, setBhudhiStatus] = useState<BhudhiStatusPayload | null>(null);
   const uiState = getDashboardUiState(state);
   const displayName = state.user?.displayName ?? state.user?.email?.split("@")[0] ?? "Builder";
   const blueprint = state.activeBlueprint;
@@ -109,6 +114,12 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
     greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
   const blueprintHref = blueprint?.id ? `/blueprint/${blueprint.id}` : "/blueprint";
+  const bhudhiHref = blueprint?.id ? `/app/bhudhi?blueprintId=${blueprint.id}` : "/app/bhudhi";
+
+  useEffect(() => {
+    if (!bhudhiOpen || !blueprint?.id) return;
+    void fetchBhudhiStatus(blueprint.id).then(setBhudhiStatus);
+  }, [bhudhiOpen, blueprint?.id]);
 
   if (uiState === "NO_BLUEPRINT") {
     return (
@@ -136,6 +147,37 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
         </div>
         <PageHeaderActions />
       </header>
+
+      {blueprint?.id && (
+        <div className="rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-[var(--torgima-primary)] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Bhudhi intelligence</p>
+              <p className="text-xs text-gray-500 mt-0.5 max-w-md">
+                Systems, engines, frameworks, signals, and recommendations for this blueprint.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={buttons.secondary} onClick={() => setBhudhiOpen(true)}>
+              Quick view
+            </button>
+            <Link href={bhudhiHref}>
+              <span className={buttons.primary}>Open Bhudhi</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {blueprint?.id && (
+        <BhudhiSection
+          blueprintId={blueprint.id}
+          isOpen={bhudhiOpen}
+          onClose={() => setBhudhiOpen(false)}
+          status={bhudhiStatus}
+        />
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -326,7 +368,7 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
             <div>
               <p className="text-gray-500 text-xs">Projects</p>
               <p className="font-semibold text-gray-900 mt-0.5">
-                {blueprint?.completedProjects ?? completedCount} / {blueprint?.totalProjects ?? totalOrders || "—"}
+                {completedCount} / {totalOrders > 0 ? totalOrders : "—"}
               </p>
             </div>
             <div>

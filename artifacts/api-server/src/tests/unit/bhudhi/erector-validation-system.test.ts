@@ -250,15 +250,17 @@ describe("Erector scoring and route integration", () => {
 
     const triggerRouter = readRepo("artifacts/api-server/src/bhudhi/TriggerRouter.ts");
     expect(triggerRouter).toContain("invokeBhudhiModel");
-    expect(triggerRouter).toContain("callGeminiWithSearch");
+    expect(triggerRouter).toContain("callGeminiRaw");
     expect(triggerRouter).not.toContain("web_search_20250305");
 
     const bhudhiCore = readRepo("artifacts/api-server/src/bhudhi/BhudhiCore.ts");
     expect(bhudhiCore).toContain("web_search_calls");
     expect(bhudhiCore).toContain("intelligence_grounded");
 
-    const dashboard = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
-    expect(dashboard).toContain("ExecutionContextPanel");
+    const dashboardPage = readRepo("artifacts/torgima/src/pages/dashboard.tsx");
+    expect(dashboardPage).toContain("MainDashboardView");
+    const execPanel = readRepo("artifacts/torgima/src/components/dashboard/ExecutionContextPanel.tsx");
+    expect(execPanel).toContain("ExecutionContextPanel");
 
     const validationRoutes = readRepo("artifacts/api-server/src/routes/validation.ts");
     expect(validationRoutes).toContain('router.post("/v1/validations/:id/launch"');

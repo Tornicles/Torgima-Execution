@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { checkSchemaHealth } from "../lib/verifySchema.js";
 import { BlueprintStatus } from "../types/stateMachine.js";
+import { SequenceTrackingService } from "../services/SequenceTrackingService.js";
 
 const router = Router();
 
@@ -173,6 +174,8 @@ router.post("/onboarding/goal", async (req, res) => {
       })
       .where(eq(blueprints.id, blueprintId));
 
+    await SequenceTrackingService.ensureInitialized(blueprintId, selectedTier);
+
     // Structure goal
     const structured = await ValidationService.structureGoal({
       userId:      auth.userId,
@@ -205,6 +208,12 @@ router.post("/onboarding/goal", async (req, res) => {
       });
       return;
     }
+
+    await SequenceTrackingService.recordGoal(blueprintId, selectedTier, {
+      goalText: input.rawGoal,
+      structured: structured as unknown as Record<string, unknown>,
+    });
+    await SequenceTrackingService.recordPurpose(blueprintId, selectedTier, input.purpose);
 
     // Run full validation (5 intelligence systems)
     const validationResult = await ValidationService.validateGoal({
@@ -246,6 +255,13 @@ router.post("/onboarding/goal", async (req, res) => {
         intelligence: validationResult.intelligence ?? null,
       })
       .where(eq(validations.id, validationResult.validationId));
+
+    await SequenceTrackingService.recordValidation(blueprintId, selectedTier, {
+      verdict: validationResult.verdict,
+      realityScore: validationResult.scores?.overall,
+      paths: validationResult.paths as Record<string, unknown>,
+      feasibility: validationResult.scores?.feasibility,
+    }).catch(() => null);
 
     // Update user commitment level
     if (structured.commitmentLevel) {
