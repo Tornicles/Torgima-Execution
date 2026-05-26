@@ -21,6 +21,8 @@
     "test:system:e2e": "pnpm -F @workspace/scripts test:system:e2e",
     "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:phase9",
     "verify:system": "pnpm -F @workspace/scripts verify:system",
+    "backfill:25-sequences": "pnpm -F @workspace/scripts backfill:25-sequences",
+    "verify:25-sequences": "node scripts/verify-25-sequences.mjs",
     "db:generate": "pnpm -F @workspace/db generate",
     "db:migrate": "pnpm -F @workspace/db migrate",
     "db:check": "pnpm -F @workspace/db check",

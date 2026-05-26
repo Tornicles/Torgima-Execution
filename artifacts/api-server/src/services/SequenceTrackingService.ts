@@ -26,6 +26,7 @@ import {
   totalSequencesForTier,
   type BlueprintTierKey,
 } from "../types/blueprintSequences.js";
+import { SequenceTracker } from "../engines/sequence/SequenceTracker.js";
 
 function tierKey(tier?: string | null): BlueprintTierKey {
   if (tier === "growth" || tier === "ultimate") return tier;
@@ -115,6 +116,12 @@ async function markComplete(
       },
     })
     .where(eq(sequenceFlows.blueprint_id, blueprintId));
+
+  await SequenceTracker.recordCanonicalCheckpoint(blueprintId, sequenceName, {
+    stateSnapshot: state,
+    validationPassed: valid,
+    userAction: `markComplete:${sequenceName}`,
+  }).catch(() => null);
 }
 
 export const SequenceTrackingService = {

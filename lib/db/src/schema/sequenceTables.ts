@@ -367,6 +367,56 @@ export const predictionSceneSequences = pgTable(
   (t) => [uniqueIndex("uniq_prediction_scene_sequences_blueprint_id").on(t.blueprint_id)],
 );
 
+export const blueprintSequenceHistory = pgTable(
+  "blueprint_sequence_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: blueprintFk("blueprint_id"),
+    sequence_number: integer("sequence_number").notNull(),
+    sequence_name: text("sequence_name").notNull(),
+    started_at: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
+    state_snapshot: jsonb("state_snapshot").notNull().default(sql`'{}'::jsonb`),
+    validation_passed: boolean("validation_passed").notNull().default(false),
+    validation_errors: text("validation_errors").array().notNull().default(sql`ARRAY[]::text[]`),
+    duration_ms: integer("duration_ms"),
+    user_action: text("user_action"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => [
+    index("idx_blueprint_sequence_history_blueprint_id").on(t.blueprint_id),
+    index("idx_blueprint_sequence_history_sequence_number").on(t.sequence_number),
+  ],
+);
+
+export const tierSequenceGates = pgTable(
+  "tier_sequence_gates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_tier: text("blueprint_tier").notNull(),
+    sequence_number: integer("sequence_number").notNull(),
+    unlocks_after_seq: integer("unlocks_after_seq"),
+    requires_tier: text("requires_tier"),
+    unlocks_feature: text("unlocks_feature"),
+    feature_description: text("feature_description"),
+    is_growth_only: boolean("is_growth_only").notNull().default(false),
+    is_ultimate_only: boolean("is_ultimate_only").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_tier_sequence_gates_blueprint_tier").on(t.blueprint_tier),
+    uniqueIndex("uniq_tier_sequence_gates_tier_seq_feature").on(
+      t.blueprint_tier,
+      t.sequence_number,
+      t.unlocks_feature,
+    ),
+  ],
+);
+
 export const sequenceFlows = pgTable(
   "sequence_flows",
   {

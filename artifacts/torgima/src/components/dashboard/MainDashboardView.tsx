@@ -24,6 +24,9 @@ import { TrendChart } from "@/components/design-system/TrendChart";
 import { PageHeaderActions } from "@/components/design-system/PageHeaderActions";
 import { getSignalHistory } from "@/lib/torgima-api";
 import { buttons } from "@/design";
+import { SequenceProgressPanel } from "@/components/sequence/SequenceProgressPanel";
+import { SystemUpgradeNotice } from "@/components/sequence/SystemUpgradeNotice";
+import { useTierSequenceStatus } from "@/hooks/useTierSequenceStatus";
 
 const TAG_COLORS: Record<string, string> = {
   default: "bg-gray-100 text-gray-700",
@@ -147,6 +150,12 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
         </div>
         <PageHeaderActions />
       </header>
+
+      <SystemUpgradeNotice />
+
+      {blueprint?.id && (
+        <SequenceProgressPanel status={tierStatus} loading={tierStatusLoading} />
+      )}
 
       {blueprint?.id && (
         <div className="rounded-xl border border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">

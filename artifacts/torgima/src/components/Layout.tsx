@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
@@ -59,12 +59,14 @@ function NavLink({
   icon: Icon,
   location,
   onNavigate,
+  locked,
 }: {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
   location: string;
   onNavigate?: () => void;
+  locked?: boolean;
 }) {
   const isActive = location === href || (href !== "/dashboard" && location.startsWith(href));
   return (
@@ -78,7 +80,8 @@ function NavLink({
         }`}
       >
         <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[var(--torgima-primary)]" : "text-gray-400"}`} />
-        {label}
+        <span className="flex-1 truncate">{label}</span>
+        {locked && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
       </div>
     </Link>
   );
@@ -90,12 +93,30 @@ interface LayoutProps {
   pageSubtitle?: string;
 }
 
+const TIER_NAV_ICONS: Record<string, typeof LayoutDashboard> = {
+  "/growth": Brain,
+  "/growth/knowledge": BookOpen,
+  "/growth/interrogation": MessageSquare,
+  "/growth/adaptation": RefreshCw,
+  "/growth/patterns": Activity,
+  "/ultimate": Zap,
+  "/ultimate/predictions": Target,
+  "/ultimate/scene": Sparkles,
+};
+
 export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [featureStatus, setFeatureStatus] = useState<FeatureStatusPayload | null>(null);
   const { data: me } = useGetMe();
   const displayName = me?.displayName ?? me?.email?.split("@")[0] ?? "Builder";
   const tier = me?.tier ?? "Premium";
+
+  useEffect(() => {
+    void apiGet<FeatureStatusPayload>("/api/v1/features/status")
+      .then(setFeatureStatus)
+      .catch(() => setFeatureStatus(null));
+  }, [location]);
 
   const motivationKey = Object.keys(sidebarMotivation).find((p) => p !== "default" && location.startsWith(p));
   const motivation = sidebarMotivation[motivationKey ?? "default"] ?? sidebarMotivation.default;
@@ -104,12 +125,31 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
     <>
       <div className="px-4 py-4 border-b border-gray-100">
         <TorgimaLogo />
+        {featureStatus?.sequenceStatus && (
+          <p className="text-[10px] text-gray-500 mt-2">
+            {featureStatus.sequenceStatus.tier} · Seq{" "}
+            {featureStatus.sequenceStatus.currentSequence}/
+            {featureStatus.sequenceStatus.totalSequences}
+          </p>
+        )}
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} {...item} location={location} onNavigate={() => setMobileOpen(false)} />
         ))}
+        {featureStatus?.navigation
+          ?.filter((n) => (n.group === "growth" || n.group === "ultimate") && !n.locked)
+          .map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={TIER_NAV_ICONS[item.href] ?? Sparkles}
+              location={location}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          ))}
         <div className="pt-3 mt-2 border-t border-gray-100">
           {NAV_SECONDARY.map((item) => (
             <NavLink key={item.href} {...item} location={location} onNavigate={() => setMobileOpen(false)} />

@@ -464,6 +464,15 @@ export const blueprints = pgTable(
       .$onUpdateFn(() => new Date()),
     /** Cached market / positioning intelligence for UI and seeding hints */
     intel_metadata: jsonb("intel_metadata").notNull().default(sql`'{}'::jsonb`),
+    /** 1–25 blueprint sequence position (Prompt 1 foundation) */
+    current_sequence_number: integer("current_sequence_number").notNull().default(1),
+    sequences_completed_numbers: integer("sequences_completed_numbers")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::integer[]`),
+    tier_sequence_gates: jsonb("tier_sequence_gates").notNull().default(sql`'{}'::jsonb`),
+    sequence_audit_log: text("sequence_audit_log").array().notNull().default(sql`ARRAY[]::text[]`),
+    last_sequence_update: timestamp("last_sequence_update", { withTimezone: true }),
   },
   (t) => [
     index("idx_blueprints_user_id").on(t.user_id),

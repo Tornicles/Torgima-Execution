@@ -5,3 +5,5 @@ export * from "./integrationsTables";
 export * from "./profileTables";
 export * from "./bhudhiTables";
 export * from "./sequenceTables";
+export * from "./growthTables";
+export * from "./ultimateTables";

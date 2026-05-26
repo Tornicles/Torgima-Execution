@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/Layout";
+import { TierFeatureGate } from "@/components/sequence/TierFeatureGate";
 import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { getAuthSession } from "@/lib/torgima-api";
@@ -39,6 +40,14 @@ const StrategyPage = lazy(() => import("@/pages/strategy"));
 const RecoveryPage = lazy(() => import("@/pages/recovery"));
 const CharacterPage = lazy(() => import("@/pages/character"));
 const KnowledgePage = lazy(() => import("@/pages/knowledge"));
+const GrowthPage = lazy(() => import("@/pages/growth"));
+const GrowthKnowledgePage = lazy(() => import("@/pages/growth-knowledge"));
+const GrowthInterrogationPage = lazy(() => import("@/pages/growth-interrogation"));
+const GrowthAdaptationPage = lazy(() => import("@/pages/growth-adaptation"));
+const GrowthPatternsPage = lazy(() => import("@/pages/growth-patterns"));
+const UltimatePage = lazy(() => import("@/pages/ultimate"));
+const UltimatePredictionsPage = lazy(() => import("@/pages/ultimate-predictions"));
+const UltimateScenePage = lazy(() => import("@/pages/ultimate-scene"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
 const BhudhiPage = lazy(() => import("@/pages/bhudhi"));
 const GovernanceConsolePage = lazy(() => import("@/pages/governance-console"));
@@ -143,6 +152,16 @@ function protect(Page: RoutePage) {
   return Wrapped;
 }
 
+function withTierFeatureGate(required: "growth" | "ultimate", Page: RoutePage): RoutePage {
+  const Gated = () => (
+    <TierFeatureGate required={required}>
+      <Page />
+    </TierFeatureGate>
+  );
+  Gated.displayName = `TierGated(${displayNameFor(Page)})`;
+  return Gated;
+}
+
 const ProtectedOnboarding = protect(Onboarding);
 const ProtectedValidate = protect(ValidatePage);
 const ProtectedValidationResults = protect(ValidationResultsPage);
@@ -161,6 +180,18 @@ const ProtectedStrategyPage = protect(StrategyPage);
 const ProtectedRecoveryPage = protect(RecoveryPage);
 const ProtectedCharacterPage = protect(CharacterPage);
 const ProtectedKnowledgePage = protect(KnowledgePage);
+const ProtectedGrowthPage = protect(withTierFeatureGate("growth", GrowthPage));
+const ProtectedGrowthKnowledgePage = protect(withTierFeatureGate("growth", GrowthKnowledgePage));
+const ProtectedGrowthInterrogationPage = protect(
+  withTierFeatureGate("growth", GrowthInterrogationPage),
+);
+const ProtectedGrowthAdaptationPage = protect(withTierFeatureGate("growth", GrowthAdaptationPage));
+const ProtectedGrowthPatternsPage = protect(withTierFeatureGate("growth", GrowthPatternsPage));
+const ProtectedUltimatePage = protect(withTierFeatureGate("ultimate", UltimatePage));
+const ProtectedUltimatePredictionsPage = protect(
+  withTierFeatureGate("ultimate", UltimatePredictionsPage),
+);
+const ProtectedUltimateScenePage = protect(withTierFeatureGate("ultimate", UltimateScenePage));
 const ProtectedReportsPage = protect(ReportsPage);
 const ProtectedBhudhiPage = protect(BhudhiPage);
 const ProtectedProfileSettingsPage = protect(ProfileSettingsPage);
@@ -195,6 +226,14 @@ const StrategyRoute = withAppLayout(ProtectedStrategyPage);
 const RecoveryRoute = withAppLayout(ProtectedRecoveryPage);
 const CharacterRoute = withAppLayout(ProtectedCharacterPage);
 const KnowledgeRoute = withAppLayout(ProtectedKnowledgePage);
+const GrowthRoute = withAppLayout(ProtectedGrowthPage);
+const GrowthKnowledgeRoute = withAppLayout(ProtectedGrowthKnowledgePage);
+const GrowthInterrogationRoute = withAppLayout(ProtectedGrowthInterrogationPage);
+const GrowthAdaptationRoute = withAppLayout(ProtectedGrowthAdaptationPage);
+const GrowthPatternsRoute = withAppLayout(ProtectedGrowthPatternsPage);
+const UltimateRoute = withAppLayout(ProtectedUltimatePage);
+const UltimatePredictionsRoute = withAppLayout(ProtectedUltimatePredictionsPage);
+const UltimateSceneRoute = withAppLayout(ProtectedUltimateScenePage);
 const ReportsRoute = withAppLayout(ProtectedReportsPage);
 const BhudhiRoute = withAppLayout(ProtectedBhudhiPage);
 const BhudhiEconomicsRoute = withAppLayout(protect(BhudhiEconomicsPage));
@@ -255,6 +294,14 @@ function AppRoutes() {
         <Route path="/recovery" component={RecoveryRoute} />
         <Route path="/character" component={CharacterRoute} />
         <Route path="/knowledge" component={KnowledgeRoute} />
+        <Route path="/growth" component={GrowthRoute} />
+        <Route path="/growth/knowledge" component={GrowthKnowledgeRoute} />
+        <Route path="/growth/interrogation" component={GrowthInterrogationRoute} />
+        <Route path="/growth/adaptation" component={GrowthAdaptationRoute} />
+        <Route path="/growth/patterns" component={GrowthPatternsRoute} />
+        <Route path="/ultimate" component={UltimateRoute} />
+        <Route path="/ultimate/predictions" component={UltimatePredictionsRoute} />
+        <Route path="/ultimate/scene" component={UltimateSceneRoute} />
         <Route path="/reports" component={ReportsRoute} />
         <Route path="/bhudhi" component={BhudhiRoute} />
         <Route path="/console/governance" component={GovernanceConsoleRoute} />

@@ -12,6 +12,8 @@ import { syncTaskGenerationSequence } from "../engines/sequence/sequenceTaskQueu
 import { initializeStarterAllocation } from "../engines/mini-plan/MiniPlanAllocationEngine.js";
 import { fillBlueprintTaskQueue } from "../engines/task-engine/TaskEngine.js";
 import { initializePermanentFrameworkSignals } from "./PermanentFrameworkSignalService.js";
+import { SequenceTracker } from "../engines/sequence/SequenceTracker.js";
+import { KnowledgeService } from "../engines/growth/KnowledgeService.js";
 import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
 
 function assertValidationReadyForLaunch(row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>): void {
@@ -159,6 +161,32 @@ export const BlueprintLaunchService = {
       generationTrigger: "blueprint_launched",
     }).catch(() => null);
     await syncTaskGenerationSequence(input.blueprintId, selectedBlueprintLevel).catch(() => null);
+
+    await SequenceTracker.recordCheckpoint(input.blueprintId, 1, {
+      userAction: "Blueprint launched",
+      stateSnapshot: {
+        goal: goalFromHandoff ?? blueprint.goal_final,
+        purpose: purposeFromHandoff ?? blueprint.purpose_final,
+        tier: selectedBlueprintLevel,
+        selectedPath: selectedPathType,
+      },
+      validationPassed: true,
+    }).catch(() => null);
+    await SequenceTracker.advanceSequence(input.blueprintId, "Automatic: Blueprint launch").catch(
+      () => null,
+    );
+    for (const seqNum of [6, 7, 8, 9, 10, 11, 16] as const) {
+      await SequenceTracker.recordCheckpoint(input.blueprintId, seqNum, {
+        userAction: "Blueprint launch stack",
+        validationPassed: true,
+      }).catch(() => null);
+    }
+
+    if (selectedBlueprintLevel === "growth" || selectedBlueprintLevel === "ultimate") {
+      await KnowledgeService.seedKnowledgeCards(input.blueprintId, selectedBlueprintLevel).catch(
+        () => null,
+      );
+    }
 
     return result;
   },

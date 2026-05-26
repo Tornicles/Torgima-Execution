@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "verify:system": "tsx ./src/verify-system.ts",
     "classify:validations": "tsx ./classifyValidationRows.ts",
+    "backfill:25-sequences": "tsx ./backfill-25-sequence-system.ts",
     "test:system:e2e": "tsx ./test-system-e2e.ts",
     "test:phase9": "tsx ./run-phase9-e2e.ts",
     "seed:test-fixtures": "tsx ../seedTestFixtures.ts",

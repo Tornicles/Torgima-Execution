@@ -24,6 +24,9 @@ import type {
 } from "../types/structured-feedback.js";
 import { processFeedbackRegeneration } from "../engines/sequence/sequenceRegenerationEngine.js";
 import { recalculatePermanentFrameworkSignals } from "./PermanentFrameworkSignalService.js";
+import { SequenceTracker } from "../engines/sequence/SequenceTracker.js";
+import { GrowthIntelligenceService } from "../engines/growth/GrowthIntelligenceService.js";
+import { UltimateIntelligenceService } from "../engines/ultimate/UltimateIntelligenceService.js";
 
 const OPEN_ORDER_STATUSES = ["pending", "active", "needs_feedback", "blocked"] as const;
 
@@ -413,6 +416,32 @@ export const StructuredFeedbackService = {
       reflection: payload.realitySummary,
     }).catch(() => null);
 
+    await SequenceTracker.recordCheckpoint(row.blueprint_id, 19, {
+      userAction: "Feedback submitted",
+      stateSnapshot: {
+        session_id: payload.sessionId,
+        execution_score: engineMetrics.final_execution_score,
+        signal_snapshot: signalSnapshot,
+      },
+      validationPassed: true,
+    }).catch(() => null);
+    await SequenceTracker.advanceSequence(row.blueprint_id, "Feedback received").catch(() => null);
+    await SequenceTracker.recordCheckpoint(row.blueprint_id, 20, {
+      userAction: "Signal calculation after feedback",
+      stateSnapshot: signalSnapshot,
+      validationPassed: true,
+    }).catch(() => null);
+
+    const growthIntel = await GrowthIntelligenceService.runAfterFeedback(
+      row.blueprint_id,
+      bp?.tier,
+    ).catch(() => ({ skipped: true }));
+
+    const ultimateIntel = await UltimateIntelligenceService.runAfterFeedback(
+      row.blueprint_id,
+      userId,
+    ).catch(() => ({ skipped: true }));
+
     const userMessage =
       engineMetrics.growth_signal < 0.5
         ? "Your execution today showed good effort but some friction. Adjusting to support you with more operations focus."
@@ -430,6 +459,8 @@ export const StructuredFeedbackService = {
       conditionPending: true,
       message: userMessage,
       signalSnapshot,
+      growth: growthIntel,
+      ultimate: ultimateIntel,
     };
   },
 
