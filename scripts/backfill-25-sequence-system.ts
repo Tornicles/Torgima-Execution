@@ -10,7 +10,7 @@
  * Usage: pnpm backfill:25-sequences
  *        pnpm backfill:25-sequences --dry-run
  */
-import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import dotenv from "dotenv";
@@ -80,20 +80,98 @@ function sequencesToBackfill(
   return [...out].sort((a, b) => a - b);
 }
 
-async function runChild(cmd: string, args: string[]): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(cmd, args, {
-      cwd: REPO_ROOT,
-      stdio: "inherit",
-      shell: process.platform === "win32",
-      env: process.env,
-    });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`${cmd} exited ${code}`));
-    });
-  });
+const SEQUENCE_MIGRATIONS = [
+  "manual-20260530-sequence-tracking-foundation.sql",
+  "manual-20260531-growth-features.sql",
+  "manual-20260601-ultimate-features.sql",
+];
+
+const TIER_GATES = [
+  {
+    blueprint_tier: "Growth",
+    sequence_number: 24,
+    unlocks_after_seq: 23,
+    requires_tier: "Growth",
+    unlocks_feature: "Interrogation",
+    feature_description: "Ask clarifying questions based on feedback",
+    is_growth_only: true,
+    is_ultimate_only: false,
+  },
+  {
+    blueprint_tier: "Growth",
+    sequence_number: 24,
+    unlocks_after_seq: 23,
+    requires_tier: "Growth",
+    unlocks_feature: "Knowledge Cards",
+    feature_description: "Structured guidance and learning resources",
+    is_growth_only: true,
+    is_ultimate_only: false,
+  },
+  {
+    blueprint_tier: "Ultimate",
+    sequence_number: 25,
+    unlocks_after_seq: 24,
+    requires_tier: "Ultimate",
+    unlocks_feature: "Predictions",
+    feature_description: "Forecast next tasks and blockers",
+    is_growth_only: false,
+    is_ultimate_only: true,
+  },
+  {
+    blueprint_tier: "Ultimate",
+    sequence_number: 25,
+    unlocks_after_seq: 24,
+    requires_tier: "Ultimate",
+    unlocks_feature: "Scene Engine",
+    feature_description: "Current vs expected vs ideal state tracking",
+    is_growth_only: false,
+    is_ultimate_only: true,
+  },
+];
+
+async function applySequenceMigrations(pool: { query: (sql: string) => Promise<unknown> }) {
+  const dir = path.join(REPO_ROOT, "scripts/migrations");
+  for (const file of SEQUENCE_MIGRATIONS) {
+    const full = path.join(dir, file);
+    const sql = fs.readFileSync(full, "utf8");
+    try {
+      await pool.query(sql);
+      console.log(`  migrations OK: ${file}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`  migrations WARN ${file}: ${msg}`);
+    }
+  }
+}
+
+async function seedTierGates(pool: {
+  query: (sql: string, params?: unknown[]) => Promise<unknown>;
+}) {
+  for (const gate of TIER_GATES) {
+    await pool.query(
+      `INSERT INTO tier_sequence_gates (
+        blueprint_tier, sequence_number, unlocks_after_seq, requires_tier,
+        unlocks_feature, feature_description, is_growth_only, is_ultimate_only
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (blueprint_tier, sequence_number, unlocks_feature) DO UPDATE SET
+        unlocks_after_seq = EXCLUDED.unlocks_after_seq,
+        requires_tier = EXCLUDED.requires_tier,
+        feature_description = EXCLUDED.feature_description,
+        is_growth_only = EXCLUDED.is_growth_only,
+        is_ultimate_only = EXCLUDED.is_ultimate_only`,
+      [
+        gate.blueprint_tier,
+        gate.sequence_number,
+        gate.unlocks_after_seq,
+        gate.requires_tier,
+        gate.unlocks_feature,
+        gate.feature_description,
+        gate.is_growth_only,
+        gate.is_ultimate_only,
+      ],
+    );
+  }
+  console.log(`  tier gates seeded: ${TIER_GATES.length}`);
 }
 
 async function main(): Promise<void> {
@@ -104,21 +182,17 @@ async function main(): Promise<void> {
 
   console.log(dryRun ? "[dry-run] 25-sequence backfill" : "[run] 25-sequence backfill");
 
+  const { db, pool, blueprints, users, inAppNotifications, orders, feedback } =
+    await import("@workspace/db");
+
   if (!dryRun) {
-    console.log("\n1) Applying manual migrations…");
-    await runChild("node", [path.join(REPO_ROOT, "scripts/apply-pending-manual-migrations.mjs")]).catch(
-      (err) => console.warn("  migrations warn:", err),
-    );
+    console.log("\n1) Applying sequence migrations…");
+    await applySequenceMigrations(pool);
     console.log("\n2) Seeding tier_sequence_gates…");
-    await runChild("node", [path.join(REPO_ROOT, "scripts/seed-tier-sequence-gates.mjs")]).catch(
-      (err) => console.warn("  tier gates warn:", err),
-    );
+    await seedTierGates(pool).catch((err) => console.warn("  tier gates warn:", err));
   } else {
     console.log("\n(dry-run) skip migrations + tier gate seed");
   }
-
-  const { db, pool, blueprints, users, inAppNotifications, orders, feedback } =
-    await import("@workspace/db");
 
   const { SequenceTrackingService } = await import(
     pathToFileURL(path.join(API_SRC, "services/SequenceTrackingService.ts")).href
