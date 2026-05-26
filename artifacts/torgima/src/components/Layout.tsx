@@ -17,9 +17,14 @@ import {
   X,
   Shield,
   Sparkles,
+  Lock,
+  Brain,
+  Zap,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 import { sidebarMotivation } from "@/design";
+import { apiGet } from "@/lib/torgima-api";
+import type { FeatureStatusPayload } from "@/lib/feature-gate";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -139,8 +144,11 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
           <NavLink key={item.href} {...item} location={location} onNavigate={() => setMobileOpen(false)} />
         ))}
         {featureStatus?.navigation
-          ?.filter((n) => (n.group === "growth" || n.group === "ultimate") && !n.locked)
-          .map((item) => (
+          ?.filter(
+            (n: FeatureStatusPayload["navigation"][number]) =>
+              (n.group === "growth" || n.group === "ultimate") && !n.locked,
+          )
+          .map((item: FeatureStatusPayload["navigation"][number]) => (
             <NavLink
               key={item.href}
               href={item.href}

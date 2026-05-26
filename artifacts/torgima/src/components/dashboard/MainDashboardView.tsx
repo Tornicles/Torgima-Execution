@@ -118,6 +118,7 @@ export function MainDashboardView({ state }: { state: DashboardProjection }) {
 
   const blueprintHref = blueprint?.id ? `/blueprint/${blueprint.id}` : "/blueprint";
   const bhudhiHref = blueprint?.id ? `/app/bhudhi?blueprintId=${blueprint.id}` : "/app/bhudhi";
+  const { data: tierStatus, loading: tierStatusLoading } = useTierSequenceStatus(blueprint?.id);
 
   useEffect(() => {
     if (!bhudhiOpen || !blueprint?.id) return;

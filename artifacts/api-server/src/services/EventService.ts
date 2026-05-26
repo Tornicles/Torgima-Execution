@@ -9,7 +9,11 @@ import { resolveIdempotencyKey } from "../engines/events/Idempotency.js";
 
 // ── EVENT TYPES (GAP G1 — re-export from eventContracts) ─────────────────────
 
-export { EventTypes as EVENT_TYPES, type EventType } from "../types/eventContracts.js";
+export {
+  EventTypes,
+  EventTypes as EVENT_TYPES,
+  type EventType,
+} from "../types/eventContracts.js";
 export { buildEventIdempotencyKey, resolveIdempotencyKey } from "../engines/events/Idempotency.js";
 import type { EventType } from "../types/eventContracts.js";
 

@@ -10,9 +10,8 @@ import {
   blueprintFrameworkSignals,
   events,
   enforcementPackages,
-  sql,
 } from "@workspace/db";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { success, handleError } from "../lib/utils.js";
 import { logger } from "../lib/logger.js";

@@ -55,7 +55,7 @@ export function GrowthIntelligenceView({ initialTab = "knowledge" }: { initialTa
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [cards, setCards] = useState<KnowledgeCard[]>([]);
+  const [knowledgeCards, setKnowledgeCards] = useState<KnowledgeCard[]>([]);
   const [history, setHistory] = useState<InterrogationLog[]>([]);
   const [pendingAdaptations, setPendingAdaptations] = useState<AdaptationSuggestion[]>([]);
   const [patterns, setPatterns] = useState<ExecutionPattern[]>([]);
@@ -73,7 +73,7 @@ export function GrowthIntelligenceView({ initialTab = "knowledge" }: { initialTa
     try {
       if (tab === "knowledge") {
         const data = await apiGet<{ cards: KnowledgeCard[] }>("/api/v1/growth/knowledge");
-        setCards(data.cards ?? []);
+        setKnowledgeCards(data.cards ?? []);
       } else if (tab === "interrogation") {
         const data = await apiGet<{ history: InterrogationLog[] }>("/api/v1/growth/interrogation");
         setHistory(data.history ?? []);
@@ -189,10 +189,10 @@ export function GrowthIntelligenceView({ initialTab = "knowledge" }: { initialTa
 
       {tab === "knowledge" && (
         <div className="space-y-4">
-          {cards.length === 0 ? (
+          {knowledgeCards.length === 0 ? (
             <PageEmpty title="No knowledge cards yet" description="Cards seed on Growth blueprint launch." />
           ) : (
-            cards.map((card) => (
+            knowledgeCards.map((card) => (
               <article key={card.id} className={cards.padded}>
                 <div className="flex justify-between items-start gap-4">
                   <div>
