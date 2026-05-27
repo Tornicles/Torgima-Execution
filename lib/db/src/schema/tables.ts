@@ -2903,6 +2903,60 @@ export const knowledgePackages = pgTable(
   (t) => [index("idx_knowledge_packages_domain_action").on(t.domain, t.action_type)],
 );
 
+/** BHUDHI upgrade prompt 3 — weekly external intelligence snapshots. */
+export const externalIntelligence = pgTable(
+  "external_intelligence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    goal_summary: text("goal_summary"),
+    market_trends: jsonb("market_trends").notNull().default(sql`'[]'::jsonb`),
+    opportunity_signals: jsonb("opportunity_signals").notNull().default(sql`'[]'::jsonb`),
+    risk_signals: jsonb("risk_signals").notNull().default(sql`'[]'::jsonb`),
+    competitor_moves: jsonb("competitor_moves").notNull().default(sql`'[]'::jsonb`),
+    execution_recommendation: text("execution_recommendation"),
+    confidence: text("confidence").notNull().default("LOW"),
+    source_type: text("source_type").notNull().default("BHUDHI_KNOWLEDGE"),
+    generated_at: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index("idx_external_intelligence_blueprint").on(t.blueprint_id),
+    index("idx_external_intelligence_expires").on(t.expires_at),
+  ],
+);
+
+/** BHUDHI upgrade prompt 4 — predictive snapshots after signal cycles. */
+export const predictionSnapshots = pgTable(
+  "prediction_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    dropout_risk: doublePrecision("dropout_risk").notNull().default(0),
+    burnout_risk: doublePrecision("burnout_risk").notNull().default(0),
+    plateau_risk: doublePrecision("plateau_risk").notNull().default(0),
+    scaling_readiness: doublePrecision("scaling_readiness").notNull().default(0),
+    confidence: text("confidence").notNull().default("LOW"),
+    primary_risk: text("primary_risk"),
+    primary_opportunity: text("primary_opportunity"),
+    recommended_action: text("recommended_action").notNull().default("MAINTAIN"),
+    signal_snapshot_id: uuid("signal_snapshot_id").references(() => signalSnapshots.id),
+    generated_at: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_prediction_snapshots_blueprint").on(t.blueprint_id)],
+);
+
 export const continuousTaskGuaranteeLogs = pgTable(
   "continuous_task_guarantee_logs",
   {

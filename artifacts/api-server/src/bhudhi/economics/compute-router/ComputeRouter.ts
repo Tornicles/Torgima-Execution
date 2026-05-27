@@ -95,10 +95,10 @@ export class ComputeRouter {
       route === "rules"
         ? { ...rulesModel, valueScore: 100 }
         : intelligenceExchange.selectBest(confidence, {
-            provider: providerHint === "gemini-search" ? "gemini-search" : providerHint,
+            provider: providerHint,
             memory: input.memoryBytes ? 0.9 : 0.6,
             simulation: input.simulation ? 0.85 : 0.5,
-            tool: providerHint === "gemini-search" ? 0.95 : 0.6,
+            tool: 0.6,
           });
 
     const tokenEstimate =

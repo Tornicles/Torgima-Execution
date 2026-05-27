@@ -608,4 +608,78 @@ router.get("/academy/learning-evidence/:userId/:date", async (req, res) => {
   }
 });
 
+// GET /api/academy/:blueprintId — active academy tasks for blueprint
+router.get("/academy/:blueprintId", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = req.params.blueprintId!;
+    const tasks = await db
+      .select()
+      .from(academyTasks)
+      .where(
+        and(
+          eq(academyTasks.user_id, auth.userId),
+          eq(academyTasks.blueprint_id, blueprintId),
+          ne(academyTasks.status, "completed"),
+        ),
+      )
+      .orderBy(desc(academyTasks.created_at));
+
+    success(res, {
+      tasks,
+      blocksExecution: tasks.some((t) => t.blocks_execution),
+    });
+  } catch (e) {
+    handleRouteError(req, res, e);
+  }
+});
+
+// GET /api/academy/task/:taskId
+router.get("/academy/task/:taskId", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const [task] = await db
+      .select()
+      .from(academyTasks)
+      .where(
+        and(eq(academyTasks.id, req.params.taskId!), eq(academyTasks.user_id, auth.userId)),
+      )
+      .limit(1);
+    if (!task) {
+      failure(res, "NOT_FOUND", "Academy task not found", 404);
+      return;
+    }
+    success(res, { task });
+  } catch (e) {
+    handleRouteError(req, res, e);
+  }
+});
+
+// POST /api/academy/:taskId/proof
+router.post("/academy/:taskId/proof", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { validateAcademyProof } = await import("../engines/academy/AcademyEngine.js");
+    const reflection = typeof req.body?.reflection === "string" ? req.body.reflection : "";
+    const outputUrl = typeof req.body?.outputUrl === "string" ? req.body.outputUrl : undefined;
+
+    const [task] = await db
+      .select()
+      .from(academyTasks)
+      .where(
+        and(eq(academyTasks.id, req.params.taskId!), eq(academyTasks.user_id, auth.userId)),
+      )
+      .limit(1);
+    if (!task) {
+      failure(res, "NOT_FOUND", "Academy task not found", 404);
+      return;
+    }
+
+    const result = await validateAcademyProof(req.params.taskId!, { reflection, outputUrl });
+    success(res, result);
+  } catch (e) {
+    handleRouteError(req, res, e);
+  }
+});
+
 export default router;

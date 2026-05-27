@@ -10,6 +10,7 @@ import { stopScheduledHealthChecks } from "../workers/HealthWorker.js";
 import { stopExecutionContinuitySchedulers } from "./ExecutionContinuityScheduler.js";
 import { startValidationWorkerSchedules } from "../workers/ValidationWorkers.js";
 import { runHealthCheck } from "../engines/health/SystemHealthEngine.js";
+import { queueEisScanForActiveBlueprints } from "../workers/EISWorker.js";
 
 const timers: ReturnType<typeof setInterval>[] = [];
 
@@ -104,6 +105,11 @@ export function startProductionSchedulers(): void {
         idempotencyKey: `assumption_check:${bp.id}:${Math.floor(Date.now() / 604800000)}`,
       }).catch(() => null);
     }
+  });
+
+  schedule(7 * 24 * 60 * 60 * 1000, "eis_weekly_scan", async () => {
+    const queued = await queueEisScanForActiveBlueprints();
+    logger.info({ queued }, "[ProductionScheduler] eis_weekly_scan queued");
   });
 
   startValidationWorkerSchedules(schedule);

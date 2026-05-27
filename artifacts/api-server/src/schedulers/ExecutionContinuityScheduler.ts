@@ -58,6 +58,36 @@ export async function runDailyTaskCycle(): Promise<void> {
     { blueprints: active.length, loopCount, dayKey },
     "[ExecutionContinuity] Daily task cycle complete",
   );
+
+  const { evaluatePhaseReadiness, advancePhase } = await import(
+    "../engines/blueprint/PhaseProgressionEngine.js"
+  );
+  const { db: database, phases: phasesTable, blueprints: bpTable } = await import("@workspace/db");
+  const { eq: eqOp, and: andOp, asc: ascOp } = await import("drizzle-orm");
+
+  for (const bp of active) {
+    const [row] = await database
+      .select({ currentPhaseId: bpTable.current_phase_id })
+      .from(bpTable)
+      .where(eqOp(bpTable.id, bp.id))
+      .limit(1);
+    if (!row?.currentPhaseId) continue;
+
+    const readiness = await evaluatePhaseReadiness(bp.id, row.currentPhaseId);
+    if (!readiness.canAdvance) continue;
+
+    const phaseRows = await database
+      .select()
+      .from(phasesTable)
+      .where(eqOp(phasesTable.blueprint_id, bp.id))
+      .orderBy(ascOp(phasesTable.order_index));
+
+    const idx = phaseRows.findIndex((p) => p.id === row.currentPhaseId);
+    const next = idx >= 0 ? phaseRows[idx + 1] : undefined;
+    if (!next) continue;
+
+    await advancePhase(bp.id, row.currentPhaseId, next.id).catch(() => null);
+  }
 }
 
 function msUntilNextMidnightUtc(): number {

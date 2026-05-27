@@ -1,12 +1,8 @@
 import { db, bhudhiMemory } from "@workspace/db";
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { BhudhiMemoryService } from "./BhudhiMemoryService.js";
 import { MemoryWriter } from "./MemoryWriter.js";
-import {
-  allowedMemoryTypesForTrigger,
-  MAX_MEMORY_ITEMS_PER_CALL,
-  MIN_RELEVANCE_SCORE,
-} from "./memoryPolicy.js";
 
 type MemoryType =
   | "USER_PREFERENCE"
@@ -20,56 +16,26 @@ type MemoryType =
   | "KNOWLEDGE_ACCESSED"
   | "PROMPT_SUMMARY";
 
-const MAX_MEMORY_CHARS = 800;
-
-function memoryText(row: { content: string | null; content_json: unknown }): string {
-  if (row.content?.trim()) return row.content.trim();
-  if (typeof row.content_json === "object" && row.content_json !== null && "text" in row.content_json) {
-    return String((row.content_json as { text: unknown }).text ?? "");
-  }
-  return typeof row.content_json === "string" ? row.content_json : JSON.stringify(row.content_json);
-}
-
 export async function retrieveMemory(params: {
   userId: string;
   blueprintId?: string;
   triggerType: BhudhiTriggerType;
 }): Promise<string> {
-  const allowedTypes = allowedMemoryTypesForTrigger(params.triggerType);
-  if (allowedTypes.length === 0) return "";
+  const records = await BhudhiMemoryService.retrieveForTrigger(params);
+  return BhudhiMemoryService.summarizeForContext(records);
+}
 
-  const scopeOr = params.blueprintId
-    ? or(eq(bhudhiMemory.blueprint_id, params.blueprintId), isNull(bhudhiMemory.blueprint_id))
-    : sql`true`;
-
-  const records = await db
-    .select({
-      memory_type: bhudhiMemory.memory_type,
-      content: bhudhiMemory.content,
-      content_json: bhudhiMemory.content_json,
-    })
-    .from(bhudhiMemory)
-    .where(
-      and(
-        eq(bhudhiMemory.user_id, params.userId),
-        inArray(bhudhiMemory.memory_type, allowedTypes),
-        eq(bhudhiMemory.active, true),
-        isNull(bhudhiMemory.disabled_at),
-        gt(bhudhiMemory.relevance_score, MIN_RELEVANCE_SCORE),
-        or(isNull(bhudhiMemory.expires_at), gt(bhudhiMemory.expires_at, new Date())),
-        scopeOr,
-      ),
-    )
-    .orderBy(desc(bhudhiMemory.relevance_score), desc(bhudhiMemory.confidence))
-    .limit(MAX_MEMORY_ITEMS_PER_CALL);
-
-  if (records.length === 0) return "";
-
-  const summary = records.map((r) => memoryText(r)).join(" | ");
-  if (summary.length > MAX_MEMORY_CHARS) {
-    return summary.slice(0, MAX_MEMORY_CHARS);
-  }
-  return summary;
+/** Returns memory record ids used for BhudhiLog attribution. */
+export async function retrieveMemoryWithIds(params: {
+  userId: string;
+  blueprintId?: string;
+  triggerType: BhudhiTriggerType;
+}): Promise<{ summary: string; memoryIds: string[] }> {
+  const records = await BhudhiMemoryService.retrieveForTrigger(params);
+  return {
+    summary: BhudhiMemoryService.summarizeForContext(records),
+    memoryIds: records.map((r) => r.id),
+  };
 }
 
 /** @deprecated Prefer MemoryWriter.write from approved engines. */
@@ -85,6 +51,20 @@ export async function writeMemory(params: {
   expiresInDays?: number;
   relevanceScore?: number;
 }): Promise<void> {
+  if (params.sourceId) {
+    await BhudhiMemoryService.writeMemory({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      memoryType: params.memoryType as Parameters<typeof BhudhiMemoryService.writeMemory>[0]["memoryType"],
+      scope: params.scope,
+      content: params.content,
+      sourceType: params.sourceType as "FEEDBACK" | "ORDER" | "BHUDHI_OUTPUT" | "INACTIVITY" | "SYSTEM_SUMMARY",
+      sourceId: params.sourceId,
+      confidence: params.confidence,
+      relevanceScore: params.relevanceScore,
+    });
+    return;
+  }
   await MemoryWriter.write({
     userId: params.userId,
     blueprintId: params.blueprintId,
@@ -99,16 +79,8 @@ export async function writeMemory(params: {
   });
 }
 
-export async function expireMemory(userId: string, blueprintId?: string): Promise<void> {
-  await db
-    .update(bhudhiMemory)
-    .set({ active: false, disabled_at: new Date(), updated_at: new Date() })
-    .where(
-      and(
-        eq(bhudhiMemory.user_id, userId),
-        blueprintId ? eq(bhudhiMemory.blueprint_id, blueprintId) : sql`true`,
-      ),
-    );
+export async function expireMemory(_userId: string, _blueprintId?: string): Promise<void> {
+  await BhudhiMemoryService.expireOldMemory();
 }
 
 export async function deactivateBlueprintBhudhiMemory(

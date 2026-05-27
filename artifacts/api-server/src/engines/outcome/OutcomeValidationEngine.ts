@@ -542,6 +542,61 @@ export async function recordRealOutcome(input: {
   return { id: row.id };
 }
 
+export async function getOpenFlagsAtOrAboveSeverity(
+  blueprintId: string,
+  minSeverity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" = "MEDIUM",
+): Promise<typeof falseProgressFlags.$inferSelect[]> {
+  const all = await getOpenFlags(blueprintId);
+  const minRank =
+    minSeverity === "CRITICAL" ? 3 : minSeverity === "HIGH" ? 2 : minSeverity === "MEDIUM" ? 1 : 0;
+  const rank = (s: string | null | undefined) => {
+    const v = (s ?? "low").toLowerCase();
+    if (v === "critical") return 3;
+    if (v === "high") return 2;
+    if (v === "medium") return 1;
+    return 0;
+  };
+  return all.filter((f) => rank(f.severity) >= minRank);
+}
+
+/** TORGIMA P2 — gate phase/reward/advancement paths. */
+export async function checkOutcomeIntegrity(
+  userId: string,
+  blueprintId: string,
+  targetId?: string,
+): Promise<{ canAdvance: boolean; blockers: string[] }> {
+  const openFlags = await getOpenFlagsAtOrAboveSeverity(blueprintId, "MEDIUM");
+  const flagBlockers = openFlags.map(
+    (f) => `False progress detected: ${f.detection_type}`,
+  );
+
+  const validationRows = await db
+    .select({
+      verdict: outcomeValidations.verdict,
+      targetId: outcomeValidations.target_id,
+      notes: outcomeValidations.notes,
+    })
+    .from(outcomeValidations)
+    .where(eq(outcomeValidations.blueprint_id, blueprintId))
+    .orderBy(desc(outcomeValidations.validated_at))
+    .limit(20);
+
+  const badStatuses = new Set(["UNVALIDATED", "CONTRADICTED", "FALSE_PROGRESS"]);
+  const unvalidated = validationRows.filter((v) => {
+    if (targetId && v.targetId && v.targetId !== targetId) return false;
+    return v.verdict != null && badStatuses.has(v.verdict);
+  });
+
+  const validationBlockers = unvalidated.map(
+    (v) => `Outcome not validated: ${v.targetId ?? "blueprint"}`,
+  );
+
+  return {
+    canAdvance: flagBlockers.length === 0 && validationBlockers.length === 0,
+    blockers: [...flagBlockers, ...validationBlockers],
+  };
+}
+
 export async function getOpenFlags(blueprintId: string) {
   return db
     .select()

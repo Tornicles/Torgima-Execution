@@ -50,6 +50,7 @@ export const EventTypes = {
   FRICTION_ADAPTATION_REQUESTED:    "friction_adaptation_requested",
   EXTERNAL_SIGNAL_RECEIVED:         "external_signal_received",
   FALSE_PROGRESS_DETECTED:          "false_progress_detected",
+  FALSE_PROGRESS_SCAN_REQUESTED:    "false_progress_scan_requested",
   OUTCOME_VALIDATION_REQUESTED:     "outcome_validation_requested",
   IDENTITY_EVALUATION_REQUESTED:    "identity_evaluation_requested",
   REWARD_EVALUATION_REQUESTED:      "reward_evaluation_requested",
@@ -77,6 +78,8 @@ export const EventTypes = {
   HEALTH_ALERT:                     "health_alert",
   DLQ_ITEM_CREATED:                 "dlq_item_created",
   ORCHESTRATION_LOCK:               "ORCHESTRATION_LOCK",
+  PREDICTION_REQUESTED:             "prediction_requested",
+  EIS_SCAN_REQUESTED:                 "eis_scan_requested",
 } as const;
 
 export type EventType = (typeof EventTypes)[keyof typeof EventTypes];
@@ -102,6 +105,7 @@ export const WorkerQueues = {
   ASSUMPTION_CHECK:           "assumption_check_requested",
   DEAD_LETTER_REVIEW:         "dead_letter_review_requested",
   OUTCOME_VALIDATION:         "outcome_validation_requested",
+  FALSE_PROGRESS_SCAN:        "false_progress_scan_requested",
   /** Prompt 8 — Erector event workers (queue name matches event type). */
   ERECTOR_VALIDATION_STARTED:   "erector_validation_started",
   ARCHETYPE_RESOLVED:           "archetype_resolved",
@@ -110,6 +114,8 @@ export const WorkerQueues = {
   ERECTOR_PATH_SELECTED:        "erector_path_selected",
   ERECTOR_FIRST_WEEK_GENERATED: "erector_first_week_generated",
   ERECTOR_BLUEPRINT_LAUNCHED:   "erector_blueprint_launched",
+  PREDICTION:                   "prediction_requested",
+  EIS_SCAN:                     "eis_scan",
 } as const;
 
 export type WorkerQueue = (typeof WorkerQueues)[keyof typeof WorkerQueues];
@@ -144,6 +150,7 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.SYSTEM_HEALTH_SCAN_REQUESTED]:   WorkerQueues.SYSTEM_HEALTH,
   [EventTypes.DEAD_LETTER_REVIEW_REQUESTED]:   WorkerQueues.DEAD_LETTER_REVIEW,
   [EventTypes.OUTCOME_VALIDATION_REQUESTED]:   WorkerQueues.OUTCOME_VALIDATION,
+  [EventTypes.FALSE_PROGRESS_SCAN_REQUESTED]:  WorkerQueues.FALSE_PROGRESS_SCAN,
   [EventTypes.ERECTOR_VALIDATION_STARTED]:     WorkerQueues.ERECTOR_VALIDATION_STARTED,
   [EventTypes.ARCHETYPE_RESOLVED]:             WorkerQueues.ARCHETYPE_RESOLVED,
   [EventTypes.ERECTOR_ENGINE_COMPLETED]:       WorkerQueues.ERECTOR_ENGINE_COMPLETED,
@@ -151,6 +158,8 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.ERECTOR_PATH_SELECTED]:          WorkerQueues.ERECTOR_PATH_SELECTED,
   [EventTypes.ERECTOR_FIRST_WEEK_GENERATED]:   WorkerQueues.ERECTOR_FIRST_WEEK_GENERATED,
   [EventTypes.ERECTOR_BLUEPRINT_LAUNCHED]:     WorkerQueues.ERECTOR_BLUEPRINT_LAUNCHED,
+  [EventTypes.PREDICTION_REQUESTED]:           WorkerQueues.PREDICTION,
+  [EventTypes.EIS_SCAN_REQUESTED]:             WorkerQueues.EIS_SCAN,
 };
 
 /** Persisted for audit; no queue consumer. */

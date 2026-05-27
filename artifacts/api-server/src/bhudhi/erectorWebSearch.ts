@@ -1,10 +1,10 @@
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
-import { GEMINI_SEARCH_TRIGGERS } from "./bhudhiProviders.js";
+import { ERECTOR_SEARCH_TRIGGERS } from "./bhudhiProviders.js";
 
-/** @deprecated Anthropic web_search tool removed — use Gemini `gemini-search` provider instead. */
-export const WEB_SEARCH_ERECTOR_TRIGGERS = GEMINI_SEARCH_TRIGGERS;
+/** Erector triggers that receive market-research prompt enrichment (Claude). */
+export const WEB_SEARCH_ERECTOR_TRIGGERS = ERECTOR_SEARCH_TRIGGERS;
 
-/** Prepended to every Erector Bhudhi system prompt (Gemini + Claude registration). */
+/** Prepended to every Erector Bhudhi system prompt. */
 export const ERECTOR_JSON_PREFIX = `You are Bhudhi, a precision intelligence system. CRITICAL: Your response must be valid JSON only. No markdown. No code fences. No prose before or after. Return ONLY the JSON object described below. If you cannot determine a value, use null — never omit a field.
 
 `;
@@ -12,9 +12,8 @@ export const ERECTOR_JSON_PREFIX = `You are Bhudhi, a precision intelligence sys
 export const COMPETITOR_AUTHENTICITY_RULE = `
 AUTHENTICITY RULE: Only return competitors that you can verify exist through your search results. If a competitor name comes from your training data but you cannot find current evidence it still operates, mark it with archetypeContext: 'unverified — confirm independently'. Never invent a company name. Never assume a company still exists without search confirmation.`;
 
-/** @deprecated Use contract.provider === "gemini-search" in BhudhiCore. */
 export function shouldUseWebSearch(triggerType: BhudhiTriggerType | string): boolean {
-  return GEMINI_SEARCH_TRIGGERS.has(triggerType as BhudhiTriggerType);
+  return ERECTOR_SEARCH_TRIGGERS.has(triggerType as BhudhiTriggerType);
 }
 
 const WEB_SEARCH_SYSTEM_APPEND: Partial<Record<BhudhiTriggerType, string>> = {
@@ -114,13 +113,13 @@ Your briefing must reflect what is actually happening in this economy TODAY. Inc
   }
 }
 
-/** Appends date context + live search instructions to Erector user prompts (gemini-search only). */
+/** Appends date context + research instructions to Erector user prompts. */
 export function appendErectorSearchUserPrompt(
   triggerType: BhudhiTriggerType,
   ctx: Record<string, unknown>,
   userPrompt: string,
 ): string {
-  if (!GEMINI_SEARCH_TRIGGERS.has(triggerType)) return userPrompt;
+  if (!ERECTOR_SEARCH_TRIGGERS.has(triggerType)) return userPrompt;
   const searchBlock = searchInstructionForTrigger(triggerType, ctx);
   if (!searchBlock.trim()) return userPrompt;
   return `${buildErectorDateContext()}${userPrompt.trim()}${searchBlock}`;

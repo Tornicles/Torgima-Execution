@@ -151,8 +151,24 @@ export const rootCauseDataSchema = z.object({
 
 // ── Envelope schemas keyed by outputType ─────────────────────────────────────
 
+const externalIntelligenceDataSchema = z.object({
+  marketTrends: z.array(z.string()).default([]),
+  opportunitySignals: z.array(z.string()).default([]),
+  riskSignals: z.array(z.string()).default([]),
+  competitorMoves: z.array(z.string()).default([]),
+  executionRecommendation: z.string().default(""),
+  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]).default("LOW"),
+});
+
+const predictiveAnalysisDataSchema = z.object({
+  primaryRisk: z.string().nullable().optional(),
+  primaryOpportunity: z.string().nullable().optional(),
+});
+
 export const OUTPUT_ENVELOPE_SCHEMAS: Record<string, z.ZodTypeAny> = {
   structured_goal: envelopeSchema("structured_goal", structuredGoalDataSchema),
+  external_intelligence: envelopeSchema("external_intelligence", externalIntelligenceDataSchema),
+  predictive_analysis: envelopeSchema("predictive_analysis", predictiveAnalysisDataSchema),
   task_copy: envelopeSchema("task_copy", taskCopyDataSchema),
   clarification_request: envelopeSchema("clarification_request", clarificationDataSchema),
   recovery_copy: envelopeSchema("recovery_copy", recoveryCopyDataSchema),

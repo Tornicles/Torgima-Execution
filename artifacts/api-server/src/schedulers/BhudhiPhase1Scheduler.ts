@@ -4,6 +4,9 @@ import { logger } from "../lib/logger.js";
 import { runOvernightCycle } from "../workers/OvernightWorker.js";
 import { runWorldStateUpdate } from "../workers/WorldStateWorker.js";
 import { runCompressionCycle } from "../workers/CompressionWorker.js";
+import { BhudhiMemoryService } from "../bhudhi/BhudhiMemoryService.js";
+import { getBoss } from "../lib/queue.js";
+import { MEMORY_EXPIRY_QUEUE } from "../workers/MemoryExpiryWorker.js";
 
 const timers: ReturnType<typeof setInterval>[] = [];
 
@@ -47,6 +50,18 @@ export function startBhudhiPhase1Schedulers(): void {
 
   schedule(7 * 24 * 60 * 60 * 1000, "memory_compression", async () => {
     await forEachActiveUser(userId => runCompressionCycle(userId).then(() => undefined));
+  });
+
+  schedule(24 * 60 * 60 * 1000, "memory_expiry_scan", async () => {
+    const count = await BhudhiMemoryService.expireOldMemory();
+    logger.info({ count }, "[BhudhiPhase1Scheduler] memory_expiry_scan complete");
+    try {
+      const boss = await getBoss();
+      await boss.createQueue(MEMORY_EXPIRY_QUEUE);
+      await boss.send(MEMORY_EXPIRY_QUEUE, { trigger: "scheduled" });
+    } catch {
+      /* queue optional */
+    }
   });
 }
 

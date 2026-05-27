@@ -3,7 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { mapBhudhiTriggerToDbEnum, mapBhudhiTriggerToRequestType } from "./bhudhiLogMapping.js";
-import { GEMINI_SEARCH_TRIGGERS } from "./bhudhiProviders.js";
+import { ERECTOR_SEARCH_TRIGGERS } from "./bhudhiProviders.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { modelIdForProvider } from "./bhudhiProviders.js";
 
@@ -37,7 +37,7 @@ function dailyCallCapForTier(tier: string): number {
   return Math.max(tierCap, BHUDHI_DAILY_CAP);
 }
 
-const TIMEOUT_MS = 10000;
+const TIMEOUT_MS = 30_000;
 const TASK_TIMEOUT_MS = 5000;
 
 function estimatedCostUsd(inputTokens: number, outputTokens: number): number {
@@ -138,7 +138,7 @@ export function getTimeout(triggerType: string): number {
   if (
     triggerType === "REALITY_INTELLIGENCE" ||
     triggerType === "EIS_INDUSTRY_RESEARCH" ||
-    GEMINI_SEARCH_TRIGGERS.has(triggerType as never)
+    ERECTOR_SEARCH_TRIGGERS.has(triggerType as never)
   ) {
     return 75_000;
   }
@@ -160,6 +160,8 @@ export async function logUsage(params: {
   fallbackReason?: string;
   errorCode?: string;
   provider?: BhudhiProvider;
+  memoryIdsUsed?: string[];
+  memoryWriteIds?: string[];
 }): Promise<string> {
   const cost = estimatedCostUsd(params.inputTokens, params.outputTokens);
   const provider = params.provider ?? "claude";
@@ -181,6 +183,8 @@ export async function logUsage(params: {
         errorCode: params.errorCode,
         web_search_calls: (params as { webSearchCalls?: number }).webSearchCalls,
         intelligence_grounded: (params as { intelligenceGrounded?: boolean }).intelligenceGrounded,
+        memory_ids_used: params.memoryIdsUsed ?? [],
+        memory_write_ids: params.memoryWriteIds ?? [],
       },
       prompt_version: params.promptVersion,
       model_used: modelIdForProvider(provider),

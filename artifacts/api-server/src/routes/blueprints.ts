@@ -340,6 +340,48 @@ router.post("/v1/blueprints/:id/launch", blueprintLaunchHandler);
 // POST /api/blueprints/:id/activate — canonical blueprint launch route.
 router.post("/blueprints/:id/activate", blueprintLaunchHandler);
 
+// GET /api/blueprints/:id/phase-readiness
+router.get("/blueprints/:id/phase-readiness", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = req.params.id!;
+    const { evaluatePhaseReadiness } = await import(
+      "../engines/blueprint/PhaseProgressionEngine.js"
+    );
+    const { db: database, phases, blueprints: bpTable } = await import("@workspace/db");
+    const { eq: eqOp, and: andOp } = await import("drizzle-orm");
+
+    const [bp] = await database
+      .select({ currentPhaseId: bpTable.current_phase_id })
+      .from(bpTable)
+      .where(andOp(eqOp(bpTable.id, blueprintId), eqOp(bpTable.user_id, auth.userId)))
+      .limit(1);
+
+    if (!bp?.currentPhaseId) {
+      success(res, { canAdvance: false, blockers: ["No active phase"], completionPercentage: 0 });
+      return;
+    }
+
+    const [phase] = await database
+      .select({ name: phases.name, started_at: phases.started_at, created_at: phases.created_at })
+      .from(phases)
+      .where(eqOp(phases.id, bp.currentPhaseId))
+      .limit(1);
+
+    const readiness = await evaluatePhaseReadiness(blueprintId, bp.currentPhaseId);
+    const started = phase?.started_at ?? phase?.created_at ?? new Date();
+    const daysActive = Math.floor((Date.now() - started.getTime()) / 86400000);
+
+    success(res, {
+      ...readiness,
+      currentPhase: phase?.name ?? "Active phase",
+      currentPhaseDaysActive: daysActive,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // GET /api/blueprints/:id/state
 router.get("/blueprints/:id/state", async (req, res) => {
   try {

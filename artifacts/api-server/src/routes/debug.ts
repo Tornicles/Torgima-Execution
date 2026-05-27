@@ -19,6 +19,10 @@ import { BlueprintStatus, EventStatus, OrderStatus } from "@workspace/state-mach
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
+import {
+  runCompleteSystemDiagnostic,
+  formatDiagnosticReportMarkdown,
+} from "../diagnostics/completeSystemDiagnostic.js";
 
 const router = Router();
 
@@ -330,6 +334,27 @@ router.post("/v1/debug/force-generate", async (req, res) => {
       order_id: result.orderId,
       requested_count: count,
     });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/v1/debug/complete-diagnostic
+ * Full TORGIMA_COMPLETE_DIAGNOSTIC_PROMPT audit (PART A–J). Auth required.
+ * Query: ?probeDb=1 to run live Supabase probes when DATABASE_URL is set.
+ */
+router.get("/v1/debug/complete-diagnostic", async (req, res) => {
+  try {
+    await requireAuth(req, "USER_SESSION");
+    const probeDb = req.query.probeDb === "1" || req.query.probeDb === "true";
+    const report = await runCompleteSystemDiagnostic({ probeDatabase: probeDb });
+    const format = req.query.format === "markdown" ? "markdown" : "json";
+    if (format === "markdown") {
+      res.type("text/markdown").send(formatDiagnosticReportMarkdown(report));
+      return;
+    }
+    success(res, report);
   } catch (err) {
     handleError(req, res, err);
   }

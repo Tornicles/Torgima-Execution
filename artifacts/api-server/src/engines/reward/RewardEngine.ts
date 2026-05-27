@@ -352,6 +352,25 @@ export async function evaluateReward(params: {
   };
 }
 
+export async function getLatestRewardForBlueprint(userId: string, blueprintId: string) {
+  const [row] = await db
+    .select()
+    .from(rewardEvents)
+    .where(
+      and(eq(rewardEvents.user_id, userId), eq(rewardEvents.blueprint_id, blueprintId)),
+    )
+    .orderBy(desc(rewardEvents.created_at))
+    .limit(1);
+
+  if (!row) return null;
+  return {
+    type: row.reward_type,
+    intensity: row.intensity ?? "LOW",
+    message: row.message ?? row.description,
+    createdAt: row.created_at,
+  };
+}
+
 export async function getPendingRewards(userId: string, blueprintId?: string) {
   const where = blueprintId
     ? and(

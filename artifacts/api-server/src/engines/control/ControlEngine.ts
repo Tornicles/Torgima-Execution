@@ -21,6 +21,7 @@ import type { SignalState } from "../../types/signal.js";
 import type { Blueprint } from "../../types/blueprint.js";
 import { getConditionContract } from "../blueprint/infrastructure/ConditionEnforcementMatrix.js";
 import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
+import { applyTierToConditionRules } from "../../services/TierDifferentiationService.js";
 
 // ── BASE RULES PER CONDITION ─────────────────────────────────────────────────
 
@@ -193,19 +194,7 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
 const DIFFICULTY_LEVELS = ["very_easy", "easy", "moderate", "hard", "very_hard"];
 
 function applyTierOverrides(base: BaseConditionRules, tier: string): BaseConditionRules {
-  const result = { ...base };
-
-  if (tier === "growth") {
-    result.taskMax = Math.min(result.taskMax + 1, 6);
-  } else if (tier === "ultimate") {
-    result.taskMax = Math.min(result.taskMax + 2, 8);
-    const capIdx = DIFFICULTY_LEVELS.indexOf(result.difficultyCap);
-    if (capIdx >= 0 && capIdx < DIFFICULTY_LEVELS.length - 1) {
-      result.difficultyCap = DIFFICULTY_LEVELS[capIdx + 1];
-    }
-  }
-
-  return result;
+  return applyTierToConditionRules(base, tier);
 }
 
 function applyCapabilityModifier(base: BaseConditionRules, capabilityLevel: string): BaseConditionRules {

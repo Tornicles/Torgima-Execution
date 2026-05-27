@@ -55,18 +55,18 @@ vi.mock("@workspace/db", () => {
 
 describe("BIEE — model marketplace", () => {
   it("valueScore ranks higher quality per dollar", () => {
-    const flash = DEFAULT_MODEL_CAPABILITIES.find((m) => m.provider === "gemini")!;
+    const rules = DEFAULT_MODEL_CAPABILITIES.find((m) => m.provider === "rules")!;
     const sonnet = DEFAULT_MODEL_CAPABILITIES.find((m) => m.provider === "claude")!;
-    const flashScore = valueScore(flash, 0.8);
+    const rulesScore = valueScore(rules, 0.8);
     const sonnetScore = valueScore(sonnet, 0.8);
-    expect(flashScore).toBeGreaterThan(0);
+    expect(rulesScore).toBeGreaterThan(0);
     expect(sonnetScore).toBeGreaterThan(0);
   });
 
   it("IntelligenceExchange selects highest value model", () => {
     const exchange = new IntelligenceExchange();
-    const best = exchange.selectBest(0.85, { provider: "gemini" });
-    expect(best.provider).toBe("gemini");
+    const best = exchange.selectBest(0.85, { provider: "claude" });
+    expect(best.provider).toBe("claude");
     expect(best.valueScore).toBeGreaterThan(0);
   });
 });

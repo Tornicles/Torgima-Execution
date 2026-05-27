@@ -178,16 +178,54 @@ registry.set("DOMAIN_RESOLUTION", {
   maxTokens:    1200,
   temperature:  0.25,
   memoryAllowed: true,
-  fallbackKey:  "fallback.goal_structure",
+  fallbackKey:  "fallback.domain_resolution",
   systemPrompt:
     STANDARD_SYSTEM_HEADER +
-    `\n\nResolve the user's goal into primary domain, industry, and niche for blueprint generation.` +
-    ` Do not approve, launch, or mutate blueprint state.`,
+    `\n\nYou are Bhudhi. Given a user goal, purpose, and validation result, identify the correct starting execution domain.` +
+    ` Domains: GENESIS | MARKET | DELIVERY | OPERATIONS | GROWTH | CONTINUITY | PEOPLE.` +
+    ` Return ONLY valid JSON: { "domain": string, "confidence": number, "reasoning": string }.`,
   buildUserPrompt: (ctx) => {
     const goal = String(ctx["rawGoal"] ?? ctx["goal"] ?? "");
-    const hint = String(ctx["domainHint"] ?? "");
-    return `Goal: ${goal}\nDomain hint: ${hint || "none"}\nReturn structured_goal with cleanedGoal, primaryDomain, industryLabel, nicheLabel.`;
+    const purpose = String(ctx["purpose"] ?? "");
+    return `Goal: ${goal}\nPurpose: ${purpose}\nValidation: ${JSON.stringify(ctx["validation"] ?? {})}`;
   },
+});
+
+registry.set("EXTERNAL_INTELLIGENCE_SCAN", {
+  name:         "eis.scan.v1",
+  version:      "1.0",
+  triggerType:  "EXTERNAL_INTELLIGENCE_SCAN",
+  mode:         "INTERPRET",
+  outputType:   "external_intelligence",
+  maxTokens:    900,
+  temperature:  0.2,
+  memoryAllowed: false,
+  fallbackKey:  "fallback.external_intelligence",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nYou are Bhudhi External Intelligence. Return ONLY valid JSON:` +
+    ` marketTrends (3-5 strings), opportunitySignals (2-3), riskSignals (2-3),` +
+    ` competitorMoves (2-3), executionRecommendation (max 200 chars), confidence (LOW|MEDIUM|HIGH).`,
+  buildUserPrompt: (ctx) =>
+    `Goal: ${String(ctx["goalText"] ?? "")}\nDomain: ${String(ctx["domain"] ?? "")}\nSignals: ${String(ctx["signalSummary"] ?? "")}`,
+});
+
+registry.set("PREDICTIVE_ANALYSIS", {
+  name:         "pis.analysis.v1",
+  version:      "1.0",
+  triggerType:  "PREDICTIVE_ANALYSIS",
+  mode:         "INTERPRET",
+  outputType:   "predictive_analysis",
+  maxTokens:    400,
+  temperature:  0.15,
+  memoryAllowed: false,
+  fallbackKey:  "fallback.predictive_analysis",
+  systemPrompt:
+    STANDARD_SYSTEM_HEADER +
+    `\n\nYou are Bhudhi Predictive Intelligence. Return ONLY JSON:` +
+    ` { "primaryRisk": string|null, "primaryOpportunity": string|null } (each under 100 chars).`,
+  buildUserPrompt: (ctx) =>
+    `Scores: dropout=${ctx["dropout"]} burnout=${ctx["burnout"]} plateau=${ctx["plateau"]} scaling=${ctx["scaling"]}\nCondition: ${ctx["conditionSummary"]}`,
 });
 
 registry.set("TASK_DRAFTING", {
@@ -204,7 +242,10 @@ registry.set("TASK_DRAFTING", {
     STANDARD_SYSTEM_HEADER +
     `\n\nDraft execution ORDER wording only.` +
     ` Do not bypass allowedActions / blocked_actions.` +
-    ` Do not claim completion, unlock phases, change conditions, or modify signals.`,
+    ` Do not claim completion, unlock phases, change conditions, or modify signals.` +
+    `\n\nWhen memoryContext is present: personalize from prior execution context only — do not invent patterns.` +
+    `\n\nRespect domainProfile focus, taskStyle, and forbidden list.` +
+    `\n\nWhen behaviorPatterns are present: FATIGUE_RISK HIGH → easier difficulty; DIFFICULTY_FAILURE → avoid same difficulty; TASK_TYPE_AVOIDANCE → reframe avoided types.`,
   buildUserPrompt: (ctx) => {
     if (ctx["commandOrderMode"] === true) {
       return `
@@ -1135,7 +1176,7 @@ Return ONLY JSON:
 
 bootstrapPromptRegistry({ registry, modeRegistry, byName });
 
-/** Execution / blueprint intelligence stays on Claude (Gemini is validation-only). */
+/** All Bhudhi intelligence routes through Anthropic Claude via TriggerRouter. */
 const CLAUDE_EXECUTION_TRIGGERS: BhudhiTriggerType[] = [
   "GOAL_STRUCTURING",
   "TASK_DRAFTING",

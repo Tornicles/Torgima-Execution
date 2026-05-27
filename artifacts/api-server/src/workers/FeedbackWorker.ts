@@ -11,7 +11,10 @@ import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { validateOutcome } from "../engines/outcome/OutcomeValidationEngine.js";
 import { classifyFailureWithRecord } from "../engines/failure/FailureClassificationRecord.js";
 import { runPsychologyPostFeedback } from "../engines/psychology/PsychologyPipeline.js";
-import { recordCompulsionLoopStage } from "../engines/intelligence/CompulsionLoopEngine.js";
+import {
+  fireCompulsionLoop,
+  recordCompulsionLoopStage,
+} from "../engines/intelligence/CompulsionLoopEngine.js";
 import { logger } from "../lib/logger.js";
 import { processFeedbackRegeneration } from "../engines/sequence/sequenceRegenerationEngine.js";
 
@@ -147,6 +150,25 @@ workerRegistry.register({
           }
         }
 
+        if (feedbackId && orderId && completionStatus === "failed") {
+          const [ord] = await db
+            .select({ task_type: orders.task_type })
+            .from(orders)
+            .where(eq(orders.id, orderId))
+            .limit(1);
+          if (ord?.task_type) {
+            const { handleRepeatedFailureAcademy } = await import(
+              "../engines/academy/AcademyEngine.js"
+            );
+            await handleRepeatedFailureAcademy({
+              userId,
+              blueprintId,
+              orderId,
+              taskType: ord.task_type,
+            }).catch(() => null);
+          }
+        }
+
         if (
           feedbackId &&
           orderId &&
@@ -223,39 +245,10 @@ workerRegistry.register({
             .limit(1);
 
           if (fbRow && isVerifiedFeedbackEvidence(fbRow)) {
-            await writeEvent({
-              eventType: EVENT_TYPES.IDENTITY_EVALUATION_REQUESTED,
-              entityType: "feedback",
-              entityId: feedbackId,
+            await fireCompulsionLoop({
               userId,
               blueprintId,
-              payload: {
-                reason: "feedback_submitted",
-                source_feedback_id: feedbackId,
-                window_days: 14,
-              },
-              idempotencyKey: `identity:${feedbackId}`,
-              causationEventId: data.eventId,
-            });
-
-            await writeEvent({
-              eventType: EVENT_TYPES.REWARD_EVALUATION_REQUESTED,
-              entityType: "feedback",
-              entityId: feedbackId,
-              userId,
-              blueprintId,
-              payload: {
-                source_type: "FEEDBACK",
-                source_id: feedbackId,
-                source_event_id: feedbackId,
-                completion: fbRow.completion_status,
-                had_blocker:
-                  Boolean(fbRow.blocker_json) &&
-                  Object.keys((fbRow.blocker_json as Record<string, unknown>) ?? {}).length > 0,
-                state_version: 0,
-                idempotency_key: `reward:feedback:${feedbackId}`,
-              },
-              idempotencyKey: `reward:${feedbackId}`,
+              feedbackId,
               causationEventId: data.eventId,
             });
           }

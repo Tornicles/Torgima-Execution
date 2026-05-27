@@ -18,7 +18,7 @@ function register(
   provider?: BhudhiProvider,
   dataShape = "{}",
 ) {
-  const prov = provider ?? (SEARCH_STAGES.has(triggerType) ? "gemini-search" : "gemini");
+  const prov = provider ?? "claude";
   PromptRegistry.register({
     name: `erector.${triggerType.toLowerCase()}.v1`,
     version: "1.0",
@@ -42,15 +42,15 @@ export function ensureErectorCompletePromptsRegistered() {
   if (registered) return;
   registered = true;
 
-  register("ERECTOR_GOAL_REFINE", "Generate exactly 3 refined goal options with angle simple|targeted|business.", "gemini", '{ "options": [{ "text": "", "angle": "" }] }');
-  register("ERECTOR_PURPOSE_REFINE", "Generate exactly 3 purpose options with angle problem|transformation|market.", "gemini", '{ "options": [{ "text": "", "angle": "" }] }');
+  register("ERECTOR_GOAL_REFINE", "Generate exactly 3 refined goal options with angle simple|targeted|business.", "claude", '{ "options": [{ "text": "", "angle": "" }] }');
+  register("ERECTOR_PURPOSE_REFINE", "Generate exactly 3 purpose options with angle problem|transformation|market.", "claude", '{ "options": [{ "text": "", "angle": "" }] }');
 
   register("VALIDATE_STAGE_2_DECOMPOSITION", "Purpose decomposition: problem_claim, target_user, change_claim, value_claim.");
   register("VALIDATE_STAGE_3_ECONOMIC", "Economic profile for country and business type.");
-  register("VALIDATE_STAGE_4_PATTERNS", "3 successful businesses with explanations — use current search.", "gemini-search");
-  register("VALIDATE_STAGE_5_TIMING", "Economy and timing analysis — use current search.", "gemini-search");
-  register("VALIDATE_STAGE_6_MARKET", "3 market points: demand, competition, opportunity — use current search.", "gemini-search");
-  register("VALIDATE_STAGE_7_CHANNELS", "Social and distribution channels with why each matters — use current search.", "gemini-search");
+  register("VALIDATE_STAGE_4_PATTERNS", "3 successful businesses with explanations — use current public knowledge.", "claude");
+  register("VALIDATE_STAGE_5_TIMING", "Economy and timing analysis — use current public knowledge.", "claude");
+  register("VALIDATE_STAGE_6_MARKET", "3 market points: demand, competition, opportunity — use current public knowledge.", "claude");
+  register("VALIDATE_STAGE_7_CHANNELS", "Social and distribution channels with why each matters — use current public knowledge.", "claude");
   register("VALIDATE_STAGE_8_PROS", "4 pros with explanations.");
   register("VALIDATE_STAGE_9_CONS", "4 cons with risk explanations.");
   register("VALIDATE_STAGE_10_FEASIBILITY", "Feasibility: technical, time, budget, skill, resource_gaps, overall.");

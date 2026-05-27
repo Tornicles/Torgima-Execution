@@ -136,12 +136,45 @@ export class IdentityContinuityEngine {
       )
       .limit(1);
 
-    const il1Stage = this.calculateStage(
+    let il1Stage = this.calculateStage(
       consistencyScore,
       avgScore,
       totalCount,
       currentState?.stage,
     );
+
+    const [blockingFp] = await db
+      .select({ severity: falseProgressFlags.severity })
+      .from(falseProgressFlags)
+      .where(
+        and(
+          eq(falseProgressFlags.blueprint_id, input.blueprintId),
+          eq(falseProgressFlags.resolved, false),
+        ),
+      )
+      .limit(1);
+
+    const fpSeverity = (blockingFp?.severity ?? "").toLowerCase();
+    if (blockingFp && ["medium", "high", "critical"].includes(fpSeverity)) {
+      const currentIl1 =
+        currentState?.stage != null
+          ? DB_TO_IL1_STAGE[currentState.stage as DbIdentityStage]
+          : il1Stage;
+      const stageOrder: Il1IdentityStage[] = [
+        "UNFORMED",
+        "INITIATING",
+        "BUILDING",
+        "STABILIZING",
+        "EXPANDING",
+        "INTEGRATED",
+      ];
+      const curIdx = stageOrder.indexOf(currentIl1);
+      const nextIdx = stageOrder.indexOf(il1Stage);
+      if (nextIdx > curIdx) {
+        il1Stage = currentIl1;
+      }
+    }
+
     const dbStage = IL1_TO_DB_STAGE[il1Stage];
     const regressionRisk = this.calculateRegressionRisk(consistencyScore);
     const stabilityScore = consistencyScore * 100;
@@ -288,6 +321,27 @@ export async function getCurrentIdentityState(userId: string, blueprintId: strin
     )
     .limit(1);
   return row ?? null;
+}
+
+/** Dashboard-safe identity panel (no raw evidence IDs). */
+export async function getIdentityPanelData(userId: string, blueprintId: string) {
+  const row = await getCurrentIdentityState(userId, blueprintId);
+  const panel = toDashboardIdentity(row);
+  const previousIl1 =
+    row?.previous_stage != null
+      ? DB_TO_IL1_STAGE[row.previous_stage as DbIdentityStage]
+      : null;
+  const scores = [panel.stabilityScore, panel.continuityScore, panel.transformationScore];
+  const dims = ["stability", "continuity", "transformation"] as const;
+  const maxIdx = scores.indexOf(Math.max(...scores));
+  const minIdx = scores.indexOf(Math.min(...scores));
+  return {
+    ...panel,
+    previousStage: previousIl1,
+    lastEvaluatedAt: row?.updated_at ?? row?.last_evidence_at ?? null,
+    strongestDimension: dims[maxIdx] ?? "stability",
+    weakestDimension: dims[minIdx] ?? "transformation",
+  };
 }
 
 export function toDashboardIdentity(

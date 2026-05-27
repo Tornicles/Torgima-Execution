@@ -33,8 +33,7 @@ import {
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
 import { appendErectorSearchUserPrompt, appendWebSearchInstruction } from "./erectorWebSearch.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
-import { providerForTrigger } from "./bhudhiProviders.js";
-import { geminiApiKeyConfigured } from "./gemini-client.js";
+import { ERECTOR_SEARCH_TRIGGERS, providerForTrigger } from "./bhudhiProviders.js";
 import { economicsEngine } from "./economics/EconomicsEngine.js";
 import { beliefEngine } from "./beliefs/belief-engine/BeliefEngine.js";
 import { worldEngine } from "./world/world-engine/WorldEngine.js";
@@ -719,19 +718,15 @@ export async function runBhudhiPipeline<T = unknown>(
 
   try {
     let userPrompt = contract.buildUserPrompt(facts);
-    if (provider === "gemini-search") {
+    if (ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)) {
       userPrompt = appendErectorSearchUserPrompt(request.triggerType, facts, userPrompt);
     }
 
-    if (provider === "claude") {
-      const apiKey =
-        process.env["ANTHROPIC_API_KEY"]?.trim() ||
-        process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
-      if (!apiKey) {
-        throw new Error("BHUDHI_NO_API_KEY");
-      }
-    } else if (!geminiApiKeyConfigured()) {
-      throw new Error("BHUDHI_NO_GEMINI_API_KEY");
+    const apiKey =
+      process.env["ANTHROPIC_API_KEY"]?.trim() ||
+      process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
+    if (!apiKey) {
+      throw new Error("BHUDHI_NO_API_KEY");
     }
 
     const maxTokens = Math.min(
@@ -739,21 +734,30 @@ export async function runBhudhiPipeline<T = unknown>(
       contract.maxTokens,
       getMaxTokensForTrigger(request.triggerType),
     );
-    const systemPrompt =
-      provider === "gemini-search"
-        ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
-        : contract.systemPrompt;
+    const systemPrompt = ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)
+      ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
+      : contract.systemPrompt;
 
-    const modelResult = await deps.invokeModel({
+    const invokeParams = {
       provider,
       systemPrompt,
       userPrompt,
       maxTokens,
       temperature: contract.temperature,
       timeoutMs: timeout,
-    });
+    };
 
-    if (!modelResult) {
+    const parseModelText = (text: string): unknown => {
+      const cleaned = text
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```\s*$/i, "")
+        .trim();
+      return JSON.parse(cleaned) as unknown;
+    };
+
+    let modelResult = await deps.invokeModel(invokeParams);
+    if (!modelResult?.text) {
       throw new Error("BHUDHI_MODEL_EMPTY");
     }
 
@@ -762,12 +766,13 @@ export async function runBhudhiPipeline<T = unknown>(
     webSearchCalls = modelResult.webSearchCalls;
     intelligenceGrounded = modelResult.intelligenceGrounded;
 
-    const cleaned = modelResult.text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-    rawOutput = JSON.parse(cleaned) as unknown;
+    try {
+      rawOutput = parseModelText(modelResult.text);
+    } catch {
+      modelResult = await deps.invokeModel(invokeParams);
+      if (!modelResult?.text) throw new Error("BHUDHI_JSON_PARSE");
+      rawOutput = parseModelText(modelResult.text);
+    }
 
     if (contract.outputSchema) {
       const zodParsed = contract.outputSchema.safeParse(rawOutput);

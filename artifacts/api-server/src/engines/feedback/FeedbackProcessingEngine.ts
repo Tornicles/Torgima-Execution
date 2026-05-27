@@ -15,6 +15,7 @@ import { scoreProofForOrder } from "./ProofScoringEngine.js";
 import { runFeedbackCriticCheck } from "../../bhudhi/AdvancedIntelligenceBridge.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
+import { BhudhiMemoryService } from "../../bhudhi/BhudhiMemoryService.js";
 import { runPsychologyPostFeedback } from "../psychology/PsychologyPipeline.js";
 import { classifyFailureWithRecord } from "../failure/FailureClassificationRecord.js";
 import { capabilityEngine } from "../capability/CapabilityEngine.js";
@@ -349,6 +350,21 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
       .select({ count: sql<number>`count(*)::int` })
       .from(feedback)
       .where(eq(feedback.user_id, input.userId));
+
+    if (!requiresInterrogation && ["completed", "partial"].includes(input.completionStatus)) {
+      const hadBlocker =
+        Boolean(input.blockerJson) && Object.keys(input.blockerJson ?? {}).length > 0;
+      await BhudhiMemoryService.buildMemoryCandidateFromFeedback({
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        feedbackId: feedbackIdOut,
+        completionStatus: input.completionStatus,
+        score: input.score,
+        reflection: ref,
+        hadBlocker,
+        confidenceLabel: confidence,
+      }).catch(() => null);
+    }
 
     if (feedbackCount > 0 && feedbackCount % 3 === 0) {
       await behaviorPatternEngine

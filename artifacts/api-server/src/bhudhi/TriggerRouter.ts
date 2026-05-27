@@ -13,7 +13,6 @@ import { checkTriggerAllowed } from "../engines/stability/StabilityEngine.js";
 import { shouldTriggerDebate, runDebate } from "./DebateEngine.js";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
-import { callGeminiRaw } from "./gemini-client.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import {
   FORBIDDEN_MODES,
@@ -25,6 +24,8 @@ import {
   type BhudhiTriggerType,
   type BhudhiOutputEnvelope,
 } from "../types/bhudhi.js";
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 // ── Anthropic SDK — sole allowed site (Bhudhi B1) ─────────────────────────────
 
@@ -63,7 +64,7 @@ function extractTextBlocks(response: { content: Array<{ type: string; text?: str
     .join("\n");
 }
 
-/** Only TriggerRouter invokes the Anthropic Messages API (Claude execution calls). */
+/** Only TriggerRouter invokes the Anthropic Messages API. */
 export async function invokeAnthropicModel(params: {
   systemPrompt: string;
   userPrompt: string;
@@ -78,6 +79,7 @@ export async function invokeAnthropicModel(params: {
   intelligenceGrounded: boolean;
 }> {
   const client = getAnthropicClient();
+  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
   const body: MessageCreateParamsNonStreaming = {
     model: BHUDHI_MODEL,
     max_tokens: params.maxTokens,
@@ -89,11 +91,12 @@ export async function invokeAnthropicModel(params: {
   const response = await Promise.race([
     client.messages.create(body),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
+      setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), timeoutMs),
     ),
   ]);
 
   const text = extractTextBlocks(response).trim();
+  if (!text) throw new Error("BHUDHI_MODEL_EMPTY");
 
   return {
     text,
@@ -113,7 +116,7 @@ export type BhudhiModelInvokeParams = {
   timeoutMs: number;
 };
 
-/** Routes Bhudhi calls to Claude (execution) or Gemini (validation / search). */
+/** All Bhudhi model calls route through Anthropic Claude. */
 export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promise<{
   text: string;
   inputTokens: number;
@@ -122,52 +125,29 @@ export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promis
   intelligenceGrounded: boolean;
   provider: BhudhiProvider;
 }> {
-  if (params.provider === "gemini" || params.provider === "gemini-search") {
-    const invokeOnce = () =>
-      Promise.race([
-        callGeminiRaw({
-          prompt: params.userPrompt,
-          systemPrompt: params.systemPrompt,
-          useSearch: params.provider === "gemini-search",
-          maxTokens: params.provider === "gemini-search" ? 2500 : params.maxTokens,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), params.timeoutMs),
-        ),
-      ]);
+  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
 
-    let text: string;
-    try {
-      text = await invokeOnce();
-    } catch (firstErr) {
-      if (firstErr instanceof Error && firstErr.message === "BHUDHI_TIMEOUT") {
-        text = await Promise.race([
-          callGeminiRaw({
-            prompt: params.userPrompt,
-            systemPrompt: params.systemPrompt,
-            useSearch: params.provider === "gemini-search",
-            maxTokens: params.provider === "gemini-search" ? 2500 : params.maxTokens,
-          }),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), 5_000)),
-        ]);
-      } else {
-        throw firstErr;
-      }
-    }
+  const invokeOnce = () =>
+    invokeAnthropicModel({
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.userPrompt,
+      maxTokens: params.maxTokens,
+      temperature: params.temperature,
+      timeoutMs,
+    });
 
-    if (!text) throw new Error(params.provider === "gemini-search" ? "BHUDHI_GEMINI_SEARCH_EMPTY" : "BHUDHI_GEMINI_EMPTY");
-    return {
-      text,
-      inputTokens: 0,
-      outputTokens: 0,
-      webSearchCalls: params.provider === "gemini-search" ? 1 : 0,
-      intelligenceGrounded: params.provider === "gemini-search",
-      provider: params.provider,
-    };
+  try {
+    const result = await invokeOnce();
+    return { ...result, provider: "claude" };
+  } catch (firstErr) {
+    const isTimeout = firstErr instanceof Error && firstErr.message === "BHUDHI_TIMEOUT";
+    if (!isTimeout) throw firstErr;
+    const result = await invokeAnthropicModel({
+      ...params,
+      timeoutMs: Math.min(timeoutMs + 5_000, 75_000),
+    });
+    return { ...result, provider: "claude" };
   }
-
-  const claude = await invokeAnthropicModel(params);
-  return { ...claude, provider: "claude" };
 }
 
 // ── Governed entry points ─────────────────────────────────────────────────────
@@ -422,7 +402,6 @@ export async function routeTrigger(ctx: TriggerContext): Promise<TriggerResult> 
       triggerType: ctx.triggerType,
       contextPacket: ctx.payload as Record<string, unknown>,
       debateType: feasibilityScore < 0.35 ? "HIGH_RISK_VALIDATION" : "DIRECTION_ANALYSIS",
-      feasibilityScore,
     }).catch(() => null);
   }
 

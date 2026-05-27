@@ -16,6 +16,10 @@ import {
   featureFlags as featureFlagsTable,
   falseProgressFlags,
   validations,
+  academyTasks,
+  phases,
+  frameworkActivations,
+  frameworkDecisions,
 } from "@workspace/db";
 import { checkAssumptionDrift } from "../engines/validation/AssumptionMonitoringService.js";
 import { buildDashboardAlerts, deriveDashboardUiState } from "./DashboardUiState.js";
@@ -31,6 +35,12 @@ import {
   getCurrentIdentityState,
   toDashboardIdentity,
 } from "../engines/intelligence/IdentityContinuityEngine.js";
+import { PredictiveIntelligenceService } from "../bhudhi/PredictiveIntelligenceService.js";
+import { ExternalIntelligenceService } from "../bhudhi/ExternalIntelligenceService.js";
+import { getLatestRewardForBlueprint } from "../engines/reward/RewardEngine.js";
+import { checkOutcomeIntegrity, getOpenFlags } from "../engines/outcome/OutcomeValidationEngine.js";
+import { evaluatePhaseReadiness } from "../engines/blueprint/PhaseProgressionEngine.js";
+import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
 
 export const DashboardService = {
   async getDashboardState(userId: string) {
@@ -490,9 +500,135 @@ export const DashboardService = {
         : null;
     const identity = toDashboardIdentity(identityRow);
 
+    let latestReward: Awaited<ReturnType<typeof getLatestRewardForBlueprint>> = null;
+    let outcomeIntegrity: {
+      openFlags: Awaited<ReturnType<typeof getOpenFlags>>;
+      canAdvancePhase: boolean;
+      blockers: string[];
+    } = { openFlags: [], canAdvancePhase: true, blockers: [] };
+    let phaseReadiness: {
+      canAdvance: boolean;
+      completionPercentage: number;
+      blockers: string[];
+      currentPhase: string;
+      currentPhaseDaysActive: number;
+    } | null = null;
+    let academyTasksSummary: {
+      pending: typeof academyTasks.$inferSelect[];
+      blocksExecution: boolean;
+    } = { pending: [], blocksExecution: false };
+    let frameworks: {
+      active: Array<{
+        name: string;
+        signalState: string;
+        activationLevel: string;
+        lastDecision: string | null;
+      }>;
+      hasEnforcedDecision: boolean;
+    } = { active: [], hasEnforcedDecision: false };
+
+    if (blueprintId) {
+      latestReward = await getLatestRewardForBlueprint(userId, blueprintId);
+      const integrity = await checkOutcomeIntegrity(userId, blueprintId);
+      const openFlags = await getOpenFlags(blueprintId);
+      outcomeIntegrity = {
+        openFlags,
+        canAdvancePhase: integrity.canAdvance,
+        blockers: integrity.blockers,
+      };
+
+      const pendingAcademy = await db
+        .select()
+        .from(academyTasks)
+        .where(
+          and(
+            eq(academyTasks.blueprint_id, blueprintId),
+            eq(academyTasks.user_id, userId),
+            inArray(academyTasks.status, ["pending", "in_progress"]),
+          ),
+        )
+        .limit(10);
+      academyTasksSummary = {
+        pending: pendingAcademy,
+        blocksExecution: pendingAcademy.some((t) => t.blocks_execution),
+      };
+
+      if (activeBlueprint?.currentPhaseId) {
+        const [phaseRow] = await db
+          .select({ name: phases.name, started_at: phases.started_at, created_at: phases.created_at })
+          .from(phases)
+          .where(eq(phases.id, activeBlueprint.currentPhaseId))
+          .limit(1);
+        const readiness = await evaluatePhaseReadiness(
+          blueprintId,
+          activeBlueprint.currentPhaseId,
+        );
+        const started = phaseRow?.started_at ?? phaseRow?.created_at ?? new Date();
+        phaseReadiness = {
+          ...readiness,
+          currentPhase: phaseRow?.name ?? "Active",
+          currentPhaseDaysActive: Math.floor((Date.now() - started.getTime()) / 86400000),
+        };
+      }
+
+      const activations = await db
+        .select()
+        .from(frameworkActivations)
+        .where(eq(frameworkActivations.blueprint_id, blueprintId))
+        .orderBy(desc(frameworkActivations.created_at))
+        .limit(8);
+
+      const decisions = await db
+        .select()
+        .from(frameworkDecisions)
+        .where(
+          and(
+            eq(frameworkDecisions.blueprint_id, blueprintId),
+            inArray(frameworkDecisions.status, ["PENDING", "ACTIVE", "pending", "active"]),
+          ),
+        )
+        .limit(5);
+
+      frameworks = {
+        active: activations.map((a) => ({
+          name: a.framework_name,
+          signalState: a.trigger_condition ?? "active",
+          activationLevel: a.activation_level,
+          lastDecision:
+            decisions.find((d) => d.framework_name === a.framework_name)?.decision_type ?? null,
+        })),
+        hasEnforcedDecision: decisions.some(
+          (d) => String(d.decision_type).toUpperCase() === "ENFORCE",
+        ),
+      };
+    }
+
+    const starterLabel =
+      user?.tier === "starter" && condEffective?.condition
+        ? mapStarterSignalLabel(condEffective.condition)
+        : null;
+
+    let prediction: Awaited<ReturnType<typeof PredictiveIntelligenceService.getLatestForBlueprint>> =
+      null;
+    let externalIntelligenceFreshness: "fresh" | "stale" | "none" = "none";
+    if (blueprintId) {
+      prediction = await PredictiveIntelligenceService.getLatestForBlueprint(blueprintId);
+      const ext = await ExternalIntelligenceService.getLatestForBlueprint(blueprintId);
+      externalIntelligenceFreshness = ext ? "fresh" : "none";
+    }
+
     return {
       user,
-      identity,
+      identity: {
+        ...identity,
+        lastEvaluatedAt: identityRow?.updated_at ?? identityRow?.last_evidence_at ?? null,
+      },
+      latestReward,
+      outcomeIntegrity,
+      phaseReadiness,
+      academyTasks: academyTasksSummary,
+      frameworks,
+      simplifiedSignalLabel: starterLabel,
       signals,
       activeBlueprint: activeBlueprint
         ? { ...activeBlueprint, economyIntelligence, executionContext }
@@ -521,6 +657,19 @@ export const DashboardService = {
       pendingSync: dashboardUiState === "PENDING_SYNC",
       alerts,
       intelligence,
+      prediction: prediction
+        ? {
+            dropoutRisk: prediction.dropoutRisk,
+            burnoutRisk: prediction.burnoutRisk,
+            plateauRisk: prediction.plateauRisk,
+            scalingReadiness: prediction.scalingReadiness,
+            recommendedAction: prediction.recommendedAction,
+            primaryRisk: prediction.primaryRisk,
+            primaryOpportunity: prediction.primaryOpportunity,
+            confidence: prediction.confidence,
+          }
+        : null,
+      externalIntelligenceFreshness,
     };
   },
 };

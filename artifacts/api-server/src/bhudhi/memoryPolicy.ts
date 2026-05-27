@@ -15,7 +15,7 @@ export const MEMORY_READ_POLICY: Record<string, string[]> = {
   INACTIVITY_RESTART: ["RECOVERY_CONTEXT", "EXECUTION_PATTERN"],
 };
 
-export const MAX_MEMORY_ITEMS_PER_CALL = 3;
+export const MAX_MEMORY_ITEMS_PER_CALL = 5;
 export const MIN_RELEVANCE_SCORE = 0.4;
 export const MAX_MEMORY_CONTENT_CHARS = 500;
 

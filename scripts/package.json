@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "verify:system": "tsx ./src/verify-system.ts",
+    "diagnostic:complete": "tsx ./src/complete-system-diagnostic.ts",
     "classify:validations": "tsx ./classifyValidationRows.ts",
     "backfill:25-sequences": "tsx ./backfill-25-sequence-system.ts",
     "test:system:e2e": "tsx ./test-system-e2e.ts",

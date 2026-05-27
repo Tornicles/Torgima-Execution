@@ -250,7 +250,8 @@ describe("Erector scoring and route integration", () => {
 
     const triggerRouter = readRepo("artifacts/api-server/src/bhudhi/TriggerRouter.ts");
     expect(triggerRouter).toContain("invokeBhudhiModel");
-    expect(triggerRouter).toContain("callGeminiRaw");
+    expect(triggerRouter).toContain("invokeAnthropicModel");
+    expect(triggerRouter).not.toContain("callGeminiRaw");
     expect(triggerRouter).not.toContain("web_search_20250305");
 
     const bhudhiCore = readRepo("artifacts/api-server/src/bhudhi/BhudhiCore.ts");

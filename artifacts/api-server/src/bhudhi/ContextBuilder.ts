@@ -3,7 +3,9 @@ import { and, eq } from "drizzle-orm";
 import type { BhudhiContextPacket, BhudhiTriggerType } from "../types/bhudhi.js";
 import { getContract } from "./PromptRegistry.js";
 import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
-import { retrieveMemory } from "./MemoryService.js";
+import { retrieveMemoryWithIds } from "./MemoryService.js";
+import { ZoneRouter } from "./ZoneRouter.js";
+import { DomainIntelligenceService } from "./DomainIntelligenceService.js";
 import { stripSecretsFromRecord } from "./contextSanitizer.js";
 import { getMaxTokensForTrigger } from "./UsageController.js";
 
@@ -133,14 +135,29 @@ export const ContextBuilder = {
     }
 
     const contract = getContract(request.triggerType as BhudhiTriggerType);
-    const memorySummary = contract?.memoryAllowed
-      ? await retrieveMemory({
+    const memoryPack = contract?.memoryAllowed
+      ? await retrieveMemoryWithIds({
           userId: request.userId,
           blueprintId: request.blueprintId,
           triggerType: request.triggerType as BhudhiTriggerType,
-        }).catch(() => "")
-      : "";
-    ctx.memorySummary = memorySummary || null;
+        }).catch(() => ({ summary: "", memoryIds: [] as string[] }))
+      : { summary: "", memoryIds: [] as string[] };
+    ctx.memorySummary = memoryPack.summary || null;
+    ctx.memoryIdsUsed = memoryPack.memoryIds;
+
+    const zone = ZoneRouter.getZoneForTrigger(request.triggerType);
+    const zoneContext = request.blueprintId
+      ? await ZoneRouter.buildZoneContext({
+          zone,
+          userId: request.userId,
+          blueprintId: request.blueprintId,
+          triggerType: request.triggerType,
+        }).catch(() => ({ zone }))
+      : { zone };
+
+    const domainProfile = DomainIntelligenceService.getDomainProfile(
+      blueprintRow?.current_domain ?? "genesis",
+    );
 
     const world = await getWorldModel(request.userId).catch(() => null);
     ctx.systemFacts = stripSecretsFromRecord({
@@ -149,10 +166,18 @@ export const ContextBuilder = {
       blueprintGoal: blueprintRow?.goal,
       blueprintPurpose: blueprintRow?.purpose,
       blueprintStateVersion: blueprintRow?.state_version ?? request.stateVersion,
+      zoneContext,
+      domainProfile,
+      behaviorPatterns: (zoneContext as { behaviorPatterns?: unknown }).behaviorPatterns,
+      externalContext: (zoneContext as { externalContext?: unknown }).externalContext,
     });
 
     return ctx;
   },
 
-  retrieveRelevantMemory: retrieveMemory,
+  retrieveRelevantMemory: async (params: {
+    userId: string;
+    blueprintId?: string;
+    triggerType: BhudhiTriggerType;
+  }) => (await retrieveMemoryWithIds(params)).summary,
 };

@@ -580,6 +580,46 @@ export const FallbackLibrary = {
   getByKey: getFallback,
 };
 
+fallbacks.set("fallback.domain_resolution", (_ctx, sv) => ({
+  outputType: "structured_goal",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: { domain: "GENESIS", confidence: 0.5, reasoning: "Default domain — validation needed" },
+  missingFields: [],
+  warnings: ["AI domain resolution unavailable — deterministic fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.external_intelligence", (_ctx, sv) => ({
+  outputType: "external_intelligence",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    marketTrends: [],
+    opportunitySignals: [],
+    riskSignals: [],
+    competitorMoves: [],
+    executionRecommendation: "Market intelligence unavailable — use general execution principles.",
+    confidence: "LOW",
+  },
+  missingFields: [],
+  warnings: [],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.predictive_analysis", (_ctx, sv) => ({
+  outputType: "predictive_analysis",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: { primaryRisk: null, primaryOpportunity: null },
+  missingFields: [],
+  warnings: [],
+  forbiddenActionRequested: false,
+}));
+
 export function getFallback(key: string, ctx: Record<string, unknown>, stateVersion: number): BhudhiOutputEnvelope {
   const fn = fallbacks.get(key);
   if (!fn) {

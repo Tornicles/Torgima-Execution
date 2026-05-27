@@ -278,7 +278,7 @@ function shouldFrameworkActivate(
   return signal.completion_rate < 0.7 || ["danger", "urgency"].includes(condition);
 }
 
-function deriveFrameworkSignalState(
+export function deriveFrameworkSignalState(
   frameworkName: string,
   signal:        SignalRow,
   condition:     string,
@@ -301,7 +301,7 @@ function deriveFrameworkSignalState(
       : "stable";
 }
 
-function deriveFrameworkScore(frameworkName: string, signal: SignalRow): number {
+export function deriveFrameworkScore(frameworkName: string, signal: SignalRow): number {
   void frameworkName;
   const base = signal.completion_rate * 5 + signal.weighted_score * 0.3;
   return Math.min(10, Math.max(0, base));

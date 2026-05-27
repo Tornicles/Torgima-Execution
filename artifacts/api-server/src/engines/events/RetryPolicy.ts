@@ -15,6 +15,8 @@ export const RetryPolicies: Record<string, RetryPolicy> = {
   condition_evaluated:              { maxAttempts: 5, backoffMs: 2000,  backoffMultiplier: 2 },
   enforcement_package_created:      { maxAttempts: 5, backoffMs: 2000,  backoffMultiplier: 2 },
   task_generation_requested:        { maxAttempts: 5, backoffMs: 2000,  backoffMultiplier: 2 },
+  prediction_requested:             { maxAttempts: 3, backoffMs: 1500,  backoffMultiplier: 2 },
+  eis_scan_requested:               { maxAttempts: 3, backoffMs: 2000,  backoffMultiplier: 2 },
   task_generation_completed:        { maxAttempts: 5, backoffMs: 2000,  backoffMultiplier: 2 },
   blueprint_launched:               { maxAttempts: 5, backoffMs: 1000,  backoffMultiplier: 2 },
   inactivity_detected:              { maxAttempts: 3, backoffMs: 5000,  backoffMultiplier: 2 },

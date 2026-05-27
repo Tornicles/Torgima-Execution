@@ -3,6 +3,7 @@ import { requireAuth } from "../lib/auth.js";
 import { DashboardService } from "../services/DashboardService.js";
 import { success, handleError } from "../lib/utils.js";
 import { refreshDashboardIntelligence } from "../engines/dashboard/DashboardIntelligenceEngine.js";
+import { ExternalIntelligenceService } from "../bhudhi/ExternalIntelligenceService.js";
 
 const router = Router();
 
@@ -22,6 +23,21 @@ router.get("/state/dashboard-intelligence", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const payload = await refreshDashboardIntelligence(auth.userId, "SESSION_START");
     success(res, payload);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+router.get("/dashboard/intelligence/:blueprintId", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = String(req.params.blueprintId ?? "");
+    const intelligence = await ExternalIntelligenceService.getLatestForBlueprint(blueprintId);
+    success(res, {
+      intelligence,
+      freshnessStatus: intelligence ? ("fresh" as const) : ("none" as const),
+      userId: auth.userId,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

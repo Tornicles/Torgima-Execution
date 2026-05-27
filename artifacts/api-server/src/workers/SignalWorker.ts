@@ -3,6 +3,7 @@ import { handleWorkerJob } from "./BaseWorkerHandler.js";
 import { calculate } from "../engines/signal/SignalCalculationEngine.js";
 import type { OperationalMathematicsDocument } from "../engines/signal/SignalOperationalMathematicsEngine.js";
 import { runFrameworkCycle } from "../engines/framework/FrameworkActivationEngine.js";
+import { calculateFrameworkSignals } from "../engines/framework/FrameworkSignalCalculator.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { incrementStateVersion } from "../services/StateMutationService.js";
@@ -10,6 +11,7 @@ import { logger } from "../lib/logger.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { aggregateAndPersistTeamSignal } from "../engines/blueprint/infrastructure/TeamSignalAggregationService.js";
+import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
 
 import { WorkerQueues } from "../types/eventContracts.js";
 
@@ -64,6 +66,10 @@ workerRegistry.register({
           executionLoop,
         });
 
+        await calculateFrameworkSignals(blueprintId, userId, result.snapshotId).catch(
+          () => null,
+        );
+
         await runFrameworkCycle({
           blueprintId,
           userId,
@@ -76,6 +82,17 @@ workerRegistry.register({
             },
             "[SignalWorker] Framework cycle failed — non-critical",
           );
+        });
+
+        await writeEvent({
+          eventType: EVENT_TYPES.FALSE_PROGRESS_SCAN_REQUESTED,
+          entityType: "signal_snapshot",
+          entityId: result.snapshotId,
+          userId,
+          blueprintId,
+          payload: { signal_snapshot_id: result.snapshotId },
+          idempotencyKey: `false_progress_scan:${blueprintId}:${result.snapshotId}`,
+          causationEventId: data.eventId,
         });
 
         await incrementStateVersion(blueprintId, "signal_recalculated", data.eventId);
@@ -116,6 +133,23 @@ workerRegistry.register({
         }).catch(() => null);
 
         await aggregateAndPersistTeamSignal(blueprintId).catch(() => null);
+
+        await scanPatterns({ userId, blueprintId, windowDays: 14 }).catch(() => null);
+
+        await writeEvent({
+          eventType: EVENT_TYPES.PREDICTION_REQUESTED,
+          entityType: "signal_snapshot",
+          entityId: result.snapshotId,
+          userId,
+          blueprintId,
+          payload: {
+            blueprintId,
+            userId,
+            signal_snapshot_id: result.snapshotId,
+          },
+          idempotencyKey: `prediction:${blueprintId}:${result.snapshotId}`,
+          causationEventId: data.eventId,
+        });
 
         logger.info(
           { blueprintId, condition: result.condition, snapshotId: result.snapshotId },
