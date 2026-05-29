@@ -5,6 +5,7 @@ import { logger } from "../lib/logger.js";
 import { ValidationService } from "../services/ValidationService.js";
 import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
 import { success, failure, handleError } from "../lib/utils.js";
+import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
 import { runErectorValidation } from "../engines/erector/ErectorOrchestrationService.js";
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
 import { writeEvent } from "../services/EventService.js";
@@ -386,6 +387,9 @@ router.post("/v1/validation/run", async (req, res) => {
       pipeline: useTwentyStage ? "20_stage" : "legacy",
     });
   } catch (err) {
+    logSchemaDbError("select|insert|update", "validations", err, {
+      route: "POST /api/v1/validation/run",
+    });
     const message = err instanceof Error ? err.message : String(err);
     console.error("[RUN_FAILURE]", { error: message });
     handleError(req, res, err);

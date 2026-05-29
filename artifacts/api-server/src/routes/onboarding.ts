@@ -6,6 +6,7 @@ import { db, users, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingGoalAdapter.js";
+import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
 
 const router = Router();
 
@@ -122,12 +123,8 @@ router.post("/onboarding/goal", async (req, res) => {
 
     success(res, { blueprintId: inserted.id, status: "draft" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Onboarding] POST /onboarding/goal error:", message);
-    if (stack) console.error(stack);
-    console.error(err);
-    failure(res, "INTERNAL_ERROR", message, 500);
+    logSchemaDbError("insert", "blueprints", err, { route: "POST /api/onboarding/goal" });
+    handleError(req, res, err);
   }
 });
 
