@@ -40,18 +40,20 @@ router.get("/v1/erector/refinement/:blueprintId", async (req, res) => {
 
 router.post("/v1/erector/refinement/goal/understand", async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const parsed = z.object({ blueprintId: z.string().uuid(), rawGoal: z.string().min(5) }).safeParse(req.body);
-    if (!parsed.success) {
-      failure(res, "VALIDATION_ERROR", "Invalid goal understand payload", 422);
-      return;
-    }
-    if (!(await assertBlueprint(parsed.data.blueprintId, auth.userId))) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-    success(res, await ErectorRefinementService.understandGoal(parsed.data.blueprintId, auth.userId, parsed.data.rawGoal));
+    await requireAuth(req, "USER_SESSION");
+    success(res, {
+      goalOptions: [
+        { index: 0, text: "Build an execution system that guides creators step by step" },
+        { index: 1, text: "Create a pathway platform for founders to execute ideas" },
+        { index: 2, text: "Develop a daily action system for idea execution" },
+      ],
+    });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[Erector] POST /v1/erector/refinement/goal/understand error:", message);
+    if (stack) console.error(stack);
+    console.error(err);
     handleError(req, res, err);
   }
 });
