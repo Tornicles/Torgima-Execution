@@ -33,8 +33,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm run typecheck
+      - name: Build shared TypeScript project references
+        run: pnpm run typecheck:libs
+
+      - name: Typecheck api-server
+        run: pnpm -F @workspace/api-server run typecheck
+
+      - name: Typecheck frontend workspaces
+        run: |
+          pnpm -F @workspace/torgima run typecheck
+          pnpm -F @workspace/torgima-mobile run typecheck
+
+      - name: Typecheck scripts
+        run: pnpm -F @workspace/scripts run typecheck
 
       - name: Build workspaces
         run: pnpm run build

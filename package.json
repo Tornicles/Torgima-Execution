@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "pnpm run typecheck:libs && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
+    "typecheck:libs": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:unit": "pnpm -F @workspace/api-server exec vitest run src/tests/unit",
     "test:contracts": "pnpm -F @workspace/api-server exec vitest run src/tests/contracts",
