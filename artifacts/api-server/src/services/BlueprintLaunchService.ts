@@ -15,9 +15,18 @@ import { initializePermanentFrameworkSignals } from "./PermanentFrameworkSignalS
 import { SequenceTracker } from "../engines/sequence/SequenceTracker.js";
 import { KnowledgeService } from "../engines/growth/KnowledgeService.js";
 import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
+import {
+  normalizeSelectedPath,
+  resolveDefaultSelectedPath,
+  type ValidationPathType,
+} from "../lib/validationPathSelection.js";
 
-function assertValidationReadyForLaunch(row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>): void {
-  const selected = row.selected_path_type ?? row.selected_path;
+function assertValidationReadyForLaunch(
+  row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>,
+  launchPath?: ValidationPathType,
+): void {
+  const selected =
+    normalizeSelectedPath(row, launchPath) ?? resolveDefaultSelectedPath(row.verdict);
   if (!selected) {
     throw new TorgimaError(
       "VALIDATION_ERROR",
@@ -74,17 +83,20 @@ export const BlueprintLaunchService = {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
 
-    const selectedPathType = input.selectedPathType ?? "current";
     const selectedBlueprintLevel = (input.selectedBlueprintLevel ??
       blueprint.selected_blueprint_level ??
       blueprint.tier ??
       "starter") as BlueprintTier;
 
-    const validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
+    let validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
     if (validationRow.blueprint_id !== input.blueprintId || validationRow.user_id !== input.userId) {
       throw new TorgimaError("FORBIDDEN", "validation_contract_id does not belong to this blueprint");
     }
-    assertValidationReadyForLaunch(validationRow);
+
+    const selectedPathType: LaunchPathType =
+      input.selectedPathType ??
+      normalizeSelectedPath(validationRow) ??
+      resolveDefaultSelectedPath(validationRow.verdict);
 
     const usesTwentyStage =
       validationRow.validation_version != null || validationRow.stage_final_decision != null;
@@ -109,6 +121,9 @@ export const BlueprintLaunchService = {
       validationIdHint: validationRow.id,
       confirmAdjusted: selectedPathType === "adjusted",
     });
+
+    validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
+    assertValidationReadyForLaunch(validationRow, selectedPathType);
 
     await ValidationService.assertLaunchAllowed(
       input.blueprintId,

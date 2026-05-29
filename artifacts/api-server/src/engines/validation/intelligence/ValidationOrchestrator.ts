@@ -23,6 +23,7 @@ import { applyTierDepthToResult } from "./applyTierDepth.js";
 import { buildEisExecutionFields } from "../../../bhudhi/AdvancedIntelligenceBridge.js";
 import type { FullValidationResult, ReadinessState, ValidationIntelligencePayload } from "./validation-intelligence-types.js";
 import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { resolveDefaultSelectedPath } from "../../../lib/validationPathSelection.js";
 
 export async function runFullValidation(params: {
   blueprintId: string;
@@ -222,8 +223,14 @@ export async function runFullValidation(params: {
     )
     .limit(1);
 
+  const defaultPath = resolveDefaultSelectedPath(verdict);
+  const selectedAt = new Date();
+
   const payload = {
     verdict: verdict as "proceed" | "adjust" | "pivot",
+    selected_path: defaultPath,
+    selected_path_type: defaultPath,
+    selected_at: selectedAt,
     feasibility_score: feasibility.score,
     clarity_score: scores.clarity.score,
     realism_score: scores.realism.score,

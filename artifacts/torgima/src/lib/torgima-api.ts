@@ -130,8 +130,43 @@ export type ApiEnvelope<T> = {
   ok: boolean;
   status: number;
   data?: T;
-  error?: { message?: string; code?: string };
+  error?: {
+    message?: string;
+    code?: string;
+    fieldErrors?: Record<string, string[]>;
+    detail?: string;
+  };
 };
+
+/** User-facing message for onboarding/validation API failures (never map 503 → invalid input). */
+export function formatApiEnvelopeError(
+  envelope: ApiEnvelope<unknown>,
+  fallback = "Request failed.",
+): string {
+  if (
+    envelope.status === 503 ||
+    envelope.error?.code === "SCHEMA_OUT_OF_DATE" ||
+    envelope.error?.code === "SCHEMA_OUTDATED"
+  ) {
+    return (
+      envelope.error?.message ??
+      "Server is updating. Please try again in a few minutes or contact support."
+    );
+  }
+  if (envelope.status === 401) {
+    return "Your session expired. Please sign in again.";
+  }
+  if (envelope.status >= 500) {
+    return envelope.error?.message ?? "Server unavailable. Please try again shortly.";
+  }
+  const fieldErrors = envelope.error?.fieldErrors;
+  if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+    return Object.entries(fieldErrors)
+      .flatMap(([field, msgs]) => msgs.map((m) => `${field}: ${m}`))
+      .join(" ");
+  }
+  return envelope.error?.message ?? fallback;
+}
 
 function normalizeApiPath(pathOrUrl: string): string {
   if (pathOrUrl.includes("/api/")) return pathOrUrl.slice(pathOrUrl.indexOf("/api/"));
@@ -155,7 +190,16 @@ export async function apiFetchEnvelope<T = unknown>(
       } catch {
         json = null;
       }
-      const body = json as { ok?: boolean; data?: T; error?: { message?: string; code?: string } } | null;
+      const body = json as {
+        ok?: boolean;
+        data?: T;
+        error?: {
+          message?: string;
+          code?: string;
+          fieldErrors?: Record<string, string[]>;
+          details?: string;
+        };
+      } | null;
       if (!res.ok) {
         return {
           ok: false,

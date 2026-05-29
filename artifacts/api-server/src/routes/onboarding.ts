@@ -9,20 +9,10 @@ import { success, failure, handleError } from "../lib/utils.js";
 import { checkSchemaHealth } from "../lib/verifySchema.js";
 import { BlueprintStatus } from "../types/stateMachine.js";
 import { SequenceTrackingService } from "../services/SequenceTrackingService.js";
+import { parseOnboardingGoalBody } from "../lib/onboardingGoalPayload.js";
+import { resolveDefaultSelectedPath } from "../lib/validationPathSelection.js";
 
 const router = Router();
-
-function parseTimeframeDays(timeframe: string): number | null {
-  const directDays = timeframe.match(/(\d+)\s*(day|days)/i);
-  if (directDays?.[1]) return Number(directDays[1]);
-  const weeks = timeframe.match(/(\d+)\s*(week|weeks)/i);
-  if (weeks?.[1]) return Number(weeks[1]) * 7;
-  const months = timeframe.match(/(\d+)\s*(month|months)/i);
-  if (months?.[1]) return Number(months[1]) * 30;
-  const years = timeframe.match(/(\d+)\s*(year|years)/i);
-  if (years?.[1]) return Number(years[1]) * 365;
-  return null;
-}
 
 // GET /api/onboarding/status
 router.get("/onboarding/status", async (req, res) => {
@@ -71,28 +61,11 @@ router.post("/onboarding/goal", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const schema = z.object({
-      rawGoal:               z.string().min(5).max(2000),
-      purpose:               z.string().min(5).max(1000),
-      timeframe:             z.string().min(2).max(200),
-      commitmentLevel:       z.enum(["low", "medium", "high", "full"]),
-      domain:                z.string().max(120).optional(),
-      currentContext:        z.string().max(1000).optional(),
-      successSignal:         z.string().max(500).optional(),
-      knownBlockers:         z.string().max(500).optional(),
-      locationContext:       z.string().max(1000).optional(),
-      realityContext:        z.string().max(2000).optional(),
-      selectedBlueprintTier: z.enum(["starter", "growth", "ultimate"]).optional().default("starter"),
-      selectedBlueprintMode: z.enum(["individual", "team"]).optional().default("individual"),
-      idempotencyKey:        z.string().min(1),
-      domainHints:           z.array(z.string()).optional(),
-      tier:                  z.enum(["starter", "growth", "ultimate"]).optional(),
-      mode:                  z.enum(["individual", "team"]).optional(),
-    });
-
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) {
-      failure(res, "VALIDATION_ERROR", "Invalid input", 422);
+    const parsed = parseOnboardingGoalBody(req.body);
+    if (!parsed.ok) {
+      failure(res, "VALIDATION_ERROR", "Invalid onboarding goal payload", 400, {
+        fieldErrors: parsed.fieldErrors,
+      });
       return;
     }
 
@@ -116,7 +89,7 @@ router.post("/onboarding/goal", async (req, res) => {
     const selectedTier = input.selectedBlueprintTier ?? input.tier ?? "starter";
     const selectedMode = input.selectedBlueprintMode ?? input.mode ?? "individual";
     const domainHint = input.domain ?? input.domainHints?.[0] ?? null;
-    const timeframeDays = parseTimeframeDays(input.timeframe);
+    const timeframeDays = input.timeframeDays;
 
     // AI feature flag
     const aiRows = await db
@@ -233,6 +206,8 @@ router.post("/onboarding/goal", async (req, res) => {
       },
     });
 
+    const defaultPath = resolveDefaultSelectedPath(validationResult.verdict);
+
     await db
       .update(validations)
       .set({
@@ -249,6 +224,9 @@ router.post("/onboarding/goal", async (req, res) => {
         reality_context: input.realityContext ?? null,
         selected_blueprint_tier: selectedTier,
         selected_blueprint_mode: selectedMode,
+        selected_path: defaultPath,
+        selected_path_type: defaultPath,
+        selected_at: new Date(),
         overall_score: validationResult.scores.overall,
         scores: validationResult.scores as unknown as Record<string, unknown>,
         path_options: validationResult.paths as unknown as Record<string, unknown>,

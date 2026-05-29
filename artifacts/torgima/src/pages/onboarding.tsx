@@ -25,8 +25,10 @@ import {
   apiFetchEnvelope,
   apiFetchResponseWithRetry,
   completeOnboarding,
+  formatApiEnvelopeError,
   launchValidationBlueprint,
 } from "@/lib/torgima-api";
+import { buildOnboardingGoalPayload, validateIntakeBeforeSubmit } from "@/lib/onboarding-goal-payload";
 import { postValidationRun, validationRunNavigatePath } from "@/lib/validation-run";
 import { API_BASE_URL } from "@/lib/api-base";
 import { ValidationStatus } from "@workspace/state-machine";
@@ -301,8 +303,9 @@ export default function OnboardingPage() {
 
   async function handleAlignedStart(intake: AlignedIntakeForm) {
     if (isSubmittingRef.current) return;
-    if (!intake.rawGoal || intake.rawGoal.trim().length < 10) {
-      setError("Enter your goal before continuing.");
+    const intakeError = validateIntakeBeforeSubmit(intake);
+    if (intakeError) {
+      setError(intakeError);
       return;
     }
 
@@ -311,7 +314,6 @@ export default function OnboardingPage() {
     setError("");
 
     const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
-    const timeframe = tf.key === "custom" && tf.days ? "custom" : tf.key;
 
     setForm((f) => ({
       ...f,
@@ -328,41 +330,16 @@ export default function OnboardingPage() {
     try {
       const goalEnvelope = await apiFetchEnvelope<ValidationPayload>(`/api/onboarding/goal`, {
         method: "POST",
-        body: JSON.stringify({
-          rawGoal: intake.rawGoal,
-          purpose: intake.purpose || intake.rawGoal,
-          timeframe: timeframeForGoalApi({
-            ...form,
-            primaryGoal: intake.rawGoal,
-            purpose: intake.purpose,
-            timeframeKey: tf.key,
-            customTimeframeDays: tf.days,
-            commitmentLevel: intake.commitmentLevel,
-            locationCountry: intake.locationCountry,
-            businessModel: intake.businessModel,
-            desiredOutcome: intake.purpose,
-            currentContext: "",
-            locationCity: "",
-            businessType: "online",
-            currency: "USD",
-            budgetAvailable: "",
-            currentResources: [],
-            targetCustomer: "",
-            successSignal: "",
-            contextTags: [],
-            knownBlockers: [],
-            additionalContext: "",
-            domain: "business",
+        body: JSON.stringify(
+          buildOnboardingGoalPayload(intake, {
+            idempotencyKey: idempotencyKeyRef.current,
+            tier: selectedTier ?? "starter",
+            mode: selectedMode ?? "individual",
           }),
-          commitmentLevel: commitmentForGoalApi(intake.commitmentLevel),
-          domain: intake.businessModel,
-          idempotencyKey: idempotencyKeyRef.current,
-          tier: selectedTier ?? "starter",
-          mode: selectedMode ?? "individual",
-        }),
+        ),
       });
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
-        setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        setError(formatApiEnvelopeError(goalEnvelope, "Could not start validation."));
         isSubmittingRef.current = false;
         setLoading(false);
         return;
@@ -578,7 +555,7 @@ export default function OnboardingPage() {
         error: goalEnvelope.error,
       });
       if (!goalEnvelope.ok || !goalEnvelope.data) {
-        setError(goalEnvelope.error?.message ?? "Validation failed.");
+        setError(formatApiEnvelopeError(goalEnvelope, "Validation failed."));
         return;
       }
       const d = goalEnvelope.data;

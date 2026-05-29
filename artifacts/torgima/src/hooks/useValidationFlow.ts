@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import type { AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
-import { apiFetchEnvelope } from "@/lib/torgima-api";
+import { buildOnboardingGoalPayload, validateIntakeBeforeSubmit } from "@/lib/onboarding-goal-payload";
+import { apiFetchEnvelope, formatApiEnvelopeError } from "@/lib/torgima-api";
 import { postValidationRun, validationRunNavigatePath } from "@/lib/validation-run";
 
 function deriveTimeframeKey(startDate: string, endDate: string): { key: string; days?: number } {
@@ -13,16 +14,6 @@ function deriveTimeframeKey(startDate: string, endDate: string): { key: string; 
   return { key: "custom", days };
 }
 
-function commitmentForGoalApi(level: string): "low" | "medium" | "high" | "full" {
-  const map: Record<string, "low" | "medium" | "high" | "full"> = {
-    LOW: "low",
-    MEDIUM: "medium",
-    HIGH: "high",
-    INTENSE: "full",
-  };
-  return map[level] ?? "medium";
-}
-
 export function useValidationFlow() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
@@ -32,8 +23,9 @@ export function useValidationFlow() {
 
   async function startValidation(intake: AlignedIntakeForm) {
     if (isSubmittingRef.current) return;
-    if (!intake.rawGoal || intake.rawGoal.trim().length < 10) {
-      setError("Enter your goal before continuing.");
+    const intakeError = validateIntakeBeforeSubmit(intake);
+    if (intakeError) {
+      setError(intakeError);
       return;
     }
 
@@ -41,32 +33,24 @@ export function useValidationFlow() {
     setLoading(true);
     setError("");
 
-    const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
-    const timeframe = tf.key === "custom" && tf.days ? "custom" : tf.key;
-
     try {
       const goalEnvelope = await apiFetchEnvelope<{ blueprintId?: string }>(`/api/onboarding/goal`, {
         method: "POST",
-        body: JSON.stringify({
-          rawGoal: intake.rawGoal,
-          purpose: intake.purpose || intake.rawGoal,
-          timeframe,
-          customTimeframeDays: tf.days,
-          commitmentLevel: commitmentForGoalApi(intake.commitmentLevel),
-          domain: intake.businessModel,
-          locationCountry: intake.locationCountry,
-          businessModel: intake.businessModel,
-        }),
+        body: JSON.stringify(
+          buildOnboardingGoalPayload(intake, { idempotencyKey: idempotencyKeyRef.current }),
+        ),
       });
 
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
-        setError(goalEnvelope.error?.message ?? "Could not start validation.");
+        setError(formatApiEnvelopeError(goalEnvelope, "Could not start validation."));
         isSubmittingRef.current = false;
         setLoading(false);
         return;
       }
 
       const blueprintId = goalEnvelope.data.blueprintId;
+      const tf = deriveTimeframeKey(intake.startDate, intake.endDate);
+      const timeframe = tf.key === "custom" && tf.days ? "custom" : tf.key;
 
       const runResult = await postValidationRun({
         blueprintId,
