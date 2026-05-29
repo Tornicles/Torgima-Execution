@@ -42,10 +42,10 @@ router.post("/v1/erector/refinement/goal/understand", async (req, res) => {
   try {
     await requireAuth(req, "USER_SESSION");
     success(res, {
-      goalOptions: [
-        { index: 0, text: "Build an execution system that guides creators step by step" },
-        { index: 1, text: "Create a pathway platform for founders to execute ideas" },
-        { index: 2, text: "Develop a daily action system for idea execution" },
+      options: [
+        "Build an execution system that guides creators step by step",
+        "Create a pathway platform for founders to execute ideas",
+        "Develop a daily action system for idea execution",
       ],
     });
   } catch (err) {
