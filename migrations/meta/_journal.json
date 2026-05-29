@@ -50,6 +50,27 @@
       "when": 1779500000000,
       "tag": "0006_erector_execution_bridge",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0030_blueprint_raw_goal_purpose_input",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0031_railway_onboarding_validations_schema_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0032_full_schema_alignment",
+      "breakpoints": true
     }
   ]
 }

@@ -123,6 +123,10 @@ router.post("/onboarding/goal", async (req, res) => {
 
     success(res, { blueprintId: inserted.id, status: "draft" });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[Onboarding] POST /api/onboarding/goal", message, stack);
+    console.error(err);
     logSchemaDbError("insert", "blueprints", err, { route: "POST /api/onboarding/goal" });
     handleError(req, res, err);
   }

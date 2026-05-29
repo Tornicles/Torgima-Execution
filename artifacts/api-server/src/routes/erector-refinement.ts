@@ -17,8 +17,8 @@ import { ERECTOR_BUSINESS_TYPES } from "../types/erector-refinement.js";
 import {
   parseGoalUnderstandBody,
   parsePurposeUnderstandBody,
-  refineGoalOptions,
-  refinePurposeOptions,
+  safeRefineGoalOptions,
+  safeRefinePurposeOptions,
 } from "../lib/erectorRefinementRoutes.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -54,15 +54,14 @@ router.post("/v1/erector/refinement/goal/understand", async (req, res) => {
       });
       return;
     }
-    const options = refineGoalOptions(parsed.rawGoal);
+    const options = safeRefineGoalOptions(parsed.rawGoal);
     success(res, { options });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Erector] POST /v1/erector/refinement/goal/understand error:", message);
-    if (stack) console.error(stack);
-    console.error(err);
-    handleError(req, res, err);
+    console.error("[Erector] POST /v1/erector/refinement/goal/understand", message, stack);
+    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    success(res, { options: safeRefineGoalOptions(String(req.body?.rawGoal ?? "")) });
   }
 });
 
@@ -114,15 +113,17 @@ router.post("/v1/erector/refinement/purpose/understand", async (req, res) => {
       });
       return;
     }
-    const options = refinePurposeOptions(parsed.rawPurpose, parsed.selectedGoal);
+    const options = safeRefinePurposeOptions(parsed.rawPurpose, parsed.selectedGoal);
     success(res, { options });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Erector] POST /v1/erector/refinement/purpose/understand error:", message);
-    if (stack) console.error(stack);
-    console.error(err);
-    handleError(req, res, err);
+    console.error("[Erector] POST /v1/erector/refinement/purpose/understand", message, stack);
+    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    const body = req.body as { rawPurpose?: string; selectedGoal?: string } | undefined;
+    const rawPurpose = typeof body?.rawPurpose === "string" ? body.rawPurpose : "";
+    const selectedGoal = typeof body?.selectedGoal === "string" ? body.selectedGoal : "";
+    success(res, { options: safeRefinePurposeOptions(rawPurpose, selectedGoal) });
   }
 });
 

@@ -165,6 +165,9 @@ export function formatApiEnvelopeError(
     return "Your session expired. Please sign in again.";
   }
   if (envelope.status >= 500) {
+    if (envelope.error?.code === "SCHEMA_OUT_OF_DATE") {
+      return envelope.error.message ?? "Database schema is out of date.";
+    }
     return envelope.error?.message ?? "Server unavailable. Please try again shortly.";
   }
   const fieldErrors = envelope.error?.fieldErrors;

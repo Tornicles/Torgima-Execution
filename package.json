@@ -28,6 +28,8 @@
     "db:migrate": "pnpm -F @workspace/db migrate",
     "db:check": "pnpm -F @workspace/db check",
     "db:apply-manual": "pnpm -F @workspace/db exec tsx ../../scripts/apply-all-manual-migrations.mjs",
+    "db:verify-onboarding-schema": "node scripts/verify-onboarding-goal-schema-columns.mjs",
+    "db:compare-schema": "node scripts/compare-production-schema.mjs",
     "db:ci": "pnpm -F @workspace/db run push-force && pnpm db:apply-manual && pnpm -F @workspace/db exec tsx ../../scripts/ci-verify-schema.mjs",
     "postgres:up": "node scripts/start-local-postgres.mjs",
     "postgres:down": "node scripts/stop-local-postgres.mjs",

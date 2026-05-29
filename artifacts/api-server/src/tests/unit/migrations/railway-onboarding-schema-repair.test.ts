@@ -36,3 +36,24 @@ describe("Railway onboarding schema repair migration", () => {
     expect(manualSql).not.toMatch(/RENAME\s+COLUMN/i);
   });
 });
+
+const alignSql = readFileSync(
+  join(root, "scripts/migrations/manual-20260529-full-schema-alignment.sql"),
+  "utf8",
+);
+
+describe("Full schema alignment migration", () => {
+  it("adds blueprint launch columns", () => {
+    expect(alignSql).toMatch(/blueprints ADD COLUMN IF NOT EXISTS blueprint_tier/i);
+    expect(alignSql).toMatch(/blueprints ADD COLUMN IF NOT EXISTS current_condition/i);
+  });
+
+  it("adds validation path columns", () => {
+    expect(alignSql).toMatch(/validations ADD COLUMN IF NOT EXISTS path_current/i);
+    expect(alignSql).toMatch(/validations ADD COLUMN IF NOT EXISTS path_adjusted/i);
+  });
+
+  it("is additive only", () => {
+    expect(alignSql).not.toMatch(/DROP\s+(COLUMN|TABLE)/i);
+  });
+});

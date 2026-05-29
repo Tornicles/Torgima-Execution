@@ -62,6 +62,15 @@ export function parsePurposeUnderstandBody(body: unknown):
   return { ok: true, rawPurpose, selectedGoal };
 }
 
+export function buildRefinementFallbackOptions(rawInput: string): string[] {
+  const base = rawInput.trim().slice(0, 200) || "your direction";
+  return [
+    `${base} — focused execution path`,
+    `${base} — structured growth path`,
+    `${base} — validated market path`,
+  ];
+}
+
 export function refineGoalOptions(rawGoal: string): string[] {
   const understanding = understandGoalDeterministic(rawGoal);
   return generateGoalOptionsDeterministic(rawGoal, understanding);
@@ -70,4 +79,25 @@ export function refineGoalOptions(rawGoal: string): string[] {
 export function refinePurposeOptions(rawPurpose: string, selectedGoal: string): string[] {
   const understanding = understandPurposeDeterministic(rawPurpose, selectedGoal);
   return generatePurposeOptionsDeterministic(rawPurpose, understanding);
+}
+
+/** Never fail refinement — deterministic engine first, then safe fallback options. */
+export function safeRefineGoalOptions(rawGoal: string): string[] {
+  try {
+    const options = refineGoalOptions(rawGoal);
+    if (options.length >= 3) return options.slice(0, 3);
+  } catch (err) {
+    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+  }
+  return buildRefinementFallbackOptions(rawGoal);
+}
+
+export function safeRefinePurposeOptions(rawPurpose: string, selectedGoal: string): string[] {
+  try {
+    const options = refinePurposeOptions(rawPurpose, selectedGoal);
+    if (options.length >= 3) return options.slice(0, 3);
+  } catch (err) {
+    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+  }
+  return buildRefinementFallbackOptions(rawPurpose);
 }
