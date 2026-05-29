@@ -15,14 +15,10 @@ export type PurposeUnderstanding = {
   value: string;
 };
 
-export async function understandGoal(blueprintId: string, rawGoal: string) {
-  return apiFetchEnvelope<{
-    understanding: GoalUnderstanding;
-    options: string[];
-    validationId: string;
-  }>("/api/v1/erector/refinement/goal/understand", {
+export async function understandGoal(rawGoal: string) {
+  return apiFetchEnvelope<{ options: string[] }>("/api/v1/erector/refinement/goal/understand", {
     method: "POST",
-    body: JSON.stringify({ blueprintId, rawGoal }),
+    body: JSON.stringify({ rawGoal }),
   });
 }
 
@@ -40,14 +36,10 @@ export async function finalizeGoal(blueprintId: string, goalFinal: string) {
   });
 }
 
-export async function understandPurpose(blueprintId: string, rawPurpose: string) {
-  return apiFetchEnvelope<{
-    understanding: PurposeUnderstanding;
-    options: string[];
-    validationId: string;
-  }>("/api/v1/erector/refinement/purpose/understand", {
+export async function understandPurpose(rawPurpose: string, selectedGoal: string) {
+  return apiFetchEnvelope<{ options: string[] }>("/api/v1/erector/refinement/purpose/understand", {
     method: "POST",
-    body: JSON.stringify({ blueprintId, rawPurpose }),
+    body: JSON.stringify({ rawPurpose, selectedGoal }),
   });
 }
 

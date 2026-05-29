@@ -9,9 +9,8 @@ import type { ValidationScreenData } from "@/components/validation/ValidationScr
 import { OnboardingStructureStep } from "@/components/onboarding/OnboardingStructureStep";
 import { OnboardingShell } from "@/components/onboarding/OnboardingShell";
 import type { FlowStepId } from "@/components/onboarding/TopProgressRail";
-import { AlignedGoalIntake, type AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
-import { ErectorGoalPurposeRefinement } from "@/components/onboarding/ErectorGoalPurposeRefinement";
-import { ErectorValidationFeed } from "@/components/onboarding/ErectorValidationFeed";
+import { ErectorOnboardingRefinementFlow } from "@/components/onboarding/ErectorOnboardingRefinementFlow";
+import type { AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
 import { saveValidationFeed } from "@/lib/erector-refinement-api";
 import { AlignedValidationResults } from "@/components/validation/AlignedValidationResults";
 import {
@@ -789,43 +788,19 @@ export default function OnboardingPage() {
   if (step <= 5) {
     return (
       <OnboardingShell flowStep={1} maxReachableStep={maxReachableStep} onFlowStepClick={handleFlowStepClick}>
-        {!refinementBlueprintId ? (
-          <AlignedGoalIntake onSubmit={(intake) => void handleAlignedStart(intake)} isSubmitting={loading} />
-        ) : !refinementLocked ? (
-          <ErectorGoalPurposeRefinement
-            blueprintId={refinementBlueprintId}
-            onLocked={(goalFinal, purposeFinal) => {
-              setRefinementLocked(true);
-              setFinalGoalText(goalFinal);
-              setFinalPurposeText(purposeFinal);
-              setForm((f) => ({
-                ...f,
-                primaryGoal: goalFinal,
-                purpose: purposeFinal,
-                desiredOutcome: purposeFinal,
-              }));
-            }}
-          />
-        ) : !feedReady ? (
-          <ErectorValidationFeed
-            blueprintId={refinementBlueprintId}
-            goalFinal={finalGoalText}
-            purposeFinal={finalPurposeText}
-            onSubmitted={() => {
-              setFeedReady(true);
-              if (pendingIntake) {
-                void runValidationAfterRefinement(
-                  refinementBlueprintId,
-                  pendingIntake,
-                  finalGoalText,
-                  finalPurposeText,
-                );
-              }
-            }}
-          />
-        ) : (
-          <p className="text-center text-sm text-muted-foreground py-8">Running 20-stage Erector validation…</p>
-        )}
+        <ErectorOnboardingRefinementFlow
+          idempotencyKey={idempotencyKeyRef.current}
+          tier={selectedTier ?? "starter"}
+          mode={selectedMode ?? "individual"}
+          onValidationStarted={(validationId) => {
+            setStep(7);
+            setErectorPhase("scores");
+            setLoading(true);
+            setError("");
+            sessionStorage.setItem("torgima_validation_results", validationId);
+            void loadValidationResults(validationId);
+          }}
+        />
         {error && <p className="text-center text-sm text-red-600 pb-8">{error}</p>}
       </OnboardingShell>
     );

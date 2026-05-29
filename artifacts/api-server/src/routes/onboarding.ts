@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
@@ -5,6 +6,7 @@ import { BlueprintService } from "../services/BlueprintService.js";
 import { db, users, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
+import { parseOnboardingGoalBody } from "../lib/onboardingGoalPayload.js";
 
 const router = Router();
 
@@ -50,37 +52,64 @@ router.post("/onboarding/complete", async (req, res) => {
   }
 });
 
-// POST /api/onboarding/goal — minimal draft insert (no Bhudhi / Erector / events)
+// POST /api/onboarding/goal — persist refined goal/purpose + context (validation runs separately)
 router.post("/onboarding/goal", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const goalRaw =
-      typeof body.goal === "string"
-        ? body.goal
-        : typeof body.rawGoal === "string"
-          ? body.rawGoal
-          : "";
-    const purposeRaw = typeof body.purpose === "string" ? body.purpose : "";
+    const parsed = parseOnboardingGoalBody({
+      ...body,
+      idempotencyKey:
+        typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+          ? body.idempotencyKey
+          : randomUUID(),
+    });
 
-    const goal = goalRaw.trim() || "Untitled goal";
-    const purpose = purposeRaw.trim() || null;
+    if (!parsed.ok) {
+      failure(res, "VALIDATION_ERROR", "Invalid onboarding goal payload", 400, {
+        fieldErrors: parsed.fieldErrors,
+      });
+      return;
+    }
+
+    const input = parsed.data;
+    const refinedGoal = input.rawGoal.trim();
+    const refinedPurpose = input.purpose.trim();
+    const rawGoalInput =
+      typeof body.rawGoal === "string" && body.rawGoal.trim() ? body.rawGoal.trim() : refinedGoal;
+    const rawPurposeInput =
+      typeof body.rawPurpose === "string" && body.rawPurpose.trim()
+        ? body.rawPurpose.trim()
+        : refinedPurpose;
+
+    const tier = input.selectedBlueprintTier ?? input.tier ?? "starter";
+    const mode = input.selectedBlueprintMode ?? input.mode ?? "individual";
 
     const [inserted] = await db
       .insert(blueprints)
       .values({
         user_id: auth.userId,
-        goal,
-        purpose,
-        raw_goal: goal,
-        raw_goal_input: goal,
-        raw_purpose: purpose,
-        raw_purpose_input: purpose,
+        goal: refinedGoal,
+        purpose: refinedPurpose,
+        raw_goal: rawGoalInput,
+        raw_goal_input: rawGoalInput,
+        raw_purpose: rawPurposeInput,
+        raw_purpose_input: rawPurposeInput,
+        goal_final: refinedGoal,
+        purpose_final: refinedPurpose,
+        timeframe_days: input.timeframeDays,
+        commitment_level: input.commitmentLevel,
+        domain_hint: input.domain ?? null,
+        domain: input.domain ?? null,
+        current_context: input.currentContext ?? null,
+        success_signal: input.successSignal ?? null,
+        known_blockers: input.knownBlockers ?? null,
+        selected_blueprint_level: tier,
+        tier,
+        mode,
         status: "draft",
         active: false,
-        mode: "individual",
-        tier: "starter",
         blueprint_config: {},
         metadata: {},
       })
@@ -93,7 +122,10 @@ router.post("/onboarding/goal", async (req, res) => {
     success(res, { blueprintId: inserted.id, status: "draft" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[Onboarding] POST /onboarding/goal error:", message, err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[Onboarding] POST /onboarding/goal error:", message);
+    if (stack) console.error(stack);
+    console.error(err);
     failure(res, "INTERNAL_ERROR", message, 500);
   }
 });

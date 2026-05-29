@@ -14,6 +14,12 @@ import {
   updateValidationWorkspace,
 } from "../engines/erector/ErectorValidationWorkspace.js";
 import { ERECTOR_BUSINESS_TYPES } from "../types/erector-refinement.js";
+import {
+  parseGoalUnderstandBody,
+  parsePurposeUnderstandBody,
+  refineGoalOptions,
+  refinePurposeOptions,
+} from "../lib/erectorRefinementRoutes.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
@@ -41,13 +47,15 @@ router.get("/v1/erector/refinement/:blueprintId", async (req, res) => {
 router.post("/v1/erector/refinement/goal/understand", async (req, res) => {
   try {
     await requireAuth(req, "USER_SESSION");
-    success(res, {
-      options: [
-        "Build an execution system that guides creators step by step",
-        "Create a pathway platform for founders to execute ideas",
-        "Develop a daily action system for idea execution",
-      ],
-    });
+    const parsed = parseGoalUnderstandBody(req.body);
+    if (!parsed.ok) {
+      failure(res, "VALIDATION_ERROR", "Invalid goal understand payload", 400, {
+        fieldErrors: parsed.fieldErrors,
+      });
+      return;
+    }
+    const options = refineGoalOptions(parsed.rawGoal);
+    success(res, { options });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
@@ -98,18 +106,22 @@ router.post("/v1/erector/refinement/goal/finalize", async (req, res) => {
 
 router.post("/v1/erector/refinement/purpose/understand", async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const parsed = z.object({ blueprintId: z.string().uuid(), rawPurpose: z.string().min(5) }).safeParse(req.body);
-    if (!parsed.success) {
-      failure(res, "VALIDATION_ERROR", "Invalid purpose understand payload", 422);
+    await requireAuth(req, "USER_SESSION");
+    const parsed = parsePurposeUnderstandBody(req.body);
+    if (!parsed.ok) {
+      failure(res, "VALIDATION_ERROR", "Invalid purpose understand payload", 400, {
+        fieldErrors: parsed.fieldErrors,
+      });
       return;
     }
-    if (!(await assertBlueprint(parsed.data.blueprintId, auth.userId))) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-    success(res, await ErectorRefinementService.understandPurpose(parsed.data.blueprintId, auth.userId, parsed.data.rawPurpose));
+    const options = refinePurposeOptions(parsed.rawPurpose, parsed.selectedGoal);
+    success(res, { options });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[Erector] POST /v1/erector/refinement/purpose/understand error:", message);
+    if (stack) console.error(stack);
+    console.error(err);
     handleError(req, res, err);
   }
 });

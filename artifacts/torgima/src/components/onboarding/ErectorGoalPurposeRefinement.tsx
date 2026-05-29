@@ -39,13 +39,12 @@ export function ErectorGoalPurposeRefinement({
   async function runGoalUnderstand() {
     setLoading(true);
     setError("");
-    const res = await understandGoal(blueprintId, rawGoal.trim());
+    const res = await understandGoal(rawGoal.trim());
     setLoading(false);
-    if (!res.ok || !res.data) {
+    if (!res.ok || !res.data?.options?.length) {
       setError(res.error?.message ?? "Could not analyze goal");
       return;
     }
-    setGoalUnderstanding(res.data.understanding);
     setGoalOptions(res.data.options);
     setPhase("goal_options");
   }
@@ -77,13 +76,12 @@ export function ErectorGoalPurposeRefinement({
   async function runPurposeUnderstand() {
     setLoading(true);
     setError("");
-    const res = await understandPurpose(blueprintId, rawPurpose.trim());
+    const res = await understandPurpose(rawPurpose.trim(), goalFinal || goalOptions[selectedGoalIdx ?? 0] || "");
     setLoading(false);
-    if (!res.ok || !res.data) {
+    if (!res.ok || !res.data?.options?.length) {
       setError(res.error?.message ?? "Could not analyze purpose");
       return;
     }
-    setPurposeUnderstanding(res.data.understanding);
     setPurposeOptions(res.data.options);
     setPhase("purpose_options");
   }
@@ -150,22 +148,9 @@ export function ErectorGoalPurposeRefinement({
         </div>
       )}
 
-      {phase === "goal_options" && goalUnderstanding && (
+      {phase === "goal_options" && goalOptions.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-md bg-muted/50 p-3 text-sm">
-            <p>
-              <strong>Object:</strong> {goalUnderstanding.object}
-            </p>
-            <p>
-              <strong>Domain:</strong> {goalUnderstanding.domain}
-            </p>
-            {goalUnderstanding.unclear?.length ? (
-              <p>
-                <strong>Unclear:</strong> {goalUnderstanding.unclear.join(", ")}
-              </p>
-            ) : null}
-          </div>
-          <p className="text-sm font-medium">Choose one goal direction</p>
+          <p className="text-sm font-medium">Choose the clearest version of your goal</p>
           {goalOptions.map((opt, i) => (
             <button
               key={i}
@@ -220,16 +205,9 @@ export function ErectorGoalPurposeRefinement({
         </div>
       )}
 
-      {phase === "purpose_options" && purposeUnderstanding && (
+      {phase === "purpose_options" && purposeOptions.length > 0 && (
         <div className="space-y-4">
-          <div className="rounded-md bg-muted/50 p-3 text-sm">
-            <p>
-              <strong>Problem:</strong> {purposeUnderstanding.problem}
-            </p>
-            <p>
-              <strong>Change:</strong> {purposeUnderstanding.change}
-            </p>
-          </div>
+          <p className="text-sm font-medium">Choose the clearest version of your purpose</p>
           {purposeOptions.map((opt, i) => (
             <button
               key={i}
