@@ -10,6 +10,7 @@ import type { TierId, ModeId } from "@/components/blueprint/BlueprintSelectionPa
 import {
   apiFetchEnvelope,
   apiFetchResponseWithRetry,
+  finalizeValidationBlueprint,
   launchValidationBlueprint,
   completeOnboarding,
 } from "@/lib/torgima-api";
@@ -35,6 +36,8 @@ export default function ValidationResultsPage() {
   const [selectedPath, setSelectedPath] = useState<PathKey>("adjusted");
   const [selectedTier] = useState<TierId>("starter");
   const [selectedMode] = useState<ModeId>("individual");
+  const [isFinalized, setIsFinalized] = useState(false);
+  const [hasPaths, setHasPaths] = useState(false);
 
   useEffect(() => {
     if (!validationId || checking) return;
@@ -81,6 +84,8 @@ export default function ValidationResultsPage() {
       const rec: PathKey =
         payload.verdict === "adjust" ? "adjusted" : payload.verdict === "pivot" ? "alternative" : "current";
       setSelectedPath(rec);
+      setHasPaths(Boolean(payload.paths?.current && payload.paths?.adjusted && payload.paths?.alternative));
+      setIsFinalized(Boolean((payload as { isFinalized?: boolean }).isFinalized));
       setValidation(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load validation results.");
@@ -105,6 +110,11 @@ export default function ValidationResultsPage() {
         method: "POST",
         body: JSON.stringify({ selectedPath }),
       });
+
+      if (!isFinalized) {
+        await finalizeValidationBlueprint(validationId, selectedPath);
+        setIsFinalized(true);
+      }
 
       const result = await launchValidationBlueprint(validationId, selectedDirection);
       await completeOnboarding();
@@ -167,6 +177,7 @@ export default function ValidationResultsPage() {
         onDownload={handleDownload}
         launching={launching}
         launchError={launchError}
+        launchReady={hasPaths && Boolean(selectedPath)}
         onDataUpdate={(next) => {
           setValidation(next);
           const rec: PathKey =

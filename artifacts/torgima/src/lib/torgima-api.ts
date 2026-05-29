@@ -63,6 +63,24 @@ export type ValidationLaunchResult = {
   idempotent?: boolean;
 };
 
+/** POST /api/v1/validations/:id/finalize — lock validation before launch. */
+export async function finalizeValidationBlueprint(
+  validationId: string,
+  selectedPath?: ValidationLaunchDirection["path"],
+): Promise<{ finalized: boolean; isFinalized?: boolean }> {
+  const envelope = await apiFetchEnvelope<{ finalized: boolean; isFinalized?: boolean }>(
+    `/api/v1/validations/${validationId}/finalize`,
+    {
+      method: "POST",
+      body: JSON.stringify({ selectedPath }),
+    },
+  );
+  if (!envelope.ok || !envelope.data?.finalized) {
+    throw new Error(formatApiEnvelopeError(envelope, "Could not finalize validation."));
+  }
+  return envelope.data;
+}
+
 /** POST /api/v1/validations/:id/launch — activate blueprint from completed validation. */
 export async function launchValidationBlueprint(
   validationId: string,

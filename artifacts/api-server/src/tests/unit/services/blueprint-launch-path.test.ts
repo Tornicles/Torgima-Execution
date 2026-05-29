@@ -12,12 +12,24 @@ vi.mock("../../../repositories/BlueprintRepository.js", () => ({
   BlueprintRepository: { findById },
 }));
 
+const finalizeValidation = vi.fn().mockResolvedValue({
+  id: "val-1",
+  is_finalized: true,
+  selected_path: "current",
+  selected_path_type: "current",
+});
+
 vi.mock("../../../services/ValidationService.js", () => ({
   ValidationService: {
     getValidationByContractId,
     selectValidationPath,
     assertLaunchAllowed,
   },
+}));
+
+vi.mock("../../../services/ValidationFinalizationService.js", () => ({
+  requiresLaunchFinalization: vi.fn(() => false),
+  ValidationFinalizationService: { finalizeValidation },
 }));
 
 vi.mock("../../../engines/blueprint/BlueprintEngine.js", () => ({

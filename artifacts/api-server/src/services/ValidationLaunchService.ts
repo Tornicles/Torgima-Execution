@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchService.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { ValidationService } from "./ValidationService.js";
+import { ValidationFinalizationService } from "./ValidationFinalizationService.js";
 import type { Blueprint } from "../types/blueprint.js";
 import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { dispatchPendingEvents } from "./EventDispatcher.js";
@@ -111,6 +112,19 @@ export const ValidationLaunchService = {
       },
       "Validation launch — starting blueprint activation",
     );
+
+    await ValidationService.selectValidationPath({
+      blueprintId: row.blueprint_id,
+      userId: input.userId,
+      selectedPath: selectedPathType,
+      validationContractId: row.contract_id,
+      validationIdHint: row.id,
+      confirmAdjusted: selectedPathType === "adjusted",
+    });
+
+    await ValidationFinalizationService.finalizeValidation(row.id, input.userId, {
+      selectedPath: selectedPathType,
+    });
 
     let idempotent = false;
     try {

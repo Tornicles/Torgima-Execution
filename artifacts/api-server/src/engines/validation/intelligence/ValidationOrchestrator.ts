@@ -227,6 +227,13 @@ export async function runFullValidation(params: {
   const selectedAt = new Date();
 
   const payload = {
+    raw_goal: params.input.goal,
+    purpose: params.input.purpose ?? null,
+    timeframe: params.input.timeframe ?? null,
+    current_context: params.input.currentContext ?? null,
+    success_signal: params.input.successSignal ?? null,
+    known_blockers: params.input.knownBlockers ? [params.input.knownBlockers] : [],
+    domain: params.input.domainHint ?? null,
     verdict: verdict as "proceed" | "adjust" | "pivot",
     selected_path: defaultPath,
     selected_path_type: defaultPath,

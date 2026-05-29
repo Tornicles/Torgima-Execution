@@ -896,6 +896,41 @@ router.post("/validation/:id/edit-inputs", async (req, res) => {
   }
 });
 
+const validationFinalizeHandler = async (req: import("express").Request, res: import("express").Response) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const validationId = String(req.params.id ?? "").trim();
+    if (!validationId) {
+      failure(res, "NOT_FOUND", "Validation id is required", 404);
+      return;
+    }
+    const body = (req.body ?? {}) as { selectedPath?: string; selected_path?: string };
+    const pathRaw = body.selectedPath ?? body.selected_path;
+    const path =
+      pathRaw === "current" || pathRaw === "adjusted" || pathRaw === "alternative" ? pathRaw : undefined;
+
+    const { ValidationFinalizationService } = await import("../services/ValidationFinalizationService.js");
+    const row = await ValidationFinalizationService.finalizeValidation(validationId, auth.userId, {
+      selectedPath: path,
+    });
+    success(res, {
+      validationId: row.id,
+      finalized: true,
+      finalizedAt: row.finalized_at,
+      selectedPath: row.selected_path_type ?? row.selected_path,
+      isFinalized: row.is_finalized,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+};
+
+// POST /api/v1/validations/:id/finalize — lock validation for blueprint handoff
+router.post("/v1/validations/:id/finalize", validationFinalizeHandler);
+
+// POST /api/v1/validation/:id/finalize — singular alias
+router.post("/v1/validation/:id/finalize", validationFinalizeHandler);
+
 // POST /api/v1/validations/:id/launch — canonical launch from completed validation
 router.post("/v1/validations/:id/launch", validationLaunchHandler);
 

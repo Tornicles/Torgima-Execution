@@ -24,6 +24,7 @@ import { recordStrategicAssumptions } from "../engines/validation/AssumptionMoni
 import { validations as validationsTable } from "@workspace/db";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { ValidationFinalizationService } from "./ValidationFinalizationService.js";
 
 export async function getAiEnabled(): Promise<boolean> {
   const rows = await db
@@ -336,6 +337,28 @@ export const ValidationService = {
   },
 
   findValidationForBlueprint,
+
+  /** Select path + finalize — required before BlueprintLaunchService.launch in tests and direct launch paths. */
+  async prepareForBlueprintLaunch(params: {
+    blueprintId: string;
+    userId: string;
+    validationId: string;
+    validationContractId: string;
+    selectedPathType: "current" | "adjusted" | "alternative";
+    confirmAdjusted?: boolean;
+  }): Promise<typeof validations.$inferSelect> {
+    await this.selectValidationPath({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      selectedPath: params.selectedPathType,
+      validationContractId: params.validationContractId,
+      validationIdHint: params.validationId,
+      confirmAdjusted: params.confirmAdjusted ?? params.selectedPathType === "adjusted",
+    });
+    return ValidationFinalizationService.finalizeValidation(params.validationId, params.userId, {
+      selectedPath: params.selectedPathType,
+    });
+  },
 
   async selectValidationPath(params: {
     blueprintId: string;

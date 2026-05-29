@@ -20,6 +20,10 @@ import {
   resolveDefaultSelectedPath,
   type ValidationPathType,
 } from "../lib/validationPathSelection.js";
+import {
+  requiresLaunchFinalization,
+  ValidationFinalizationService,
+} from "./ValidationFinalizationService.js";
 
 function assertValidationReadyForLaunch(
   row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>,
@@ -98,16 +102,6 @@ export const BlueprintLaunchService = {
       normalizeSelectedPath(validationRow) ??
       resolveDefaultSelectedPath(validationRow.verdict);
 
-    const usesTwentyStage =
-      validationRow.validation_version != null || validationRow.stage_final_decision != null;
-    if (usesTwentyStage && !validationRow.is_finalized) {
-      throw new TorgimaError(
-        "VALIDATION_ERROR",
-        "Validation must be finalized before blueprint launch. Complete the workspace and finalize first.",
-        false,
-      );
-    }
-
     await blueprintEngine.configureSelection(input.blueprintId, input.userId, {
       tier: selectedBlueprintLevel,
       mode: blueprint.mode ?? "individual",
@@ -122,7 +116,20 @@ export const BlueprintLaunchService = {
       confirmAdjusted: selectedPathType === "adjusted",
     });
 
+    await ValidationFinalizationService.finalizeValidation(validationRow.id, input.userId, {
+      selectedPath: selectedPathType,
+    });
+
     validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
+
+    if (requiresLaunchFinalization(validationRow)) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Validation must be finalized before blueprint launch. Complete the workspace and finalize first.",
+        false,
+      );
+    }
+
     assertValidationReadyForLaunch(validationRow, selectedPathType);
 
     await ValidationService.assertLaunchAllowed(

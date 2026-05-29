@@ -65,6 +65,7 @@ export function ValidationResultsDashboard({
   onDownload,
   launching,
   launchError,
+  launchReady = true,
   onDataUpdate,
 }: {
   data: ValidationScreenData;
@@ -76,6 +77,8 @@ export function ValidationResultsDashboard({
   onDownload?: () => void;
   launching?: boolean;
   launchError?: string;
+  /** Requires generated paths + selected path (finalization runs on launch). */
+  launchReady?: boolean;
   onDataUpdate?: (next: ValidationScreenData) => void;
 }) {
   const vm = useMemo(() => buildViewModel(data), [data]);
@@ -812,7 +815,7 @@ export function ValidationResultsDashboard({
         <div className="flex flex-wrap justify-center gap-3">
           <button
             type="button"
-            disabled={launching || data.launchBlocked}
+            disabled={launching || data.launchBlocked || !launchReady}
             onClick={onLaunch}
             className="inline-flex items-center gap-2 rounded-lg bg-[#1a8c3a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#157a33] disabled:opacity-50"
           >

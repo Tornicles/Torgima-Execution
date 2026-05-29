@@ -142,6 +142,14 @@ describe.skipIf(!run)("Prompt 9 — Core E2E Scenarios", () => {
       });
       if (!validation.validationContractId) throw new Error("validation contract missing");
       const selectedPathType = validation.verdict === "adjust" ? "adjusted" : "current";
+      await ValidationService.prepareForBlueprintLaunch({
+        blueprintId,
+        userId,
+        validationId: validation.validationId,
+        validationContractId: validation.validationContractId,
+        selectedPathType,
+        confirmAdjusted: selectedPathType === "adjusted",
+      });
       await BlueprintLaunchService.launch({
         blueprintId,
         userId,
