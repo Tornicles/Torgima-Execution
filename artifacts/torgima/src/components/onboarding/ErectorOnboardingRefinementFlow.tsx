@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { understandGoal, understandPurpose } from "@/lib/erector-refinement-api";
 import {
-  buildErectorValidationPayload,
+  buildOnboardingGoalFlatPayload,
   validateErectorContext,
   type ErectorContextForm,
 } from "@/lib/onboarding-goal-payload";
@@ -186,15 +186,13 @@ export function ErectorOnboardingRefinementFlow({
     setFieldErrors({});
     persist({ ...flow, step: "validating" });
 
-    const payload = buildErectorValidationPayload(
+    const payload = buildOnboardingGoalFlatPayload(
       {
-        rawGoal: flow.rawGoal,
         selectedGoal: flow.selectedGoal,
-        rawPurpose: flow.rawPurpose,
         selectedPurpose: flow.selectedPurpose,
         context: contextForm,
       },
-      { idempotencyKey, tier, mode },
+      { idempotencyKey },
     );
 
     try {

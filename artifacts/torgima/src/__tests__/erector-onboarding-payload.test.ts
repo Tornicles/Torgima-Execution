@@ -1,38 +1,91 @@
 import { describe, expect, it } from "vitest";
-import { buildErectorValidationPayload, validateErectorContext } from "@/lib/onboarding-goal-payload";
+import {
+  buildOnboardingGoalFlatPayload,
+  normalizeCommitment,
+  normalizeTimeframe,
+  validateErectorContext,
+} from "@/lib/onboarding-goal-payload";
 
-describe("Erector validation payload", () => {
-  it("Start Validation sends selected refined goal and purpose, not raw copies", () => {
-    const payload = buildErectorValidationPayload(
+describe("Start Validation flat payload", () => {
+  const context = {
+    location: "United States",
+    domain: "SaaS",
+    commitment: "HIGH" as const,
+    currentContext: "Solo founder",
+    timeframeDays: 90,
+    pace: "high",
+  };
+
+  it("sends timeframe as string", () => {
+    const payload = buildOnboardingGoalFlatPayload(
       {
-        rawGoal: "r",
-        selectedGoal: "Selected goal",
-        rawPurpose: "p",
-        selectedPurpose: "Selected purpose",
-        context: {
-          location: "US",
-          domain: "SaaS",
-          commitment: "MEDIUM",
-          currentContext: "",
-          timeframeDays: 30,
-          pace: "moderate",
-        },
+        selectedGoal: "Refined goal",
+        selectedPurpose: "Refined purpose",
+        context,
       },
       { idempotencyKey: "k" },
     );
-    expect(payload.goal).not.toBe(payload.rawGoal);
-    expect(payload.purpose).not.toBe(payload.rawPurpose);
+    expect(typeof payload.timeframe).toBe("string");
+    expect(payload.timeframe).toBe("90");
   });
 
-  it("context validation blocks missing location", () => {
+  it("sends commitmentLevel as low/medium/high/full", () => {
+    const payload = buildOnboardingGoalFlatPayload(
+      {
+        selectedGoal: "Refined goal",
+        selectedPurpose: "Refined purpose",
+        context: { ...context, commitment: "INTENSE" },
+      },
+      { idempotencyKey: "k" },
+    );
+    expect(payload.commitmentLevel).toBe("full");
+  });
+
+  it("does not send context object or raw copies", () => {
+    const payload = buildOnboardingGoalFlatPayload(
+      {
+        selectedGoal: "Refined goal",
+        selectedPurpose: "Refined purpose",
+        context,
+      },
+      { idempotencyKey: "k" },
+    );
+    expect(payload).not.toHaveProperty("context");
+    expect(payload).not.toHaveProperty("rawGoal");
+    expect(payload).not.toHaveProperty("rawPurpose");
+    expect(payload).not.toHaveProperty("selectedGoal");
+    expect(payload).not.toHaveProperty("selectedPurpose");
+  });
+
+  it("uses selectedGoal and selectedPurpose as goal and purpose", () => {
+    const payload = buildOnboardingGoalFlatPayload(
+      {
+        selectedGoal: "Refined goal",
+        selectedPurpose: "Refined purpose",
+        context,
+      },
+      { idempotencyKey: "k" },
+    );
+    expect(payload.goal).toBe("Refined goal");
+    expect(payload.purpose).toBe("Refined purpose");
+    expect(payload.location).toBe("United States");
+    expect(payload.domain).toBe("SaaS");
+  });
+
+  it("normalizeTimeframe and normalizeCommitment helpers", () => {
+    expect(normalizeTimeframe("180 days")).toBe("180");
+    expect(normalizeCommitment("moderate")).toBe("medium");
+  });
+
+  it("context validation blocks missing domain", () => {
     const errors = validateErectorContext({
-      location: "",
-      domain: "SaaS",
+      location: "US",
+      domain: "",
       commitment: "MEDIUM",
       currentContext: "",
       timeframeDays: 90,
       pace: "moderate",
     });
-    expect(errors.location).toBeDefined();
+    expect(errors.domain).toBeDefined();
   });
 });

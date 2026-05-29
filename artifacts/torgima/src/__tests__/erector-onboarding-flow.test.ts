@@ -4,7 +4,7 @@ import {
   initialErectorOnboardingState,
   nextStepAfter,
 } from "@/lib/erector-onboarding-flow";
-import { buildErectorValidationPayload } from "@/lib/onboarding-goal-payload";
+import { buildOnboardingGoalFlatPayload } from "@/lib/onboarding-goal-payload";
 
 describe("Erector onboarding state machine", () => {
   it("raw goal submit advances to goal options when 3 options exist", () => {
@@ -42,12 +42,10 @@ describe("Erector onboarding state machine", () => {
     expect(nextStepAfter("purpose_options", state)).toBe("context");
   });
 
-  it("validation payload uses refined goal/purpose and raw copies", () => {
-    const payload = buildErectorValidationPayload(
+  it("validation payload uses refined goal/purpose as flat fields", () => {
+    const payload = buildOnboardingGoalFlatPayload(
       {
-        rawGoal: "raw goal text",
         selectedGoal: "Refined goal for validation",
-        rawPurpose: "raw purpose text",
         selectedPurpose: "Refined purpose for validation",
         context: {
           location: "United States",
@@ -62,8 +60,8 @@ describe("Erector onboarding state machine", () => {
     );
     expect(payload.goal).toBe("Refined goal for validation");
     expect(payload.purpose).toBe("Refined purpose for validation");
-    expect(payload.rawGoal).toBe("raw goal text");
-    expect(payload.rawPurpose).toBe("raw purpose text");
-    expect(payload.context.location).toBe("United States");
+    expect(payload.timeframe).toBe("90");
+    expect(payload.location).toBe("United States");
+    expect(payload).not.toHaveProperty("rawGoal");
   });
 });

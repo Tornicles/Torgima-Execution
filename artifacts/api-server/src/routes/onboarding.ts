@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
@@ -6,7 +5,7 @@ import { BlueprintService } from "../services/BlueprintService.js";
 import { db, users, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
-import { parseOnboardingGoalBody } from "../lib/onboardingGoalPayload.js";
+import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingGoalAdapter.js";
 
 const router = Router();
 
@@ -57,34 +56,36 @@ router.post("/onboarding/goal", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const parsed = parseOnboardingGoalBody({
-      ...body,
-      idempotencyKey:
-        typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
-          ? body.idempotencyKey
-          : randomUUID(),
-    });
+    const body = req.body ?? {};
+    const adapted = adaptOnboardingGoalRequest(body);
 
-    if (!parsed.ok) {
+    if (!adapted.ok) {
       failure(res, "VALIDATION_ERROR", "Invalid onboarding goal payload", 400, {
-        fieldErrors: parsed.fieldErrors,
+        fieldErrors: adapted.fieldErrors,
       });
       return;
     }
 
-    const input = parsed.data;
-    const refinedGoal = input.rawGoal.trim();
-    const refinedPurpose = input.purpose.trim();
-    const rawGoalInput =
-      typeof body.rawGoal === "string" && body.rawGoal.trim() ? body.rawGoal.trim() : refinedGoal;
-    const rawPurposeInput =
-      typeof body.rawPurpose === "string" && body.rawPurpose.trim()
-        ? body.rawPurpose.trim()
-        : refinedPurpose;
+    const { flat, rawGoal, rawPurpose } = adapted.data;
+    req.log.info(
+      {
+        shape: "flat",
+        timeframe: flat.timeframe,
+        commitmentLevel: flat.commitmentLevel,
+        hasRawGoal: Boolean(rawGoal),
+        hasRawPurpose: Boolean(rawPurpose),
+      },
+      "[Onboarding] POST /onboarding/goal normalized payload",
+    );
 
-    const tier = input.selectedBlueprintTier ?? input.tier ?? "starter";
-    const mode = input.selectedBlueprintMode ?? input.mode ?? "individual";
+    const input = flatToParsedGoal(adapted.data);
+    const refinedGoal = flat.goal;
+    const refinedPurpose = flat.purpose;
+    const rawGoalInput = rawGoal ?? refinedGoal;
+    const rawPurposeInput = rawPurpose ?? refinedPurpose;
+
+    const tier = input.selectedBlueprintTier;
+    const mode = input.selectedBlueprintMode;
 
     const [inserted] = await db
       .insert(blueprints)
@@ -100,11 +101,11 @@ router.post("/onboarding/goal", async (req, res) => {
         purpose_final: refinedPurpose,
         timeframe_days: input.timeframeDays,
         commitment_level: input.commitmentLevel,
-        domain_hint: input.domain ?? null,
-        domain: input.domain ?? null,
-        current_context: input.currentContext ?? null,
-        success_signal: input.successSignal ?? null,
-        known_blockers: input.knownBlockers ?? null,
+        domain_hint: flat.domain,
+        domain: flat.domain,
+        current_context: flat.currentContext ?? null,
+        success_signal: null,
+        known_blockers: null,
         selected_blueprint_level: tier,
         tier,
         mode,

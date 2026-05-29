@@ -60,7 +60,74 @@ export type ErectorContextForm = {
   pace: string;
 };
 
-/** Canonical POST /api/onboarding/goal after Erector refinement (refined goal/purpose + raw copies). */
+export type OnboardingGoalFlatPayload = {
+  goal: string;
+  purpose: string;
+  timeframe: string;
+  location: string;
+  commitmentLevel: "low" | "medium" | "high" | "full";
+  domain: string;
+  currentContext?: string;
+  idempotencyKey: string;
+};
+
+export function normalizeTimeframe(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.max(1, Math.round(value)));
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const daysSuffix = trimmed.match(/^(\d+)\s*days?$/i);
+    if (daysSuffix?.[1]) return daysSuffix[1];
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    return trimmed;
+  }
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (typeof o.duration_days === "number") return String(o.duration_days);
+    if (typeof o.durationDays === "number") return String(o.durationDays);
+  }
+  return "";
+}
+
+export function normalizeCommitment(value: unknown): "low" | "medium" | "high" | "full" {
+  const c = String(value ?? "").toLowerCase();
+  if (c === "low") return "low";
+  if (c === "medium" || c === "moderate") return "medium";
+  if (c === "high") return "high";
+  if (c === "full" || c === "intense" || c === "full-time") return "full";
+  return "medium";
+}
+
+export function normalizeDomain(value: string): string {
+  return value.trim();
+}
+
+/** Flat POST /api/onboarding/goal body (backend-compatible). */
+export function buildOnboardingGoalFlatPayload(
+  state: {
+    selectedGoal: string;
+    selectedPurpose: string;
+    context: ErectorContextForm;
+  },
+  options: { idempotencyKey: string },
+): OnboardingGoalFlatPayload {
+  const domain = normalizeDomain(state.context.domain);
+  const payload: OnboardingGoalFlatPayload = {
+    goal: state.selectedGoal.trim(),
+    purpose: state.selectedPurpose.trim(),
+    timeframe: normalizeTimeframe(state.context.timeframeDays),
+    location: state.context.location.trim(),
+    commitmentLevel: normalizeCommitment(state.context.commitment),
+    domain,
+    idempotencyKey: options.idempotencyKey,
+  };
+  const ctx = state.context.currentContext.trim();
+  if (ctx) payload.currentContext = ctx;
+  return payload;
+}
+
+/** @deprecated Use buildOnboardingGoalFlatPayload for POST /api/onboarding/goal */
 export function buildErectorValidationPayload(
   state: {
     rawGoal: string;
