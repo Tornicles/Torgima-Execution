@@ -91,6 +91,7 @@ export async function runBhudhiPipeline<T = unknown>(
 
   const startTime = Date.now();
   let logId = "";
+  const blueprintId = request.blueprintId ?? request.userId;
 
   const chainId = `${request.userId}:${request.triggerType}`;
   const chain = enterAgentChain(chainId);
@@ -102,7 +103,7 @@ export async function runBhudhiPipeline<T = unknown>(
     if (contractEarly) {
       logId = await logUsage({
         userId: request.userId,
-        blueprintId: request.blueprintId,
+        blueprintId: blueprintId,
         triggerType: request.triggerType,
       sourceEngine: request.sourceEngine,
         promptName: contractEarly.name,
@@ -124,7 +125,7 @@ export async function runBhudhiPipeline<T = unknown>(
     if (contractEarly) {
       logId = await logUsage({
         userId: request.userId,
-        blueprintId: request.blueprintId,
+        blueprintId: blueprintId,
         triggerType: request.triggerType,
       sourceEngine: request.sourceEngine,
         promptName: contractEarly.name,
@@ -171,7 +172,7 @@ export async function runBhudhiPipeline<T = unknown>(
   if (!usageCheck.allowed) {
     logId = await logUsage({
       userId:        request.userId,
-      blueprintId:   request.blueprintId,
+      blueprintId:   blueprintId,
       triggerType:   request.triggerType,
       sourceEngine:  request.sourceEngine,
       promptName:    contract.name,
@@ -216,7 +217,7 @@ export async function runBhudhiPipeline<T = unknown>(
   if (!aiEnabled) {
     logId = await logUsage({
       userId:        request.userId,
-      blueprintId:   request.blueprintId,
+      blueprintId:   blueprintId,
       triggerType:   request.triggerType,
       sourceEngine:  request.sourceEngine,
       promptName:    contract.name,
@@ -244,7 +245,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let unifiedMemoryContext = "";
   if (contract.memoryAllowed) {
     try {
-      const graphMemory = await memoryGraph.queryForContext(request.blueprintId);
+      const graphMemory = await memoryGraph.queryForContext(blueprintId);
       if (graphMemory) unifiedMemoryContext = graphMemory;
     } catch {
       /* graph optional */
@@ -252,7 +253,7 @@ export async function runBhudhiPipeline<T = unknown>(
     try {
       memoryContext = await retrieveMemory({
         userId:      request.userId,
-        blueprintId: request.blueprintId,
+        blueprintId: blueprintId,
         triggerType: request.triggerType,
       });
     } catch (err) {
@@ -270,7 +271,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let beliefContext = "";
   try {
     const beliefs = await beliefEngine.process({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       userId: request.userId,
       trigger: request.triggerType,
       memory: memoryContext || undefined,
@@ -283,7 +284,7 @@ export async function runBhudhiPipeline<T = unknown>(
     beliefContext = beliefEngine.formatBeliefContext(beliefs);
     if (beliefs.drift?.action === "governance") {
       logger.warn(
-        { blueprintId: request.blueprintId, drift: beliefs.drift },
+        { blueprintId: blueprintId, drift: beliefs.drift },
         "[BhudhiCore] Belief drift detected — governance may be required",
       );
     }
@@ -294,7 +295,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let worldContext = "";
   try {
     const world = await worldEngine.sync({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       userId: request.userId,
       trigger: request.triggerType,
       memory: memoryContext || undefined,
@@ -309,7 +310,7 @@ export async function runBhudhiPipeline<T = unknown>(
     worldContext = worldEngine.formatWorldContext(world);
     if (world.sync?.drift) {
       logger.warn(
-        { blueprintId: request.blueprintId, sync: world.sync },
+        { blueprintId: blueprintId, sync: world.sync },
         "[BhudhiCore] World reality drift detected",
       );
     }
@@ -320,7 +321,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let identityContext = "";
   try {
     const identity = await identityEngine.process({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       userId: request.userId,
       trigger: request.triggerType,
       memory: memoryContext || undefined,
@@ -336,7 +337,7 @@ export async function runBhudhiPipeline<T = unknown>(
     identityContext = identityEngine.formatIdentityContext(identity);
     if (identity.drift?.action === "escalate" || identity.drift?.action === "pause") {
       logger.warn(
-        { blueprintId: request.blueprintId, drift: identity.drift },
+        { blueprintId: blueprintId, drift: identity.drift },
         "[BhudhiCore] Identity drift — personalization guard active",
       );
     }
@@ -347,7 +348,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let organizationContext = "";
   try {
     const org = await organizationEngine.process({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       name: "Blueprint Organization",
       users: [{ userId: request.userId, role: "OWNER", department: "strategy" }],
       strategy: (request.facts?.strategy as Record<string, unknown> | undefined) ?? {
@@ -369,7 +370,7 @@ export async function runBhudhiPipeline<T = unknown>(
     organizationContext = organizationEngine.formatOrganizationContext(org);
     if (org.health.action === "escalate") {
       logger.warn(
-        { blueprintId: request.blueprintId, health: org.health },
+        { blueprintId: blueprintId, health: org.health },
         "[BhudhiCore] Organization health — escalate",
       );
     }
@@ -380,7 +381,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let teamContext = "";
   try {
     const team = await teamEngine.create({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       name: "Blueprint Team",
       members: [
         { userId: request.userId, role: "OWNER" },
@@ -396,7 +397,7 @@ export async function runBhudhiPipeline<T = unknown>(
     teamContext = teamEngine.formatTeamContext(team);
     if (team.health?.action === "escalate") {
       logger.warn(
-        { blueprintId: request.blueprintId, health: team.health },
+        { blueprintId: blueprintId, health: team.health },
         "[BhudhiCore] Team health — escalate",
       );
     }
@@ -407,7 +408,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let erectorContext = "";
   try {
     const simulation = await erectorRuntime.create({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       goal: request.triggerType,
       validation: request.facts?.validation as Record<string, unknown> | undefined,
       blueprint: request.facts?.blueprint as Record<string, unknown> | undefined,
@@ -415,14 +416,14 @@ export async function runBhudhiPipeline<T = unknown>(
       identity: request.facts?.identity as Record<string, unknown> | undefined,
       time: request.facts?.temporal as Record<string, unknown> | undefined,
       constraints: request.facts?.constraints as string[] | undefined,
-      seed: request.blueprintId,
+      seed: blueprintId,
       mode: "STANDARD",
       scenario: "realistic",
     });
     erectorContext = erectorRuntime.formatErectorContext(simulation);
     if (!simulation.outcomes.survived) {
       logger.warn(
-        { blueprintId: request.blueprintId, simulationId: simulation.simulationId },
+        { blueprintId: blueprintId, simulationId: simulation.simulationId },
         "[BhudhiCore] Erector — synthetic reality did not survive pressure",
       );
     }
@@ -433,7 +434,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let civilizationContext = "";
   try {
     const civilization = await civilizationEngine.create({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       world: request.facts?.world as Record<string, unknown> | undefined,
       economy: request.facts?.economicsPlan as Record<string, unknown> | undefined,
       teams: Array.isArray(request.facts?.teams)
@@ -444,12 +445,12 @@ export async function runBhudhiPipeline<T = unknown>(
         : [{ name: "Blueprint Organization" }],
       time: request.facts?.temporal as Record<string, unknown> | undefined,
       simulation: request.facts?.simulation as Record<string, unknown> | undefined,
-      seed: request.blueprintId,
+      seed: blueprintId,
     });
     civilizationContext = civilizationEngine.formatCivilizationContext(civilization);
     if (civilization.evolutionMode === "collapsing") {
       logger.warn(
-        { blueprintId: request.blueprintId, civilizationId: civilization.civilizationId },
+        { blueprintId: blueprintId, civilizationId: civilization.civilizationId },
         "[BhudhiCore] Civilization — collapsing trajectory advisory",
       );
     }
@@ -460,7 +461,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let temporalContext = "";
   try {
     const temporal = await temporalEngine.analyze({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       goal: request.triggerType,
       world: request.facts?.world as Record<string, unknown> | undefined,
       identity: request.facts?.identity as Record<string, unknown> | undefined,
@@ -472,7 +473,7 @@ export async function runBhudhiPipeline<T = unknown>(
     temporalContext = temporalEngine.formatTemporalContext(temporal);
     if (temporal.window.window === "avoid" && temporal.urgency > 0.7) {
       logger.warn(
-        { blueprintId: request.blueprintId, urgency: temporal.urgency },
+        { blueprintId: blueprintId, urgency: temporal.urgency },
         "[BhudhiCore] Temporal avoid window with high urgency",
       );
     }
@@ -483,7 +484,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let governorContext = "";
   try {
     const governor = await metaGovernor.observe({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       world: request.facts?.world as Record<string, unknown> | undefined,
       beliefs: request.facts?.beliefs as Record<string, unknown> | undefined,
       decisions: request.facts?.decisions as Record<string, unknown> | undefined,
@@ -496,7 +497,7 @@ export async function runBhudhiPipeline<T = unknown>(
     governorContext = metaGovernor.formatGovernorContext(governor);
     if (governor.health?.systemHealth === "critical") {
       logger.warn(
-        { blueprintId: request.blueprintId, health: governor.health },
+        { blueprintId: blueprintId, health: governor.health },
         "[BhudhiCore] Meta governor — system health critical",
       );
     }
@@ -507,7 +508,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let expansionContext = "";
   try {
     const expansion = await expansionEngine.discover({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       world: request.facts?.world as Record<string, unknown> | undefined,
       decisions: request.facts?.decisions as Record<string, unknown> | undefined,
       beliefs: request.facts?.beliefs as Record<string, unknown> | undefined,
@@ -515,12 +516,12 @@ export async function runBhudhiPipeline<T = unknown>(
       execution: request.facts?.execution as Record<string, unknown> | undefined,
       memory: memoryContext ? { context: memoryContext } : undefined,
       results: request.facts?.results as Record<string, unknown> | undefined,
-      seed: request.blueprintId,
+      seed: blueprintId,
     });
     expansionContext = expansionEngine.formatExpansionContext(expansion);
     if (expansion.risk > 0.75 && !expansion.approval) {
       logger.warn(
-        { blueprintId: request.blueprintId, risk: expansion.risk },
+        { blueprintId: blueprintId, risk: expansion.risk },
         "[BhudhiCore] Expansion — high-risk capability candidates require governance",
       );
     }
@@ -531,7 +532,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let infrastructureContext = "";
   try {
     const infrastructure = await infrastructureEngine.observe({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       execution: request.facts?.execution as Record<string, unknown> | undefined,
       economics: request.facts?.economicsPlan as Record<string, unknown> | undefined,
       traffic: request.facts?.traffic as Record<string, unknown> | undefined,
@@ -542,7 +543,7 @@ export async function runBhudhiPipeline<T = unknown>(
     infrastructureContext = infrastructureEngine.formatInfrastructureContext(infrastructure);
     if (!infrastructure.capacity.canSupport) {
       logger.warn(
-        { blueprintId: request.blueprintId, capacity: infrastructure.capacity },
+        { blueprintId: blueprintId, capacity: infrastructure.capacity },
         "[BhudhiCore] Infrastructure capacity constrained",
       );
     }
@@ -553,7 +554,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let securityContext = "";
   try {
     const security = await securityEngine.verify({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       actorId: request.userId,
       identity: {
         userId: request.userId,
@@ -570,13 +571,13 @@ export async function runBhudhiPipeline<T = unknown>(
             level: "PUBLIC" | "LIMITED" | "PRIVILEGED" | "CRITICAL" | "IMMUTABLE";
             scope?: string;
           }>)
-        : [{ capability: "bhudhi.invoke", level: "LIMITED", scope: request.blueprintId }],
+        : [{ capability: "bhudhi.invoke", level: "LIMITED", scope: blueprintId }],
       requestedPermission: "execute",
     });
     securityContext = securityEngine.formatSecurityContext(security);
     if (security.decision === "deny") {
       logger.warn(
-        { blueprintId: request.blueprintId, decision: security.decision },
+        { blueprintId: blueprintId, decision: security.decision },
         "[BhudhiCore] Security — default deny triggered",
       );
     }
@@ -587,7 +588,7 @@ export async function runBhudhiPipeline<T = unknown>(
   let reliabilityContext = "";
   try {
     const reliability = await reliabilityEngine.check({
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       execution: request.facts?.execution as Record<string, unknown> | undefined,
       world: request.facts?.world as Record<string, unknown> | undefined,
       decision: request.facts?.decisions as Record<string, unknown> | undefined,
@@ -599,7 +600,7 @@ export async function runBhudhiPipeline<T = unknown>(
     reliabilityContext = reliabilityEngine.formatReliabilityContext(reliability);
     if (reliability.continuityMode === "OFFLINE" || reliability.failureProbability > 0.8) {
       logger.warn(
-        { blueprintId: request.blueprintId, reliability },
+        { blueprintId: blueprintId, reliability },
         "[BhudhiCore] Reliability — elevated failure risk",
       );
     }
@@ -633,7 +634,7 @@ export async function runBhudhiPipeline<T = unknown>(
   try {
     const economics = await economicsEngine.applyBeforeInvoke({
       userId: request.userId,
-      blueprintId: request.blueprintId,
+      blueprintId: blueprintId,
       triggerType: request.triggerType,
       task: request.triggerType,
       trigger: request.triggerType,
@@ -687,7 +688,7 @@ export async function runBhudhiPipeline<T = unknown>(
   try {
     logId = await logUsage({
       userId:        request.userId,
-      blueprintId:   request.blueprintId,
+      blueprintId:   blueprintId,
       triggerType:   request.triggerType,
       sourceEngine:  request.sourceEngine,
       promptName:    contract.name,

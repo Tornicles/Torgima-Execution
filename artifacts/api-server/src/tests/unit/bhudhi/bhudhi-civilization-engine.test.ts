@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi } from "vitest";
 import { civilizationPolicy } from "../../../bhudhi/civilization/policy/CivilizationPolicy.js";
 import { populationEngine } from "../../../bhudhi/civilization/population/PopulationEngine.js";
@@ -11,11 +12,11 @@ import { longHorizonEngine } from "../../../bhudhi/civilization/evolution/LongHo
 import { seededUnit } from "../../../bhudhi/civilization/lib/seededUnit.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -28,7 +29,7 @@ vi.mock("@workspace/db", () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
-          where: vi.fn(() => emptyQueryResult()),
+          where: vi.fn(() => emptyDbQueryResult()),
           limit: vi.fn().mockResolvedValue([]),
         })),
       })),

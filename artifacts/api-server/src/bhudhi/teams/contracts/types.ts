@@ -17,7 +17,7 @@ export interface TeamInput {
   members?: TeamMember[];
   roles?: Array<{ roleKey: string; userId?: string }>;
   identity?: Record<string, unknown>;
-  projects?: Array<{ id: string; name: string; ownerId?: string }>;
+  projects?: Array<{ id: string; name: string; ownerId?: string; status?: string }>;
   execution?: Record<string, unknown>;
   organization?: Record<string, unknown>;
   constraints?: string[];

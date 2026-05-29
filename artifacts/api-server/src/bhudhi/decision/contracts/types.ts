@@ -14,6 +14,8 @@ export type DecisionStatus = "pending" | "formed" | "approved" | "executed" | "r
 export interface DecisionOption {
   id: string;
   option: string;
+  /** Display label (alias of `option` when set). */
+  label?: string;
   optionType: DecisionOptionType;
   description: string;
   cost: number;

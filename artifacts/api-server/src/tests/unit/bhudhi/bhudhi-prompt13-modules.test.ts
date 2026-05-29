@@ -1,34 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { resolvePhaseFromEventCount } from "../../../bhudhi/modules/moduleHelpers.js";
 import { IISModule } from "../../../bhudhi/modules/IISModule.js";
 import { SISModule } from "../../../bhudhi/modules/SISModule.js";
 import { PISModule } from "../../../bhudhi/modules/PISModule.js";
 import { ModulesService } from "../../../bhudhi/modules/ModulesService.js";
 
-function emptyQueryResult(): Promise<unknown[]> & {
-  orderBy: ReturnType<typeof vi.fn>;
-  limit: ReturnType<typeof vi.fn>;
-  innerJoin: ReturnType<typeof vi.fn>;
-} {
-  const promise = Promise.resolve([]) as Promise<unknown[]> & {
-    orderBy: ReturnType<typeof vi.fn>;
-    limit: ReturnType<typeof vi.fn>;
-    innerJoin: ReturnType<typeof vi.fn>;
-  };
-  promise.orderBy = vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) }));
-  promise.limit = vi.fn().mockResolvedValue([]);
-  promise.innerJoin = vi.fn(() => ({
-    where: vi.fn(() => ({
-      orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })),
-    })),
-  }));
-  return promise;
-}
-
 function drizzleChainMock() {
   return {
     from: vi.fn(() => ({
-      where: vi.fn(() => emptyQueryResult()),
+      where: vi.fn(() => emptyDbQueryResult()),
       innerJoin: vi.fn(() => ({
         where: vi.fn(() => ({
           orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })),

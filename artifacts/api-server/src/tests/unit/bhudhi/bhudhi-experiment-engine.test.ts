@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { hypothesisLab } from "../../../bhudhi/experiments/hypothesis/HypothesisLab.js";
 import { experimentDesign } from "../../../bhudhi/experiments/design/ExperimentDesign.js";
@@ -10,11 +11,11 @@ import { experimentPolicy } from "../../../bhudhi/experiments/policy/ExperimentP
 import { experimentMemory } from "../../../bhudhi/experiments/experiment-memory/ExperimentMemory.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -27,7 +28,7 @@ vi.mock("@workspace/db", () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
-          where: vi.fn(() => emptyQueryResult()),
+          where: vi.fn(() => emptyDbQueryResult()),
           limit: vi.fn().mockResolvedValue([]),
         })),
       })),

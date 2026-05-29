@@ -38,10 +38,14 @@ export class EconomicsEngine {
       compute.maxTokens / confidenceAlloc.computeMultiplier,
     );
 
-    const tokenBudget = tokenEconomy.allocate(maxTokens, {
+    const tokenAllocation = tokenEconomy.allocate(maxTokens, {
       memory: compute.useMemory,
       simulation: compute.useSimulation,
     });
+    const tokenBudget = {
+      allocated: tokenAllocation.total,
+      categories: tokenAllocation.categories as Record<string, number>,
+    };
 
     const roi = executionRoi.evaluate(
       { ...input, budgetUsd: profile.daily_usd_budget },
@@ -108,7 +112,7 @@ export class EconomicsEngine {
         "route_selected",
         "compute",
         plan.compute.estimatedCostUsd,
-        plan.tokenBudget.total,
+        plan.tokenBudget.allocated,
         { route: plan.compute.route, model: plan.compute.modelId },
       );
     } catch (err) {

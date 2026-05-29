@@ -96,6 +96,7 @@ describe("BHUDHI PROMPT 12 — End-to-end cycle (pure)", () => {
       completionRate: 0.72,
       momentum: 0.6,
       trend: "stable",
+      confidenceLevel: 0.7,
       confidence: 0.7,
       clarity: 0.65,
       throughput: 0.7,

@@ -194,7 +194,7 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
 const DIFFICULTY_LEVELS = ["very_easy", "easy", "moderate", "hard", "very_hard"];
 
 function applyTierOverrides(base: BaseConditionRules, tier: string): BaseConditionRules {
-  return applyTierToConditionRules(base, tier);
+  return { ...base, ...applyTierToConditionRules(base, tier) };
 }
 
 function applyCapabilityModifier(base: BaseConditionRules, capabilityLevel: string): BaseConditionRules {

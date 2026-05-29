@@ -114,9 +114,10 @@ export type FrameworkRow = {
   id: string;
   name: string;
   type: string;
-  domains: unknown;
   accuracy: number;
-  status: string;
+  domains?: unknown;
+  status?: string;
+  description?: string;
 };
 
 export type InvestigationInput = BhudhiInvestigation[];

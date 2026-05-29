@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi } from "vitest";
 import { teamPolicy } from "../../../bhudhi/teams/policy/TeamPolicy.js";
 import { teamIdentity } from "../../../bhudhi/teams/team-identity/TeamIdentity.js";
@@ -11,11 +12,11 @@ import { teamHealth } from "../../../bhudhi/teams/health/TeamHealth.js";
 import { teamMemory } from "../../../bhudhi/teams/team-memory/TeamMemory.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -28,7 +29,7 @@ vi.mock("@workspace/db", () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
-          where: vi.fn(() => emptyQueryResult()),
+          where: vi.fn(() => emptyDbQueryResult()),
           limit: vi.fn().mockResolvedValue([]),
         })),
       })),

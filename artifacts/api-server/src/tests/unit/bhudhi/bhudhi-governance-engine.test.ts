@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { isForbiddenAction, IMMUTABLE_SYSTEM_LAWS } from "../../../bhudhi/governance/contracts/immutableRules.js";
 import { policyEngine } from "../../../bhudhi/governance/policy-engine/PolicyEngine.js";
@@ -7,11 +8,11 @@ import { governanceEnforcer } from "../../../bhudhi/governance/enforcement/Gover
 import { governanceAudit } from "../../../bhudhi/governance/audit/GovernanceAudit.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -22,7 +23,7 @@ vi.mock("@workspace/db", () => {
 
   const chain = () => ({
     from: vi.fn(() => ({
-      where: vi.fn(() => emptyQueryResult()),
+      where: vi.fn(() => emptyDbQueryResult()),
       orderBy: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([]) })),
     })),
   });

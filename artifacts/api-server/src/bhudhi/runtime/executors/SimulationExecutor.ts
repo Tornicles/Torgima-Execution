@@ -1,4 +1,5 @@
 import { simulationExecution } from "../../erector/execution/SimulationExecution.js";
+import type { Actor, ScenarioKind } from "../../erector/contracts/types.js";
 import { ExecutionRuntime } from "../ExecutionRuntime.js";
 
 export class SimulationExecutor {
@@ -51,9 +52,32 @@ export class SimulationExecutor {
     iteration: number,
     blueprintId: string,
   ) {
-    const actors = (simulation.actors as Array<{ id: string }>) ?? [{ id: "actor-1" }];
-    const economy = (simulation.economy as { economicHealth: number }) ?? { economicHealth: 0.7 };
-    const scenario = (simulation.scenario as "growth" | "collapse" | "stagnation") ?? "growth";
+    const rawActors = (simulation.actors as Array<Partial<Actor>>) ?? [{ id: "actor-1" }];
+    const actors: Actor[] = rawActors.map((a, i) => ({
+      id: String(a.id ?? `actor-${i + 1}`),
+      kind: a.kind ?? "user",
+      goals: a.goals ?? ["execute"],
+      beliefs: a.beliefs ?? [],
+      resources: a.resources ?? { capacity: 1 },
+      behavior: a.behavior ?? "steady",
+    }));
+    const economyRaw = (simulation.economy as { economicHealth?: number; risk?: number; trajectory?: string }) ?? {};
+    const economy = {
+      economicHealth: economyRaw.economicHealth ?? 0.7,
+      risk: economyRaw.risk ?? 0.3,
+      trajectory: (economyRaw.trajectory as "growth" | "stable" | "decline") ?? "stable",
+    };
+    const scenarioKey = String(simulation.scenario ?? "growth");
+    const scenarioByLabel: Record<string, ScenarioKind> = {
+      growth: "optimistic",
+      collapse: "collapse",
+      stagnation: "realistic",
+      baseline: "baseline",
+      optimistic: "optimistic",
+      realistic: "realistic",
+      stress: "stress",
+    };
+    const scenario: ScenarioKind = scenarioByLabel[scenarioKey] ?? "realistic";
     const out = simulationExecution.run(
       String(simulation.goal ?? "Simulate"),
       actors,

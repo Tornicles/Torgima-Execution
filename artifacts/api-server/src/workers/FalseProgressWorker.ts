@@ -46,7 +46,7 @@ async function scanBlueprintFalseProgress(
   const completedOrders = await db
     .select({ id: orders.id })
     .from(orders)
-    .where(and(eq(orders.blueprint_id, blueprintId), inArray(orders.status, ["completed", "complete"])))
+    .where(and(eq(orders.blueprint_id, blueprintId), eq(orders.status, "completed")))
     .limit(10);
 
   let outcomeMovementScore = 0;

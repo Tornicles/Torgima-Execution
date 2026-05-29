@@ -5,6 +5,7 @@ import { failure, handleError } from "../lib/utils.js";
 import { bhudhiSuccess } from "../bhudhi/api/bhudhiApiEnvelope.js";
 import { requireUserBlueprint } from "../bhudhi/api/bhudhiRouteHelpers.js";
 import { organizationEngine } from "../bhudhi/organization/organization-engine/OrganizationEngine.js";
+import type { Department, OrgInput } from "../bhudhi/organization/contracts/types.js";
 
 const router = Router();
 
@@ -47,6 +48,23 @@ const orgBodySchema = z.object({
   identity: z.record(z.string(), z.unknown()).optional(),
 });
 
+type OrgBody = z.infer<typeof orgBodySchema>;
+
+function toOrgInput(data: OrgBody, authUserId: string): Partial<OrgInput> {
+  const users = (data.users ?? [{ userId: authUserId, role: "OWNER", department: "strategy" }]).map(
+    (u) => ({
+      userId: u.userId,
+      role: u.role,
+      department: u.department as Department | undefined,
+    }),
+  );
+  const roles = data.roles?.map((r) => ({
+    ...r,
+    department: r.department as Department | undefined,
+  }));
+  return { ...data, users, roles };
+}
+
 // POST /api/bhudhi/organization/create
 router.post("/bhudhi/organization/create", async (req, res) => {
   try {
@@ -60,8 +78,10 @@ router.post("/bhudhi/organization/create", async (req, res) => {
     const ok = await requireUserBlueprint(res, parsed.data.blueprintId, auth.userId);
     if (!ok) return;
 
-    const users = parsed.data.users ?? [{ userId: auth.userId, role: "OWNER", department: "strategy" }];
-    const org = await organizationEngine.create({ ...parsed.data, users });
+    const org = await organizationEngine.create({
+      blueprintId: parsed.data.blueprintId,
+      ...toOrgInput(parsed.data, auth.userId),
+    } as OrgInput);
 
     bhudhiSuccess(res, {
       success: true,
@@ -88,7 +108,10 @@ router.post("/bhudhi/organization/health", async (req, res) => {
     const ok = await requireUserBlueprint(res, parsed.data.blueprintId, auth.userId);
     if (!ok) return;
 
-    const health = await organizationEngine.health(parsed.data.blueprintId, parsed.data);
+    const health = await organizationEngine.health(
+      parsed.data.blueprintId,
+      toOrgInput(parsed.data, auth.userId),
+    );
     bhudhiSuccess(res, { success: true, health });
   } catch (err) {
     handleError(req, res, err);
@@ -108,7 +131,10 @@ router.post("/bhudhi/organization/align", async (req, res) => {
     const ok = await requireUserBlueprint(res, parsed.data.blueprintId, auth.userId);
     if (!ok) return;
 
-    const alignment = await organizationEngine.align(parsed.data.blueprintId, parsed.data);
+    const alignment = await organizationEngine.align(
+      parsed.data.blueprintId,
+      toOrgInput(parsed.data, auth.userId),
+    );
     bhudhiSuccess(res, { success: true, alignment });
   } catch (err) {
     handleError(req, res, err);
@@ -128,7 +154,10 @@ router.post("/bhudhi/organization/coordinate", async (req, res) => {
     const ok = await requireUserBlueprint(res, parsed.data.blueprintId, auth.userId);
     if (!ok) return;
 
-    const coordination = await organizationEngine.coordinate(parsed.data.blueprintId, parsed.data);
+    const coordination = await organizationEngine.coordinate(
+      parsed.data.blueprintId,
+      toOrgInput(parsed.data, auth.userId),
+    );
     bhudhiSuccess(res, { success: true, coordination });
   } catch (err) {
     handleError(req, res, err);
@@ -148,7 +177,10 @@ router.post("/bhudhi/organization/sync", async (req, res) => {
     const ok = await requireUserBlueprint(res, parsed.data.blueprintId, auth.userId);
     if (!ok) return;
 
-    const teamSync = await organizationEngine.syncTeams(parsed.data.blueprintId, parsed.data);
+    const teamSync = await organizationEngine.syncTeams(
+      parsed.data.blueprintId,
+      toOrgInput(parsed.data, auth.userId),
+    );
     bhudhiSuccess(res, { success: true, teamSync });
   } catch (err) {
     handleError(req, res, err);

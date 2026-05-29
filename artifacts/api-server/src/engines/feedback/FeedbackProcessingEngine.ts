@@ -9,7 +9,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { OrderStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
+import { writeEvent, writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { recordOperatingLoopStage } from "../../services/OperatingLoopRecorder.js";
 import { scoreProofForOrder } from "./ProofScoringEngine.js";
 import { runFeedbackCriticCheck } from "../../bhudhi/AdvancedIntelligenceBridge.js";
@@ -514,7 +514,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
   const bhudhi = await runBhudhiFeedbackCycle(input.blueprintId, input.orderId, {
     completionStatus: input.completionStatus,
     score: input.score,
-    feedbackText: input.feedbackText,
+    feedbackText: input.reflection,
   });
 
   return {

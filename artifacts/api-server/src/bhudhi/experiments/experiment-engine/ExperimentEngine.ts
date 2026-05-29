@@ -135,7 +135,7 @@ export class ExperimentEngine {
       confidence: controlM.confidence,
       effectSize: 0,
       verdict: comparison.verdict,
-      causal,
+      causal: causal as unknown as Record<string, unknown>,
     });
 
     return { comparison, causal };

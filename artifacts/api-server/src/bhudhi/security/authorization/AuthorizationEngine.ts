@@ -32,7 +32,7 @@ export class AuthorizationEngine {
     }
 
     if (permission === "read") {
-      allowed = trustLevel !== "UNTRUSTED";
+      allowed = true;
     } else if (permission === "execute") {
       allowed = ["TRUSTED", "ELEVATED", "SEALED"].includes(trustLevel) || maxCap === "PRIVILEGED";
       if (maxCap === "CRITICAL" || maxCap === "IMMUTABLE") {

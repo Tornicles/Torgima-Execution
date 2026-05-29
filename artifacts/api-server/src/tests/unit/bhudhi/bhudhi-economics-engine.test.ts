@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { valueScore, DEFAULT_MODEL_CAPABILITIES } from "../../../bhudhi/economics/contracts/modelCatalog.js";
 import { ComputeRouter } from "../../../bhudhi/economics/compute-router/ComputeRouter.js";
@@ -14,11 +15,11 @@ import { policyEngine } from "../../../bhudhi/governance/policy-engine/PolicyEng
 import { riskGovernor } from "../../../bhudhi/governance/risk/RiskGovernor.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -30,7 +31,7 @@ vi.mock("@workspace/db", () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
-          where: vi.fn(() => emptyQueryResult()),
+          where: vi.fn(() => emptyDbQueryResult()),
           limit: vi.fn().mockResolvedValue([]),
         })),
       })),
@@ -217,7 +218,13 @@ describe("BIEE — optimizer", () => {
       cacheHitRate: 0.1,
       wasteScore: 0.4,
       avgValueScore: 20,
-      routingDistribution: { STANDARD: 5 },
+      routingDistribution: {
+        MICRO: 0,
+        STANDARD: 5,
+        PREMIUM: 0,
+        RESEARCH: 0,
+        ENTERPRISE: 0,
+      },
     });
     expect(proposals.length).toBeGreaterThan(0);
     expect(proposals.some((p) => p.type === "waste" || p.type === "cache")).toBe(true);
@@ -253,7 +260,7 @@ describe("BIEE — EconomicsEngine integration", () => {
 
     expect(plan.compute.modelId).toBeTruthy();
     expect(plan.compute.valueScore).toBeGreaterThan(0);
-    expect(plan.tokenBudget.total).toBeGreaterThan(0);
+    expect(plan.tokenBudget.allocated).toBeGreaterThan(0);
     expect(plan.roi.action).toBeTruthy();
   });
 

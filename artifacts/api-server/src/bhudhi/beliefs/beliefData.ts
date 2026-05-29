@@ -7,7 +7,8 @@ import {
   bhudhiBeliefConflicts,
 } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
-import type { BeliefOutput, BeliefRecord, ContradictionResult, EvolutionEvent } from "./contracts/types.js";
+import type { BeliefOutput, BeliefRecord, ContradictionResult } from "./contracts/types.js";
+import type { EvolutionEvent } from "./evolution/BeliefEvolution.js";
 import type { TruthAssessment } from "./contracts/types.js";
 
 export async function persistBeliefSession(

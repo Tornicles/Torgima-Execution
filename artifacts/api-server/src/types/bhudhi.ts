@@ -83,6 +83,11 @@ export type BhudhiTriggerType =
   | "DOMAIN_RESOLUTION"
   | "EXTERNAL_INTELLIGENCE_SCAN"
   | "PREDICTIVE_ANALYSIS"
+  | "KNOWLEDGE_INJECTION"
+  | "OVERNIGHT_CYCLE"
+  | "WORLD_STATE_UPDATE"
+  | "COMPRESSION_CYCLE"
+  | "SELF_IMPROVEMENT_CYCLE"
   | "EXECUTION_SUPPORT"
   | "BEHAVIORAL_ANALYSIS"
   | "EIS_COMPETITOR_INTELLIGENCE"
@@ -155,7 +160,11 @@ export type BhudhiOutputType =
   | "erector_pain"
   | "erector_time_simulation"
   | "erector_paths"
-  | "erector_first_week";
+  | "erector_first_week"
+  | "external_intelligence"
+  | "predictive_analysis"
+  | "goal_refinement"
+  | "purpose_refinement";
 
 export interface BhudhiContextPacket {
   userId:                 string;

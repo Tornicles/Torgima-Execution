@@ -4,6 +4,40 @@ import type { BhudhiTriggerType } from "../types/bhudhi.js";
 type DbBhudhiTrigger = (typeof bhudhiTriggerTypeEnum.enumValues)[number];
 type DbBhudhiRequestType = (typeof bhudhiRequestTypeEnum.enumValues)[number];
 
+const ERECTOR_VALIDATE_TRIGGERS = [
+  "VALIDATE_STAGE_2_DECOMPOSITION",
+  "VALIDATE_STAGE_3_ECONOMIC",
+  "VALIDATE_STAGE_4_PATTERNS",
+  "VALIDATE_STAGE_5_TIMING",
+  "VALIDATE_STAGE_6_MARKET",
+  "VALIDATE_STAGE_7_CHANNELS",
+  "VALIDATE_STAGE_8_PROS",
+  "VALIDATE_STAGE_9_CONS",
+  "VALIDATE_STAGE_10_FEASIBILITY",
+  "VALIDATE_STAGE_11_VIABILITY",
+  "VALIDATE_STAGE_12_BOOTSTRAP",
+  "VALIDATE_STAGE_13_FEATURES",
+  "VALIDATE_STAGE_14_CUSTOMER",
+  "VALIDATE_STAGE_15_POSITIONING",
+  "VALIDATE_STAGE_16_DIFFICULTY",
+  "VALIDATE_STAGE_17_REVENUE",
+  "VALIDATE_STAGE_18_90DAYS",
+  "VALIDATE_STAGE_19_PATHS",
+  "VALIDATE_STAGE_20_DECISION",
+] as const satisfies readonly BhudhiTriggerType[];
+
+function erectorValidateRequestMap(): Partial<Record<BhudhiTriggerType, DbBhudhiRequestType>> {
+  return Object.fromEntries(
+    ERECTOR_VALIDATE_TRIGGERS.map((t) => [t, "blueprint_generation" as const]),
+  ) as Partial<Record<BhudhiTriggerType, DbBhudhiRequestType>>;
+}
+
+function erectorValidateDbMap(): Partial<Record<BhudhiTriggerType, DbBhudhiTrigger>> {
+  return Object.fromEntries(
+    ERECTOR_VALIDATE_TRIGGERS.map((t) => [t, "erector_analysis" as const]),
+  ) as Partial<Record<BhudhiTriggerType, DbBhudhiTrigger>>;
+}
+
 /** Maps governed triggers to legacy `bhudhi_request_type` values (B5 audit / G9 item 13). */
 export function mapBhudhiTriggerToRequestType(
   triggerType: BhudhiTriggerType,
@@ -22,6 +56,13 @@ export function mapBhudhiTriggerToRequestType(
     EIS_OPPORTUNITY_SYNTHESIS: "goal_validation",
     EIS_SYNTHESIS: "goal_validation",
     DOMAIN_RESOLUTION: "goal_validation",
+    EXTERNAL_INTELLIGENCE_SCAN: "behavior_analysis",
+    PREDICTIVE_ANALYSIS: "behavior_analysis",
+    KNOWLEDGE_INJECTION: "knowledge_generation",
+    OVERNIGHT_CYCLE: "behavior_analysis",
+    WORLD_STATE_UPDATE: "condition_explanation",
+    COMPRESSION_CYCLE: "behavior_analysis",
+    SELF_IMPROVEMENT_CYCLE: "behavior_analysis",
     BLUEPRINT_GENERATION: "blueprint_generation",
     BLUEPRINT_INTERPRETATION: "blueprint_generation",
     TASK_DRAFTING: "task_generation",
@@ -50,7 +91,10 @@ export function mapBhudhiTriggerToRequestType(
     ERECTOR_SIMULATE_TIMEFRAMES: "blueprint_generation",
     ERECTOR_PATHS_GENERATE: "blueprint_generation",
     ERECTOR_FIRST_WEEK: "blueprint_generation",
-  };
+    ERECTOR_GOAL_REFINE: "blueprint_generation",
+    ERECTOR_PURPOSE_REFINE: "blueprint_generation",
+    ...erectorValidateRequestMap(),
+  } as Record<BhudhiTriggerType, DbBhudhiRequestType>;
 
   return m[triggerType] ?? "other";
 }
@@ -58,32 +102,39 @@ export function mapBhudhiTriggerToRequestType(
 /** Maps valid Bhudhi contracts to existing Postgres `bhudhi_trigger_type` enum values. */
 export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhudhiTrigger {
   const m: Record<BhudhiTriggerType, DbBhudhiTrigger> = {
-    GOAL_STRUCTURING:         "goal_structuring",
-    REALITY_INTELLIGENCE:     "goal_structuring",
-    EIS_INDUSTRY_RESEARCH:    "validation_analysis",
+    GOAL_STRUCTURING: "goal_structuring",
+    REALITY_INTELLIGENCE: "goal_structuring",
+    EIS_INDUSTRY_RESEARCH: "validation_analysis",
     EIS_COMPETITOR_INTELLIGENCE: "validation_analysis",
     EIS_NARRATIVE_INTELLIGENCE: "validation_analysis",
     EIS_OPPORTUNITY_SYNTHESIS: "validation_analysis",
-    TASK_DRAFTING:            "task_generation",
-    FEEDBACK_CLASSIFICATION:  "blocker_classification",
-    CLARIFICATION_PROMPT:     "feedback_interrogation",
-    RECOVERY_COPY:            "condition_explanation",
-    STATE_EXPLANATION:        "state_explanation",
-    INACTIVITY_RESTART:       "pattern_summary",
-    ACADEMY_SUPPORT:          "academy_content",
+    TASK_DRAFTING: "task_generation",
+    FEEDBACK_CLASSIFICATION: "blocker_classification",
+    CLARIFICATION_PROMPT: "feedback_interrogation",
+    RECOVERY_COPY: "condition_explanation",
+    STATE_EXPLANATION: "state_explanation",
+    INACTIVITY_RESTART: "pattern_summary",
+    ACADEMY_SUPPORT: "academy_content",
     ACADEMY_SKILL_ASSESSMENT: "academy_content",
-    ACADEMY_GAP_SEVERITY:     "academy_content",
+    ACADEMY_GAP_SEVERITY: "academy_content",
     OUTCOME_EVIDENCE_SUMMARY: "evidence_summary",
-    ROOT_CAUSE_ASSIST:        "root_cause_candidates",
-    DIRECTION_ANALYSIS:       "state_explanation",
-    BEHAVIORAL_INSIGHT:       "pattern_summary",
-    SIGNAL_NARRATIVE:         "state_explanation",
-    BLUEPRINT_GENERATION:     "blueprint_generation",
+    ROOT_CAUSE_ASSIST: "root_cause_candidates",
+    DIRECTION_ANALYSIS: "state_explanation",
+    BEHAVIORAL_INSIGHT: "pattern_summary",
+    SIGNAL_NARRATIVE: "state_explanation",
+    BLUEPRINT_GENERATION: "blueprint_generation",
     BLUEPRINT_INTERPRETATION: "blueprint_interpretation",
-    DOMAIN_RESOLUTION:        "validation_analysis",
-    EXECUTION_SUPPORT:        "task_generation",
-    BEHAVIORAL_ANALYSIS:      "pattern_summary",
-    EIS_SYNTHESIS:            "validation_analysis",
+    DOMAIN_RESOLUTION: "validation_analysis",
+    EXTERNAL_INTELLIGENCE_SCAN: "validation_analysis",
+    PREDICTIVE_ANALYSIS: "pattern_summary",
+    KNOWLEDGE_INJECTION: "knowledge_update",
+    OVERNIGHT_CYCLE: "pattern_summary",
+    WORLD_STATE_UPDATE: "state_explanation",
+    COMPRESSION_CYCLE: "pattern_summary",
+    SELF_IMPROVEMENT_CYCLE: "pattern_summary",
+    EXECUTION_SUPPORT: "task_generation",
+    BEHAVIORAL_ANALYSIS: "pattern_summary",
+    EIS_SYNTHESIS: "validation_analysis",
     ERECTOR_ARCHETYPE_NARRATIVE: "erector_analysis",
     ERECTOR_PURPOSE_DECOMPOSE: "erector_analysis",
     ERECTOR_INDUSTRY_ANALYZE: "erector_analysis",
@@ -94,7 +145,10 @@ export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhud
     ERECTOR_SIMULATE_TIMEFRAMES: "erector_analysis",
     ERECTOR_PATHS_GENERATE: "erector_analysis",
     ERECTOR_FIRST_WEEK: "erector_analysis",
-  };
+    ERECTOR_GOAL_REFINE: "erector_analysis",
+    ERECTOR_PURPOSE_REFINE: "erector_analysis",
+    ...erectorValidateDbMap(),
+  } as Record<BhudhiTriggerType, DbBhudhiTrigger>;
   return m[triggerType];
 }
 

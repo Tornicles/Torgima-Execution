@@ -38,17 +38,22 @@ export async function readPermanentFrameworkSignals(
     const row = rows.find((r) => r.signal_key === key);
     if (!row) continue;
     maxConfidence = Math.max(maxConfidence, row.confidence);
+    const previousValue = row.previous_value ?? row.value;
     signals[key] = {
       key,
       value: row.value,
-      previousValue: row.previous_value ?? row.value,
+      previousValue,
       momentum: row.momentum,
+      change: row.value - previousValue,
       trend: (row.trend as "improving" | "declining" | "stable") ?? "stable",
       confidence: row.confidence,
       statusLabel:
         String((row.metadata_json as Record<string, unknown>)?.statusLabel ?? "") ||
         interpretSignalValue(key, row.value),
       metadata: (row.metadata_json as Record<string, unknown>) ?? {},
+      valueHistory:
+        ((row.metadata_json as Record<string, unknown>)?.valueHistory as Record<string, number>) ??
+        { [todayKey()]: row.value },
     };
   }
 

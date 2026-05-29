@@ -72,7 +72,7 @@ describe("BhudhiInterpretationEngine (BHUDHI_SYSTEM_SPECIFICATION)", () => {
         friction_score: null,
         confidence_score: null,
         created_at: new Date(),
-      })) as Parameters<typeof analyzePatternsFromFeedbackRows>[0];
+      })) as unknown as Parameters<typeof analyzePatternsFromFeedbackRows>[0];
 
     const patterns = analyzePatternsFromFeedbackRows(rows);
     expect(patterns.patterns.completion).toBeGreaterThan(0.6);

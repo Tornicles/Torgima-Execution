@@ -29,7 +29,7 @@ function inputFromRow(row: typeof validations.$inferSelect, userId: string): Ere
     purposeFinal: row.purpose_final ?? undefined,
     purpose: row.purpose_final ?? row.purpose ?? "",
     timeframe: (feed?.timeframe as { duration_days?: number })?.duration_days
-      ? `${(feed.timeframe as { duration_days: number }).duration_days}d`
+      ? `${(feed?.timeframe as { duration_days: number }).duration_days}d`
       : "90d",
     commitmentLevel: row.commitment_level ?? "MEDIUM",
     desiredOutcome: row.desired_outcome ?? row.goal_final ?? "",

@@ -553,16 +553,20 @@ export const DashboardService = {
         blocksExecution: pendingAcademy.some((t) => t.blocks_execution),
       };
 
-      if (activeBlueprint?.currentPhaseId) {
+      const [bpPhaseRow] = await db
+        .select({ current_phase_id: blueprints.current_phase_id })
+        .from(blueprints)
+        .where(eq(blueprints.id, blueprintId))
+        .limit(1);
+      const currentPhaseId = bpPhaseRow?.current_phase_id ?? null;
+
+      if (currentPhaseId) {
         const [phaseRow] = await db
           .select({ name: phases.name, started_at: phases.started_at, created_at: phases.created_at })
           .from(phases)
-          .where(eq(phases.id, activeBlueprint.currentPhaseId))
+          .where(eq(phases.id, currentPhaseId))
           .limit(1);
-        const readiness = await evaluatePhaseReadiness(
-          blueprintId,
-          activeBlueprint.currentPhaseId,
-        );
+        const readiness = await evaluatePhaseReadiness(blueprintId, currentPhaseId);
         const started = phaseRow?.started_at ?? phaseRow?.created_at ?? new Date();
         phaseReadiness = {
           ...readiness,
@@ -584,7 +588,7 @@ export const DashboardService = {
         .where(
           and(
             eq(frameworkDecisions.blueprint_id, blueprintId),
-            inArray(frameworkDecisions.status, ["PENDING", "ACTIVE", "pending", "active"]),
+            inArray(frameworkDecisions.status, ["proposed", "approved"]),
           ),
         )
         .limit(5);
@@ -593,9 +597,9 @@ export const DashboardService = {
         active: activations.map((a) => ({
           name: a.framework_name,
           signalState: a.trigger_condition ?? "active",
-          activationLevel: a.activation_level,
+          activationLevel: a.activation_level ?? "unknown",
           lastDecision:
-            decisions.find((d) => d.framework_name === a.framework_name)?.decision_type ?? null,
+            decisions.find((d) => d.activation_id === a.id)?.decision_type ?? null,
         })),
         hasEnforcedDecision: decisions.some(
           (d) => String(d.decision_type).toUpperCase() === "ENFORCE",

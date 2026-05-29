@@ -198,7 +198,7 @@ router.post("/bhudhi/expansion/rollback", async (req, res) => {
       parsed.data.blueprintId,
       auth.userId,
     );
-    bhudhiSuccess(res, { success: true, ...result });
+    bhudhiSuccess(res, { ...result, success: true });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -221,7 +221,7 @@ router.post("/bhudhi/expansion/reject", async (req, res) => {
     if (!ok) return;
 
     const result = await expansionEngine.reject(parsed.data, parsed.data.capabilityId);
-    bhudhiSuccess(res, { success: true, ...result });
+    bhudhiSuccess(res, { ...result, success: true });
   } catch (err) {
     handleError(req, res, err);
   }

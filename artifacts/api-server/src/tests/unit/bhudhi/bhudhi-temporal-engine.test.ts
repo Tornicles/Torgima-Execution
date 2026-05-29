@@ -1,3 +1,4 @@
+import { emptyDbQueryResult } from "../../helpers/bhudhiDbMock.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { temporalPolicy } from "../../../bhudhi/temporal/policy/TemporalPolicy.js";
 import { chronologyEngine } from "../../../bhudhi/temporal/chronology/ChronologyEngine.js";
@@ -11,11 +12,11 @@ import { temporalForecast } from "../../../bhudhi/temporal/forecasting/TemporalF
 import { temporalMemory } from "../../../bhudhi/temporal/temporal-memory/TemporalMemory.js";
 
 vi.mock("@workspace/db", () => {
-  function emptyQueryResult(): Promise<unknown[]> & {
+  function emptyDbQueryResult(): Promise<unknown[]> & {
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
   } {
-    const promise = Promise.resolve([]) as Promise<unknown[]> & {
+    const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
       orderBy: ReturnType<typeof vi.fn>;
       limit: ReturnType<typeof vi.fn>;
     };
@@ -28,7 +29,7 @@ vi.mock("@workspace/db", () => {
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
-          where: vi.fn(() => emptyQueryResult()),
+          where: vi.fn(() => emptyDbQueryResult()),
           limit: vi.fn().mockResolvedValue([]),
         })),
       })),

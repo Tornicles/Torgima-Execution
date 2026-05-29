@@ -1,6 +1,12 @@
 export type ExecutionProfile = "Explorer" | "Builder" | "Strategist" | "Operator" | "Creator";
 export type MotivationType = "intrinsic" | "extrinsic" | "fear" | "purpose" | "curiosity" | "mastery";
-export type IdentityRelation = "reinforces" | "weakens" | "conflicts" | "depends_on" | "transforms";
+export type IdentityRelation =
+  | "reinforces"
+  | "weakens"
+  | "conflicts"
+  | "depends_on"
+  | "transforms"
+  | "influences";
 export type MemoryClass = "ACTIVE" | "ARCHIVE" | "SEALED";
 export type DriftAction = "pause" | "recover" | "adapt" | "escalate";
 

@@ -253,7 +253,7 @@ function findAnthropicViolations(): string[] {
   return violations;
 }
 
-function chainWiredInCode(): Record<string, DiagnosticStatus> {
+function chainWiredInCode(): Record<string, DiagnosticStatus | string> {
   const dispatcher = readText("artifacts/api-server/src/services/EventDispatcher.ts") ?? "";
   const feedbackWorker = readText("artifacts/api-server/src/workers/FeedbackWorker.ts") ?? "";
   const signalWorker = readText("artifacts/api-server/src/workers/SignalWorker.ts") ?? "";
@@ -327,9 +327,11 @@ export async function runCompleteSystemDiagnostic(
   const pkg = JSON.parse(readText("package.json") ?? "{}") as { packageManager?: string };
   const apiPkg = JSON.parse(readText("artifacts/api-server/package.json") ?? "{}") as {
     dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
   };
   const torgimaPkg = JSON.parse(readText("artifacts/torgima/package.json") ?? "{}") as {
     dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
   };
 
   const orm = existsSync(repoPath("lib/db/src/schema/tables.ts")) ? "Drizzle" : "UNKNOWN";
@@ -488,12 +490,11 @@ export async function runCompleteSystemDiagnostic(
 
   // ── SECTION 10: env / deployment ──────────────────────────────────────────
   for (const key of REQUIRED_ENV) {
-    const alt =
-      key === "SESSION_SECRET"
-        ? process.env.SESSION_SECRET ?? process.env.NEXTAUTH_SECRET
-        : process.env[key];
+    const alt = process.env[key];
     add("10", `ENV ${key}`, Boolean(alt), alt ? "set" : "missing");
   }
+  const sessionSecret = process.env.SESSION_SECRET ?? process.env.NEXTAUTH_SECRET;
+  add("10", "ENV SESSION_SECRET", Boolean(sessionSecret), sessionSecret ? "set" : "missing");
   const viteApi = process.env.VITE_API_BASE_URL ?? process.env.VITE_API_URL ?? "";
   add("10", "VITE_API_BASE_URL", Boolean(viteApi), viteApi ? "set" : "missing");
 

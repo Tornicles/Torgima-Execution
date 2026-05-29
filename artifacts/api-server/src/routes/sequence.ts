@@ -65,7 +65,10 @@ router.post("/sequences/goal", async (req, res) => {
     const structured = await ValidationService.structureGoal({
       userId: auth.userId,
       blueprintId,
-      input: { goal: goalText },
+      input: {
+        rawGoal: goalText,
+        idempotencyKey: `sequence-goal:${blueprintId}:${auth.userId}`,
+      },
     });
     await db.update(blueprints).set({ goal: goalText }).where(eq(blueprints.id, blueprintId));
     await SequenceTrackingService.recordGoal(blueprintId, tier, {

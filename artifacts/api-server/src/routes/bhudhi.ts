@@ -965,7 +965,7 @@ router.post("/bhudhi/preservation/consolidate", async (req, res) => {
     }
 
     const result = await preservationService.consolidateKnowledge(parsed.data.blueprintId);
-    success(res, { success: true, ...result });
+    success(res, { ...result, success: true });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -1293,7 +1293,7 @@ router.get("/bhudhi/signals", async (req, res) => {
     bhudhiSuccess(res, {
       success: true,
       signal: signal?.globalSignal ?? null,
-      confidence: signal?.globalSignalConfidence ?? null,
+      confidence: signal?.globalSignalConfidence ?? undefined,
       interpretation,
       frameworkSignals: signal?.frameworkSignals ?? {},
       metrics: signal?.metrics ?? {},
@@ -1695,7 +1695,7 @@ router.post("/bhudhi/modules/complete-cycle", async (req, res) => {
       },
       insight: `Strategy: ${cycle.intelligence.strategy.selected}`,
       confidence: cycle.intelligence.strategy.confidence,
-      nextSteps: BHUDHI_NEXT_STEPS.execute,
+      nextSteps: [...BHUDHI_NEXT_STEPS.execute],
     });
   } catch (err) {
     handleError(req, res, err);

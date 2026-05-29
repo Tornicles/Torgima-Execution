@@ -3,6 +3,7 @@
  */
 import { blueprints, db, orders, plans } from "@workspace/db";
 import { and, eq, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
+import { OrderStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { generate } from "../task-generation/TaskGenerationEngine.js";
 import {
@@ -164,7 +165,10 @@ export async function getTaskQueueSnapshot(
   );
 
   const hiddenOrders = all.filter(
-    (o) => !o.is_visible || o.status === "pre_generated" || o.status === "queued",
+    (o) =>
+      !o.is_visible ||
+      o.status === OrderStatus.PRE_GENERATED ||
+      o.status === OrderStatus.PENDING,
   );
 
   const hiddenByDayMap = new Map<number, string[]>();
@@ -351,7 +355,10 @@ export async function mutateHiddenTaskQueue(input: {
       and(
         eq(orders.blueprint_id, input.blueprintId),
         eq(orders.user_id, input.userId),
-        or(eq(orders.is_visible, false), inArray(orders.status, ["pre_generated", "queued"])),
+        or(
+          eq(orders.is_visible, false),
+          inArray(orders.status, [OrderStatus.PRE_GENERATED, OrderStatus.PENDING]),
+        ),
       ),
     )
     .returning({ id: orders.id });

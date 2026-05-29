@@ -7,6 +7,7 @@ import {
   frameworkApplicatorEngine,
   recommendationEngine,
   contradictionResolutionEngine,
+  scenarioSimulatorEngine,
 } from "../intelligence/intelligenceEngines.js";
 import type { BhudhiInvestigation } from "@workspace/db/types/bhudhi";
 import { modulesService } from "../modules/ModulesService.js";
@@ -116,14 +117,19 @@ export class TorgimaIntegration {
     ];
 
     const frameworkAnalysis = frameworkApplicatorEngine(synthetic, [
-      { id: "strategycore", name: "STRATEGYCORE", type: "team", description: "", accuracy: 0.75 },
+      {
+        id: "strategycore",
+        name: "STRATEGYCORE",
+        type: "team",
+        description: "",
+        domains: [],
+        status: "active",
+        accuracy: 0.75,
+      },
     ]);
     const resolved = contradictionResolutionEngine(frameworkAnalysis);
-    const drafts = recommendationEngine(resolved, {
-      conservative: resolved,
-      moderate: resolved,
-      aggressive: resolved,
-    });
+    const scenarios = scenarioSimulatorEngine("", resolved);
+    const drafts = recommendationEngine(resolved, scenarios);
 
     const recommendations = drafts.map((d) => ({
       title: d.title,

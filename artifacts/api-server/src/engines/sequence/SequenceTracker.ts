@@ -86,17 +86,19 @@ async function loadBlueprintRow(blueprintId: string): Promise<BlueprintSequenceR
   return row ?? null;
 }
 
+export type SequenceCheckpoint = {
+  userAction?: string;
+  stateSnapshot?: Record<string, unknown>;
+  validationPassed?: boolean;
+  validationErrors?: string[];
+  markCompleted?: boolean;
+};
+
 export const SequenceTracker = {
   async recordCheckpoint(
     blueprintId: string,
     sequenceNumber: number,
-    checkpoint: {
-      userAction?: string;
-      stateSnapshot?: Record<string, unknown>;
-      validationPassed?: boolean;
-      validationErrors?: string[];
-      markCompleted?: boolean;
-    } = {},
+    checkpoint: SequenceCheckpoint = {},
   ) {
     const sequence = ALL_SEQUENCES[sequenceNumber];
     if (!sequence) {
@@ -143,13 +145,14 @@ export const SequenceTracker = {
   async recordCanonicalCheckpoint(
     blueprintId: string,
     canonicalName: BlueprintSequenceName,
-    checkpoint?: Parameters<typeof SequenceTracker.recordCheckpoint>[2],
+    checkpoint?: SequenceCheckpoint,
   ) {
     const num = CANONICAL_TO_SEQUENCE_NUMBER[canonicalName];
     if (!num) return null;
+    const base = checkpoint ?? {};
     return this.recordCheckpoint(blueprintId, num, {
-      ...checkpoint,
-      stateSnapshot: { canonical: canonicalName, ...(checkpoint?.stateSnapshot ?? {}) },
+      ...base,
+      stateSnapshot: { canonical: canonicalName, ...(base.stateSnapshot ?? {}) },
     });
   },
 

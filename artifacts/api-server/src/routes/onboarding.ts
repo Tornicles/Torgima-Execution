@@ -260,7 +260,7 @@ router.post("/onboarding/goal", async (req, res) => {
       verdict: validationResult.verdict,
       realityScore: validationResult.scores?.overall,
       paths: validationResult.paths as Record<string, unknown>,
-      feasibility: validationResult.scores?.feasibility,
+      feasibility: validationResult.scores?.feasibility?.score,
     }).catch(() => null);
 
     // Update user commitment level

@@ -50,7 +50,7 @@ export const PatternLearningService = {
   async recordPattern(blueprintId: string, pattern: DetectedExecutionPattern) {
     const seq = await currentSequenceNumber(blueprintId);
     await db
-      .insert(executionPatterns)
+      .insert(growthExecutionPatterns)
       .values({
         blueprint_id: blueprintId,
         pattern_type: pattern.type,

@@ -1,4 +1,4 @@
-import type { GlobalSignal } from "@workspace/db/types/bhudhi";
+import type { BhudhiSignalMetrics, GlobalSignal } from "@workspace/db/types/bhudhi";
 import type { SignalMetrics } from "./types.js";
 
 export function calculateGlobalSignal(metrics: SignalMetrics): GlobalSignal {
@@ -16,7 +16,8 @@ export function calculateGlobalSignal(metrics: SignalMetrics): GlobalSignal {
 }
 
 export function getConfidence(signal: GlobalSignal, metrics: SignalMetrics): number {
-  const base = Math.min(metrics.confidence * 0.8 + 0.2, 1);
+  const confidence = metrics.confidence ?? metrics.confidenceLevel ?? 0.5;
+  const base = Math.min(confidence * 0.8 + 0.2, 1);
   const signalBoost: Record<GlobalSignal, number> = {
     nothingness: 0.9,
     danger: 0.85,
@@ -42,11 +43,11 @@ export function getSignalInterpretation(signal: GlobalSignal): string {
   return interpretations[signal];
 }
 
-export function toBhudhiSignalMetrics(metrics: SignalMetrics): SignalMetrics {
+export function toBhudhiSignalMetrics(metrics: SignalMetrics): BhudhiSignalMetrics {
   return {
     completionRate: metrics.completionRate,
     momentum: metrics.momentum,
     trend: metrics.trend,
-    confidenceLevel: metrics.confidence,
+    confidenceLevel: metrics.confidence ?? metrics.confidenceLevel ?? 0.5,
   };
 }

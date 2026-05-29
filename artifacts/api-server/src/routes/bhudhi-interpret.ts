@@ -177,7 +177,7 @@ router.post("/bhudhi/analyze/patterns", async (req, res) => {
         friction_score: null,
         confidence_score: null,
         created_at: new Date(),
-      })) as (typeof feedback.$inferSelect)[];
+      })) as unknown as (typeof feedback.$inferSelect)[];
     } else if (parsed.data.blueprintId) {
       const bp = await ownedBlueprint(parsed.data.blueprintId, auth.userId);
       if (!bp) {

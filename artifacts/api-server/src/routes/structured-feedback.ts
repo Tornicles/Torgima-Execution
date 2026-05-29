@@ -191,7 +191,13 @@ router.post("/feedback/submit", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid submit payload", 422);
       return;
     }
-    success(res, await StructuredFeedbackService.submitSession(auth.userId, parsed.data));
+    success(
+      res,
+      await StructuredFeedbackService.submitSession(
+        auth.userId,
+        parsed.data as import("../types/structured-feedback.js").StructuredFeedbackSubmitPayload,
+      ),
+    );
   } catch (err) {
     handleError(req, res, err);
   }

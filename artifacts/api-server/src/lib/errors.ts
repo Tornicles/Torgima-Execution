@@ -22,7 +22,9 @@ export type ErrorCode =
   | "SCHEMA_OUT_OF_DATE"
   | "CONTRACT_NOT_FOUND"
   | "VALIDATION_PAYLOAD_CORRUPT"
-  | "FALSE_PROGRESS_BLOCKED";
+  | "FALSE_PROGRESS_BLOCKED"
+  | "PHASE_NOT_READY"
+  | "INTERNAL";
 
 export class TorgimaError extends Error {
   constructor(

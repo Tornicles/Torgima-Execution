@@ -20,7 +20,7 @@ export async function detectRepeatedFailurePattern(
       and(
         eq(feedback.user_id, userId),
         eq(feedback.blueprint_id, blueprintId),
-        eq(orders.task_type, taskType),
+        eq(orders.task_type, taskType as (typeof orders.task_type.enumValues)[number]),
         eq(feedback.completion_status, "failed"),
         gte(feedback.created_at, twoWeeks),
       ),

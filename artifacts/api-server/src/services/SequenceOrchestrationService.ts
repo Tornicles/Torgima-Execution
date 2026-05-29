@@ -97,7 +97,11 @@ export const SequenceOrchestrationService = {
     const structured = await ValidationService.structureGoal({
       userId: input.userId,
       blueprintId,
-      input: { goal: input.goal, purpose: input.purpose },
+      input: {
+        rawGoal: input.goal,
+        purpose: input.purpose,
+        idempotencyKey: `sequence-orchestration:${blueprintId}:${input.userId}`,
+      },
     }).catch(() => ({} as Record<string, unknown>));
 
     await db

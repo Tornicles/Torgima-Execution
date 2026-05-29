@@ -18,7 +18,12 @@ export class OrganizationOrchestrator {
 
       const coordination = executionCoordinator.coordinate({
         blueprintId,
-        projects: (organization.projects as Array<Record<string, unknown>>) ?? [],
+        projects: ((organization.projects as Array<Record<string, unknown>>) ?? []).map((p) => ({
+          id: String(p.id ?? ""),
+          name: String(p.name ?? "Project"),
+          ownerId: p.ownerId != null ? String(p.ownerId) : undefined,
+          status: p.status != null ? String(p.status) : undefined,
+        })),
         execution: organization.execution as Record<string, unknown> | undefined,
         signals: organization.signals as { global?: string } | undefined,
         strategy: organization.strategy as { accelerate?: boolean } | undefined,

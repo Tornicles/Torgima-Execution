@@ -98,7 +98,7 @@ export const PredictiveIntelligenceService = {
       dropoutRisk = 0.5;
     }
 
-    const [fatigue] = await db
+    const fatigue = await db
       .select()
       .from(behaviorPatterns)
       .where(

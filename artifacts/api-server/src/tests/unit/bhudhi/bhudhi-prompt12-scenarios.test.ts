@@ -16,6 +16,7 @@ describe("BHUDHI PROMPT 12 — Test scenarios", () => {
       completionRate: 0.9,
       momentum: 0.85,
       trend: "improving",
+      confidenceLevel: 0.8,
       confidence: 0.8,
       clarity: 0.7,
       throughput: 0.8,

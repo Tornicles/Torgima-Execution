@@ -66,37 +66,37 @@ describe("BHUDHI Prompt 38 — Certification", () => {
   it("maps enterprise tier at high scores", async () => {
     const { BhudhiCertification } = await import("../../../monitoring/certification.js");
     const cert = new BhudhiCertification();
-    const spy = vi.spyOn(cert as never, "assessReliability").mockResolvedValue({
+    const spy = vi.spyOn(cert as any, "assessReliability").mockResolvedValue({
       category: "Reliability",
       score: 100,
       weight: 0.22,
       criteria: [{ name: "x", passed: true, score: 100 }],
     });
-    vi.spyOn(cert as never, "assessPerformance").mockResolvedValue({
+    vi.spyOn(cert as any, "assessPerformance").mockResolvedValue({
       category: "Performance",
       score: 100,
       weight: 0.18,
       criteria: [{ name: "x", passed: true, score: 100 }],
     });
-    vi.spyOn(cert as never, "assessSecurity").mockResolvedValue({
+    vi.spyOn(cert as any, "assessSecurity").mockResolvedValue({
       category: "Security",
       score: 100,
       weight: 0.2,
       criteria: [{ name: "x", passed: true, score: 100 }],
     });
-    vi.spyOn(cert as never, "assessOperational").mockResolvedValue({
+    vi.spyOn(cert as any, "assessOperational").mockResolvedValue({
       category: "Operational",
       score: 100,
       weight: 0.18,
       criteria: [{ name: "x", passed: true, score: 100 }],
     });
-    vi.spyOn(cert as never, "assessScalability").mockResolvedValue({
+    vi.spyOn(cert as any, "assessScalability").mockResolvedValue({
       category: "Scalability",
       score: 100,
       weight: 0.12,
       criteria: [{ name: "x", passed: true, score: 100 }],
     });
-    vi.spyOn(cert as never, "assessConsolidation").mockResolvedValue({
+    vi.spyOn(cert as any, "assessConsolidation").mockResolvedValue({
       category: "Consolidation",
       score: 100,
       weight: 0.1,
