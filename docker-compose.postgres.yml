@@ -1,0 +1,23 @@
+# Local Postgres matching GitHub Actions Phase 9 E2E (postgres:15).
+services:
+  postgres:
+    image: postgres:15
+    container_name: torgima-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: torgima_test
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      LANG: C.UTF-8
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d torgima_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - torgima_pg_data:/var/lib/postgresql/data
+
+volumes:
+  torgima_pg_data:

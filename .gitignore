@@ -27,6 +27,10 @@ coverage/
 test-results/
 playwright-report/
 
+# Local agent / typecheck dumps (do not commit)
+typecheck*.txt
+unit-test-out.txt
+
 # Logs
 *.log
 npm-debug.log*

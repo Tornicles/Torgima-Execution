@@ -29,12 +29,18 @@
     "db:check": "pnpm -F @workspace/db check",
     "db:apply-manual": "pnpm -F @workspace/db exec tsx ../../scripts/apply-all-manual-migrations.mjs",
     "db:ci": "pnpm -F @workspace/db run push-force && pnpm db:apply-manual && pnpm -F @workspace/db exec tsx ../../scripts/ci-verify-schema.mjs",
+    "postgres:up": "node scripts/start-local-postgres.mjs",
+    "postgres:down": "node scripts/stop-local-postgres.mjs",
+    "test:phase9:local": "node scripts/run-phase9-e2e.mjs",
     "start:api": "node scripts/start-api.mjs",
     "db:migrate:prod": "pnpm -F @workspace/db migrate",
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen"
   },
   "private": true,
   "devDependencies": {
+    "embedded-postgres": "15.17.0-beta.17",
+    "dotenv": "^16.4.7",
+    "pg": "^8.20.0",
     "prettier": "^3.8.3",
     "typescript": "~5.9.2"
   }

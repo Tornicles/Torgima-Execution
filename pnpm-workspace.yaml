@@ -10,6 +10,8 @@ allowBuilds:
   msw: true
   unrs-resolver: true
   protobufjs: set this to true or false
+  '@embedded-postgres/windows-x64': true
+  embedded-postgres: true
 
 # pnpm 11+ (strictDepBuilds default true) fails non-interactive CI when deps need build scripts
 # not listed above. Use `pnpm approve-builds` locally to grow the list over time.
