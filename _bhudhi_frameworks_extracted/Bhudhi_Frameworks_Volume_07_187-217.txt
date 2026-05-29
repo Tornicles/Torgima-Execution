@@ -1,0 +1,781 @@
+﻿BHUDHI FRAMEWORK OPERATING DOCUMENTSVOLUME 07: FRAMEWORKS 187-217
+Purpose: This volume converts framework names into operating units. Each framework includes its reason for existing, problem solved, inputs, lifecycle, outputs, validation logic, metrics, failure modes, and evolution behavior.
+No.
+Framework
+Domain
+Primary Output
+187
+Confidence Calibration Framework
+Validation and Reliability
+confidence score
+188
+Contradiction Detection Framework
+Validation and Reliability
+contradiction set
+189
+Evidence Weighting Framework
+Validation and Reliability
+evidence map
+190
+Objective Integrity Framework
+Validation and Reliability
+integrity check
+191
+Reliability Scoring Framework
+Validation and Reliability
+reliability score
+192
+Realism Validation Framework
+Validation and Reliability
+validation object
+193
+Scenario Integrity Framework
+Validation and Reliability
+integrity check
+194
+State Validation Framework
+Validation and Reliability
+state object
+195
+Execution Validation Framework
+Validation and Reliability
+execution object
+196
+Observation Validation Framework
+Validation and Reliability
+validation object
+197
+Adaptive Threshold Framework
+Validation and Reliability
+threshold object
+198
+Validation Routing Framework
+Validation and Reliability
+validation object
+199
+Exception Handling Framework
+Validation and Reliability
+operational object
+200
+Verification Framework
+Validation and Reliability
+operational object
+201
+Audit Validation Framework
+Validation and Reliability
+validation object
+202
+Continuous Validation Framework
+Validation and Reliability
+validation object
+203
+Validation Memory Framework
+Validation and Reliability
+validation object
+204
+Predictive Validation Framework
+Validation and Reliability
+validation object
+205
+Recovery Integrity Framework
+Validation and Reliability
+recovery path
+206
+Strategic Validation Framework
+Validation and Reliability
+strategic options
+207
+Precision Validation Framework
+Validation and Reliability
+validation object
+208
+Consensus Validation Framework
+Validation and Reliability
+validation object
+209
+Validation Reflection Framework
+Validation and Reliability
+reflection loops
+210
+Unified Validation Framework
+Validation and Reliability
+validation object
+211
+Episodic Memory Framework
+Memory and Continuity
+memory object
+212
+Semantic Memory Framework
+Memory and Continuity
+semantic record
+213
+Working Memory Framework
+Memory and Continuity
+memory object
+214
+Long-Term Memory Framework
+Memory and Continuity
+memory object
+215
+Context Memory Framework
+Memory and Continuity
+context map
+216
+Goal Memory Framework
+Memory and Continuity
+goal state
+217
+Decision Memory Framework
+Memory and Continuity
+decision object
+187. Confidence Calibration Framework
+Domain: Validation and Reliability
+Purpose: Adjusts certainty estimates.
+Problem it solves: It solves the problem of confidence score being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the confidence score into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the confidence score.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+188. Contradiction Detection Framework
+Domain: Validation and Reliability
+Purpose: Finds incompatible states.
+Problem it solves: It solves the problem of contradiction set being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the contradiction set into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the contradiction set.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+189. Evidence Weighting Framework
+Domain: Validation and Reliability
+Purpose: Ranks proof strength.
+Problem it solves: It solves the problem of evidence map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the evidence map into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the evidence map.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+190. Objective Integrity Framework
+Domain: Validation and Reliability
+Purpose: Protects original intent.
+Problem it solves: It solves the problem of integrity check being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the integrity check into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the integrity check.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+191. Reliability Scoring Framework
+Domain: Validation and Reliability
+Purpose: Quantifies trustworthiness.
+Problem it solves: It solves the problem of reliability score being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the reliability score into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the reliability score.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+192. Realism Validation Framework
+Domain: Validation and Reliability
+Purpose: Ensures plausible outputs.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+193. Scenario Integrity Framework
+Domain: Validation and Reliability
+Purpose: Preserves scenario consistency.
+Problem it solves: It solves the problem of integrity check being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the integrity check into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the integrity check.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+194. State Validation Framework
+Domain: Validation and Reliability
+Purpose: Confirms state correctness.
+Problem it solves: It solves the problem of state object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the state object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the state object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+195. Execution Validation Framework
+Domain: Validation and Reliability
+Purpose: Verifies implementation success.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the execution object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+196. Observation Validation Framework
+Domain: Validation and Reliability
+Purpose: Confirms collected signals.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+197. Adaptive Threshold Framework
+Domain: Validation and Reliability
+Purpose: Adjusts acceptable limits.
+Problem it solves: It solves the problem of threshold object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the threshold object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the threshold object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+198. Validation Routing Framework
+Domain: Validation and Reliability
+Purpose: Assigns proper validators.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+199. Exception Handling Framework
+Domain: Validation and Reliability
+Purpose: Manages rule deviations.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the operational object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+200. Verification Framework
+Domain: Validation and Reliability
+Purpose: Confirms completion.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the operational object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+201. Audit Validation Framework
+Domain: Validation and Reliability
+Purpose: Creates traceable evidence.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+202. Continuous Validation Framework
+Domain: Validation and Reliability
+Purpose: Validates continuously.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+203. Validation Memory Framework
+Domain: Validation and Reliability
+Purpose: Stores prior validations.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+204. Predictive Validation Framework
+Domain: Validation and Reliability
+Purpose: Prevents future failures.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+205. Recovery Integrity Framework
+Domain: Validation and Reliability
+Purpose: Confirms repaired state.
+Problem it solves: It solves the problem of recovery path being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the recovery path into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the recovery path.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+206. Strategic Validation Framework
+Domain: Validation and Reliability
+Purpose: Validates long-term impact.
+Problem it solves: It solves the problem of strategic options being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the strategic options into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the strategic options.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+207. Precision Validation Framework
+Domain: Validation and Reliability
+Purpose: Maximizes accuracy.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+208. Consensus Validation Framework
+Domain: Validation and Reliability
+Purpose: Uses multiple validators.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+209. Validation Reflection Framework
+Domain: Validation and Reliability
+Purpose: Improves validation methods.
+Problem it solves: It solves the problem of reflection loops being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the reflection loops into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the reflection loops.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+210. Unified Validation Framework
+Domain: Validation and Reliability
+Purpose: Coordinates all validation systems.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: claim or action; rules; evidence; thresholds; source confidence; system history.
+How it solves the problem: It solves this by turning the validation object into a testable object, checking evidence, rules, thresholds, contradictions, and auditability.
+Operating lifecycle:
+1. Receive the claim, action, decision, signal, or generated output.
+2. Normalize it into a testable validation object.
+3. Collect rules, evidence, dependencies, and historical comparisons.
+4. Check contradictions, missing prerequisites, drift, and boundary violations.
+5. Apply thresholds for truth, consistency, confidence, and risk.
+6. Decide accept, reject, correct, delay, or escalate.
+7. Return a validation record with reasons and confidence.
+8. Store validation history and refine future validation rules.
+Output: The framework produces a validation decision with status, confidence, evidence path, correction needs, and escalation level. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved false acceptance rate, false rejection rate, evidence coverage, and whether its output remained aligned with context and rules.
+Success metrics: false acceptance rate; false rejection rate; evidence coverage; drift reduction; audit completeness.
+Failure modes: insufficient evidence; stale rules; conflicting thresholds; unlogged exceptions; unresolved contradictions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+211. Episodic Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores events and experiences chronologically.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+212. Semantic Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores generalized knowledge.
+Problem it solves: It solves the problem of semantic record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the semantic record, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the semantic record.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+213. Working Memory Framework
+Domain: Memory and Continuity
+Purpose: Holds temporary active context.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+214. Long-Term Memory Framework
+Domain: Memory and Continuity
+Purpose: Preserves durable knowledge.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+215. Context Memory Framework
+Domain: Memory and Continuity
+Purpose: Retains surrounding conditions.
+Problem it solves: It solves the problem of context map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the context map, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the context map.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+216. Goal Memory Framework
+Domain: Memory and Continuity
+Purpose: Tracks objectives over time.
+Problem it solves: It solves the problem of goal state being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the goal state, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the goal state.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+217. Decision Memory Framework
+Domain: Memory and Continuity
+Purpose: Records previous choices.
+Problem it solves: It solves the problem of decision object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the decision object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the decision object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.

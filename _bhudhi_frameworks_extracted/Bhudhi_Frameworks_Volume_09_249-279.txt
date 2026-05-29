@@ -1,0 +1,781 @@
+﻿BHUDHI FRAMEWORK OPERATING DOCUMENTSVOLUME 09: FRAMEWORKS 249-279
+Purpose: This volume converts framework names into operating units. Each framework includes its reason for existing, problem solved, inputs, lifecycle, outputs, validation logic, metrics, failure modes, and evolution behavior.
+No.
+Framework
+Domain
+Primary Output
+249
+Sequence Memory Framework
+Memory and Continuity
+memory object
+250
+Pattern Memory Framework
+Memory and Continuity
+pattern record
+251
+Dependency Memory Framework
+Memory and Continuity
+dependency graph
+252
+Context Recovery Framework
+Memory and Continuity
+context map
+253
+Memory Expansion Framework
+Memory and Continuity
+memory object
+254
+Experience Weighting Framework
+Memory and Continuity
+experience record
+255
+Predictive Memory Framework
+Memory and Continuity
+memory object
+256
+Environmental Memory Framework
+Memory and Continuity
+environment model
+257
+World Memory Framework
+Memory and Continuity
+world model
+258
+Simulation Memory Framework
+Memory and Continuity
+simulation object
+259
+Organizational Memory Framework
+Memory and Continuity
+organization model
+260
+Trust Memory Framework
+Memory and Continuity
+memory object
+261
+Validation Memory Framework
+Memory and Continuity
+validation object
+262
+Dynamic Recall Framework
+Memory and Continuity
+operational object
+263
+Sparse Memory Framework
+Memory and Continuity
+memory object
+264
+Recursive Memory Framework
+Memory and Continuity
+memory object
+265
+Snapshot Framework
+Memory and Continuity
+state snapshot
+266
+Incremental Learning Framework
+Memory and Continuity
+learning loop
+267
+Memory Drift Framework
+Memory and Continuity
+drift record
+268
+Memory Repair Framework
+Memory and Continuity
+memory object
+269
+Temporal Compression Framework
+Memory and Continuity
+time model
+270
+Relevance Decay Framework
+Memory and Continuity
+operational object
+271
+Knowledge Fusion Memory Framework
+Memory and Continuity
+knowledge object
+272
+Attention Memory Framework
+Memory and Continuity
+memory object
+273
+Scenario Memory Framework
+Memory and Continuity
+memory object
+274
+Forecast Memory Framework
+Memory and Continuity
+forecast object
+275
+Retrieval Optimization Framework
+Memory and Continuity
+retrieval result
+276
+Memory Governance Framework
+Memory and Continuity
+memory object
+277
+Distributed Memory Framework
+Memory and Continuity
+memory object
+278
+Persistent Context Framework
+Memory and Continuity
+context map
+279
+Cognitive Archive Framework
+Memory and Continuity
+cognitive operation
+249. Sequence Memory Framework
+Domain: Memory and Continuity
+Purpose: Preserves action order.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+250. Pattern Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores recurring structures.
+Problem it solves: It solves the problem of pattern record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the pattern record, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the pattern record.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+251. Dependency Memory Framework
+Domain: Memory and Continuity
+Purpose: Records connected systems.
+Problem it solves: It solves the problem of dependency graph being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the dependency graph, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the dependency graph.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+252. Context Recovery Framework
+Domain: Memory and Continuity
+Purpose: Restores prior context.
+Problem it solves: It solves the problem of context map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the context map, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the context map.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+253. Memory Expansion Framework
+Domain: Memory and Continuity
+Purpose: Increases memory depth.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+254. Experience Weighting Framework
+Domain: Memory and Continuity
+Purpose: Prioritizes useful experiences.
+Problem it solves: It solves the problem of experience record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the experience record, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the experience record.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+255. Predictive Memory Framework
+Domain: Memory and Continuity
+Purpose: Uses history to anticipate.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+256. Environmental Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores environmental conditions.
+Problem it solves: It solves the problem of environment model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the environment model, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the environment model.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+257. World Memory Framework
+Domain: Memory and Continuity
+Purpose: Preserves world evolution.
+Problem it solves: It solves the problem of world model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the world model, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the world model.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+258. Simulation Memory Framework
+Domain: Memory and Continuity
+Purpose: Records simulation outcomes.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the simulation object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+259. Organizational Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores institutional knowledge.
+Problem it solves: It solves the problem of organization model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the organization model, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the organization model.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+260. Trust Memory Framework
+Domain: Memory and Continuity
+Purpose: Maintains confidence history.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+261. Validation Memory Framework
+Domain: Memory and Continuity
+Purpose: Preserves verification records.
+Problem it solves: It solves the problem of validation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the validation object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the validation object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+262. Dynamic Recall Framework
+Domain: Memory and Continuity
+Purpose: Adjusts retrieval methods.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the operational object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+263. Sparse Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores only essentials.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+264. Recursive Memory Framework
+Domain: Memory and Continuity
+Purpose: Memory improving memory.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+265. Snapshot Framework
+Domain: Memory and Continuity
+Purpose: Creates state checkpoints.
+Problem it solves: It solves the problem of state snapshot being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the state snapshot, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the state snapshot.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+266. Incremental Learning Framework
+Domain: Memory and Continuity
+Purpose: Updates knowledge continuously.
+Problem it solves: It solves the problem of learning loop being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the learning loop, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the learning loop.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+267. Memory Drift Framework
+Domain: Memory and Continuity
+Purpose: Detects memory degradation.
+Problem it solves: It solves the problem of drift record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the drift record, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the drift record.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+268. Memory Repair Framework
+Domain: Memory and Continuity
+Purpose: Restores damaged records.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+269. Temporal Compression Framework
+Domain: Memory and Continuity
+Purpose: Compresses time history.
+Problem it solves: It solves the problem of time model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the time model, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the time model.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+270. Relevance Decay Framework
+Domain: Memory and Continuity
+Purpose: Reduces outdated importance.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the operational object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+271. Knowledge Fusion Memory Framework
+Domain: Memory and Continuity
+Purpose: Merges overlapping knowledge.
+Problem it solves: It solves the problem of knowledge object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the knowledge object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the knowledge object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+272. Attention Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores focus history.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+273. Scenario Memory Framework
+Domain: Memory and Continuity
+Purpose: Retains explored futures.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+274. Forecast Memory Framework
+Domain: Memory and Continuity
+Purpose: Stores predictions.
+Problem it solves: It solves the problem of forecast object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the forecast object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the forecast object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+275. Retrieval Optimization Framework
+Domain: Memory and Continuity
+Purpose: Improves access speed.
+Problem it solves: It solves the problem of retrieval result being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the retrieval result, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the retrieval result.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+276. Memory Governance Framework
+Domain: Memory and Continuity
+Purpose: Controls memory rules.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+277. Distributed Memory Framework
+Domain: Memory and Continuity
+Purpose: Shares memory across systems.
+Problem it solves: It solves the problem of memory object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the memory object, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the memory object.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+278. Persistent Context Framework
+Domain: Memory and Continuity
+Purpose: Maintains long-running continuity.
+Problem it solves: It solves the problem of context map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the context map, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the context map.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+279. Cognitive Archive Framework
+Domain: Memory and Continuity
+Purpose: Stores strategic intelligence.
+Problem it solves: It solves the problem of cognitive operation being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: new observations; previous memories; importance score; timestamp; identity state; retrieval request.
+How it solves the problem: It solves this by classifying the cognitive operation, linking it to context, indexing it, and controlling retention over time.
+Operating lifecycle:
+1. Capture an event, observation, decision, or retrieval request.
+2. Classify the memory type, importance, sensitivity, and lifespan.
+3. Link it to identities, goals, events, signals, and prior knowledge.
+4. Compress or expand the record based on usefulness.
+5. Index the record for semantic, temporal, and contextual retrieval.
+6. Retrieve related records when the system needs continuity.
+7. Validate freshness, relevance, and contradiction risk.
+8. Update, decay, repair, or archive the memory over time.
+Output: The framework produces a stored, linked, retrievable memory object with freshness, relevance, and lifecycle controls. For this framework, the central object is the cognitive operation.
+Validation method: Validation checks whether the framework improved retrieval relevance, memory freshness, compression efficiency, and whether its output remained aligned with context and rules.
+Success metrics: retrieval relevance; memory freshness; compression efficiency; continuity preservation; contradiction rate.
+Failure modes: stale memory; retrieval noise; lost context; duplicate records; unmanaged decay.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.

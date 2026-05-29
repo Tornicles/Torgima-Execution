@@ -1,0 +1,781 @@
+﻿BHUDHI FRAMEWORK OPERATING DOCUMENTSVOLUME 03: FRAMEWORKS 63-93
+Purpose: This volume converts framework names into operating units. Each framework includes its reason for existing, problem solved, inputs, lifecycle, outputs, validation logic, metrics, failure modes, and evolution behavior.
+No.
+Framework
+Domain
+Primary Output
+63
+Insight Ranking Framework
+Intelligence and Cognition
+insight object
+64
+Latent Opportunity Framework
+Intelligence and Cognition
+opportunity map
+65
+Feedback Assimilation Framework
+Intelligence and Cognition
+feedback loop
+66
+System Awareness Framework
+Intelligence and Cognition
+operational object
+67
+Behavioral Interpretation Framework
+Intelligence and Cognition
+behavior model
+68
+Goal Evolution Framework
+Intelligence and Cognition
+goal state
+69
+Recursive Intelligence Framework
+Intelligence and Cognition
+recursive loop
+70
+Unified Cognition Framework
+Intelligence and Cognition
+operational object
+71
+Simulation Runtime Framework
+Simulation and World Dynamics
+simulation object
+72
+World State Framework
+Simulation and World Dynamics
+world model
+73
+Timeline Management Framework
+Simulation and World Dynamics
+timeline state
+74
+State Transition Framework
+Simulation and World Dynamics
+state object
+75
+Future Projection Framework
+Simulation and World Dynamics
+future map
+76
+Counterfactual Framework
+Simulation and World Dynamics
+alternate path
+77
+Event Generation Framework
+Simulation and World Dynamics
+event object
+78
+Environmental Dynamics Framework
+Simulation and World Dynamics
+environment model
+79
+Causal Chain Framework
+Simulation and World Dynamics
+causal graph
+80
+Outcome Evaluation Framework
+Simulation and World Dynamics
+outcome record
+81
+Temporal Compression Framework
+Simulation and World Dynamics
+time model
+82
+Decision Replay Framework
+Simulation and World Dynamics
+decision object
+83
+Branch Prediction Framework
+Simulation and World Dynamics
+branch tree
+84
+Scenario Comparison Framework
+Simulation and World Dynamics
+operational object
+85
+Macro Simulation Framework
+Simulation and World Dynamics
+simulation object
+86
+Micro Simulation Framework
+Simulation and World Dynamics
+simulation object
+87
+Cascade Detection Framework
+Simulation and World Dynamics
+cascade path
+88
+Simulation Integrity Framework
+Simulation and World Dynamics
+simulation object
+89
+Environmental Pressure Framework
+Simulation and World Dynamics
+pressure map
+90
+Agent Interaction Framework
+Simulation and World Dynamics
+agent interaction map
+91
+Historical Continuity Framework
+Simulation and World Dynamics
+history model
+92
+Simulation Memory Framework
+Simulation and World Dynamics
+simulation object
+93
+Risk Projection Framework
+Simulation and World Dynamics
+risk map
+63. Insight Ranking Framework
+Domain: Intelligence and Cognition
+Purpose: Prioritizes discoveries.
+Problem it solves: It solves the problem of insight object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the insight object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the insight object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+64. Latent Opportunity Framework
+Domain: Intelligence and Cognition
+Purpose: Reveals hidden potential.
+Problem it solves: It solves the problem of opportunity map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the opportunity map, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the opportunity map.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+65. Feedback Assimilation Framework
+Domain: Intelligence and Cognition
+Purpose: Learns from results.
+Problem it solves: It solves the problem of feedback loop being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the feedback loop, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the feedback loop.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+66. System Awareness Framework
+Domain: Intelligence and Cognition
+Purpose: Understands environment state.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the operational object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+67. Behavioral Interpretation Framework
+Domain: Intelligence and Cognition
+Purpose: Explains actions.
+Problem it solves: It solves the problem of behavior model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the behavior model, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the behavior model.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+68. Goal Evolution Framework
+Domain: Intelligence and Cognition
+Purpose: Adjusts objectives over time.
+Problem it solves: It solves the problem of goal state being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the goal state, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the goal state.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+69. Recursive Intelligence Framework
+Domain: Intelligence and Cognition
+Purpose: Intelligence improving intelligence.
+Problem it solves: It solves the problem of recursive loop being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the recursive loop, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the recursive loop.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+70. Unified Cognition Framework
+Domain: Intelligence and Cognition
+Purpose: Coordinates all intelligence layers.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the operational object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+71. Simulation Runtime Framework
+Domain: Simulation and World Dynamics
+Purpose: Executes virtual worlds with persistent state.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the simulation object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+72. World State Framework
+Domain: Simulation and World Dynamics
+Purpose: Maintains evolving environment conditions.
+Problem it solves: It solves the problem of world model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the world model, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the world model.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+73. Timeline Management Framework
+Domain: Simulation and World Dynamics
+Purpose: Controls temporal progression.
+Problem it solves: It solves the problem of timeline state being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the timeline state, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the timeline state.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+74. State Transition Framework
+Domain: Simulation and World Dynamics
+Purpose: Calculates changes between states.
+Problem it solves: It solves the problem of state object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the state object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the state object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+75. Future Projection Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates possible outcomes.
+Problem it solves: It solves the problem of future map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the future map, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the future map.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+76. Counterfactual Framework
+Domain: Simulation and World Dynamics
+Purpose: Tests alternate realities.
+Problem it solves: It solves the problem of alternate path being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the alternate path, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the alternate path.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+77. Event Generation Framework
+Domain: Simulation and World Dynamics
+Purpose: Produces realistic scenario events.
+Problem it solves: It solves the problem of event object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the event object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the event object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+78. Environmental Dynamics Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates changing conditions.
+Problem it solves: It solves the problem of environment model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the environment model, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the environment model.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+79. Causal Chain Framework
+Domain: Simulation and World Dynamics
+Purpose: Propagates consequences through systems.
+Problem it solves: It solves the problem of causal graph being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the causal graph, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the causal graph.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+80. Outcome Evaluation Framework
+Domain: Simulation and World Dynamics
+Purpose: Measures scenario success.
+Problem it solves: It solves the problem of outcome record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the outcome record, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the outcome record.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+81. Temporal Compression Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates long periods quickly.
+Problem it solves: It solves the problem of time model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the time model, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the time model.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+82. Decision Replay Framework
+Domain: Simulation and World Dynamics
+Purpose: Recreates historical actions.
+Problem it solves: It solves the problem of decision object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the decision object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the decision object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+83. Branch Prediction Framework
+Domain: Simulation and World Dynamics
+Purpose: Models multiple future paths.
+Problem it solves: It solves the problem of branch tree being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the branch tree, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the branch tree.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+84. Scenario Comparison Framework
+Domain: Simulation and World Dynamics
+Purpose: Compares alternative outcomes.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the operational object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+85. Macro Simulation Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates entire ecosystems.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the simulation object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+86. Micro Simulation Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates individual behavior.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the simulation object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+87. Cascade Detection Framework
+Domain: Simulation and World Dynamics
+Purpose: Identifies chain reactions.
+Problem it solves: It solves the problem of cascade path being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the cascade path, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the cascade path.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+88. Simulation Integrity Framework
+Domain: Simulation and World Dynamics
+Purpose: Maintains realism.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the simulation object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+89. Environmental Pressure Framework
+Domain: Simulation and World Dynamics
+Purpose: Simulates external constraints.
+Problem it solves: It solves the problem of pressure map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the pressure map, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the pressure map.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+90. Agent Interaction Framework
+Domain: Simulation and World Dynamics
+Purpose: Coordinates entity behavior.
+Problem it solves: It solves the problem of agent interaction map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the agent interaction map, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the agent interaction map.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+91. Historical Continuity Framework
+Domain: Simulation and World Dynamics
+Purpose: Preserves simulation memory.
+Problem it solves: It solves the problem of history model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the history model, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the history model.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+92. Simulation Memory Framework
+Domain: Simulation and World Dynamics
+Purpose: Stores previous runs.
+Problem it solves: It solves the problem of simulation object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the simulation object, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the simulation object.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+93. Risk Projection Framework
+Domain: Simulation and World Dynamics
+Purpose: Estimates future threats.
+Problem it solves: It solves the problem of risk map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: current world state; historical events; state variables; constraints; actor behaviors; scenario goals.
+How it solves the problem: It solves this by modeling the risk map, running state transitions, detecting cascades, and ranking possible future outcomes.
+Operating lifecycle:
+1. Snapshot the current state and define simulation boundaries.
+2. Select variables, actors, resources, constraints, and time horizon.
+3. Generate possible state transitions and event branches.
+4. Run the scenario forward through causal and probabilistic effects.
+5. Detect cascades, emergence, instability, and opportunity zones.
+6. Score outcomes against goals, risk, cost, and realism.
+7. Return the best projection, warning, or decision map.
+8. Save the run and improve future simulation assumptions.
+Output: The framework produces a scenario map showing likely futures, risks, opportunities, and recommended preparation. For this framework, the central object is the risk map.
+Validation method: Validation checks whether the framework improved forecast accuracy, scenario realism, branch coverage, and whether its output remained aligned with context and rules.
+Success metrics: forecast accuracy; scenario realism; branch coverage; cascade detection rate; preparation value.
+Failure modes: unrealistic variables; missing actors; overfitted futures; ignored constraints; unstable state transitions.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.

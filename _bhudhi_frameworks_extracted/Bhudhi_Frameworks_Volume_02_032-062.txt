@@ -1,0 +1,781 @@
+﻿BHUDHI FRAMEWORK OPERATING DOCUMENTSVOLUME 02: FRAMEWORKS 32-62
+Purpose: This volume converts framework names into operating units. Each framework includes its reason for existing, problem solved, inputs, lifecycle, outputs, validation logic, metrics, failure modes, and evolution behavior.
+No.
+Framework
+Domain
+Primary Output
+32
+Reflection Memory Framework
+Intelligence and Cognition
+reflection loops
+33
+Signal Interpretation Framework
+Intelligence and Cognition
+signal object
+34
+Semantic Linking Framework
+Intelligence and Cognition
+semantic record
+35
+Pattern Discovery Framework
+Intelligence and Cognition
+pattern record
+36
+Temporal Intelligence Framework
+Intelligence and Cognition
+time model
+37
+Emergence Detection Framework
+Intelligence and Cognition
+emergence record
+38
+Opportunity Recognition Framework
+Intelligence and Cognition
+opportunity map
+39
+Pressure Mapping Framework
+Intelligence and Cognition
+pressure map
+40
+Adaptive Goal Framework
+Intelligence and Cognition
+goal state
+41
+Information Prioritization Framework
+Intelligence and Cognition
+information object
+42
+Focus Allocation Framework
+Intelligence and Cognition
+attention allocation
+43
+Reality Validation Framework
+Intelligence and Cognition
+reality model
+44
+Confidence Estimation Framework
+Intelligence and Cognition
+confidence score
+45
+Execution Prediction Framework
+Intelligence and Cognition
+execution object
+46
+Knowledge Structuring Framework
+Intelligence and Cognition
+knowledge object
+47
+Decision Tree Framework
+Intelligence and Cognition
+decision object
+48
+Analytical Depth Framework
+Intelligence and Cognition
+operational object
+49
+Future Mapping Framework
+Intelligence and Cognition
+future map
+50
+Cognitive Efficiency Framework
+Intelligence and Cognition
+cognitive operation
+51
+Complexity Reduction Framework
+Intelligence and Cognition
+operational object
+52
+Intent Ranking Framework
+Intelligence and Cognition
+intent model
+53
+Relevance Detection Framework
+Intelligence and Cognition
+detection record
+54
+Information Integrity Framework
+Intelligence and Cognition
+information object
+55
+Dynamic Replanning Framework
+Intelligence and Cognition
+operational object
+56
+Value Estimation Framework
+Intelligence and Cognition
+value score
+57
+Knowledge Distillation Framework
+Intelligence and Cognition
+knowledge object
+58
+Objective Forecasting Framework
+Intelligence and Cognition
+forecast object
+59
+Rational Consistency Framework
+Intelligence and Cognition
+consistency score
+60
+Human Alignment Framework
+Intelligence and Cognition
+human-aligned object
+61
+Cognitive Routing Framework
+Intelligence and Cognition
+cognitive operation
+62
+Decision Confidence Framework
+Intelligence and Cognition
+decision object
+32. Reflection Memory Framework
+Domain: Intelligence and Cognition
+Purpose: Stores learning outcomes.
+Problem it solves: It solves the problem of reflection loops being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the reflection loops, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the reflection loops.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+33. Signal Interpretation Framework
+Domain: Intelligence and Cognition
+Purpose: Converts events into meaning.
+Problem it solves: It solves the problem of signal object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the signal object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the signal object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+34. Semantic Linking Framework
+Domain: Intelligence and Cognition
+Purpose: Connects related concepts.
+Problem it solves: It solves the problem of semantic record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the semantic record, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the semantic record.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+35. Pattern Discovery Framework
+Domain: Intelligence and Cognition
+Purpose: Detects hidden structures.
+Problem it solves: It solves the problem of pattern record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the pattern record, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the pattern record.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+36. Temporal Intelligence Framework
+Domain: Intelligence and Cognition
+Purpose: Understands progression over time.
+Problem it solves: It solves the problem of time model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the time model, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the time model.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+37. Emergence Detection Framework
+Domain: Intelligence and Cognition
+Purpose: Identifies unexpected system behavior.
+Problem it solves: It solves the problem of emergence record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the emergence record, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the emergence record.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+38. Opportunity Recognition Framework
+Domain: Intelligence and Cognition
+Purpose: Finds hidden value creation.
+Problem it solves: It solves the problem of opportunity map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the opportunity map, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the opportunity map.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+39. Pressure Mapping Framework
+Domain: Intelligence and Cognition
+Purpose: Measures systemic stress.
+Problem it solves: It solves the problem of pressure map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the pressure map, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the pressure map.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+40. Adaptive Goal Framework
+Domain: Intelligence and Cognition
+Purpose: Updates goals dynamically.
+Problem it solves: It solves the problem of goal state being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the goal state, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the goal state.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+41. Information Prioritization Framework
+Domain: Intelligence and Cognition
+Purpose: Ranks importance intelligently.
+Problem it solves: It solves the problem of information object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the information object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the information object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+42. Focus Allocation Framework
+Domain: Intelligence and Cognition
+Purpose: Assigns cognitive resources.
+Problem it solves: It solves the problem of attention allocation being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the attention allocation, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the attention allocation.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+43. Reality Validation Framework
+Domain: Intelligence and Cognition
+Purpose: Tests beliefs against evidence.
+Problem it solves: It solves the problem of reality model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the reality model, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the reality model.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+44. Confidence Estimation Framework
+Domain: Intelligence and Cognition
+Purpose: Calculates certainty levels.
+Problem it solves: It solves the problem of confidence score being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the confidence score, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the confidence score.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+45. Execution Prediction Framework
+Domain: Intelligence and Cognition
+Purpose: Forecasts action outcomes.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the execution object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+46. Knowledge Structuring Framework
+Domain: Intelligence and Cognition
+Purpose: Organizes information efficiently.
+Problem it solves: It solves the problem of knowledge object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the knowledge object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the knowledge object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+47. Decision Tree Framework
+Domain: Intelligence and Cognition
+Purpose: Breaks choices into branches.
+Problem it solves: It solves the problem of decision object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the decision object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the decision object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+48. Analytical Depth Framework
+Domain: Intelligence and Cognition
+Purpose: Expands evaluation granularity.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the operational object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+49. Future Mapping Framework
+Domain: Intelligence and Cognition
+Purpose: Models future states.
+Problem it solves: It solves the problem of future map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the future map, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the future map.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+50. Cognitive Efficiency Framework
+Domain: Intelligence and Cognition
+Purpose: Minimizes reasoning cost.
+Problem it solves: It solves the problem of cognitive operation being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the cognitive operation, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the cognitive operation.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+51. Complexity Reduction Framework
+Domain: Intelligence and Cognition
+Purpose: Simplifies difficult systems.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the operational object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+52. Intent Ranking Framework
+Domain: Intelligence and Cognition
+Purpose: Orders competing objectives.
+Problem it solves: It solves the problem of intent model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the intent model, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the intent model.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+53. Relevance Detection Framework
+Domain: Intelligence and Cognition
+Purpose: Filters unnecessary information.
+Problem it solves: It solves the problem of detection record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the detection record, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the detection record.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+54. Information Integrity Framework
+Domain: Intelligence and Cognition
+Purpose: Protects decision quality.
+Problem it solves: It solves the problem of information object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the information object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the information object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+55. Dynamic Replanning Framework
+Domain: Intelligence and Cognition
+Purpose: Rebuilds plans after changes.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the operational object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+56. Value Estimation Framework
+Domain: Intelligence and Cognition
+Purpose: Measures expected impact.
+Problem it solves: It solves the problem of value score being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the value score, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the value score.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+57. Knowledge Distillation Framework
+Domain: Intelligence and Cognition
+Purpose: Compresses intelligence into essentials.
+Problem it solves: It solves the problem of knowledge object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the knowledge object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the knowledge object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+58. Objective Forecasting Framework
+Domain: Intelligence and Cognition
+Purpose: Predicts objective completion.
+Problem it solves: It solves the problem of forecast object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the forecast object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the forecast object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+59. Rational Consistency Framework
+Domain: Intelligence and Cognition
+Purpose: Maintains internal coherence.
+Problem it solves: It solves the problem of consistency score being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the consistency score, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the consistency score.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+60. Human Alignment Framework
+Domain: Intelligence and Cognition
+Purpose: Keeps outcomes understandable.
+Problem it solves: It solves the problem of human-aligned object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the human-aligned object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the human-aligned object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+61. Cognitive Routing Framework
+Domain: Intelligence and Cognition
+Purpose: Sends problems to proper reasoning paths.
+Problem it solves: It solves the problem of cognitive operation being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the cognitive operation, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the cognitive operation.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+62. Decision Confidence Framework
+Domain: Intelligence and Cognition
+Purpose: Scores reliability of actions.
+Problem it solves: It solves the problem of decision object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: user intent; current context; memory records; constraints; available evidence; candidate decisions.
+How it solves the problem: It solves this by structuring the decision object, scoring options, validating reasoning, and returning an actionable intelligence record.
+Operating lifecycle:
+1. Capture the question, event, or decision pressure.
+2. Build a context state from memory, signals, and active constraints.
+3. Extract the objective and remove irrelevant noise.
+4. Generate candidate interpretations, options, or reasoning paths.
+5. Score each path for confidence, usefulness, risk, and alignment.
+6. Select the strongest path and create an intelligence object.
+7. Validate the object against logic, evidence, and intent.
+8. Store the result, confidence score, and improvement lesson.
+Output: The framework produces a structured intelligence object with reasoning, confidence, decision options, and next actions. For this framework, the central object is the decision object.
+Validation method: Validation checks whether the framework improved decision accuracy, reasoning consistency, confidence calibration, and whether its output remained aligned with context and rules.
+Success metrics: decision accuracy; reasoning consistency; confidence calibration; goal alignment; time-to-insight.
+Failure modes: weak context; bad assumptions; circular logic; misread intent; overconfident reasoning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.

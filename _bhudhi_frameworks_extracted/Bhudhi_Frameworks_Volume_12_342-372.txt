@@ -1,0 +1,781 @@
+﻿BHUDHI FRAMEWORK OPERATING DOCUMENTSVOLUME 12: FRAMEWORKS 342-372
+Purpose: This volume converts framework names into operating units. Each framework includes its reason for existing, problem solved, inputs, lifecycle, outputs, validation logic, metrics, failure modes, and evolution behavior.
+No.
+Framework
+Domain
+Primary Output
+342
+State Awareness Framework
+Signals, Conditions, and Monitoring
+state object
+343
+Influence Detection Framework
+Signals, Conditions, and Monitoring
+influence map
+344
+Event Synchronization Framework
+Signals, Conditions, and Monitoring
+event object
+345
+Temporal Threshold Framework
+Signals, Conditions, and Monitoring
+time model
+346
+Dynamic Observation Framework
+Signals, Conditions, and Monitoring
+operational object
+347
+Autonomous Monitoring Framework
+Signals, Conditions, and Monitoring
+monitoring record
+348
+Signal Governance Framework
+Signals, Conditions, and Monitoring
+signal object
+349
+Condition Governance Framework
+Signals, Conditions, and Monitoring
+condition object
+350
+Unified Signals Framework
+Signals, Conditions, and Monitoring
+signal object
+351
+Execution Planning Framework
+Execution and Operations
+execution object
+352
+Task Decomposition Framework
+Execution and Operations
+task graph
+353
+Action Sequencing Framework
+Execution and Operations
+action sequence
+354
+Workflow Coordination Framework
+Execution and Operations
+coordination plan
+355
+Autonomous Execution Framework
+Execution and Operations
+execution object
+356
+Resource Allocation Framework
+Execution and Operations
+resource flow
+357
+Resource Optimization Framework
+Execution and Operations
+resource flow
+358
+Capacity Management Framework
+Execution and Operations
+capacity plan
+359
+Execution Monitoring Framework
+Execution and Operations
+execution object
+360
+Progress Evaluation Framework
+Execution and Operations
+progress record
+361
+Outcome Tracking Framework
+Execution and Operations
+outcome record
+362
+Recovery Execution Framework
+Execution and Operations
+execution object
+363
+Adaptive Execution Framework
+Execution and Operations
+execution object
+364
+Execution Forecasting Framework
+Execution and Operations
+execution object
+365
+Priority Execution Framework
+Execution and Operations
+execution object
+366
+Bottleneck Resolution Framework
+Execution and Operations
+bottleneck fix
+367
+Dependency Coordination Framework
+Execution and Operations
+dependency graph
+368
+Operational Awareness Framework
+Execution and Operations
+operational object
+369
+Autonomous Scheduling Framework
+Execution and Operations
+autonomy plan
+370
+Multi-Agent Coordination Framework
+Execution and Operations
+agent interaction map
+371
+Governance Policy Framework
+Governance and Control
+governance decision
+372
+Governance Enforcement Framework
+Governance and Control
+governance decision
+342. State Awareness Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Tracks current state.
+Problem it solves: It solves the problem of state object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the state object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the state object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+343. Influence Detection Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Finds directional pressure.
+Problem it solves: It solves the problem of influence map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the influence map, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the influence map.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+344. Event Synchronization Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Aligns concurrent events.
+Problem it solves: It solves the problem of event object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the event object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the event object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+345. Temporal Threshold Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Applies time-based activation.
+Problem it solves: It solves the problem of time model being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the time model, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the time model.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+346. Dynamic Observation Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Adjusts observation depth.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the operational object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+347. Autonomous Monitoring Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Operates independently.
+Problem it solves: It solves the problem of monitoring record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the monitoring record, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the monitoring record.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+348. Signal Governance Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Controls signal policies.
+Problem it solves: It solves the problem of signal object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the signal object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the signal object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+349. Condition Governance Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Controls condition rules.
+Problem it solves: It solves the problem of condition object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the condition object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the condition object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+350. Unified Signals Framework
+Domain: Signals, Conditions, and Monitoring
+Purpose: Coordinates signal and condition systems.
+Problem it solves: It solves the problem of signal object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: live signals; condition thresholds; environment changes; event stream; historical baselines; response rules.
+How it solves the problem: It solves this by detecting the signal object, filtering noise, correlating patterns, assigning urgency, and routing action.
+Operating lifecycle:
+1. Continuously observe live events, state changes, and weak indicators.
+2. Filter noise and normalize signals into comparable units.
+3. Compare signals against thresholds, baselines, and historical patterns.
+4. Correlate related signals into condition clusters.
+5. Assign urgency, confidence, direction, and escalation level.
+6. Route the condition to validation, simulation, execution, or governance.
+7. Trigger the correct response or suppress false alarms.
+8. Store signal history and update detection thresholds.
+Output: The framework produces a prioritized condition record with trigger state, urgency, confidence, and routing destination. For this framework, the central object is the signal object.
+Validation method: Validation checks whether the framework improved detection latency, noise reduction, trigger precision, and whether its output remained aligned with context and rules.
+Success metrics: detection latency; noise reduction; trigger precision; missed-signal rate; escalation accuracy.
+Failure modes: false alarms; missed weak signals; bad thresholds; signal overload; poor routing.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+351. Execution Planning Framework
+Domain: Execution and Operations
+Purpose: Converts strategy into executable operations.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+352. Task Decomposition Framework
+Domain: Execution and Operations
+Purpose: Breaks goals into tasks.
+Problem it solves: It solves the problem of task graph being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the task graph into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the task graph.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+353. Action Sequencing Framework
+Domain: Execution and Operations
+Purpose: Orders execution steps.
+Problem it solves: It solves the problem of action sequence being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the action sequence into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the action sequence.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+354. Workflow Coordination Framework
+Domain: Execution and Operations
+Purpose: Synchronizes activities.
+Problem it solves: It solves the problem of coordination plan being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the coordination plan into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the coordination plan.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+355. Autonomous Execution Framework
+Domain: Execution and Operations
+Purpose: Executes with minimal intervention.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+356. Resource Allocation Framework
+Domain: Execution and Operations
+Purpose: Assigns available resources.
+Problem it solves: It solves the problem of resource flow being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the resource flow into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the resource flow.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+357. Resource Optimization Framework
+Domain: Execution and Operations
+Purpose: Maximizes resource efficiency.
+Problem it solves: It solves the problem of resource flow being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the resource flow into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the resource flow.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+358. Capacity Management Framework
+Domain: Execution and Operations
+Purpose: Controls operational limits.
+Problem it solves: It solves the problem of capacity plan being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the capacity plan into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the capacity plan.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+359. Execution Monitoring Framework
+Domain: Execution and Operations
+Purpose: Tracks progress continuously.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+360. Progress Evaluation Framework
+Domain: Execution and Operations
+Purpose: Measures advancement.
+Problem it solves: It solves the problem of progress record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the progress record into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the progress record.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+361. Outcome Tracking Framework
+Domain: Execution and Operations
+Purpose: Records achieved results.
+Problem it solves: It solves the problem of outcome record being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the outcome record into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the outcome record.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+362. Recovery Execution Framework
+Domain: Execution and Operations
+Purpose: Restores interrupted operations.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+363. Adaptive Execution Framework
+Domain: Execution and Operations
+Purpose: Changes execution dynamically.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+364. Execution Forecasting Framework
+Domain: Execution and Operations
+Purpose: Predicts execution outcomes.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+365. Priority Execution Framework
+Domain: Execution and Operations
+Purpose: Handles critical work first.
+Problem it solves: It solves the problem of execution object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the execution object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the execution object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+366. Bottleneck Resolution Framework
+Domain: Execution and Operations
+Purpose: Removes execution constraints.
+Problem it solves: It solves the problem of bottleneck fix being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the bottleneck fix into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the bottleneck fix.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+367. Dependency Coordination Framework
+Domain: Execution and Operations
+Purpose: Manages prerequisite relationships.
+Problem it solves: It solves the problem of dependency graph being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the dependency graph into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the dependency graph.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+368. Operational Awareness Framework
+Domain: Execution and Operations
+Purpose: Understands live operations.
+Problem it solves: It solves the problem of operational object being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the operational object into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the operational object.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+369. Autonomous Scheduling Framework
+Domain: Execution and Operations
+Purpose: Creates execution schedules.
+Problem it solves: It solves the problem of autonomy plan being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the autonomy plan into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the autonomy plan.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+370. Multi-Agent Coordination Framework
+Domain: Execution and Operations
+Purpose: Synchronizes intelligent agents.
+Problem it solves: It solves the problem of agent interaction map being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: approved goal; task graph; resources; deadlines; dependencies; agent assignments.
+How it solves the problem: It solves this by converting the agent interaction map into tasks, dependencies, owners, schedules, monitoring points, and recovery paths.
+Operating lifecycle:
+1. Receive an approved objective or validated decision.
+2. Break it into tasks, dependencies, milestones, and required resources.
+3. Assign work to agents, systems, schedules, or workflows.
+4. Execute steps in the correct order while monitoring state.
+5. Detect blockers, bottlenecks, conflicts, and resource shortfalls.
+6. Adapt the plan when conditions change.
+7. Return progress, completion, failure, or recovery status.
+8. Store execution outcomes and improve future operating patterns.
+Output: The framework produces an executable work plan or progress record with tasks, ownership, dependencies, and status. For this framework, the central object is the agent interaction map.
+Validation method: Validation checks whether the framework improved completion rate, cycle time, resource efficiency, and whether its output remained aligned with context and rules.
+Success metrics: completion rate; cycle time; resource efficiency; blocker resolution speed; outcome quality.
+Failure modes: dependency failure; resource shortage; unclear ownership; workflow collision; late replanning.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+371. Governance Policy Framework
+Domain: Governance and Control
+Purpose: Defines operational rules.
+Problem it solves: It solves the problem of governance decision being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: policies; permissions; decisions; audit requirements; risk level; authority model.
+How it solves the problem: It solves this by checking the governance decision against authority, policy, permissions, audit needs, and controlled exceptions.
+Operating lifecycle:
+1. Receive a decision, policy question, permission request, or compliance event.
+2. Identify the governing rules, authority level, and risk class.
+3. Check alignment with policy, accountability, audit, and control boundaries.
+4. Approve, deny, constrain, or escalate the action.
+5. Record the reason, actor, authority, and evidence path.
+6. Monitor downstream compliance and policy drift.
+7. Update control recommendations when repeated failures appear.
+8. Preserve governance history for review and evolution.
+Output: The framework produces a governance decision with rule basis, authority trail, constraints, and audit evidence. For this framework, the central object is the governance decision.
+Validation method: Validation checks whether the framework improved policy adherence, audit completeness, unauthorized action rate, and whether its output remained aligned with context and rules.
+Success metrics: policy adherence; audit completeness; unauthorized action rate; decision traceability; governance drift.
+Failure modes: unclear authority; policy conflict; missing audit trail; over-permissioning; uncontrolled exception.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.
+372. Governance Enforcement Framework
+Domain: Governance and Control
+Purpose: Applies policies consistently.
+Problem it solves: It solves the problem of governance decision being unmanaged, invisible, inconsistent, or disconnected from Bhudhi's larger operating state.
+Inputs: policies; permissions; decisions; audit requirements; risk level; authority model.
+How it solves the problem: It solves this by checking the governance decision against authority, policy, permissions, audit needs, and controlled exceptions.
+Operating lifecycle:
+1. Receive a decision, policy question, permission request, or compliance event.
+2. Identify the governing rules, authority level, and risk class.
+3. Check alignment with policy, accountability, audit, and control boundaries.
+4. Approve, deny, constrain, or escalate the action.
+5. Record the reason, actor, authority, and evidence path.
+6. Monitor downstream compliance and policy drift.
+7. Update control recommendations when repeated failures appear.
+8. Preserve governance history for review and evolution.
+Output: The framework produces a governance decision with rule basis, authority trail, constraints, and audit evidence. For this framework, the central object is the governance decision.
+Validation method: Validation checks whether the framework improved policy adherence, audit completeness, unauthorized action rate, and whether its output remained aligned with context and rules.
+Success metrics: policy adherence; audit completeness; unauthorized action rate; decision traceability; governance drift.
+Failure modes: unclear authority; policy conflict; missing audit trail; over-permissioning; uncontrolled exception.
+Evolution behavior: It evolves by saving outcomes, comparing predicted versus actual results, adjusting thresholds, improving routing, and retiring weak assumptions.
+Bhudhi handoff: Output routes to the next needed layer: validation, memory, simulation, governance, execution, or evolution.

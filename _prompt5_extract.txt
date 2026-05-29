@@ -1,0 +1,88 @@
+﻿TORGIMA
+CURSOR BUILD PROMPT
+PROMPT 5 â€” ERECTOR ADDITIONS
+Erector Additions â€” Execution Engine
+Archetype Multipliers Active in All Three Execution Loops
+
+A â€” PURPOSE
+This prompt extends the three-loop execution engine (primary, daily, background) with active archetype intelligence. Prompt 4 locked archetype data onto the blueprint and seeded first week tasks. This prompt makes the running execution engine read and apply that data on every cycle.
+Run this prompt AFTER Prompt 5 (the main 3-loop engine) is verified working. This is an addition to a working system, not a replacement.
+
+B â€” READ BEFORE TOUCHING ANYTHING
+Read src/workers/WorkerRegistry.ts completely. Understand which workers exist and how they are registered.
+Read services/signal/SignalCalculationEngine.ts â€” specifically where task_limit_min and task_limit_max are set on the enforcement package.
+Read services/task-generation/TaskGenerationEngine.ts â€” specifically the context loading block at the top of the generation function.
+Read the Blueprint model in prisma/schema.prisma â€” confirm the 7 archetype fields from Prompt 4 are present before starting.
+
+C â€” WHAT TO BUILD (4 ADDITIONS)
+Addition 1 â€” Primary loop: archetype context in enforcement package
+The primary loop runs on every feedback submission. When the ConditionAssignmentEngine generates an enforcement package, it must read the archetype multipliers from the blueprint and apply them to the enforcement package output.
+This was partially defined in Prompt 4 Task 3. Confirm it is working end-to-end in the primary loop by adding a test log to ConditionAssignmentEngine that outputs the multiplier being applied.
+// Add to EnforcementPackage creation in ConditionAssignmentEngine:
+const archetypeMult = blueprint?.archetype_execution_mult ?? 1.0;
+const adjustedMin = Math.max(1, Math.round(baseMin * archetypeMult));
+const adjustedMax = Math.min(8, Math.round(baseMax * archetypeMult));
+
+logger.info('[ConditionAssignment] Archetype mult applied', {
+  blueprint_id, archetypeMult, baseMin, baseMax, adjustedMin, adjustedMax
+});
+
+Addition 2 â€” Daily loop: archetype timeframe pressure in window calculation
+The daily loop runs every 24 hours and recalculates the 7-day rolling signal window. The archetype timeframe pressure multiplier adjusts how wide this window is â€” in high-pressure economies (multiplier > 1), the window shortens. In slow economies (multiplier < 1), it widens.
+// In the daily signal recalculation worker:
+const timeMult = blueprint?.archetype_timeframe_mult ?? 1.0;
+// Base window: 7 days. Multiplier compresses or expands it.
+// High-pressure economy (1.3x) â†’ 7/1.3 â‰ˆ 5.4 days
+// Slow economy (0.8x) â†’ 7/0.8 = 8.75 days
+const windowDays = Math.round(7 / timeMult);
+const windowStart = new Date(now.getTime() - windowDays * 24 * 3600000);
+GATE: A blueprint with archetype_timeframe_mult = 1.5 has a shorter rolling window than one with mult = 0.8. Verify by checking window_start in signal_snapshots for two different blueprints.
+
+Addition 3 â€” Background loop: archetype difficulty adjustment in task scoring
+The background loop includes system health checks and task generation for idle blueprints. When the background loop generates tasks, it must apply archetype_difficulty_adj to the difficulty scoring. This means a blueprint in a High-Efficiency Manufacturing Economy (which has a positive difficulty adjustment) generates tasks that are scored as harder than the same blueprint would be in a Consumer Capitalist economy.
+// In background TaskGenerationWorker context:
+const diffAdj = blueprint?.archetype_difficulty_adj ?? 0.0;
+
+// Apply to difficulty cap selection:
+// diffAdj > 0 = harder economy, shift difficulty cap up one level
+// diffAdj < 0 = easier economy, keep difficulty cap as-is
+const difficultyShift = diffAdj > 0.3 ? 1 : diffAdj < -0.3 ? -1 : 0;
+const adjustedDifficulty = shiftDifficulty(base_difficulty_cap, difficultyShift);
+
+function shiftDifficulty(cap: string, shift: number): string {
+  const levels = ['very_easy','easy','moderate','hard','very_hard'];
+  const idx = levels.indexOf(cap);
+  return levels[Math.max(0, Math.min(4, idx + shift))];
+}
+
+Addition 4 â€” Register archetype_context_loaded event
+When any loop reads archetype data from the blueprint, it should emit a lightweight archetype_context_loaded event if the archetype data is missing (null). This alerts the system health worker that a blueprint is running without archetype context and triggers a re-read from the validation record.
+// In any loop that reads archetype fields:
+if (!blueprint?.primary_archetype_id) {
+  await emitEvent({
+    event_type:  'archetype_context_missing',
+    entity_type: 'blueprint',
+    entity_id:   blueprint_id,
+    user_id,     blueprint_id,
+    payload: { reason: 'archetype_fields_null', loop: 'primary|daily|background' }
+  });
+}
+
+D â€” ACCEPTANCE CRITERIA
+[ ] Primary loop applies archetype_execution_mult to enforcement package task limits. Logged per cycle.
+[ ] Daily loop applies archetype_timeframe_mult to rolling window calculation. Window differs between archetypes.
+[ ] Background loop applies archetype_difficulty_adj to task difficulty cap.
+[ ] archetype_context_missing event emitted when blueprint is missing archetype fields.
+[ ] No existing loop behaviour removed or broken. All 20 existing loop acceptance criteria still pass.
+
+E â€” FINAL REPORT FORMAT
+TORGIMA â€” PROMPT 5 ERECTOR ADDITIONS â€” BUILD REPORT
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+Addition 1 â€” Primary loop archetype mult:    [complete / error]
+Addition 2 â€” Daily loop window compression:  [complete / error]
+Addition 3 â€” Background difficulty shift:    [complete / error]
+Addition 4 â€” archetype_context_missing evt:  [complete / error]
+All existing loop tests still pass:          [yes / no]
+READY FOR PROMPT 6: [YES / NO]
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
