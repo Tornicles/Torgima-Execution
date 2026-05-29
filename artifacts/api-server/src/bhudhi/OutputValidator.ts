@@ -281,6 +281,17 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       if (!d["momentumStatus"]) errors.push("signal_narrative: missing momentumStatus");
       break;
 
+    case "external_intelligence":
+      if (!Array.isArray(d["marketTrends"])) errors.push("external_intelligence: marketTrends must be array");
+      if (!Array.isArray(d["opportunitySignals"])) errors.push("external_intelligence: opportunitySignals must be array");
+      if (!Array.isArray(d["riskSignals"])) errors.push("external_intelligence: riskSignals must be array");
+      if (!Array.isArray(d["competitorMoves"])) errors.push("external_intelligence: competitorMoves must be array");
+      if (!d["executionRecommendation"]) errors.push("external_intelligence: missing executionRecommendation");
+      break;
+
+    case "predictive_analysis":
+      break;
+
     case "erector_archetype_narrative":
     case "erector_purpose":
     case "erector_industry":

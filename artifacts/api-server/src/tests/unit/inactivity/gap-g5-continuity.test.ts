@@ -3,6 +3,52 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+function drizzleWhereEnd(rows: unknown[]) {
+  const end = {
+    limit: vi.fn().mockResolvedValue(rows),
+    orderBy: vi.fn(() => drizzleWhereEnd(rows)),
+    then(
+      onFulfilled: (value: unknown) => unknown,
+      onRejected?: (reason: unknown) => unknown,
+    ) {
+      return Promise.resolve(rows).then(onFulfilled, onRejected);
+    },
+  };
+  return end;
+}
+
+vi.mock("@workspace/db", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => drizzleWhereEnd([{ id: "bp-a", user_id: "u-a" }])),
+      })),
+    })),
+  },
+  blueprints: {
+    id: { name: "id" },
+    user_id: { name: "user_id" },
+    active: { name: "active" },
+    status: { name: "status" },
+    current_phase_id: { name: "current_phase_id" },
+  },
+  phases: {
+    id: { name: "id" },
+    blueprint_id: { name: "blueprint_id" },
+    order_index: { name: "order_index" },
+  },
+}));
+
+vi.mock("../../../engines/task-engine/TaskEngine.js", () => ({
+  revealAllDueTasksGlobal: vi.fn().mockResolvedValue(0),
+  topOffTaskQueuesForActiveBlueprints: vi.fn().mockResolvedValue(0),
+}));
+
+vi.mock("../../../engines/execution-loop/DailyLoopEngine.js", () => ({
+  runDailyLoopsForAllActiveBlueprints: vi.fn().mockResolvedValue(1),
+}));
+
 import {
   classifyInactivity,
   requiresRecoveryEvent,
@@ -104,18 +150,9 @@ describe("GAP G5 — schedulers", () => {
   });
 
   it("daily task cycle emits TASK_GENERATION_REQUESTED per blueprint", async () => {
-    const dbMod = await import("@workspace/db");
-    vi.spyOn(dbMod.db, "select").mockReturnValue({
-      from: () => ({
-        where: () => Promise.resolve([{ id: "bp-a", user_id: "u-a" }]),
-      }),
-    } as never);
-
+    vi.useRealTimers();
     const eventMod = await import("../../../services/EventService.js");
     const writeSpy = vi.spyOn(eventMod, "writeEvent").mockResolvedValue("evt-1");
-
-    const loopMod = await import("../../../engines/execution-loop/DailyLoopEngine.js");
-    vi.spyOn(loopMod, "runDailyLoopsForAllActiveBlueprints").mockResolvedValue(1);
 
     await runDailyTaskCycle();
 

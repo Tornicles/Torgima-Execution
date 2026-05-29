@@ -129,7 +129,7 @@ jobs:
           curl -fsS "$RAILWAY_API_URL/api/health" >/tmp/railway-health.json
           pnpm -F @workspace/scripts run wait:url -- --url "$RAILWAY_API_URL/api/health/schema" --label "onboarding schema readiness" --timeout-ms 120000 --interval-ms 3000
       - name: Phase 9 scenario suite
-        run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts --testTimeout=120000
+        run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts --testTimeout=120000 --hookTimeout=120000
         env:
           CI: "true"
 

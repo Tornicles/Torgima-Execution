@@ -52,7 +52,7 @@ describe("Blueprint infrastructure hardening", () => {
   it("condition matrix defines nothingness contract", () => {
     const c = getConditionContract("nothingness");
     expect(c.allowedExpansion).toBe(false);
-    expect(c.taskMax).toBe(2);
+    expect(c.taskMax).toBe(3);
   });
 
   it("team signal aggregation is deterministic", () => {

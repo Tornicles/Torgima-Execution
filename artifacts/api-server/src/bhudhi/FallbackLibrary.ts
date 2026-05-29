@@ -585,7 +585,12 @@ fallbacks.set("fallback.domain_resolution", (_ctx, sv) => ({
   contractVersion: "1.0",
   stateVersion: sv,
   confidence: "LOW",
-  data: { domain: "GENESIS", confidence: 0.5, reasoning: "Default domain — validation needed" },
+  data: {
+    domain: "GENESIS",
+    confidence: 0.5,
+    reasoning: "Default domain — validation needed",
+    cleanedGoal: String(_ctx["rawGoal"] ?? _ctx["goal"] ?? ""),
+  },
   missingFields: [],
   warnings: ["AI domain resolution unavailable — deterministic fallback used"],
   forbiddenActionRequested: false,

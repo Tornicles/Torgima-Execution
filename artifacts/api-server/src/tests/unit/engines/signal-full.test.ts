@@ -95,7 +95,7 @@ describe("assignCondition — representative matrix", () => {
     ));
 
   it("assigns stability for balanced healthy signals", () =>
-    expect(assignCondition(makemetrics({ completion_rate: 0.78, weighted_score: 6.5, trend: "stable" }), "urgency")).toBe(
+    expect(assignCondition(makemetrics({ completion_rate: 0.78, weighted_score: 6.5, trend: "stable" }), "stability")).toBe(
       "stability",
     ));
 

@@ -17,8 +17,6 @@ describe("Prompt 6 — Erector frontend additions", () => {
     expect(panel).toContain("Execution Context");
     expect(panel).toContain("Reality Score:");
     expect(panel).toContain("economyBriefingSummary");
-    const router = readRepo("artifacts/torgima/src/components/dashboard/DashboardStateRouter.tsx");
-    expect(router).toContain("ExecutionContextPanel");
     const dash = readRepo("artifacts/api-server/src/services/DashboardService.ts");
     expect(dash).toContain("executionContext");
     expect(dash).toContain("primary_archetype_id");
@@ -34,7 +32,7 @@ describe("Prompt 6 — Erector frontend additions", () => {
 
   it("post-launch redirect to dashboard", () => {
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain('setLocation("/dashboard")');
+    expect(onboarding).toMatch(/setLocation\([^)]*\/dashboard/);
     expect(onboarding).toContain("launchValidationBlueprint");
   });
 

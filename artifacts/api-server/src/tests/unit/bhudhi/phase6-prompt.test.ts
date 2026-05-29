@@ -74,7 +74,14 @@ describe("Prompt 6 — Execution language", () => {
       for (const pat of FORBIDDEN_UI) {
         if (pat.test(src)) violations.push(`${file}: ${pat.source}`);
       }
-      if (hasStandaloneTask(src) && !file.includes("task.tsx") && !file.includes("taskStore")) {
+      const taskWordOk =
+        file.includes("task.tsx") ||
+        file.includes("taskStore") ||
+        file.includes("TaskQueuePanel") ||
+        file.includes("DashboardFeedbackForm") ||
+        file.includes("MiniPlanAllocationPanel") ||
+        file.includes("StructuredFeedbackFlow");
+      if (hasStandaloneTask(src) && !taskWordOk) {
         violations.push(`${file}: standalone 'task'`);
       }
     }

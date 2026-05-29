@@ -60,37 +60,39 @@ if (integration) {
   delete process.env.DIRECT_URL;
 }
 
-vi.mock("@anthropic-ai/sdk", () => ({
-  default: class MockAnthropic {
-    messages = {
-      create: vi.fn().mockResolvedValue({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              outputType: "task_copy",
-              contractVersion: "1.0",
-              stateVersion: 0,
-              confidence: "MEDIUM",
-              data: {
-                title: "Test task",
-                instruction: "Test instruction",
-                proofInstruction: "Test proof",
-                successCriteria: ["Done"],
-                estimatedEffortLabel: "MEDIUM",
-                userFacingReason: "Test reason",
-              },
-              missingFields: [],
-              warnings: [],
-              forbiddenActionRequested: false,
-            }),
-          },
-        ],
-        usage: { input_tokens: 100, output_tokens: 200 },
-      }),
-    };
-  },
-}));
+if (!integration) {
+  vi.mock("@anthropic-ai/sdk", () => ({
+    default: class MockAnthropic {
+      messages = {
+        create: vi.fn().mockResolvedValue({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                outputType: "task_copy",
+                contractVersion: "1.0",
+                stateVersion: 0,
+                confidence: "MEDIUM",
+                data: {
+                  title: "Test task",
+                  instruction: "Test instruction",
+                  proofInstruction: "Test proof",
+                  successCriteria: ["Done"],
+                  estimatedEffortLabel: "MEDIUM",
+                  userFacingReason: "Test reason",
+                },
+                missingFields: [],
+                warnings: [],
+                forbiddenActionRequested: false,
+              }),
+            },
+          ],
+          usage: { input_tokens: 100, output_tokens: 200 },
+        }),
+      };
+    },
+  }));
+}
 
 vi.mock("resend", () => ({
   Resend: class MockResend {

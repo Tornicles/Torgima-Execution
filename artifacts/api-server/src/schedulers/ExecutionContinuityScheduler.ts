@@ -2,8 +2,8 @@
  * GAP G5 — hourly inactivity scan + daily midnight UTC execution cycle (DOC_11).
  */
 
-import { db, blueprints } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, blueprints, phases } from "@workspace/db";
+import { and, asc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
@@ -62,25 +62,23 @@ export async function runDailyTaskCycle(): Promise<void> {
   const { evaluatePhaseReadiness, advancePhase } = await import(
     "../engines/blueprint/PhaseProgressionEngine.js"
   );
-  const { db: database, phases: phasesTable, blueprints: bpTable } = await import("@workspace/db");
-  const { eq: eqOp, and: andOp, asc: ascOp } = await import("drizzle-orm");
 
   for (const bp of active) {
-    const [row] = await database
-      .select({ currentPhaseId: bpTable.current_phase_id })
-      .from(bpTable)
-      .where(eqOp(bpTable.id, bp.id))
+    const [row] = await db
+      .select({ currentPhaseId: blueprints.current_phase_id })
+      .from(blueprints)
+      .where(eq(blueprints.id, bp.id))
       .limit(1);
     if (!row?.currentPhaseId) continue;
 
     const readiness = await evaluatePhaseReadiness(bp.id, row.currentPhaseId);
     if (!readiness.canAdvance) continue;
 
-    const phaseRows = await database
+    const phaseRows = await db
       .select()
-      .from(phasesTable)
-      .where(eqOp(phasesTable.blueprint_id, bp.id))
-      .orderBy(ascOp(phasesTable.order_index));
+      .from(phases)
+      .where(eq(phases.blueprint_id, bp.id))
+      .orderBy(asc(phases.order_index));
 
     const idx = phaseRows.findIndex((p) => p.id === row.currentPhaseId);
     const next = idx >= 0 ? phaseRows[idx + 1] : undefined;

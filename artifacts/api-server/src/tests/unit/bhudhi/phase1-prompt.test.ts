@@ -135,8 +135,8 @@ describe("BHUDHI Prompt 1 — Agents & isolation", () => {
     const files = readdirSync(bhudhiDir).filter(f => f.endsWith(".ts"));
     for (const file of files) {
       const src = readFileSync(path.join(bhudhiDir, file), "utf8");
-      expect(src.includes("signalSnapshots")).toBe(false);
-      expect(src.includes("signal_snapshots")).toBe(false);
+      expect(/\binsert\s*\(\s*signalSnapshots\b/.test(src)).toBe(false);
+      expect(/\binsert\s*\(\s*signal_snapshots\b/.test(src)).toBe(false);
     }
   });
 

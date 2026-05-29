@@ -135,9 +135,10 @@ describe("B3 Memory read policy (T2, T3)", () => {
 
     const { retrieveMemory } = await import("../../../bhudhi/MemoryService.js");
     const summary = await retrieveMemory({ userId: "u1", triggerType: "TASK_DRAFTING" });
-    const parts = summary.split(" | ");
-    expect(parts.length).toBeLessThanOrEqual(3);
-    expect(parts).toEqual(["one", "two", "three"]);
+    expect(summary).toContain("[Memory context]");
+    expect(summary).toContain("Preference: one");
+    expect(summary).toContain("Capability: two");
+    expect(summary.split("\n").filter((l) => l.startsWith("- ")).length).toBeLessThanOrEqual(3);
   });
 });
 

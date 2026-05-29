@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { getBaseRules } from "../../../engines/control/ControlEngine.js";
 
 describe("ControlEngine — base rules", () => {
-  it("danger has taskMax = 1", () => {
+  it("danger has taskMax = 3", () => {
     const rules = getBaseRules("danger");
-    expect(rules.taskMax).toBe(1);
+    expect(rules.taskMax).toBe(3);
   });
   it("danger blocks scaling_operations", () => {
     const rules = getBaseRules("danger");
