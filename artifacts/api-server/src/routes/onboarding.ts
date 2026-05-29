@@ -6,7 +6,7 @@ import { ValidationService } from "../services/ValidationService.js";
 import { db, users, blueprints, featureFlags, validations } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
-import { checkSchemaHealth } from "../lib/verifySchema.js";
+import { checkOnboardingGoalSchemaHealth } from "../lib/verifySchema.js";
 import { BlueprintStatus } from "../types/stateMachine.js";
 import { SequenceTrackingService } from "../services/SequenceTrackingService.js";
 import { parseOnboardingGoalBody } from "../lib/onboardingGoalPayload.js";
@@ -71,18 +71,16 @@ router.post("/onboarding/goal", async (req, res) => {
 
     const input = parsed.data;
 
-    const schemaHealth = await checkSchemaHealth();
+    const schemaHealth = await checkOnboardingGoalSchemaHealth();
     if (!schemaHealth.ok) {
-      res.status(503).json({
-        ok: false,
-        error: {
-          code: "SCHEMA_OUTDATED",
-          message: "Database schema is out of date. Run Drizzle migrations with: pnpm -F @workspace/db migrate",
-          missing: schemaHealth.missing,
-          details: schemaHealth.missing.join(", "),
-        },
-        meta: { timestamp: new Date().toISOString() },
-      });
+      req.log.warn({ missing: schemaHealth.missing }, "[Onboarding] schema preflight failed");
+      failure(
+        res,
+        "SCHEMA_OUT_OF_DATE",
+        "Database schema is out of date. Run Drizzle migrations with: pnpm db:ci",
+        503,
+        { detail: schemaHealth.missing.join(", "), retryable: true },
+      );
       return;
     }
 

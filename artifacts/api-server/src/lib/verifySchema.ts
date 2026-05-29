@@ -8,6 +8,7 @@ const REQUIRED_COLUMNS: RequiredColumn[] = [
   { table: "validations", column: "validation_kind" },
   { table: "validations", column: "payload_version" },
   { table: "validations", column: "contract_id" },
+  { table: "validations", column: "selected_path" },
   { table: "validations", column: "selected_path_type" },
   { table: "validations", column: "launch_blocked" },
   { table: "validations", column: "readiness" },
@@ -376,6 +377,45 @@ async function verifySchemaRequirements(tables: string[], columns: RequiredColum
 
 export async function verifyOnboardingSchema(): Promise<SchemaVerifyResult> {
   return verifySchemaRequirements(REQUIRED_TABLES, REQUIRED_COLUMNS);
+}
+
+/** Columns/tables required only for POST /api/onboarding/goal (not full Erector boot). */
+const ONBOARDING_GOAL_TABLES = ["users", "blueprints", "validations"] as const;
+
+const ONBOARDING_GOAL_COLUMNS: RequiredColumn[] = [
+  { table: "validations", column: "intelligence_payload" },
+  { table: "validations", column: "validation_kind" },
+  { table: "validations", column: "payload_version" },
+  { table: "validations", column: "contract_id" },
+  { table: "validations", column: "selected_path" },
+  { table: "validations", column: "selected_path_type" },
+  { table: "validations", column: "launch_blocked" },
+  { table: "validations", column: "readiness" },
+  { table: "validations", column: "blueprint_contract" },
+  { table: "validations", column: "tier" },
+  { table: "blueprints", column: "tier" },
+  { table: "blueprints", column: "mode" },
+  { table: "blueprints", column: "raw_goal" },
+  { table: "blueprints", column: "purpose" },
+  { table: "blueprints", column: "timeframe_days" },
+  { table: "blueprints", column: "commitment_level" },
+];
+
+export async function verifyOnboardingGoalSchema(): Promise<SchemaVerifyResult> {
+  return verifySchemaRequirements([...ONBOARDING_GOAL_TABLES], ONBOARDING_GOAL_COLUMNS);
+}
+
+function schemaVerifyToHealth(result: SchemaVerifyResult): SchemaHealthResult {
+  const missing = [
+    ...result.missingTables.map((t) => `Missing table: ${t}`),
+    ...result.missingColumns.map((c) => `Missing column: ${c.table}.${c.column}`),
+  ];
+  return { ok: result.ok, missing };
+}
+
+/** Preflight for POST /api/onboarding/goal — avoids blocking on optional Erector-only columns. */
+export async function checkOnboardingGoalSchemaHealth(): Promise<SchemaHealthResult> {
+  return schemaVerifyToHealth(await verifyOnboardingGoalSchema());
 }
 
 export async function verifyBlueprintLaunchSchema(): Promise<SchemaVerifyResult> {
