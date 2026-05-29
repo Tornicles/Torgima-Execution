@@ -14,7 +14,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { users, calendarEvents, publishedContent } from "./tables.js";
+import { users, calendarEvents, publishedContent } from "./tables";
 
 export const externalIntegrations = pgTable(
   "external_integrations",

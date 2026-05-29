@@ -16,7 +16,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { blueprints } from "./tables.js";
+import { blueprints } from "./tables";
 
 export const bhudhiSystems = pgTable(
   "bhudhi_systems",

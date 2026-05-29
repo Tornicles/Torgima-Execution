@@ -11,7 +11,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
-import { users, principles, dailyPrincipleRecords } from "./tables.js";
+import { users, principles, dailyPrincipleRecords } from "./tables";
 
 export const publicProfileViews = pgTable("public_profile_views", {
   id: uuid("id").primaryKey().defaultRandom(),

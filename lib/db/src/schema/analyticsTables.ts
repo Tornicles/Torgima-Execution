@@ -14,7 +14,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { users, orders, principles } from "./tables.js";
+import { users, orders, principles } from "./tables";
 
 export const executionAnalytics = pgTable(
   "execution_analytics",

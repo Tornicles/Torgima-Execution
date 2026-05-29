@@ -13,7 +13,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { blueprints } from "./tables.js";
+import { blueprints } from "./tables";
 
 const blueprintFk = (name: string) =>
   uuid(name)
