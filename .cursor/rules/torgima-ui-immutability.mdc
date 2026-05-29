@@ -1,0 +1,43 @@
+---
+description: TORGIMA approved UI is locked — only data/intelligence may change
+alwaysApply: true
+---
+
+# TORGIMA UI Immutability (Layer 1 frozen)
+
+Approved dashboard designs are **production UI**. Build backend, APIs, sync, calculations, automation, and Bhudhi behavior in **Layer 2** only.
+
+## Never change (refuse if asked)
+
+Layout, structure, styling, visual hierarchy, header controls, card size/position/spacing, section order, typography, theme/brand colors, chart/table/list **shell** design.
+
+If asked to improve/redesign/modernize/simplify/restructure UI, respond:
+
+> TORGIMA UI is locked. Only functionality, intelligence, synchronization, calculations, automation, and data updates are allowed.
+
+## Allowed changes only
+
+Dynamic text, metrics, chart **values/labels/dates** (not position/size/style), table **rows**, list **items**, message content, validation/signal/condition outputs.
+
+## Development workflow
+
+1. Find existing component — do not create a replacement shell.
+2. Inject data/logic into it.
+3. Preserve design exactly.
+4. Verify no visual diff beyond data binding.
+
+## Screen shells (data only)
+
+| Screen | Locked regions |
+|--------|----------------|
+| Home | Blueprint progress, orders, signal overview, activity, timeline, milestones |
+| Bhudhi | Core panel, explanations, questions, system activity, info sources |
+| Erector | Validation/simulator/industry/learning cards, recent lists |
+| Validation results | Reality score, verdict, competitors, risks, opportunities, success plan |
+| Signals | Graph, condition, competitors, milestones, Bhudhi panel |
+| Project | Signal trend, condition, health, milestones, competitors |
+| Community / Academy / Messages / Settings | All layout; settings = user fields only |
+
+**Navigation:** fixed 10-item sidebar after Launch Direction only — see `docs/TORGIMA_NAVIGATION_AND_ACTIVATION.md`.
+
+Full policy: `docs/TORGIMA_UI_IMMUTABILITY.md`

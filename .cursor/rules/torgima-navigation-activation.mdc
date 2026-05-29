@@ -1,0 +1,37 @@
+---
+description: TORGIMA two-state gate — Erector pre-activation vs execution sidebar
+alwaysApply: true
+---
+
+# TORGIMA navigation & activation gate
+
+## Two states
+
+1. **Pre-activation** — Erector only (validation). No TORGIMA left sidebar. No Home/Signals/Project/etc.
+2. **Post-activation** — After **Launch Direction**: blueprint active, execution unlocked, full platform.
+
+## Locked sidebar (post-activation only)
+
+Fixed order forever — never add/remove/rename/reorder/hide/dynamic/role-based menus:
+
+`Home · Bhudhi · Erector · Signals · Project · Messages · Community · Academy · Reports · Settings`
+
+Left, vertical, full height, same width/spacing/icons. Only **active highlight** changes.
+
+## Pre-activation rules
+
+- Validation Results = **Erector** page → use `PreLaunchShell` (or equivalent), **never** `Layout` sidebar.
+- Onboarding / validate / validation/* (except post-launch) → no execution chrome.
+- Ask: `hasActiveBlueprint` / launch completed? If NO → Erector flow only.
+
+## Activation unlock
+
+Single event: **Launch Direction** (`launchValidationBlueprint`) → direction anchor, blueprint, plans, signals, condition → sidebar unlocks.
+
+## Refuse
+
+- Showing TORGIMA nav before launch
+- TORGIMA nav on validation-results
+- Any sidebar structure change when user asks to "improve navigation"
+
+Full spec: `docs/TORGIMA_NAVIGATION_AND_ACTIVATION.md`
