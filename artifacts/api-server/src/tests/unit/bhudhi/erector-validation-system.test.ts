@@ -232,15 +232,14 @@ describe("Erector scoring and route integration", () => {
     expect(launchGate).toContain("Reality Score below 2.5");
 
     const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain("launchValidationBlueprint");
-    expect(onboarding).toContain("/api/v1/validations/");
-    expect(onboarding).toContain("/api/v1/validation/run");
-    expect(onboarding).toContain("AlignedValidationResults");
-    expect(onboarding).toContain("AlignedGoalIntake");
+    expect(onboarding).toContain("ErectorOnboardingRefinementFlow");
+    expect(onboarding).toContain("onValidationStarted");
     expect(onboarding).toContain("/validation/");
+    expect(onboarding).not.toContain("AlignedValidationResults");
 
     const appRoutes = readRepo("artifacts/torgima/src/App.tsx");
-    expect(appRoutes).toContain("/validation/:id/running");
+    expect(appRoutes).toContain("/upgrade");
+    expect(appRoutes).toContain("/validation/:id/results");
 
     const webSearch = readRepo("artifacts/api-server/src/bhudhi/erectorWebSearch.ts");
     expect(webSearch).toContain("ERECTOR_INDUSTRY_ANALYZE");

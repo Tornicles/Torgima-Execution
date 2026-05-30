@@ -5,11 +5,11 @@ import { getGetDashboardStateQueryOptions } from "@workspace/api-client-react";
 import { getAuthSession } from "@/lib/torgima-api";
 import { getDashboardUiState, toDashboardProjection } from "@/lib/dashboard-types";
 
-const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding", "/erector"];
+const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding", "/erector", "/upgrade"];
 const POST_LAUNCH_HOME = "/dashboard";
 
 export function isPreLaunchPath(path: string): boolean {
-  if (path === "/validate" || path === "/erector" || path.startsWith("/onboarding")) return true;
+  if (path === "/validate" || path === "/erector" || path === "/upgrade" || path.startsWith("/onboarding")) return true;
   if (path.startsWith("/validation/") && !path.includes("/results") && path.endsWith("/running")) return true;
   if (path.includes("/validation/") && path.endsWith("/results")) return true;
   if (path.includes("/validation/") && path.endsWith("/blueprint")) return true;

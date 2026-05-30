@@ -75,6 +75,7 @@ import v1FeaturesRouter from "./v1-features.js";
 import erectorRefinementRouter from "./erector-refinement.js";
 import erectorGoalRouter from "./erector-goal.js";
 import erectorDashboardRouter from "./erector-dashboard.js";
+import upgradeRouter from "./upgrade.js";
 import debugRouter from "./debug.js";
 
 const router = Router();
@@ -155,6 +156,7 @@ router.use(v1FeaturesRouter);
 router.use(erectorRefinementRouter);
 router.use(erectorGoalRouter);
 router.use(erectorDashboardRouter);
+router.use(upgradeRouter);
 router.use(debugRouter);
 
 export default router;

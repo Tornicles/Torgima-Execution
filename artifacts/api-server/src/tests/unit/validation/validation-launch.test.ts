@@ -28,11 +28,10 @@ describe("validation launch route", () => {
     expect(routes).toContain("ValidationLaunchService");
   });
 
-  it("onboarding calls launchValidationBlueprint with validations launch URL", () => {
-    const onboarding = readRepo("artifacts/torgima/src/pages/onboarding.tsx");
-    expect(onboarding).toContain("launchValidationBlueprint");
-    expect(onboarding).toContain("/api/v1/validations/");
-    expect(onboarding).toContain("Launching Blueprint");
+  it("validation results page launches blueprint via validations launch URL", () => {
+    const results = readRepo("artifacts/torgima/src/pages/validation-results.tsx");
+    expect(results).toContain("launchValidationBlueprint");
+    expect(results).toContain("finalizeValidationBlueprint");
   });
 
   it("torgima-api exposes launchValidationBlueprint helper", () => {

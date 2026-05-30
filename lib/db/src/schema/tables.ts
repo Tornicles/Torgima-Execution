@@ -81,6 +81,8 @@ export const users = pgTable("users", {
   commitment_level: commitmentLevelEnum("commitment_level"),
   timezone: text("timezone").notNull().default("UTC"),
   onboarding_complete: boolean("onboarding_complete").notNull().default(false),
+  execution_state: text("execution_state").notNull().default("NORMAL"),
+  first_login_after_upgrade: boolean("first_login_after_upgrade").notNull().default(false),
   active_blueprint_id: uuid("active_blueprint_id"),
   civilization_context: jsonb("civilization_context"),
   communication_profile: jsonb("communication_profile"),

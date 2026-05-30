@@ -10,6 +10,7 @@ import { TierFeatureGate } from "@/components/sequence/TierFeatureGate";
 import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { getAuthSession } from "@/lib/torgima-api";
+import { UpgradeGate } from "@/components/UpgradeGate";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -31,6 +32,7 @@ const ValidationResultsPage = lazy(() => import("@/pages/validation-results"));
 const ValidationBlueprintPage = lazy(() => import("@/pages/validation-blueprint"));
 const ValidationScoresPage = lazy(() => import("@/pages/validation-scores"));
 const ValidationRunningPage = lazy(() => import("@/pages/validation-running"));
+const UpgradePage = lazy(() => import("@/pages/upgrade"));
 const BlueprintPage = lazy(() => import("@/pages/blueprint"));
 const BlueprintIndexPage = lazy(() => import("@/pages/blueprint-index"));
 const TaskPage = lazy(() => import("@/pages/task"));
@@ -173,6 +175,7 @@ const ProtectedValidationResults = protect(ValidationResultsPage);
 const ProtectedValidationBlueprint = protect(ValidationBlueprintPage);
 const ProtectedValidationScores = protect(ValidationScoresPage);
 const ProtectedValidationRunning = protect(ValidationRunningPage);
+const ProtectedUpgrade = protect(UpgradePage);
 const ProtectedDashboard = protect(Dashboard);
 const ProtectedTaskPage = protect(TaskPage);
 const ProtectedFeedbackPage = protect(FeedbackPage);
@@ -220,6 +223,7 @@ const ValidateRoute = ProtectedValidate;
 const ValidationResultsRoute = withAppLayout(ProtectedValidationResults);
 const ValidationBlueprintRoute = ProtectedValidationBlueprint;
 const ValidationScoresRoute = ProtectedValidationScores;
+const UpgradeRoute = ProtectedUpgrade;
 const DashboardRoute = withAppLayout(ProtectedDashboard);
 const TaskRoute = withAppLayout(ProtectedTaskPage);
 const FeedbackRoute = withAppLayout(ProtectedFeedbackPage);
@@ -284,6 +288,7 @@ function AppRoutes() {
         <Route path="/verify" component={VerifyPage} />
         <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
+        <Route path="/upgrade" component={UpgradeRoute} />
         <Route path="/validate" component={ValidateRoute} />
         <Route path="/validation/:id/results" component={ValidationResultsRoute} />
         <Route path="/validation/:id/blueprint" component={ValidationBlueprintRoute} />
@@ -378,7 +383,9 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AppRoutes />
+            <UpgradeGate>
+              <AppRoutes />
+            </UpgradeGate>
           </WouterRouter>
           <Toaster />
         </TooltipProvider>

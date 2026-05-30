@@ -30,6 +30,8 @@ export interface SafeUser {
   mode: string;
   tier: string;
   onboardingComplete: boolean;
+  executionState: string;
+  firstLoginAfterUpgrade: boolean;
   /** Active blueprint id for client intelligence / execution context. */
   activeBlueprintId: string | null;
   timezone: string;

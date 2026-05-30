@@ -254,6 +254,8 @@ function toSafeUser(user: typeof users.$inferSelect, activeBlueprintId: string |
     mode: user.mode,
     tier: user.tier,
     onboardingComplete: user.onboarding_complete,
+    executionState: user.execution_state ?? "NORMAL",
+    firstLoginAfterUpgrade: user.first_login_after_upgrade ?? false,
     activeBlueprintId,
     timezone: user.timezone,
     notificationPreferences: (user.notification_preferences as Record<string, unknown>) ?? {},

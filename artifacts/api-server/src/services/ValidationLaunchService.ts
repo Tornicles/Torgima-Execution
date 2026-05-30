@@ -6,7 +6,7 @@ import { ValidationService } from "./ValidationService.js";
 import { ValidationFinalizationService } from "./ValidationFinalizationService.js";
 import type { Blueprint } from "../types/blueprint.js";
 import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
-import { dispatchPendingEvents } from "./EventDispatcher.js";
+import { PlatformUpgradeService } from "./PlatformUpgradeService.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 
 export type SelectedDirection = {
@@ -196,6 +196,8 @@ export const ValidationLaunchService = {
         "[BlueprintLaunch] Event dispatch after launch failed (non-fatal)",
       );
     });
+
+    await PlatformUpgradeService.completeUpgradeAfterLaunch(input.userId, row.blueprint_id).catch(() => null);
 
     logger.info(
       {

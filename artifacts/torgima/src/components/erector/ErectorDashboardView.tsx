@@ -263,7 +263,7 @@ export function ErectorDashboardView() {
           <Card className="p-5">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-bold text-[#0F172A]">Recent Validations</h2>
-              <Link href="/validation/scores">
+              <Link href="/validate">
                 <span className="text-xs font-semibold" style={{ color: PURPLE }}>
                   View all
                 </span>
