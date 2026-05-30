@@ -15,6 +15,10 @@ import {
   generatePivotPathOptions,
 } from "../engines/strategy/StrategyEngine.js";
 import { BLUEPRINT_SELECTION_CATALOG } from "../engines/blueprint/BlueprintRuleEngine.js";
+import {
+  BLUEPRINT_CREATION_FLOW,
+  BLUEPRINT_TIER_CARDS,
+} from "../engines/blueprint/blueprintTierManifest.js";
 import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
@@ -135,7 +139,11 @@ router.get("/blueprints/features", async (req, res) => {
 router.get("/blueprints/selection-catalog", async (req, res) => {
   try {
     await requireAuth(req, "USER_SESSION");
-    success(res, BLUEPRINT_SELECTION_CATALOG);
+    success(res, {
+      ...BLUEPRINT_SELECTION_CATALOG,
+      tierCards: BLUEPRINT_TIER_CARDS,
+      creationFlow: BLUEPRINT_CREATION_FLOW,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

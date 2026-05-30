@@ -41,6 +41,7 @@ import { getLatestRewardForBlueprint } from "../engines/reward/RewardEngine.js";
 import { checkOutcomeIntegrity, getOpenFlags } from "../engines/outcome/OutcomeValidationEngine.js";
 import { evaluatePhaseReadiness } from "../engines/blueprint/PhaseProgressionEngine.js";
 import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
+import { buildHomeDashboardPanels } from "../lib/homeDashboardPanels.js";
 
 async function buildNoActiveBlueprintDashboardState(userId: string) {
   const [user, signals, recentFeedback, activeOrders] = await Promise.all([
@@ -713,6 +714,50 @@ export const DashboardService = {
       externalIntelligenceFreshness = ext ? "fresh" : "none";
     }
 
+    const predictionPayload = prediction
+      ? {
+          dropoutRisk: prediction.dropoutRisk,
+          burnoutRisk: prediction.burnoutRisk,
+          plateauRisk: prediction.plateauRisk,
+          scalingReadiness: prediction.scalingReadiness,
+          recommendedAction: prediction.recommendedAction,
+          primaryRisk: prediction.primaryRisk,
+          primaryOpportunity: prediction.primaryOpportunity,
+          confidence: prediction.confidence,
+        }
+      : null;
+
+    let homePanels: Awaited<ReturnType<typeof buildHomeDashboardPanels>> | null = null;
+    if (blueprintId && activeBlueprint) {
+      try {
+        homePanels = await buildHomeDashboardPanels({
+          userId,
+          blueprintId,
+          blueprintHref: `/blueprint/${blueprintId}`,
+          dashboardUiState,
+          conditionDetail: condEffective,
+          signalProjection,
+          signals,
+          activeOrders,
+          operationalAwareness,
+          signalBlueprintBridge,
+          intelligence,
+          prediction: predictionPayload,
+          phaseReadiness: phaseReadiness
+            ? {
+                completionPercentage: phaseReadiness.completionPercentage,
+                currentPhase: phaseReadiness.currentPhase,
+              }
+            : null,
+          recentFeedback,
+          alerts: alerts.map((a) => ({ code: a.code, message: a.message, severity: a.severity })),
+        });
+      } catch (err) {
+        logger.error({ err, blueprintId, userId }, "buildHomeDashboardPanels failed");
+        homePanels = null;
+      }
+    }
+
     return {
       hasActiveBlueprint: Boolean(activeBlueprint),
       state: activeBlueprint ? ("ACTIVE_BLUEPRINT" as const) : ("NO_ACTIVE_BLUEPRINT" as const),
@@ -755,19 +800,9 @@ export const DashboardService = {
       pendingSync: dashboardUiState === "PENDING_SYNC",
       alerts,
       intelligence,
-      prediction: prediction
-        ? {
-            dropoutRisk: prediction.dropoutRisk,
-            burnoutRisk: prediction.burnoutRisk,
-            plateauRisk: prediction.plateauRisk,
-            scalingReadiness: prediction.scalingReadiness,
-            recommendedAction: prediction.recommendedAction,
-            primaryRisk: prediction.primaryRisk,
-            primaryOpportunity: prediction.primaryOpportunity,
-            confidence: prediction.confidence,
-          }
-        : null,
+      prediction: predictionPayload,
       externalIntelligenceFreshness,
+      homePanels,
     };
   },
 };

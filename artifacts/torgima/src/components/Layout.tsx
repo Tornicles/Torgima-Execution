@@ -3,57 +3,83 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
   Map,
-  ClipboardList,
   MessageSquare,
   Activity,
-  Target,
-  RefreshCw,
-  User,
-  BookOpen,
-  FileText,
   Settings,
   ChevronRight,
+  ChevronLeft,
   Menu,
   X,
-  Shield,
   Sparkles,
   Lock,
   Brain,
   Zap,
+  Users,
+  GraduationCap,
+  BookOpen,
+  RefreshCw,
+  Target,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
-import { sidebarMotivation } from "@/design";
 import { apiGet } from "@/lib/torgima-api";
 import type { FeatureStatusPayload } from "@/lib/feature-gate";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/blueprint", label: "Blueprint", icon: Map },
-  { href: "/orders", label: "Orders", icon: ClipboardList },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/signals", label: "Signals", icon: Activity },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/app/bhudhi", label: "Bhudhi", icon: Sparkles },
-  { href: "/strategy", label: "Strategy", icon: Target },
-  { href: "/recovery", label: "Recovery", icon: RefreshCw },
-  { href: "/character", label: "Character", icon: User },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/erector", label: "Erector", icon: Zap },
+  { href: "/signals", label: "Signals", icon: Activity },
+  { href: "/blueprint-index", label: "Projects", icon: Map },
+  { href: "/feedback", label: "Messages", icon: MessageSquare },
+  { href: "/character", label: "Community", icon: Users },
+  { href: "/knowledge", label: "Academy", icon: GraduationCap },
 ];
 
 const NAV_SECONDARY = [{ href: "/settings", label: "Settings", icon: Settings }];
 
-function TorgimaLogo() {
+const MOBILE_NAV = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/orders", label: "Orders", icon: Map },
+  { href: "/signals", label: "Signals", icon: Activity },
+  { href: "/app/bhudhi", label: "Bhudhi", icon: Sparkles },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const HOME_PURPLE = "#5B21FF";
+
+function TorgimaLogo({ compact }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-        <path d="M12 4L6 8V16L12 20L18 16V8L12 4Z" stroke="#1a8c3a" strokeWidth="2" fill="none" />
-        <path d="M9 11L12 9L15 11" stroke="#1a8c3a" strokeWidth="2" strokeLinecap="round" />
-        <path d="M12 9V15" stroke="#1a8c3a" strokeWidth="2" strokeLinecap="round" />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden className="shrink-0">
+        <path d="M14 3L5 8.5V19.5L14 25L23 19.5V8.5L14 3Z" fill={HOME_PURPLE} fillOpacity="0.12" stroke={HOME_PURPLE} strokeWidth="1.5" />
+        <text x="14" y="17" textAnchor="middle" fill={HOME_PURPLE} fontSize="11" fontWeight="bold">
+          T
+        </text>
       </svg>
-      <div>
-        <span className="font-bold text-sm tracking-tight text-gray-900">TORGIMA</span>
-        <p className="text-[9px] text-gray-400 leading-tight">Reality · Blueprint · Execution</p>
-      </div>
+      {!compact && (
+        <div>
+          <span className="font-bold text-xs tracking-tight text-gray-900 leading-tight block">
+            TORGIMA
+          </span>
+          <p className="text-[8px] text-gray-400 leading-tight uppercase tracking-wide">
+            Execution System
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DotMeter({ filled, total, color }: { filled: number; total: number; color: string }) {
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: i < filled ? color : "#E2E8F0" }}
+        />
+      ))}
     </div>
   );
 }
@@ -80,11 +106,12 @@ function NavLink({
         onClick={onNavigate}
         className={`flex items-center gap-2.5 px-3 py-2 rounded-r-lg cursor-pointer transition-all text-sm border-l-[3px] ${
           isActive
-            ? "bg-[var(--torgima-primary-light)] text-[var(--torgima-primary)] font-semibold border-[var(--torgima-primary)]"
+            ? "font-semibold border-[#5B21FF]"
             : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900"
         }`}
+        style={isActive ? { backgroundColor: "#F5F3FF", color: HOME_PURPLE } : undefined}
       >
-        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[var(--torgima-primary)]" : "text-gray-400"}`} />
+        <Icon className="w-4 h-4 shrink-0" style={isActive ? { color: HOME_PURPLE } : { color: "#9CA3AF" }} />
         <span className="flex-1 truncate">{label}</span>
         {locked && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
       </div>
@@ -109,22 +136,33 @@ const TIER_NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   "/ultimate/scene": Sparkles,
 };
 
+type CharacterSidebar = {
+  executionIntelligence?: number;
+  consistency?: number;
+  characterLevel?: number;
+};
+
 export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [featureStatus, setFeatureStatus] = useState<FeatureStatusPayload | null>(null);
+  const [character, setCharacter] = useState<CharacterSidebar | null>(null);
   const { data: me } = useGetMe();
   const displayName = me?.displayName ?? me?.email?.split("@")[0] ?? "Builder";
   const tier = me?.tier ?? "Premium";
+  const level = character?.characterLevel ?? 7;
+  const execDots = Math.min(12, Math.round((character?.executionIntelligence ?? 0.65) * 12));
+  const consistencyDots = Math.min(12, Math.round((character?.consistency ?? 0.58) * 12));
 
   useEffect(() => {
     void apiGet<FeatureStatusPayload>("/api/v1/features/status")
       .then(setFeatureStatus)
       .catch(() => setFeatureStatus(null));
+    void apiGet<{ character?: CharacterSidebar }>("/api/character/current")
+      .then((r) => setCharacter(r.character ?? null))
+      .catch(() => setCharacter(null));
   }, [location]);
-
-  const motivationKey = Object.keys(sidebarMotivation).find((p) => p !== "default" && location.startsWith(p));
-  const motivation = sidebarMotivation[motivationKey ?? "default"] ?? sidebarMotivation.default;
 
   const sidebar = (
     <>
@@ -165,38 +203,95 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
         </div>
       </nav>
 
-      <div className="px-3 py-3 mx-2 mb-2 rounded-lg border border-[var(--torgima-primary-light)] bg-[var(--torgima-primary-light)]">
-        <div className="flex gap-2">
-          <Shield className="w-4 h-4 text-[var(--torgima-primary)] shrink-0 mt-0.5" />
-          <div>
-            <p className="text-[11px] font-semibold text-gray-800 leading-snug">{motivation.title}</p>
-            <p className="text-[10px] text-[var(--torgima-primary)] italic mt-1 leading-snug">{motivation.body}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-gray-100 px-3 py-3">
-        <Link href="/settings">
-          <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center shrink-0">
-                <span className="text-white text-xs font-bold">{displayName.charAt(0).toUpperCase()}</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
-                <p className="text-[10px] text-[var(--torgima-primary)] font-medium capitalize">{tier} Plan</p>
+      {!sidebarCollapsed && (
+        location.startsWith("/app/bhudhi") || location === "/bhudhi" ? (
+          <div className="mx-2 mb-2 rounded-xl border border-violet-200 bg-[#F5F3FF] p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 shrink-0" style={{ color: HOME_PURPLE }} />
+              <div>
+                <p className="text-sm font-bold text-gray-900">Bhudhi</p>
+                <p className="text-[10px] text-gray-500">Your intelligence layer</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 mt-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Active
+            </p>
+            <p className="text-[10px] text-[#64748B] mt-2 italic leading-snug">
+              Bhudhi explains. You decide. You execute.
+            </p>
           </div>
-        </Link>
-      </div>
+        ) : location === "/erector" ? (
+          <div className="mx-2 mb-2 rounded-xl border border-violet-200 bg-[#F5F3FF] p-3">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 shrink-0" style={{ color: HOME_PURPLE }} />
+              <div>
+                <p className="text-sm font-bold text-gray-900">Erector</p>
+                <p className="text-[10px] text-gray-500">Reality & Preparation Layer</p>
+              </div>
+            </div>
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 mt-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Active
+            </p>
+            <p className="text-[10px] text-[#64748B] mt-2 italic leading-snug">
+              We validate. We simulate. We prepare.
+            </p>
+          </div>
+        ) : (
+          <div className="mx-2 mb-2 rounded-xl border border-violet-100 bg-violet-50/50 p-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                style={{ backgroundColor: HOME_PURPLE }}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[10px] text-gray-500">Level {level}</p>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white"
+                    style={{ backgroundColor: HOME_PURPLE }}
+                  >
+                    Pro
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              <div>
+                <p className="text-[9px] font-semibold text-gray-500 uppercase mb-1">Execution Intelligence</p>
+                <DotMeter filled={execDots} total={12} color={HOME_PURPLE} />
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold text-gray-500 uppercase mb-1">Consistency</p>
+                <DotMeter filled={consistencyDots} total={12} color="#22C55E" />
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
+      <button
+        type="button"
+        onClick={() => setSidebarCollapsed((c) => !c)}
+        className="mx-3 mb-3 flex items-center gap-2 text-[10px] text-gray-500 hover:text-gray-800 py-2 border-t border-gray-100 w-[calc(100%-1.5rem)]"
+      >
+        <ChevronLeft className={`w-3.5 h-3.5 transition ${sidebarCollapsed ? "rotate-180" : ""}`} />
+        {sidebarCollapsed ? "Expand" : "Collapse"}
+      </button>
     </>
   );
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
-      <aside className="hidden lg:flex w-[200px] shrink-0 flex-col border-r border-gray-200 bg-white">
+      <aside
+        className={`hidden lg:flex shrink-0 flex-col border-r border-gray-200 bg-white transition-all ${
+          sidebarCollapsed ? "w-[72px]" : "w-[220px]"
+        }`}
+      >
         {sidebar}
       </aside>
 
@@ -234,7 +329,35 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
           </button>
           <TorgimaLogo />
         </div>
-        <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-white pb-20 lg:pb-0">
+          {(pageTitle || pageSubtitle) && (
+            <div className="px-6 pt-4 hidden">
+              {pageTitle && <h1 className="text-lg font-bold">{pageTitle}</h1>}
+              {pageSubtitle && <p className="text-sm text-gray-500">{pageSubtitle}</p>}
+            </div>
+          )}
+          {children}
+        </main>
+
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white flex justify-around py-2 safe-area-pb">
+          {MOBILE_NAV.map((item) => {
+            const isActive =
+              location === item.href ||
+              (item.href !== "/dashboard" && location.startsWith(item.href));
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  className="flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px]"
+                  style={isActive ? { color: HOME_PURPLE } : { color: "#94A3B8" }}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

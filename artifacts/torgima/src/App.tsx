@@ -25,8 +25,10 @@ import UnsubscribePage from "@/pages/unsubscribe";
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
 const ErectorDashboard = lazy(() => import("@/pages/erector-dashboard"));
+const AcademyPage = lazy(() => import("@/pages/academy"));
 const ValidatePage = lazy(() => import("@/pages/validate"));
 const ValidationResultsPage = lazy(() => import("@/pages/validation-results"));
+const ValidationBlueprintPage = lazy(() => import("@/pages/validation-blueprint"));
 const ValidationScoresPage = lazy(() => import("@/pages/validation-scores"));
 const ValidationRunningPage = lazy(() => import("@/pages/validation-running"));
 const BlueprintPage = lazy(() => import("@/pages/blueprint"));
@@ -165,8 +167,10 @@ function withTierFeatureGate(required: "growth" | "ultimate", Page: RoutePage): 
 
 const ProtectedOnboarding = protect(Onboarding);
 const ProtectedErectorDashboard = protect(ErectorDashboard);
+const ProtectedAcademyPage = protect(AcademyPage);
 const ProtectedValidate = protect(ValidatePage);
 const ProtectedValidationResults = protect(ValidationResultsPage);
+const ProtectedValidationBlueprint = protect(ValidationBlueprintPage);
 const ProtectedValidationScores = protect(ValidationScoresPage);
 const ProtectedValidationRunning = protect(ValidationRunningPage);
 const ProtectedDashboard = protect(Dashboard);
@@ -214,6 +218,7 @@ function withAppLayout(Page: ComponentType) {
 const OnboardingRoute = ProtectedOnboarding;
 const ValidateRoute = ProtectedValidate;
 const ValidationResultsRoute = ProtectedValidationResults;
+const ValidationBlueprintRoute = ProtectedValidationBlueprint;
 const ValidationScoresRoute = ProtectedValidationScores;
 const DashboardRoute = withAppLayout(ProtectedDashboard);
 const TaskRoute = withAppLayout(ProtectedTaskPage);
@@ -237,6 +242,8 @@ const UltimateRoute = withAppLayout(ProtectedUltimatePage);
 const UltimatePredictionsRoute = withAppLayout(ProtectedUltimatePredictionsPage);
 const UltimateSceneRoute = withAppLayout(ProtectedUltimateScenePage);
 const ReportsRoute = withAppLayout(ProtectedReportsPage);
+const ErectorRoute = withAppLayout(ProtectedErectorDashboard);
+const AcademyRoute = withAppLayout(ProtectedAcademyPage);
 const BhudhiRoute = withAppLayout(ProtectedBhudhiPage);
 const BhudhiEconomicsRoute = withAppLayout(protect(BhudhiEconomicsPage));
 const BhudhiDecisionRoute = withAppLayout(protect(BhudhiDecisionPage));
@@ -279,8 +286,12 @@ function AppRoutes() {
 
         <Route path="/validate" component={ValidateRoute} />
         <Route path="/validation/:id/results" component={ValidationResultsRoute} />
+        <Route path="/validation/:id/blueprint" component={ValidationBlueprintRoute} />
         <Route path="/onboarding/goal" component={ValidateRoute} />
-        <Route path="/erector" component={ProtectedErectorDashboard} />
+        <Route path="/erector" component={ErectorRoute} />
+        <Route path="/academy" component={AcademyRoute} />
+        <Route path="/academy/course/:courseId" component={AcademyRoute} />
+        <Route path="/academy/lesson/:lessonId" component={AcademyRoute} />
         <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/validation/:id/running" component={ProtectedValidationRunning} />
         <Route path="/validation/scores" component={ValidationScoresRoute} />

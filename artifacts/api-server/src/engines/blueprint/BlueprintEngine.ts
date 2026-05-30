@@ -261,6 +261,7 @@ export class BlueprintEngine {
             structuralLaw: "plans_targets_phases_projects_actions_orders_never_skipped",
             launchCompleted: true,
             selectedBlueprintLevel: tier,
+            selectedBlueprintType: tier,
             selectedMode: mode,
             initializedCondition: CONDITIONS.NOTHINGNESS,
             aiRule: "AI assists; rules control; signals define truth; condition regulates execution.",

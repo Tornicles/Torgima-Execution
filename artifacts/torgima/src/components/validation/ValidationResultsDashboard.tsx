@@ -1,64 +1,134 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Download, Rocket } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { PageHeaderActions } from "@/components/design-system/PageHeaderActions";
+  Bell,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  Clock,
+  Compass,
+  Download,
+  Info,
+  Infinity,
+  Pencil,
+  Rocket,
+  Shield,
+  Sparkles,
+  Target,
+  X,
+} from "lucide-react";
+import { useGetMe } from "@workspace/api-client-react";
 import type { PathKey } from "./PathPanels";
 import type { ValidationScreenData } from "./ValidationScreen";
-import { apiFetchEnvelope } from "@/lib/torgima-api";
-import { postValidationRun } from "@/lib/validation-run";
 import {
-  bottomCtaSentence,
-  buildViewModel,
-  demandLevel,
-  headlineForVerdict,
-  plainRiskTitle,
-  ringStrokeColor,
-} from "./validation-results-helpers";
+  buildResultsDashboardModel,
+  type GlanceRow,
+  type StatusTone,
+} from "./validation-results-dashboard-model";
 
-function ConfidenceRing({ pct }: { pct: number }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const offset = c - (pct / 100) * c;
-  const color = ringStrokeColor(pct);
-  return (
-    <svg width="140" height="140" viewBox="0 0 120 120" className="mx-auto">
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10" />
-      <circle
-        cx="60"
-        cy="60"
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="10"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform="rotate(-90 60 60)"
-      />
-    </svg>
-  );
+const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
+
+function toneClass(tone: StatusTone): string {
+  if (tone === "green") return "text-emerald-600 bg-emerald-50";
+  if (tone === "orange") return "text-amber-600 bg-amber-50";
+  if (tone === "red") return "text-red-600 bg-red-50";
+  if (tone === "purple") return "text-[#5B21FF] bg-[#F5F3FF]";
+  return "text-[#64748B] bg-[#F8FAFC]";
 }
 
-function ExpandPanel({ open, children }: { open: boolean; children: ReactNode }) {
+function RealityRing({ pct }: { pct: number }) {
+  const r = 54;
+  const c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  const stroke = pct >= 70 ? "#22C55E" : pct >= 50 ? "#F59E0B" : "#EF4444";
   return (
-    <div
-      className="overflow-hidden transition-all duration-300 ease-in-out"
-      style={{ maxHeight: open ? "800px" : "0px", opacity: open ? 1 : 0 }}
-    >
-      <div className="pt-3 pb-1">{children}</div>
+    <div className="relative mx-auto h-[140px] w-[140px]">
+      <svg width="140" height="140" viewBox="0 0 120 120" className="mx-auto">
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#F1F5F9" strokeWidth="10" />
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="10"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90 60 60)"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-[#0B1220]">
+        {pct}%
+      </span>
     </div>
   );
 }
 
+function TrendChart({ years, values }: { years: string[]; values: number[] }) {
+  const w = 280;
+  const h = 100;
+  const pad = 8;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const points = values
+    .map((v, i) => {
+      const x = pad + (i / Math.max(values.length - 1, 1)) * (w - pad * 2);
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24">
+        <polyline
+          fill="none"
+          stroke="#5B21FF"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+        {values.map((v, i) => {
+          const x = pad + (i / Math.max(values.length - 1, 1)) * (w - pad * 2);
+          const y = h - pad - ((v - min) / range) * (h - pad * 2);
+          return <circle key={years[i]} cx={x} cy={y} r="4" fill="#5B21FF" />;
+        })}
+      </svg>
+      <div className="mt-2 flex justify-between text-[10px] font-medium text-[#94A3B8]">
+        {years.map((y) => (
+          <span key={y}>{y}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GlanceBadge({ row }: { row: GlanceRow }) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-[#F1F5F9] py-2.5 last:border-0">
+      <span className="text-xs font-medium text-[#64748B]">{row.label}</span>
+      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${toneClass(row.tone)}`}>
+        {row.value}
+      </span>
+    </div>
+  );
+}
+
+const PIPELINE = [
+  { label: "Input", done: true },
+  { label: "Analysis", done: true },
+  { label: "Reality Check", done: true },
+  { label: "Path Analysis", done: true },
+  { label: "Results", done: false, active: true },
+];
+
 export function ValidationResultsDashboard({
   data,
   validationId,
-  completedLabel = "Ready",
   selectedPath,
   onSelectPath,
   onLaunch,
@@ -66,779 +136,491 @@ export function ValidationResultsDashboard({
   launching,
   launchError,
   launchReady = true,
-  onDataUpdate,
 }: {
   data: ValidationScreenData;
   validationId?: string;
-  completedLabel?: string;
   selectedPath: PathKey;
   onSelectPath: (p: PathKey) => void;
   onLaunch: () => void;
   onDownload?: () => void;
   launching?: boolean;
   launchError?: string;
-  /** Requires generated paths + selected path (finalization runs on launch). */
   launchReady?: boolean;
-  onDataUpdate?: (next: ValidationScreenData) => void;
 }) {
-  const vm = useMemo(() => buildViewModel(data), [data]);
-  const section8Ref = useRef<HTMLElement>(null);
-  const section10Ref = useRef<HTMLElement>(null);
-  const bottomRef = useRef<HTMLElement>(null);
+  const { data: me } = useGetMe();
+  const [scoreHelpOpen, setScoreHelpOpen] = useState(false);
+  const model = useMemo(() => buildResultsDashboardModel(data, selectedPath), [data, selectedPath]);
 
-  const [whyOpen, setWhyOpen] = useState(false);
-  const [goalInterpretation, setGoalInterpretation] = useState(0);
-  const [modalCompetitor, setModalCompetitor] = useState<Record<string, unknown> | null>(null);
-  const [openMarketTile, setOpenMarketTile] = useState<string | null>(null);
-  const [openRisk, setOpenRisk] = useState<number | null>(null);
-  const [ackRisks, setAckRisks] = useState<Record<number, boolean>>({});
-  const [openInvestorQ, setOpenInvestorQ] = useState<number | null>(null);
-  const [highlightPath, setHighlightPath] = useState<PathKey | null>(null);
-  const [pathChosen, setPathChosen] = useState<PathKey | null>(null);
-  const [pathSelectLoading, setPathSelectLoading] = useState<PathKey | null>(null);
-  const [pathSelectError, setPathSelectError] = useState("");
-  const [rerunLoading, setRerunLoading] = useState(false);
-  const [rerunError, setRerunError] = useState("");
-  const [simCountry, setSimCountry] = useState(vm.locationCountry);
-  const [simCommitment, setSimCommitment] = useState(vm.commitmentLevel);
-  const [simBusiness, setSimBusiness] = useState(vm.businessModel);
-  const [simTimeline, setSimTimeline] = useState("1yr");
-  const [simBusinessType, setSimBusinessType] = useState("Online");
-  const [pricingOpen, setPricingOpen] = useState(false);
+  const displayName = me?.displayName ?? me?.email?.split("@")[0] ?? "Visionary";
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const dayLabel = today.toLocaleDateString("en-US", { weekday: "long" });
 
-  const demand = demandLevel(vm.marketScore);
-  const risks = vm.industryCons.slice(0, 5);
-
-  const interpretationOptions = useMemo(() => {
-    const pd = vm.purposeDecomposition;
-    if (pd) {
-      return [
-        String(pd.valueClaim ?? pd.value_claim ?? "You want to create meaningful value for people."),
-        String(pd.changeClaim ?? pd.change_claim ?? "You want to change how something works in this space."),
-        String(pd.problemClaim ?? pd.problem_claim ?? "You want to solve a specific problem people feel today."),
-      ];
-    }
-    const g = vm.rawGoal || "your goal";
-    return [
-      `You want to build something that delivers on: ${g}`,
-      `You want to grow an offer around: ${g}`,
-      `You want to test whether this idea can work in practice: ${g}`,
-    ];
-  }, [vm]);
-
-  async function handlePathChoose(path: PathKey) {
-    if (!validationId) {
-      onSelectPath(path);
-      setPathChosen(path);
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
-    setPathSelectLoading(path);
-    setPathSelectError("");
-    const envelope = await apiFetchEnvelope(`/api/v1/validation/${validationId}/select-path`, {
-      method: "POST",
-      body: JSON.stringify({ selectedPath: path }),
-    });
-    setPathSelectLoading(null);
-    if (!envelope.ok) {
-      setPathSelectError(envelope.error?.message ?? "Could not save your choice.");
-      return;
-    }
-    onSelectPath(path);
-    setPathChosen(path);
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }
-
-  async function handleRerun() {
-    if (!vm.blueprintId) {
-      setRerunError("Blueprint id missing — cannot rerun.");
-      return;
-    }
-    setRerunLoading(true);
-    setRerunError("");
-    const result = await postValidationRun({
-      blueprintId: vm.blueprintId,
-      idempotencyKey: crypto.randomUUID(),
-      rawGoal: vm.rawGoal,
-      purpose: vm.purpose || vm.rawGoal,
-      timeframe: simTimeline,
-      commitmentLevel: simCommitment,
-      locationCountry: simCountry,
-      businessModel: simBusiness,
-      businessType: simBusinessType.toLowerCase(),
-    });
-    setRerunLoading(false);
-    if (!result.ok || !result.validationId) {
-      setRerunError(result.errorMessage ?? "Rerun failed.");
-      return;
-    }
-    const envelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/${result.validationId}`);
-    if (envelope.ok && envelope.data && onDataUpdate) {
-      onDataUpdate({
-        ...data,
-        erectorValidationId: result.validationId,
-        validationId: result.validationId,
-        intelligence: { ...(data.intelligence ?? {}), erector: envelope.data },
-        verdict: String(envelope.data.verdict ?? data.verdict),
-        paths: (envelope.data.paths as ValidationScreenData["paths"]) ?? data.paths,
-      });
-    }
-  }
-
-  const previews: string[] = [];
-  if (simCountry !== vm.locationCountry) {
-    previews.push("Competition might be different there.");
-    previews.push("Demand signals vary by country.");
-  }
-  if (simCommitment !== vm.commitmentLevel) previews.push("Your pace affects how fast you can move.");
-  if (simBusiness !== vm.businessModel) previews.push("Your business type changes what is realistic.");
+  const verdictColor =
+    model.verdictUpper === "PROCEED"
+      ? "text-emerald-600"
+      : model.verdictUpper === "STOP"
+        ? "text-red-600"
+        : model.verdictUpper === "PIVOT"
+          ? "text-violet-600"
+          : "text-amber-600";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-32 space-y-10">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 pb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Here is what we found about your idea</h1>
-          <p className="text-sm text-gray-500 mt-1">A plain-language reality check based on your goal and market.</p>
-          <span className="inline-block mt-2 text-xs font-medium px-2.5 py-1 rounded-full bg-[#f0faf3] text-[#1a8c3a] border border-green-100">
-            {completedLabel}
-          </span>
-        </div>
-        <PageHeaderActions />
-      </header>
-
-      {launchError && (
-        <pre className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg p-4 whitespace-pre-wrap">
-          {launchError}
-        </pre>
-      )}
-
-      {/* Section 1 — Reality Summary */}
-      <section className="rounded-lg border border-gray-200 bg-white border-l-4 border-l-[#1a8c3a] p-6 flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 min-w-0">
-          <p className="text-[28px] font-bold text-gray-900 leading-snug">{headlineForVerdict(vm.verdict)}</p>
-          <p className="text-sm text-gray-600 mt-3">Based on your goal, your situation, and current market signals.</p>
-          <button
-            type="button"
-            onClick={() => setWhyOpen((o) => !o)}
-            className="mt-4 text-sm font-medium text-[#1a8c3a] flex items-center gap-1"
-          >
-            Why does it say this? {whyOpen ? "▲" : "▼"}
-          </button>
-          <ExpandPanel open={whyOpen}>
-            <p className="text-sm text-gray-700 leading-relaxed">
-              You are based in {vm.locationCountry}. You selected {vm.commitmentLevel.toLowerCase()} commitment. You are
-              building a {vm.businessModel} business. These factors shaped how strong this looks today.
-            </p>
-          </ExpandPanel>
-        </div>
-        <div className="w-full lg:w-[40%] text-center shrink-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">How strong this looks today</p>
-          <ConfidenceRing pct={vm.ringPct} />
-          <p className="text-xs text-gray-500 mt-2">Based on your goal, situation, and market signals</p>
-        </div>
-      </section>
-
-      {/* Section 2 — Understanding Your Goal */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">Let us make sure we understood you correctly</h2>
-        <div className="bg-gray-50 rounded-lg p-4 mt-4 mb-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Your goal</p>
-          <p className="text-base font-medium text-gray-900">{vm.rawGoal || "—"}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mt-3 mb-1">Your reason</p>
-          <p className="text-sm text-gray-700">{vm.purpose || "—"}</p>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {interpretationOptions.map((text, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setGoalInterpretation(i)}
-              className={`text-left rounded-lg border p-4 text-sm transition-colors ${
-                goalInterpretation === i
-                  ? "border-[#1a8c3a] bg-[#f0faf3] ring-1 ring-[#1a8c3a]"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
+    <div className="min-h-screen bg-white text-[#0B1220]">
+      <div className="mx-auto max-w-[1400px] px-8 pb-16 pt-8">
+        {/* Header */}
+        <header className="flex flex-wrap items-start justify-between gap-6 border-b border-[#ECECF4] pb-8">
+          <div>
+            <Link
+              href="/erector"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#5B21FF] hover:text-[#6D28D9]"
             >
-              <span className="text-xs font-bold text-gray-500 block mb-2">Option {String.fromCharCode(65 + i)}</span>
-              {text}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-gray-500 mt-3">
-          Does one of these feel more accurate? Selecting one will not change your results — it helps us explain things
-          better.
-        </p>
-      </section>
-
-      {/* Section 3 — Competitors */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">Who else is already doing something similar?</h2>
-        <p className="text-sm text-gray-600 mt-1">Knowing who is already winning helps you find where to stand out.</p>
-        {vm.competitors.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-4 py-6 text-center border border-dashed border-gray-200 rounded-lg">
-            Competitor data is being gathered. Check back shortly.
-          </p>
-        ) : (
-          <div className="grid sm:grid-cols-3 gap-4 mt-4">
-            {vm.competitors.map((c, i) => {
-              const name = String(c.name ?? "Company");
-              return (
-                <div key={i} className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="w-10 h-10 rounded-full bg-violet-100 text-violet-700 font-bold flex items-center justify-center mb-3">
-                    {name.charAt(0).toUpperCase()}
-                  </div>
-                  <p className="font-bold text-[15px] text-gray-900">{name}</p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">Why people choose them</p>
-                  <p className="text-xs text-gray-600 line-clamp-3">
-                    {String(c.positioningStrategy ?? c.positioning_strategy ?? "They serve a similar audience.")}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">Where you could stand out</p>
-                  <p className="text-xs text-gray-600">
-                    {String(c.strategicGapForUser ?? c.strategic_gap_for_user ?? "Gap analysis not available for this competitor.")}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setModalCompetitor(c)}
-                    className="mt-3 w-full text-sm border border-gray-200 rounded-lg py-2 hover:bg-gray-50"
-                  >
-                    Tell me more
-                  </button>
-                </div>
-              );
-            })}
+              <ChevronLeft className="h-4 w-4" />
+              Back to Erector
+            </Link>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#0B1220]">Validation Results</h1>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#64748B]">
+              Reality check complete.
+              <br />
+              Here&apos;s what we found and recommend.
+            </p>
           </div>
-        )}
-      </section>
 
-      <Dialog open={Boolean(modalCompetitor)} onOpenChange={(o) => !o && setModalCompetitor(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{String(modalCompetitor?.name ?? "Competitor")}</DialogTitle>
-          </DialogHeader>
-          {modalCompetitor && (
-            <div className="space-y-4 text-sm text-gray-700">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className={`${CARD} flex items-center gap-3 px-4 py-2.5`}>
+              <Calendar className="h-4 w-4 text-[#5B21FF]" />
               <div>
-                <p className="font-semibold text-gray-900 mb-1">What they do well</p>
-                <ul className="list-disc pl-5">
-                  {(Array.isArray(modalCompetitor.survivorBehaviours)
-                    ? modalCompetitor.survivorBehaviours
-                    : Array.isArray(modalCompetitor.survivor_behaviours)
-                      ? modalCompetitor.survivor_behaviours
-                      : []
-                  ).map((b: unknown, idx: number) => (
-                    <li key={idx}>{String(b)}</li>
-                  ))}
-                  {!Array.isArray(modalCompetitor.survivorBehaviours) &&
-                    !Array.isArray(modalCompetitor.survivor_behaviours) && (
-                      <li>They have a clear offer that people already recognize.</li>
-                    )}
-                </ul>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 mb-1">What users complain about</p>
-                <p>
-                  {String(
-                    modalCompetitor.strategicGapForUser ??
-                      modalCompetitor.strategic_gap_for_user ??
-                      "Users often want simpler pricing and faster support.",
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 mb-1">What you can learn</p>
-                <p>{String(modalCompetitor.archetypeContext ?? modalCompetitor.archetype_context ?? "Focus on a narrower promise and prove it quickly.")}</p>
+                <p className="text-sm font-semibold text-[#0B1220]">{dateLabel}</p>
+                <p className="text-xs text-[#94A3B8]">{dayLabel}</p>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={pricingOpen} onOpenChange={setPricingOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Pricing angles to consider</DialogTitle>
-          </DialogHeader>
-          <ul className="text-sm text-gray-700 list-disc pl-5 space-y-2">
-            {(
-              (vm.erector.economy_briefing as { pricingAngles?: string[] })?.pricingAngles ??
-              (vm.erector.economyBriefing as { pricingAngles?: string[] })?.pricingAngles ??
-              [
-                "Start with a simple offer people can try quickly.",
-                "Price for clarity — one main package beats many confusing tiers.",
-                "Test a lower entry price, then raise it once people see results.",
-              ]
-            ).map((tip, i) => (
-              <li key={i}>{String(tip)}</li>
-            ))}
-          </ul>
-        </DialogContent>
-      </Dialog>
-
-      {/* Section 4 — Market */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">What the market looks like</h2>
-        <p className="text-sm text-gray-600 mt-1">Understanding the space you are entering.</p>
-        <div className="grid sm:grid-cols-3 gap-3 mt-4">
-          {[
-            {
-              id: "demand",
-              title: "Do people want this?",
-              value:
-                vm.marketScore >= 7 ? "High" : vm.marketScore >= 4 ? "Medium" : "Low",
-              color:
-                vm.marketScore >= 7 ? "text-[#1a8c3a]" : vm.marketScore >= 4 ? "text-orange-600" : "text-red-600",
-              expand:
-                vm.marketScore >= 7
-                  ? `People in ${vm.locationCountry} are already paying for similar solutions. This means there is real appetite for what you want to build.`
-                  : vm.marketScore >= 4
-                    ? "Interest exists, but getting people to pay requires extra work in this area."
-                    : "Low signals of people paying for this in your area right now.",
-            },
-            {
-              id: "crowded",
-              title: "How crowded is it?",
-              value:
-                vm.competitionScore >= 8
-                  ? "Very crowded"
-                  : vm.competitionScore >= 5
-                    ? "Somewhat crowded"
-                    : "Open",
-              color: "text-gray-900",
-              expand:
-                vm.competitionScore >= 8
-                  ? "A few strong players are already established. This is not a reason to stop — but it means you need a clear reason to stand out."
-                  : vm.competitionScore >= 5
-                    ? "The space is competitive but there is still room for a focused angle."
-                    : "The space is open. Fewer competitors means more room to grow.",
-            },
-            {
-              id: "growth",
-              title: "Is it growing?",
-              value: vm.timingScore >= 7 ? "Yes, growing" : vm.timingScore >= 4 ? "Slowly" : "Not right now",
-              color: vm.timingScore >= 7 ? "text-[#1a8c3a]" : "text-gray-700",
-              expand:
-                vm.timingScore >= 7
-                  ? "This type of business is growing right now. Good timing."
-                  : vm.timingScore >= 4
-                    ? "This space has slowed down recently. There is still opportunity for the right angle."
-                    : "This space has slowed down recently. Starting earlier would have been better, but there is still opportunity for the right angle.",
-            },
-          ].map((tile) => (
             <button
-              key={tile.id}
               type="button"
-              onClick={() => setOpenMarketTile(openMarketTile === tile.id ? null : tile.id)}
-              className="text-left rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300"
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#ECECF4] bg-white hover:bg-[#F8FAFC]"
+              aria-label="Notifications"
             >
-              <p className="text-xs text-gray-500">{tile.title}</p>
-              <p className={`text-lg font-bold mt-1 ${tile.color}`}>{tile.value}</p>
-              <ExpandPanel open={openMarketTile === tile.id}>
-                <p className="text-sm text-gray-600">{tile.expand}</p>
-              </ExpandPanel>
+              <Bell className="h-5 w-5 text-[#64748B]" />
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#5B21FF] text-[9px] font-bold text-white">
+                3
+              </span>
             </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2 mt-4">
-          {[
-            { label: "What if I was in a different country?", scroll: "try-versions" },
-            { label: "What if I targeted a different audience?", scroll: "try-versions" },
-            { label: "What if I changed my price?", scroll: "pricing" },
-          ].map((pill) => (
             <button
-              key={pill.label}
               type="button"
-              onClick={() => {
-                if (pill.scroll === "pricing") setPricingOpen(true);
-                else section8Ref.current?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100"
+              className={`${CARD} flex items-center gap-2 px-3 py-2`}
             >
-              {pill.label}
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#5B21FF] to-[#6D28D9] text-sm font-bold text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+              <div className="hidden text-left sm:block">
+                <p className="text-sm font-semibold text-[#0B1220]">{displayName}</p>
+                <p className="text-xs text-[#94A3B8]">Level 7</p>
+              </div>
+              <ChevronDown className="h-4 w-4 text-[#94A3B8]" />
             </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Section 5 — Demand */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">Do people actually want this?</h2>
-        <p className="text-sm text-gray-600 mt-1">The most important question. Demand tells you if there is a real problem to solve.</p>
-        <p
-          className={`text-xl font-bold mt-6 ${
-            demand === "HIGH" ? "text-[#1a8c3a]" : demand === "MEDIUM" ? "text-orange-600" : "text-red-600"
-          }`}
-        >
-          {demand === "HIGH" &&
-            `People in ${vm.locationCountry} are already buying similar solutions.`}
-          {demand === "MEDIUM" &&
-            "Some interest exists, but converting that interest to paying customers takes more work."}
-          {demand === "LOW" && "Low signals of people paying for this in your area right now."}
-        </p>
-        <div className="grid sm:grid-cols-2 gap-3 mt-4">
-          <details className="rounded-lg border border-gray-200 bg-white p-4">
-            <summary className="text-sm font-semibold cursor-pointer">What makes demand higher here?</summary>
-            <ul className="mt-2 text-sm text-gray-600 list-disc pl-4 space-y-1">
-              <li>People already spend money in this category.</li>
-              <li>Your goal targets a problem people mention often.</li>
-              <li>Similar offers are gaining traction nearby.</li>
-            </ul>
-          </details>
-          <details className="rounded-lg border border-gray-200 bg-white p-4">
-            <summary className="text-sm font-semibold cursor-pointer">What could lower demand?</summary>
-            <ul className="mt-2 text-sm text-gray-600 list-disc pl-4 space-y-1">
-              <li>Buyers may need more education before they pay.</li>
-              <li>The problem may feel nice-to-have rather than urgent.</li>
-              <li>Trust may take longer to build in this space.</li>
-            </ul>
-          </details>
-        </div>
-      </section>
-
-      {/* Section 6 — Risks */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">Things that could slow you down</h2>
-        <p className="text-sm text-gray-600 mt-1">These are not reasons to stop. They are things to plan for.</p>
-        {risks.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-4 py-4">No major blockers identified. Keep an eye on how crowded this space is.</p>
-        ) : (
-          <div className="space-y-3 mt-4">
-            {risks.map((risk, i) => {
-              const title = plainRiskTitle(risk);
-              const open = openRisk === i;
-              return (
-                <div key={i} className="rounded-lg border border-orange-100 bg-orange-50/30 p-4">
-                  <button
-                    type="button"
-                    onClick={() => setOpenRisk(open ? null : i)}
-                    className="w-full flex items-start gap-3 text-left"
-                  >
-                    <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{title}</p>
-                      <p className="text-sm text-gray-600 mt-1">{risk}</p>
-                    </div>
-                    {ackRisks[i] && <CheckCircle2 className="w-5 h-5 text-[#1a8c3a]" />}
-                  </button>
-                  <ExpandPanel open={open}>
-                    <p className="text-sm text-gray-700 mb-2">
-                      <span className="font-medium">Why:</span> This showed up because of your goal, timeline, and how
-                      this space behaves today.
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">How to reduce it:</span> Narrow your first offer, set a weekly
-                      rhythm, and prove one outcome before expanding.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAckRisks((a) => ({ ...a, [i]: true }))}
-                      className="mt-3 text-sm font-medium text-[#1a8c3a] border border-[#1a8c3a] rounded-lg px-3 py-1.5"
-                    >
-                      Apply this suggestion
-                    </button>
-                  </ExpandPanel>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Section 7 — If this was your money */}
-      <section>
-        <h2 className="text-lg font-bold text-gray-900">If this was your money, would you back it?</h2>
-        <p className="text-sm text-gray-600 mt-1">Think of yourself as your own backer. These are the questions a smart backer would ask.</p>
-        <div className="grid sm:grid-cols-2 gap-3 mt-4">
-          {[
-            {
-              q: "Would people care?",
-              a:
-                vm.marketScore >= 7 ? "Yes" : vm.marketScore >= 4 ? "Possibly" : "Not yet",
-              why: `Demand signals in ${vm.locationCountry} suggest ${vm.marketScore >= 7 ? "real interest" : "mixed interest"} for this type of offer.`,
-            },
-            {
-              q: "Can you stay consistent?",
-              a:
-                ["high", "intense"].includes(vm.commitmentLevel.toLowerCase())
-                  ? "Yes, based on your commitment."
-                  : vm.commitmentLevel.toLowerCase() === "medium"
-                    ? "Likely, with discipline."
-                    : "This may be challenging at your current pace.",
-              why: "Your stated commitment level is the main input for whether you can keep showing up week after week.",
-            },
-            {
-              q: "Can this make money?",
-              a:
-                vm.scalabilityScore >= 7 ? "Yes" : vm.scalabilityScore >= 4 ? "With the right model" : "Hard at this stage",
-              why: "We looked at whether this can grow beyond a one-off project and still make sense economically.",
-            },
-            {
-              q: "Would someone recommend it?",
-              a:
-                vm.momentumScore >= 7 ? "High" : vm.momentumScore >= 4 ? "Possible" : "Needs work",
-              why: "Momentum reflects how quickly word-of-mouth and repeat use could build if you execute well.",
-            },
-            {
-              q: "Could this grow beyond your area?",
-              a:
-                vm.scalabilityScore >= 6 && vm.localEconomyScore >= 6
-                  ? "Yes"
-                  : vm.scalabilityScore >= 4 || vm.localEconomyScore >= 4
-                    ? "Maybe"
-                    : "Not easily",
-              why: "We combined how supportive your location is with how expandable the model looks.",
-            },
-          ].map((item, i) => (
             <button
-              key={item.q}
               type="button"
-              onClick={() => setOpenInvestorQ(openInvestorQ === i ? null : i)}
-              className="text-left rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300"
+              onClick={onDownload}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0B1220] hover:bg-[#F8FAFC]"
             >
-              <p className="text-sm font-semibold text-gray-900">{item.q}</p>
-              <p className="text-[#1a8c3a] font-bold mt-1">{item.a}</p>
-              <ExpandPanel open={openInvestorQ === i}>
-                <p className="text-sm text-gray-600">{item.why}</p>
-              </ExpandPanel>
+              <Download className="h-4 w-4" />
+              Download Full Report
             </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Section 8 — Try different versions */}
-      <section ref={section8Ref} className={rerunLoading ? "opacity-90" : ""}>
-        <h2 className="text-lg font-bold text-gray-900">What if something was different?</h2>
-        <p className="text-sm text-gray-600 mt-1">Change one thing and see how it affects your results. No commitment required.</p>
-        <div className="grid sm:grid-cols-2 gap-4 mt-4">
-          <label className="text-sm">
-            <span className="text-gray-600 block mb-1">Country</span>
-            <select
-              value={simCountry}
-              onChange={(e) => setSimCountry(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-            >
-              {["United States", "Nigeria", "United Kingdom", "Germany", "India", "Canada"].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="text-gray-600 block mb-1">Commitment level</span>
-            <select
-              value={simCommitment}
-              onChange={(e) => setSimCommitment(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-            >
-              {["LOW", "MEDIUM", "HIGH", "INTENSE"].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="text-gray-600 block mb-1">What you are building</span>
-            <select
-              value={simBusiness}
-              onChange={(e) => setSimBusiness(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-            >
-              {["SaaS", "Service", "Product", "Marketplace", "Content"].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="text-gray-600 block mb-1">Business type</span>
-            <select
-              value={simBusinessType}
-              onChange={(e) => setSimBusinessType(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-            >
-              {["Online", "Offline", "Hybrid"].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="text-gray-600 block mb-1">Timeline</span>
-            <select
-              value={simTimeline}
-              onChange={(e) => setSimTimeline(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2"
-            >
-              {[
-                { v: "3m", l: "3 months" },
-                { v: "6m", l: "6 months" },
-                { v: "1yr", l: "1 year" },
-                { v: "2yr", l: "2 years" },
-              ].map((t) => (
-                <option key={t.v} value={t.v}>
-                  {t.l}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {previews.length > 0 && (
-          <ul className="mt-3 text-sm text-gray-600 list-disc pl-5">
-            {previews.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-        )}
-        <button
-          type="button"
-          disabled={rerunLoading}
-          onClick={() => void handleRerun()}
-          className="mt-4 rounded-lg bg-[#1a8c3a] text-white font-semibold px-5 py-2.5 text-sm disabled:opacity-50"
-        >
-          {rerunLoading ? "Updating…" : "Show me the full picture"}
-        </button>
-        {rerunError && <p className="text-sm text-red-600 mt-2">{rerunError}</p>}
-      </section>
-
-      {/* Section 9 — Another way */}
-      <section className={rerunLoading ? "animate-pulse opacity-60 pointer-events-none" : ""}>
-        <h2 className="text-lg font-bold text-gray-900">Another way you could approach this</h2>
-        <p className="text-sm text-gray-600 mt-1">These are not better or worse — just different angles. Pick what feels right.</p>
-        {!vm.paths.current.description && !vm.paths.adjusted.description ? (
-          <p className="text-sm text-gray-500 mt-4">Path analysis is being generated. You can still keep going with your current direction.</p>
-        ) : (
-          <div className="grid sm:grid-cols-3 gap-4 mt-4">
-            {[
-              { title: "Keep going as planned", path: vm.paths.current, key: "current" as PathKey },
-              {
-                title: "Start smaller, then grow",
-                path: vm.paths.adjusted,
-                key: "adjusted" as PathKey,
-              },
-              {
-                title: "Try a completely different angle",
-                path: vm.paths.alternative,
-                key: "alternative" as PathKey,
-              },
-            ].map((card) => {
-              const mods = card.path.coreModifications ?? card.path.core_modifications;
-              const mod0 = Array.isArray(mods) ? String(mods[0]) : "";
-              return (
-                <div
-                  key={card.key}
-                  className={`rounded-lg border p-4 bg-white ${
-                    highlightPath === card.key ? "border-[#1a8c3a] ring-1 ring-[#1a8c3a]" : "border-gray-200"
-                  }`}
-                >
-                  <p className="font-bold text-gray-900">{card.title}</p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    {String(card.path.description ?? card.path.summary ?? (mod0 || "A different way to reach the same goal."))}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-3">
-                    <span className="font-medium">What changes:</span> {mod0 || "Focus and scope adjust."}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <span className="font-medium">What gets better:</span> Clearer path with less wasted effort.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <span className="font-medium">What stays the same:</span> Your core goal stays intact.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHighlightPath(card.key);
-                      section10Ref.current?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="mt-4 text-sm font-medium text-[#1a8c3a]"
-                  >
-                    Try this →
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Section 10 — Your choice */}
-      <section ref={section10Ref}>
-        <h2 className="text-lg font-bold text-gray-900">What do you want to do?</h2>
-        <p className="text-sm text-gray-600 mt-1">There is no wrong answer. Pick the direction that feels right and start building.</p>
-        <div className="grid sm:grid-cols-3 gap-4 mt-4">
-          {[
-            {
-              title: "Keep my current idea",
-              desc: "Continue with what you entered. You understand the challenges.",
-              path: "current" as PathKey,
-            },
-            {
-              title: "Make a small change",
-              desc: "Adjust one thing that could improve your chances without starting over.",
-              path: "adjusted" as PathKey,
-            },
-            {
-              title: "Try a different direction",
-              desc: "Start from a new angle. Sometimes a small shift opens bigger doors.",
-              path: "alternative" as PathKey,
-            },
-          ].map((card, idx) => (
-            <div
-              key={card.path}
-              className={`rounded-lg border p-4 bg-white ${
-                pathChosen === card.path || highlightPath === card.path
-                  ? "border-[#1a8c3a] bg-[#f0faf3]"
-                  : "border-gray-200"
-              }`}
-            >
-              <p className="font-bold text-gray-900">{card.title}</p>
-              <p className="text-sm text-gray-600 mt-2">{card.desc}</p>
+            <div className="text-right">
               <button
                 type="button"
-                disabled={pathSelectLoading !== null}
-                onClick={() => void handlePathChoose(card.path)}
-                className="mt-4 w-full text-sm font-semibold border border-[#1a8c3a] text-[#1a8c3a] rounded-lg py-2 hover:bg-[#f0faf3] disabled:opacity-50"
+                disabled={launching || data.launchBlocked || !launchReady}
+                onClick={onLaunch}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/50 hover:opacity-95 disabled:opacity-50"
               >
-                {pathSelectLoading === card.path ? "Saving…" : pathChosen === card.path ? "Chosen ✓" : "Choose this"}
+                <Rocket className="h-4 w-4" />
+                {launching ? "Launching…" : "Launch This Direction"}
               </button>
+              <p className="mt-1 text-[11px] text-[#94A3B8]">Build blueprint and start execution</p>
+            </div>
+          </div>
+        </header>
+
+        {launchError ? (
+          <pre className="mt-6 whitespace-pre-wrap rounded-xl border border-red-100 bg-red-50 p-4 text-xs text-red-700">
+            {launchError}
+          </pre>
+        ) : null}
+
+        {/* Pipeline */}
+        <nav className="mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-0" aria-label="Validation pipeline">
+          {PIPELINE.map((step, i) => (
+            <div key={step.label} className="flex items-center">
+              <div className="flex flex-col items-center gap-1.5 px-2 sm:px-4">
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+                    step.active
+                      ? "bg-[#5B21FF] text-white shadow-md shadow-violet-200"
+                      : step.done
+                        ? "bg-emerald-500 text-white"
+                        : "border border-[#E2E8F0] bg-white text-[#94A3B8]"
+                  }`}
+                >
+                  {step.done && !step.active ? <Check className="h-4 w-4" strokeWidth={3} /> : step.active ? "5" : null}
+                </span>
+                <span
+                  className={`text-center text-[11px] font-semibold ${
+                    step.active ? "text-[#5B21FF]" : step.done ? "text-emerald-600" : "text-[#94A3B8]"
+                  }`}
+                >
+                  {step.label}
+                </span>
+                {step.done && !step.active ? (
+                  <span className="text-[10px] text-emerald-600">Completed</span>
+                ) : step.active ? (
+                  <span className="text-[10px] text-[#5B21FF]">Complete</span>
+                ) : null}
+              </div>
+              {i < PIPELINE.length - 1 ? (
+                <div className={`mx-1 hidden h-px w-8 sm:block md:w-16 ${step.done ? "bg-emerald-300" : "bg-[#E2E8F0]"}`} />
+              ) : null}
             </div>
           ))}
-        </div>
-        {pathSelectError && <p className="text-sm text-red-600 mt-2">{pathSelectError}</p>}
-      </section>
+        </nav>
 
-      {/* Bottom CTA */}
-      <section ref={bottomRef} className="rounded-lg border border-gray-200 bg-[#f0faf3] p-6 space-y-4">
-        <p className="text-lg font-semibold text-gray-900 text-center">{bottomCtaSentence(vm.verdict)}</p>
-        <div className="flex flex-wrap justify-center gap-3">
+        {/* Idea summary strip */}
+        <section className={`${CARD} mt-10 p-6`}>
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Your Idea</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-[#0B1220]">{model.ideaTitle}</h2>
+                <Link
+                  href="/validate"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#5B21FF] hover:underline"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </Link>
+              </div>
+              <p className="mt-1 text-sm text-[#64748B]">{model.ideaSubtitle}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Selected Direction</p>
+              <p className="mt-1 text-sm font-bold text-emerald-600">{model.selectedDirectionLabel}</p>
+            </div>
+          </div>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex gap-3">
+              <Target className="mt-0.5 h-5 w-5 shrink-0 text-[#5B21FF]" />
+              <div>
+                <p className="text-xs font-semibold text-[#94A3B8]">Goal</p>
+                <p className="mt-0.5 text-sm font-medium text-[#0B1220]">{model.rawGoal || "—"}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Infinity className="mt-0.5 h-5 w-5 shrink-0 text-[#5B21FF]" />
+              <div>
+                <p className="text-xs font-semibold text-[#94A3B8]">Purpose</p>
+                <p className="mt-0.5 text-sm font-medium text-[#0B1220] line-clamp-2">{model.purpose || "—"}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[#5B21FF]" />
+              <div>
+                <p className="text-xs font-semibold text-[#94A3B8]">Timeframe</p>
+                <p className="mt-0.5 text-sm font-medium text-[#0B1220]">{model.timeframeLabel}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Compass className="mt-0.5 h-5 w-5 shrink-0 text-[#5B21FF]" />
+              <div>
+                <p className="text-xs font-semibold text-[#94A3B8]">Context</p>
+                <p className="mt-0.5 text-sm font-medium text-[#0B1220]">{model.contextLabel}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Row 1: Score, Verdict, Glance, Trends */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-12">
+          <section className={`${CARD} lg:col-span-3 p-6`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Reality Score</p>
+            <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+              <RealityRing pct={model.ringPct} />
+              <div className="text-center sm:text-left">
+                <p className="text-lg font-bold text-emerald-600">{model.realityLabel}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[#64748B]">{model.realityDescription}</p>
+                <button
+                  type="button"
+                  onClick={() => setScoreHelpOpen((o) => !o)}
+                  className="mt-3 text-xs font-semibold text-[#5B21FF] hover:underline"
+                >
+                  What does this score mean? →
+                </button>
+                {scoreHelpOpen ? (
+                  <p className="mt-2 text-xs leading-relaxed text-[#64748B]">
+                    The reality score blends market demand, competition, timing, execution fit, and feasibility into one
+                    readiness number before you commit to a direction.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className={`${CARD} lg:col-span-3 flex flex-col items-center justify-center p-6 text-center`}>
+            <Shield className="h-10 w-10 text-emerald-500" strokeWidth={1.5} />
+            <p className="mt-4 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Final Verdict</p>
+            <p className={`mt-2 text-3xl font-black tracking-tight ${verdictColor}`}>{model.verdictUpper}</p>
+            <p className="mt-2 text-sm text-[#64748B]">{model.verdictDescription}</p>
+            <span className="mt-4 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
+              {model.confidenceBadge}
+            </span>
+          </section>
+
+          <section className={`${CARD} lg:col-span-3 p-6`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">At a Glance</p>
+            <div className="mt-3">
+              {model.atAGlance.map((row) => (
+                <GlanceBadge key={row.label} row={row} />
+              ))}
+            </div>
+          </section>
+
+          <section className={`${CARD} lg:col-span-3 p-6`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Current Trends</p>
+            <div className="mt-4">
+              <TrendChart years={model.chartYears} values={model.chartValues} />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Trend Position</p>
+                <p className="text-sm font-bold text-[#0B1220]">{model.trendPosition}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Growth Rate</p>
+                <p className="text-sm font-bold text-emerald-600">{model.growthRate}</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Row 2: Competitors, Pros/Cons, Opportunities */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-12">
+          <section className="lg:col-span-5">
+            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top 3 Competitors</p>
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              {model.competitorCards.map((c) => (
+                <article key={c.name} className={`${CARD} p-4`}>
+                  <p className="font-bold text-[#0B1220]">{c.name}</p>
+                  <p className="mt-1 text-xs text-[#64748B] line-clamp-2">{c.description}</p>
+                  <p className="mt-3 text-[10px] font-bold uppercase text-emerald-600">Strengths</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.strengths.slice(0, 2).map((s) => (
+                      <li key={s} className="flex gap-1.5 text-xs text-[#475569]">
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-500" />
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[10px] font-bold uppercase text-red-500">Weaknesses</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {c.weaknesses.slice(0, 2).map((w) => (
+                      <li key={w} className="flex gap-1.5 text-xs text-[#475569]">
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400" />
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[10px] font-semibold text-[#94A3B8]">Market Share</p>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#F1F5F9]">
+                    <div
+                      className="h-full rounded-full bg-[#5B21FF]"
+                      style={{ width: `${c.marketShare}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-[#5B21FF]">{c.marketShare}%</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className={`${CARD} lg:col-span-4 overflow-hidden p-0`}>
+            <p className="border-b border-[#F1F5F9] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#0B1220]">
+              Pros &amp; Cons
+            </p>
+            <div className="grid sm:grid-cols-2">
+              <div className="border-[#F1F5F9] p-5 sm:border-r">
+                <p className="text-xs font-bold uppercase text-emerald-600">Pros</p>
+                <ul className="mt-3 space-y-2">
+                  {model.pros.map((p) => (
+                    <li key={p} className="flex gap-2 text-sm text-[#475569]">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2.5} />
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-5">
+                <p className="text-xs font-bold uppercase text-red-500">Cons</p>
+                <ul className="mt-3 space-y-2">
+                  {model.cons.map((c) => (
+                    <li key={c} className="flex gap-2 text-sm text-[#475569]">
+                      <X className="mt-0.5 h-4 w-4 shrink-0 text-red-500" strokeWidth={2.5} />
+                      {c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className={`${CARD} lg:col-span-3 p-5`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top Opportunities</p>
+            <ul className="mt-4 space-y-3">
+              {model.opportunities.map((o) => (
+                <li key={o.title} className="flex items-start justify-between gap-2">
+                  <span className="flex gap-2 text-sm text-[#475569]">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#5B21FF]" />
+                    {o.title}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      o.impact === "High Impact"
+                        ? "bg-[#F5F3FF] text-[#5B21FF]"
+                        : o.impact === "Medium Impact"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-[#F8FAFC] text-[#64748B]"
+                    }`}
+                  >
+                    {o.impact}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="mt-4 text-xs font-semibold text-[#5B21FF] hover:underline">
+              View all opportunities →
+            </button>
+          </section>
+        </div>
+
+        {/* Row 3: Paths, Risks, Success Plan */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-12">
+          <section className="lg:col-span-5">
+            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Path Outcomes Comparison</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {model.pathCards.map((path) => {
+                const selected = selectedPath === path.key;
+                return (
+                  <button
+                    key={path.key}
+                    type="button"
+                    onClick={() => onSelectPath(path.key)}
+                    className={`${CARD} relative p-4 text-left transition-all ${
+                      selected ? "border-[#5B21FF] ring-2 ring-[#5B21FF]/20" : "hover:border-[#C7D2FE]"
+                    }`}
+                  >
+                    {path.badge ? (
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-3 py-0.5 text-[10px] font-bold text-amber-950">
+                        {path.badge}
+                      </span>
+                    ) : null}
+                    <p className="text-xs font-bold uppercase text-[#94A3B8]">{path.title}</p>
+                    <p className="mt-2 text-sm font-semibold capitalize text-[#0B1220]">{path.successPotential}</p>
+                    <p className="mt-2 text-xs text-[#64748B]">{path.growthPotential}</p>
+                    <p className="mt-3 text-xs">
+                      <span className="font-semibold text-[#0B1220]">Time to traction:</span> {path.timeToTraction}
+                    </p>
+                    <p className="mt-1 text-xs text-[#64748B] line-clamp-2">{path.estimatedOutcome}</p>
+                    {selected ? (
+                      <span className="mt-3 inline-block text-[10px] font-bold text-[#5B21FF]">Selected ✓</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className={`${CARD} lg:col-span-3 p-5`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Risk Summary</p>
+            <ul className="mt-4 space-y-4">
+              {model.risks.map((risk) => (
+                <li key={risk.title}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-[#0B1220]">{risk.title}</p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        risk.level === "Low"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : risk.level === "Medium"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {risk.level}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-[#64748B]">{risk.explanation}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className={`${CARD} lg:col-span-4 p-5`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Success Plan</p>
+            <p className="mt-0.5 text-xs text-[#94A3B8]">Key milestones</p>
+            <ol className="mt-5 space-y-4">
+              {model.milestones.map((m) => (
+                <li key={m.step} className="flex gap-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5B21FF] text-sm font-bold text-white">
+                    {m.step}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#0B1220]">{m.title}</p>
+                    <p className="text-xs text-[#94A3B8]">{m.timing}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+
+        {/* Direction anchor */}
+        <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[#C7D2FE] bg-[#F5F3FF]/60 px-6 py-5">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#5B21FF]" />
+            <div>
+              <p className="text-sm font-bold text-[#0B1220]">
+                This validation is now saved as your Direction Anchor.
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[#64748B]">
+                Use it to stay aligned, make better decisions, and adjust your strategy as you execute.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="rounded-xl border border-[#5B21FF]/30 bg-white px-4 py-2 text-sm font-semibold text-[#5B21FF] hover:bg-white/80"
+          >
+            View Saved Validation →
+          </button>
+        </section>
+
+        {/* Bottom CTA */}
+        <div className="mt-10 flex flex-wrap items-center justify-end gap-4 border-t border-[#ECECF4] pt-8">
           <button
             type="button"
             disabled={launching || data.launchBlocked || !launchReady}
             onClick={onLaunch}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#1a8c3a] px-6 py-3 text-sm font-semibold text-white hover:bg-[#157a33] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-10 py-4 text-base font-bold text-white shadow-xl shadow-violet-200/60 hover:opacity-95 disabled:opacity-50"
           >
-            <Rocket className="w-4 h-4" />
-            {launching ? "Building your plan…" : "Build My Plan"}
-          </button>
-          <button
-            type="button"
-            onClick={() => section8Ref.current?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#1a8c3a] px-5 py-3 text-sm font-semibold text-[#1a8c3a] bg-white"
-          >
-            Explore More
-          </button>
-          <button
-            type="button"
-            onClick={onDownload}
-            className="inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-medium text-gray-600 hover:bg-white/80"
-          >
-            <Download className="w-4 h-4" />
-            Download
+            <Rocket className="h-5 w-5" />
+            {launching ? "Loading…" : "Launch This Direction"}
           </button>
         </div>
-      </section>
+
+        {validationId ? (
+          <p className="mt-4 text-right text-[10px] text-[#CBD5E1]">Validation {validationId.slice(0, 8)}…</p>
+        ) : null}
+      </div>
     </div>
   );
 }

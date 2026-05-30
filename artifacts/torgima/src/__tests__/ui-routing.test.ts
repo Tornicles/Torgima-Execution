@@ -10,8 +10,16 @@ describe("isPreLaunchPath", () => {
     expect(isPreLaunchPath("/validation/abc-123/results")).toBe(true);
   });
 
+  it("treats blueprint selection as pre-launch", () => {
+    expect(isPreLaunchPath("/validation/abc-123/blueprint")).toBe(true);
+  });
+
   it("treats validation running as pre-launch", () => {
     expect(isPreLaunchPath("/validation/abc-123/running")).toBe(true);
+  });
+
+  it("treats /erector as pre-launch", () => {
+    expect(isPreLaunchPath("/erector")).toBe(true);
   });
 
   it("treats /dashboard as post-launch", () => {

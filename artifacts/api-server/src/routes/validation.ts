@@ -26,12 +26,15 @@ const tierSchema = z.enum(["starter", "growth", "ultimate"]);
 const modeSchema = z.enum(["individual", "team"]);
 
 export const validationLaunchBodySchema = z.object({
+  validation_id: z.string().uuid().optional(),
+  selected_blueprint_type: tierSchema.optional(),
   selected_direction: z
     .object({
       path: pathTypeSchema.optional(),
       selectedPath: pathTypeSchema.optional(),
       tier: tierSchema.optional(),
       blueprint_level: tierSchema.optional(),
+      blueprint_type: tierSchema.optional(),
       mode: modeSchema.optional(),
     })
     .optional(),
@@ -39,6 +42,7 @@ export const validationLaunchBodySchema = z.object({
   selected_path: pathTypeSchema.optional(),
   tier: tierSchema.optional(),
   blueprint_level: tierSchema.optional(),
+  blueprint_type: tierSchema.optional(),
   mode: modeSchema.optional(),
 });
 
@@ -74,7 +78,14 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
       userId: auth.userId,
       selectedDirection: body.selected_direction,
       selectedPath: body.selectedPath ?? body.selected_path,
-      tier: body.tier ?? body.blueprint_level,
+      tier:
+        body.selected_blueprint_type ??
+        body.tier ??
+        body.blueprint_level ??
+        body.blueprint_type ??
+        body.selected_direction?.tier ??
+        body.selected_direction?.blueprint_level ??
+        body.selected_direction?.blueprint_type,
       mode: body.mode ?? body.selected_direction?.mode,
     });
 

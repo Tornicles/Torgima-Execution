@@ -61,7 +61,9 @@ function resolveTier(
     input.tier ??
     input.selectedDirection?.tier ??
     input.selectedDirection?.blueprint_level ??
+    (input.selectedDirection as { blueprint_type?: string } | undefined)?.blueprint_type ??
     row.recommended_blueprint_level ??
+    row.selected_blueprint_tier ??
     "starter";
   if (raw === "growth" || raw === "ultimate" || raw === "starter") return raw;
   return "starter";
@@ -125,6 +127,17 @@ export const ValidationLaunchService = {
     await ValidationFinalizationService.finalizeValidation(row.id, input.userId, {
       selectedPath: selectedPathType,
     });
+
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(validations)
+      .set({
+        selected_blueprint_tier: tier,
+        selected_path_type: selectedPathType,
+        selected_path: selectedPathType,
+      })
+      .where(eq(validations.id, row.id));
 
     let idempotent = false;
     try {

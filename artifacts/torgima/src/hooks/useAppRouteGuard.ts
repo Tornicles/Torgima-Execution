@@ -8,10 +8,11 @@ import { getDashboardUiState, toDashboardProjection } from "@/lib/dashboard-type
 const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding", "/erector"];
 const POST_LAUNCH_HOME = "/dashboard";
 
-function isPreLaunchPath(path: string): boolean {
-  if (path === "/validate" || path.startsWith("/onboarding")) return true;
+export function isPreLaunchPath(path: string): boolean {
+  if (path === "/validate" || path === "/erector" || path.startsWith("/onboarding")) return true;
   if (path.startsWith("/validation/") && !path.includes("/results") && path.endsWith("/running")) return true;
   if (path.includes("/validation/") && path.endsWith("/results")) return true;
+  if (path.includes("/validation/") && path.endsWith("/blueprint")) return true;
   if (path === "/validation" || path === "/validation/scores") return true;
   return false;
 }
@@ -70,4 +71,4 @@ export function useAppRouteGuard(mode: "pre-launch" | "post-launch") {
   };
 }
 
-export { isPreLaunchPath, POST_LAUNCH_HOME };
+export { POST_LAUNCH_HOME };

@@ -19,10 +19,13 @@ export interface DashboardAlert {
 
 import type { DashboardState } from "@workspace/api-client-react";
 
+import type { HomeDashboardPanels } from "@/lib/home-dashboard-types";
+
 export type DashboardProjection = DashboardState & {
   dashboardUiState?: DashboardUiState;
   pendingSync?: boolean;
   alerts?: DashboardAlert[];
+  homePanels?: HomeDashboardPanels | null;
 };
 
 export function toDashboardProjection(state: DashboardState): DashboardProjection {

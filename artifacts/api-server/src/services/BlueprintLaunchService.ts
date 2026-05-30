@@ -152,6 +152,7 @@ export const BlueprintLaunchService = {
         economic_type: (handoff?.economic_type as string) ?? validationRow.economic_type,
         selected_path: selectedPathType,
         selected_blueprint_level: selectedBlueprintLevel,
+        tier: selectedBlueprintLevel,
         validation_id: validationRow.id,
         ...(validationRow.validation_kind === ValidationKind.ERECTOR
           ? { erector_validation_id: validationRow.id }

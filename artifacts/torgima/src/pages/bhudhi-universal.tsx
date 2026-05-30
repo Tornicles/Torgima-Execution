@@ -4,6 +4,7 @@ import {
   BhudhiUniversalLayout,
   parseBhudhiSection,
 } from "@/components/bhudhi/universal/BhudhiUniversalLayout";
+import { BhudhiHubView } from "@/components/bhudhi/BhudhiHubView";
 import { OverviewSection } from "@/components/bhudhi/universal/sections/OverviewSection";
 import { ExecutionSection } from "@/components/bhudhi/universal/sections/ExecutionSection";
 import { IntelligenceSection } from "@/components/bhudhi/universal/sections/IntelligenceSection";
@@ -49,7 +50,7 @@ function SectionContent({ section, blueprintId }: { section: string; blueprintId
     case "settings":
       return <SettingsSection blueprintId={blueprintId} />;
     default:
-      return <OverviewSection blueprintId={blueprintId} />;
+      return <BhudhiHubView blueprintId={blueprintId} />;
   }
 }
 
@@ -65,6 +66,10 @@ export default function BhudhiUniversalPage() {
         <p className="text-gray-500 text-sm">Loading…</p>
       </div>
     );
+  }
+
+  if (section === "overview") {
+    return <BhudhiHubView blueprintId={blueprintId} />;
   }
 
   return (

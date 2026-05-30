@@ -1,21 +1,14 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
-import { ApiError } from "@workspace/api-client-react";
-import { ErectorFlowShell } from "@/components/erector/ErectorFlowShell";
+import { useLocation, useRoute } from "wouter";
 import { ValidationResultsDashboard } from "@/components/validation/ValidationResultsDashboard";
-import { ValidationWorkspacePanel } from "@/components/validation/ValidationWorkspacePanel";
 import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
 import type { PathKey } from "@/components/validation/PathPanels";
-import type { TierId, ModeId } from "@/components/blueprint/BlueprintSelectionPanel";
-import {
-  apiFetchEnvelope,
-  apiFetchResponseWithRetry,
-  finalizeValidationBlueprint,
-  launchValidationBlueprint,
-  completeOnboarding,
-} from "@/lib/torgima-api";
-import { API_BASE_URL } from "@/lib/api-base";
+import { apiFetchEnvelope, apiFetchResponseWithRetry } from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
+import {
+  buildLaunchContextFromPayload,
+  saveValidationLaunchContext,
+} from "@/lib/validation-launch-context";
 
 type ValidationPayload = ValidationScreenData & { status?: string };
 
@@ -25,18 +18,14 @@ function normalizePayload(payload: ValidationPayload): ValidationPayload {
 
 export default function ValidationResultsPage() {
   const [, params] = useRoute("/validation/:id/results");
+  const [, setLocation] = useLocation();
   const validationId = params?.id ?? "";
   const { checking } = useAppRouteGuard("pre-launch");
 
   const [loading, setLoading] = useState(true);
-  const [launching, setLaunching] = useState(false);
   const [error, setError] = useState("");
-  const [launchError, setLaunchError] = useState("");
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<PathKey>("adjusted");
-  const [selectedTier] = useState<TierId>("starter");
-  const [selectedMode] = useState<ModeId>("individual");
-  const [isFinalized, setIsFinalized] = useState(false);
   const [hasPaths, setHasPaths] = useState(false);
 
   useEffect(() => {
@@ -85,8 +74,8 @@ export default function ValidationResultsPage() {
         payload.verdict === "adjust" ? "adjusted" : payload.verdict === "pivot" ? "alternative" : "current";
       setSelectedPath(rec);
       setHasPaths(Boolean(payload.paths?.current && payload.paths?.adjusted && payload.paths?.alternative));
-      setIsFinalized(Boolean((payload as { isFinalized?: boolean }).isFinalized));
       setValidation(payload);
+      saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, payload, rec));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load validation results.");
     } finally {
@@ -94,47 +83,12 @@ export default function ValidationResultsPage() {
     }
   }
 
-  async function handleLaunch() {
-    if (!validation?.blueprintId || launching) return;
-    const launchUrl = `${API_BASE_URL}/api/v1/validations/${validationId}/launch`;
-    const selectedDirection = {
-      path: selectedPath,
-      tier: selectedTier,
-      mode: selectedMode,
-    };
-
-    setLaunching(true);
-    setLaunchError("");
-    try {
-      await apiFetchResponseWithRetry(`/api/v1/validation/${validationId}/select-path`, {
-        method: "POST",
-        body: JSON.stringify({ selectedPath }),
-      });
-
-      if (!isFinalized) {
-        await finalizeValidationBlueprint(validationId, selectedPath);
-        setIsFinalized(true);
-      }
-
-      const result = await launchValidationBlueprint(validationId, selectedDirection);
-      await completeOnboarding();
-      window.location.href = result.redirectTo ?? result.redirect_to ?? "/dashboard";
-    } catch (err) {
-      const status = err instanceof ApiError ? err.status : "—";
-      const backendMessage =
-        err instanceof ApiError && err.data ? JSON.stringify(err.data) : err instanceof Error ? err.message : "Unknown";
-      setLaunchError(
-        [
-          `Launch failed (HTTP ${status})`,
-          `URL: ${launchUrl}`,
-          `Validation id: ${validationId}`,
-          `Selected direction: ${JSON.stringify(selectedDirection)}`,
-          backendMessage,
-        ].join("\n"),
-      );
-    } finally {
-      setLaunching(false);
-    }
+  function goToBlueprintSelection() {
+    if (!validation?.blueprintId) return;
+    saveValidationLaunchContext(
+      buildLaunchContextFromPayload(validationId, validation, selectedPath),
+    );
+    setLocation(`/validation/${validationId}/blueprint`);
   }
 
   function handleDownload() {
@@ -143,50 +97,46 @@ export default function ValidationResultsPage() {
 
   if (checking || loading) {
     return (
-      <ErectorFlowShell title="Validation Results" subtitle="Loading your validation report…">
-        <div className="flex items-center justify-center py-32">
-          <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B21FF] border-t-transparent" />
+          <p className="mt-4 text-sm text-[#64748B]">Loading validation results…</p>
         </div>
-      </ErectorFlowShell>
+      </div>
     );
   }
 
   if (error || !validation) {
     return (
-      <ErectorFlowShell title="Validation Results" subtitle="Reality check complete">
-        <div className="max-w-lg mx-auto py-20 text-center space-y-4">
-          <p className="text-red-400 text-sm">{error || "No results"}</p>
-          <button type="button" onClick={() => void loadResults()} className="text-violet-400 underline text-sm">
+      <div className="flex min-h-screen items-center justify-center bg-white px-6">
+        <div className="max-w-lg text-center">
+          <p className="text-sm text-red-600">{error || "No results"}</p>
+          <button
+            type="button"
+            onClick={() => void loadResults()}
+            className="mt-4 text-sm font-semibold text-[#5B21FF] underline"
+          >
             Retry
           </button>
         </div>
-      </ErectorFlowShell>
+      </div>
     );
   }
 
   return (
-    <ErectorFlowShell title="Validation Results" subtitle="Reality check complete. Here's what we found and recommend.">
-      <div className="max-w-6xl mx-auto px-4 space-y-6 pb-12 bg-[#f3f4f6] text-gray-900 rounded-t-2xl min-h-full">
-      <ValidationResultsDashboard
-        data={validation}
-        validationId={validationId}
-        completedLabel="Completed"
-        selectedPath={selectedPath}
-        onSelectPath={setSelectedPath}
-        onLaunch={() => void handleLaunch()}
-        onDownload={handleDownload}
-        launching={launching}
-        launchError={launchError}
-        launchReady={hasPaths && Boolean(selectedPath)}
-        onDataUpdate={(next) => {
-          setValidation(next);
-          const rec: PathKey =
-            next.verdict === "adjust" ? "adjusted" : next.verdict === "pivot" ? "alternative" : "current";
-          setSelectedPath(rec);
-        }}
-      />
-      {validationId ? <ValidationWorkspacePanel validationId={validationId} /> : null}
-      </div>
-    </ErectorFlowShell>
+    <ValidationResultsDashboard
+      data={validation}
+      validationId={validationId}
+      selectedPath={selectedPath}
+      onSelectPath={(path) => {
+        setSelectedPath(path);
+        saveValidationLaunchContext(
+          buildLaunchContextFromPayload(validationId, validation, path),
+        );
+      }}
+      onLaunch={goToBlueprintSelection}
+      onDownload={handleDownload}
+      launchReady={hasPaths && Boolean(selectedPath)}
+    />
   );
 }

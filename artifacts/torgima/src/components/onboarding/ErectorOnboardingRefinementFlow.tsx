@@ -81,13 +81,25 @@ export function ErectorOnboardingRefinementFlow({
   const [validationError, setValidationError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const [contextForm, setContextForm] = useState<ErectorContextForm>({
-    country: null,
-    domain: "SaaS",
-    commitment: "MEDIUM",
-    currentContext: "",
-    timeframeDays: 90,
-    pace: "moderate",
+  const [contextForm, setContextForm] = useState<ErectorContextForm>(() => {
+    const defaults: ErectorContextForm = {
+      country: null,
+      domain: "SaaS",
+      commitment: "MEDIUM",
+      currentContext: "",
+      timeframeDays: 90,
+      pace: "moderate",
+    };
+    if (typeof sessionStorage === "undefined") return defaults;
+    try {
+      const raw = sessionStorage.getItem("torgima_pre_validation_erector_context");
+      if (!raw) return defaults;
+      const parsed = JSON.parse(raw) as ErectorContextForm;
+      sessionStorage.removeItem("torgima_pre_validation_erector_context");
+      return { ...defaults, ...parsed };
+    } catch {
+      return defaults;
+    }
   });
 
   const persist = useCallback((next: ErectorOnboardingState) => {

@@ -1696,6 +1696,10 @@ components:
                 type: string
               actionLabel:
                 type: string
+        homePanels:
+          description: Pre-computed home dashboard panel payloads (execution health, orders, timeline, plans, phases)
+          type: ["object", "null"]
+          additionalProperties: true
 
     GoalInput:
       type: object
