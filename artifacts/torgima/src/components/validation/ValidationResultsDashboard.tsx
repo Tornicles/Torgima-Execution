@@ -136,6 +136,8 @@ export function ValidationResultsDashboard({
   launching,
   launchError,
   launchReady = true,
+  timeframeMissing,
+  onEditContext,
 }: {
   data: ValidationScreenData;
   validationId?: string;
@@ -146,6 +148,8 @@ export function ValidationResultsDashboard({
   launching?: boolean;
   launchError?: string;
   launchReady?: boolean;
+  timeframeMissing?: boolean;
+  onEditContext?: () => void;
 }) {
   const { data: me } = useGetMe();
   const [scoreHelpOpen, setScoreHelpOpen] = useState(false);
@@ -248,6 +252,24 @@ export function ValidationResultsDashboard({
           <pre className="mt-6 whitespace-pre-wrap rounded-xl border border-red-100 bg-red-50 p-4 text-xs text-red-700">
             {launchError}
           </pre>
+        ) : null}
+
+        {timeframeMissing ? (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Timeframe is missing</p>
+            <p className="mt-1 text-xs text-amber-800">
+              Please return to the context step and select a timeframe before launching.
+            </p>
+            {onEditContext ? (
+              <button
+                type="button"
+                onClick={onEditContext}
+                className="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
+              >
+                Edit validation context
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {/* Pipeline */}

@@ -12,6 +12,7 @@ import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@works
 import { emitArchetypeResolved } from "./emitErectorEvents.js";
 import { rowToErectorResult } from "./ErectorOrchestrationHelpers.js";
 import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
+import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
 
 function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
   const country = input.location.country;
@@ -41,6 +42,11 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     .catch(() => [] as Array<typeof validations.$inferSelect>);
   if (existing?.validation_stage === ValidationStatus.COMPLETE) return rowToErectorResult(existing);
 
+  const timeframeFields = resolveValidationTimeframeFields({
+    timeframe: input.timeframe,
+    customTimeframeDays: input.customTimeframeDays,
+  });
+
   const [created] = existing
     ? await db.update(validations).set({ validation_kind: ValidationKind.ERECTOR, payload_version: 1, validation_stage: ValidationStatus.RUNNING, status: ValidationStatus.RUNNING }).where(eq(validations.id, existing.id)).returning()
     : await db
@@ -58,10 +64,14 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
           goal_final: input.goalFinal ?? null,
           purpose_final: input.purposeFinal ?? null,
           purpose: input.purpose,
+          timeframe: timeframeFields.timeframe,
+          timeframe_days: timeframeFields.timeframe_days,
           current_context: input.currentContext ?? null,
-          success_signal: input.successSignal ?? null,
+          location_context: input.location.country,
           location_country: input.location.country,
           location_city: input.location.city,
+          domain: input.domainHint ?? null,
+          success_signal: input.successSignal ?? null,
           business_type: input.businessType,
           business_model: input.businessModel,
           budget_available: input.budgetAvailable,

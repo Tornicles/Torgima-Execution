@@ -12,6 +12,7 @@ export interface ValidationFeedInput {
   purpose_final: string;
   timeframe_start?: string;
   timeframe_end?: string;
+  timeframe_days?: number;
   country: string;
   economic_type?: string;
   business_type: string;

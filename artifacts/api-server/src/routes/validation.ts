@@ -16,8 +16,11 @@ import { resolveArchetype } from "../engines/erector/ArchetypeResolutionEngine.j
 import { SequenceTrackingService } from "../services/SequenceTrackingService.js";
 import { ErectorRefinementService } from "../services/ErectorRefinementService.js";
 import { runErectorTwentyStages } from "../engines/erector/ErectorStageRunner.js";
+import { rowToErectorResult } from "../engines/erector/ErectorOrchestrationHelpers.js";
+import { resolveValidationTimeframeFields } from "../lib/validationTimeframe.js";
 import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
+import { ValidationKind } from "@workspace/state-machine";
 
 const router = Router();
 
@@ -314,6 +317,20 @@ router.post("/v1/validation/run", async (req, res) => {
     let result: Awaited<ReturnType<typeof runErectorValidation>> | null = null;
 
     if (useTwentyStage) {
+      const tfFields = resolveValidationTimeframeFields({
+        timeframe: parsed.data.timeframe,
+        customTimeframeDays:
+          parsed.data.customTimeframeDays ?? refineRow?.timeframe_days ?? undefined,
+        timeframeStart: refineRow?.timeframe_start,
+        timeframeEnd: refineRow?.timeframe_end,
+      });
+      const startIso =
+        refineRow?.timeframe_start?.toISOString?.().slice(0, 10) ??
+        new Date().toISOString().slice(0, 10);
+      const endDate = new Date(startIso);
+      endDate.setDate(endDate.getDate() + (tfFields.timeframe_days ?? 90));
+      const endIso = refineRow?.timeframe_end?.toISOString?.().slice(0, 10) ?? endDate.toISOString().slice(0, 10);
+
       const feed: ValidationFeedInput = {
         blueprintId,
         userId: auth.userId,
@@ -331,6 +348,9 @@ router.post("/v1/validation/run", async (req, res) => {
         currency: refineRow?.currency ?? parsed.data.currency,
         location_city: refineRow?.location_city ?? parsed.data.location.city,
         tier: parsed.data.tier,
+        timeframe_start: startIso,
+        timeframe_end: endIso,
+        timeframe_days: tfFields.timeframe_days ?? undefined,
       };
       const run = await runErectorTwentyStages(feed);
       validationId = run.validationId;
@@ -365,6 +385,26 @@ router.post("/v1/validation/run", async (req, res) => {
     const { db: runDb, validations: runValidations } = await import("@workspace/db");
     const { sql: runSql, eq: runEq } = await import("drizzle-orm");
     const [finalRow] = await runDb.select().from(runValidations).where(runEq(runValidations.id, validationId)).limit(1);
+    const tfPatch = resolveValidationTimeframeFields({
+      timeframe: parsed.data.timeframe,
+      customTimeframeDays: parsed.data.customTimeframeDays,
+      timeframeStart: finalRow?.timeframe_start,
+      timeframeEnd: finalRow?.timeframe_end,
+    });
+    if (finalRow && (!finalRow.timeframe?.trim() || finalRow.timeframe_days == null) && tfPatch.timeframe_days) {
+      await runDb
+        .update(runValidations)
+        .set({
+          timeframe: finalRow.timeframe?.trim() ? finalRow.timeframe : tfPatch.timeframe,
+          timeframe_days: finalRow.timeframe_days ?? tfPatch.timeframe_days,
+          commitment_level: finalRow.commitment_level ?? parsed.data.commitmentLevel,
+          location_country: finalRow.location_country ?? parsed.data.location.country,
+          location_context: finalRow.location_context ?? parsed.data.location.country,
+          domain: finalRow.domain ?? parsed.data.domainHint ?? null,
+          current_context: finalRow.current_context ?? parsed.data.currentContext ?? null,
+        })
+        .where(runEq(runValidations.id, validationId));
+    }
     const verdictForSeq = result?.verdict ?? finalRow?.verdict ?? "adjust";
     await SequenceTrackingService.recordValidation(blueprintId, parsed.data.tier, {
       verdict: verdictForSeq,
@@ -481,7 +521,13 @@ router.get("/v1/validation/:id", async (req, res) => {
       targetCustomer: row.target_customer,
       desiredOutcome: row.desired_outcome,
       timeframe: row.timeframe,
+      timeframeDays: row.timeframe_days,
       commitmentLevel: row.commitment_level,
+      locationCountry: row.location_country,
+      businessModel: row.business_model,
+      domain: row.domain,
+      currentContext: row.current_context,
+      isFinalized: row.is_finalized ?? false,
       knownBlockers: row.known_blockers ?? [],
       industryPros: row.industry_pros ?? [],
       industryCons: row.industry_cons ?? [],
@@ -819,7 +865,7 @@ router.get("/validation/:id/status", async (req, res) => {
   }
 });
 
-// GET /api/validation/:id/result — by validation session id (resolves blueprint)
+// GET /api/validation/:id/result — by validation session id (Erector + Intelligence)
 router.get("/validation/:id/result", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
@@ -830,6 +876,39 @@ router.get("/validation/:id/result", async (req, res) => {
       failure(res, "NOT_FOUND", "Validation not found", 404);
       return;
     }
+
+    if (row.validation_kind === ValidationKind.ERECTOR) {
+      const erector = rowToErectorResult(row);
+      success(res, {
+        validationId: row.id,
+        validationContractId: row.contract_id,
+        blueprintId: row.blueprint_id,
+        verdict: row.verdict ?? "adjust",
+        launchBlocked: row.launch_blocked ?? false,
+        isFinalized: row.is_finalized ?? false,
+        paths: erector.paths,
+        intelligence: {
+          erector: {
+            ...erector,
+            rawGoal: row.raw_goal ?? row.goal_final,
+            raw_goal: row.raw_goal ?? row.goal_final,
+            purpose: row.purpose ?? row.purpose_final,
+            timeframe: row.timeframe,
+            timeframeDays: row.timeframe_days,
+            timeframe_days: row.timeframe_days,
+            commitmentLevel: row.commitment_level,
+            locationCountry: row.location_country,
+            location_country: row.location_country,
+            businessModel: row.business_model,
+            business_model: row.business_model,
+            domain: row.domain,
+            currentContext: row.current_context,
+          },
+        },
+      });
+      return;
+    }
+
     const result = await ValidationService.getValidationResult({
       blueprintId: row.blueprint_id,
       userId: auth.userId,

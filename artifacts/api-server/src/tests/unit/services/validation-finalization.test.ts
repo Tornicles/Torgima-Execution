@@ -19,6 +19,7 @@ vi.mock("@workspace/db", () => ({
     })),
   },
   validations: { id: "id", user_id: "user_id" },
+  blueprints: { id: "id", timeframe_days: "timeframe_days" },
 }));
 
 vi.mock("../../../engines/erector/ErectorValidationWorkspace.js", () => ({
@@ -77,6 +78,27 @@ describe("ValidationFinalizationService", () => {
     await expect(
       ValidationFinalizationService.finalizeValidation("val-1", "u-1"),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  it("finalization fails when timeframe is missing", async () => {
+    const { ValidationFinalizationService } = await load();
+    select.mockResolvedValue([
+      {
+        ...intelligenceRow,
+        timeframe: null,
+        timeframe_days: null,
+        timeframe_start: null,
+        timeframe_end: null,
+        validation_feed: null,
+      },
+    ]);
+
+    await expect(
+      ValidationFinalizationService.finalizeValidation("val-1", "u-1", { selectedPath: "current" }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      fieldErrors: expect.objectContaining({ timeframe: expect.any(Array) }),
+    });
   });
 
   it("finalization stores is_finalized and finalized_at", async () => {

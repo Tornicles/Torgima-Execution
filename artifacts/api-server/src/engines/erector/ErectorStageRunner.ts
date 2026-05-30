@@ -13,6 +13,7 @@ import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@works
 import { writeEvent, EventTypes } from "../../services/EventService.js";
 import { logger } from "../../lib/logger.js";
 import type { ErectorValidationInput } from "../../types/erector.js";
+import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
 
 const STAGE_TRIGGER: Record<string, BhudhiTriggerType> = {
   stage_2_decomposition: "VALIDATE_STAGE_2_DECOMPOSITION",
@@ -139,6 +140,13 @@ export async function runErectorTwentyStages(feed: ValidationFeedInput): Promise
     .where(eq(validations.idempotency_key, feed.idempotencyKey))
     .limit(1);
 
+  const timeframeFields = resolveValidationTimeframeFields({
+    timeframeStart: feed.timeframe_start,
+    timeframeEnd: feed.timeframe_end,
+    feedDurationDays:
+      (feed as ValidationFeedInput & { timeframe_days?: number }).timeframe_days ?? undefined,
+  });
+
   const baseValues = {
     blueprint_id: feed.blueprintId,
     user_id: feed.userId,
@@ -147,10 +155,13 @@ export async function runErectorTwentyStages(feed: ValidationFeedInput): Promise
     status: ValidationStatus.RUNNING,
     validation_stage: ValidationStatus.RUNNING,
     erector_validation_stage: ErectorValidationStage.RUNNING,
+    raw_goal: feed.goal_final,
     goal_final: feed.goal_final,
     purpose_final: feed.purpose_final,
+    purpose: feed.purpose_final,
     country: feed.country,
     location_country: feed.country,
+    location_context: feed.country,
     economic_type: economicType,
     business_type: feed.business_type,
     business_model: feed.business_model,
@@ -159,6 +170,8 @@ export async function runErectorTwentyStages(feed: ValidationFeedInput): Promise
     currency: feed.currency ?? "USD",
     current_resources: feed.resources,
     target_customer: feed.target_customer,
+    timeframe: timeframeFields.timeframe,
+    timeframe_days: timeframeFields.timeframe_days,
     timeframe_start: feed.timeframe_start ? new Date(feed.timeframe_start) : null,
     timeframe_end: feed.timeframe_end ? new Date(feed.timeframe_end) : null,
     archetype_resolution: archetypeResolution,

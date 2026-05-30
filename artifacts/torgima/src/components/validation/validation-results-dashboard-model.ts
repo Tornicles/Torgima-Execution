@@ -6,6 +6,7 @@ import {
   scoreOn10,
   type ValidationViewModel,
 } from "./validation-results-helpers";
+import { loadPreValidationDraft, formatDisplayDate } from "@/lib/pre-validation-draft";
 
 export type StatusTone = "green" | "orange" | "red" | "gray" | "purple";
 
@@ -255,14 +256,24 @@ function directionLabel(path: PathKey): string {
 }
 
 function formatTimeframe(erector: Record<string, unknown>): string {
-  const tf = String(erector.timeframe ?? erector.timeframeDays ?? "");
-  if (tf.includes("month") || tf.includes("yr") || tf.includes("year")) return tf;
+  const tf = String(erector.timeframe ?? "").trim();
+  if (tf && !/^\d+d$/i.test(tf)) return tf;
+
   const days = Number(erector.timeframeDays ?? erector.timeframe_days);
-  if (Number.isFinite(days) && days > 0) {
-    const months = Math.round(days / 30);
+  const draft = loadPreValidationDraft();
+  const effectiveDays =
+    Number.isFinite(days) && days > 0 ? days : draft.timeframeDays > 0 ? draft.timeframeDays : null;
+
+  if (draft.startDate && draft.endDate) {
+    return `${formatDisplayDate(draft.startDate)} – ${formatDisplayDate(draft.endDate)}`;
+  }
+
+  if (effectiveDays != null) {
+    const months = Math.round(effectiveDays / 30);
     return months === 1 ? "1 month" : `${months} months`;
   }
-  return "12 months";
+
+  return "—";
 }
 
 export function buildResultsDashboardModel(

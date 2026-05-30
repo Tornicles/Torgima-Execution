@@ -8,6 +8,7 @@ import {
   type ValidationPathType,
 } from "../lib/validationPathSelection.js";
 import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { mergeValidationTimeframeFromRow } from "../lib/validationTimeframe.js";
 
 export type FinalizedValidationRow = typeof validations.$inferSelect;
 
@@ -108,25 +109,39 @@ export const ValidationFinalizationService = {
     }
 
     let effectiveRow = row;
-    if ((!row.raw_goal?.trim() || !row.purpose?.trim()) && row.blueprint_id) {
+    if ((!row.raw_goal?.trim() || !row.purpose?.trim() || (!row.timeframe?.trim() && row.timeframe_days == null)) && row.blueprint_id) {
       const [bp] = await db
         .select({
           goal: blueprints.goal,
           raw_goal: blueprints.raw_goal,
           purpose: blueprints.purpose,
           timeframe_days: blueprints.timeframe_days,
+          domain: blueprints.domain,
+          current_context: blueprints.current_context,
         })
         .from(blueprints)
         .where(eq(blueprints.id, row.blueprint_id))
         .limit(1);
       if (bp) {
+        const mergedTf = mergeValidationTimeframeFromRow(row, bp);
         effectiveRow = {
           ...row,
           raw_goal: row.raw_goal ?? bp.raw_goal ?? bp.goal,
           purpose: row.purpose ?? bp.purpose,
-          timeframe_days: row.timeframe_days ?? bp.timeframe_days,
+          timeframe: mergedTf.timeframe,
+          timeframe_days: mergedTf.timeframe_days,
+          domain: row.domain ?? bp.domain ?? null,
+          current_context: row.current_context ?? bp.current_context ?? null,
+          location_context: row.location_context ?? row.location_country ?? null,
         };
       }
+    } else if (!row.timeframe?.trim() && row.timeframe_days == null) {
+      const mergedTf = mergeValidationTimeframeFromRow(row);
+      effectiveRow = {
+        ...row,
+        timeframe: mergedTf.timeframe,
+        timeframe_days: mergedTf.timeframe_days,
+      };
     }
 
     if (row.is_finalized) {

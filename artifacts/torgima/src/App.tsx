@@ -217,7 +217,7 @@ function withAppLayout(Page: ComponentType) {
 /** Pre-launch flows — no app sidebar. */
 const OnboardingRoute = ProtectedOnboarding;
 const ValidateRoute = ProtectedValidate;
-const ValidationResultsRoute = ProtectedValidationResults;
+const ValidationResultsRoute = withAppLayout(ProtectedValidationResults);
 const ValidationBlueprintRoute = ProtectedValidationBlueprint;
 const ValidationScoresRoute = ProtectedValidationScores;
 const DashboardRoute = withAppLayout(ProtectedDashboard);

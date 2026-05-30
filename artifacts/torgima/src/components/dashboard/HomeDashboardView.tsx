@@ -371,7 +371,7 @@ function HomeDashboardContent({
               </span>
               <button
                 type="button"
-                onClick={() => setOrdersExpanded((e) => !e)}
+                onClick={() => setOrdersExpanded(!ordersExpanded)}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E8ECF0] flex items-center gap-1"
               >
                 {ordersExpanded ? "Collapse" : "Expand"}

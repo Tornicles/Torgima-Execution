@@ -201,6 +201,8 @@ export const ErectorRefinementService = {
         target_customer: feed.target_customer,
         economic_type: economicType,
         timeframe_days: feed.timeframe?.duration_days ?? null,
+        timeframe:
+          feed.timeframe?.duration_days != null ? `${feed.timeframe.duration_days} days` : null,
       })
       .where(eq(validations.id, row.id));
     return { validationId: row.id, economicType, feed };
