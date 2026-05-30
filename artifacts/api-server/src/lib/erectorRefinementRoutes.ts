@@ -5,6 +5,7 @@ import {
   understandGoalDeterministic,
   understandPurposeDeterministic,
 } from "../engines/erector/ErectorRefinementEngine.js";
+import { polishGoalOptions, polishPurposeOptions } from "./refinementTextPolish.js";
 
 export function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -63,12 +64,7 @@ export function parsePurposeUnderstandBody(body: unknown):
 }
 
 export function buildRefinementFallbackOptions(rawInput: string): string[] {
-  const base = rawInput.trim().slice(0, 200) || "your direction";
-  return [
-    `${base} — focused execution path`,
-    `${base} — structured growth path`,
-    `${base} — validated market path`,
-  ];
+  return polishGoalOptions(rawInput);
 }
 
 export function refineGoalOptions(rawGoal: string): string[] {
@@ -78,7 +74,7 @@ export function refineGoalOptions(rawGoal: string): string[] {
 
 export function refinePurposeOptions(rawPurpose: string, selectedGoal: string): string[] {
   const understanding = understandPurposeDeterministic(rawPurpose, selectedGoal);
-  return generatePurposeOptionsDeterministic(rawPurpose, understanding);
+  return generatePurposeOptionsDeterministic(rawPurpose, understanding, selectedGoal);
 }
 
 /** Never fail refinement — deterministic engine first, then safe fallback options. */
@@ -99,5 +95,5 @@ export function safeRefinePurposeOptions(rawPurpose: string, selectedGoal: strin
   } catch (err) {
     console.error("[Refinement] Bhudhi unavailable, using fallback", err);
   }
-  return buildRefinementFallbackOptions(rawPurpose);
+  return polishPurposeOptions(rawPurpose, selectedGoal);
 }

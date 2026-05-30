@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { understandGoal, understandPurpose } from "@/lib/erector-refinement-api";
 import {
   buildOnboardingGoalFlatPayload,
@@ -11,6 +12,9 @@ import {
 } from "@/lib/torgima-api";
 import { postValidationRun } from "@/lib/validation-run";
 import type { CommitmentKey } from "./erector-intake-types";
+import { CountrySelector } from "./CountrySelector";
+import { ErectorFlowShell } from "@/components/erector/ErectorFlowShell";
+import { ValidationRunningDashboard } from "@/components/erector/ValidationRunningDashboard";
 import {
   initialErectorOnboardingState,
   loadPersistedErectorOnboarding,
@@ -53,6 +57,10 @@ function fieldErrorsToMessage(fieldErrors?: Record<string, string[]>): string {
     .join(" ");
 }
 
+function commitmentLabel(key: CommitmentKey): string {
+  return COMMITMENT_OPTIONS.find((c) => c.key === key)?.label ?? key;
+}
+
 export function ErectorOnboardingRefinementFlow({
   idempotencyKey,
   tier = "starter",
@@ -64,15 +72,17 @@ export function ErectorOnboardingRefinementFlow({
   mode?: "individual" | "team";
   onValidationStarted: (validationId: string) => void;
 }) {
+  const [, setLocation] = useLocation();
   const [flow, setFlow] = useState<ErectorOnboardingState>(() => {
     return loadPersistedErectorOnboarding() ?? initialErectorOnboardingState();
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [contextForm, setContextForm] = useState<ErectorContextForm>({
-    location: "",
+    country: null,
     domain: "SaaS",
     commitment: "MEDIUM",
     currentContext: "",
@@ -168,6 +178,7 @@ export function ErectorOnboardingRefinementFlow({
   const canStartValidation =
     Boolean(flow.selectedGoal.trim()) &&
     Boolean(flow.selectedPurpose.trim()) &&
+    Boolean(contextForm.country?.countryName) &&
     Object.keys(validateErectorContext(contextForm)).length === 0;
 
   async function startValidation() {
@@ -181,7 +192,7 @@ export function ErectorOnboardingRefinementFlow({
       return;
     }
 
-    setLoading(true);
+    setValidationError("");
     setError("");
     setFieldErrors({});
     persist({ ...flow, step: "validating" });
@@ -202,9 +213,9 @@ export function ErectorOnboardingRefinementFlow({
       });
 
       if (!goalEnvelope.ok || !goalEnvelope.data?.blueprintId) {
-        setError(formatApiEnvelopeError(goalEnvelope, "Could not start validation."));
+        const msg = formatApiEnvelopeError(goalEnvelope, "Could not start validation.");
+        setValidationError(msg);
         persist({ ...flow, step: "context" });
-        setLoading(false);
         return;
       }
 
@@ -219,7 +230,7 @@ export function ErectorOnboardingRefinementFlow({
         timeframe: `${contextForm.timeframeDays} days`,
         customTimeframeDays: contextForm.timeframeDays,
         commitmentLevel: contextForm.commitment,
-        locationCountry: contextForm.location,
+        locationCountry: contextForm.country!.countryName,
         businessModel: contextForm.domain,
         businessType: "online",
         currentContext: contextForm.currentContext,
@@ -228,20 +239,18 @@ export function ErectorOnboardingRefinementFlow({
       });
 
       if (!runResult.ok || !runResult.validationId) {
-        setError(runResult.errorMessage ?? "Validation failed.");
+        setValidationError(runResult.errorMessage ?? "Validation failed.");
         persist({ ...flow, step: "context" });
-        setLoading(false);
         return;
       }
 
-      persist({ ...flow, step: "results" });
+      sessionStorage.setItem("torgima_validation_results", runResult.validationId);
       onValidationStarted(runResult.validationId);
+      setLocation(`/validation/${runResult.validationId}/results`);
     } catch (err) {
       console.error("[ErectorOnboarding] validation error:", err);
-      setError(err instanceof Error ? err.message : "Validation failed.");
+      setValidationError(err instanceof Error ? err.message : "Validation failed.");
       persist({ ...flow, step: "context" });
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -251,202 +260,217 @@ export function ErectorOnboardingRefinementFlow({
     persist({ ...flow, step: target });
   }
 
+  if (flow.step === "validating") {
+    return (
+      <ValidationRunningDashboard
+        context={{
+          goal: flow.selectedGoal,
+          purpose: flow.selectedPurpose,
+          countryName: contextForm.country?.countryName ?? "",
+          timeframeDays: contextForm.timeframeDays,
+          commitmentLabel: commitmentLabel(contextForm.commitment),
+          domain: contextForm.domain,
+          currentContext: contextForm.currentContext,
+        }}
+        error={validationError}
+        onRetry={() => {
+          setValidationError("");
+          void startValidation();
+        }}
+      />
+    );
+  }
+
+  const shellTitle =
+    flow.step === "raw_goal"
+      ? "Validate New Idea"
+      : flow.step === "raw_purpose"
+        ? "Refine your purpose"
+        : "Context & timeframe";
+
   return (
-    <div className="space-y-6 rounded-xl border border-border bg-card p-6 max-w-2xl mx-auto">
-      {error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          <p>{error}</p>
-          <button
-            type="button"
-            className="mt-2 text-xs underline"
-            onClick={() => setError("")}
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
-
-      {flow.step === "raw_goal" && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">What do you want to build?</h2>
-          <textarea
-            className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={flow.rawGoal}
-            onChange={(e) => persist({ ...flow, rawGoal: e.target.value })}
-            placeholder="I want to build a platform that helps founders execute ideas"
-          />
-          {fieldErrors.rawGoal ? <p className="text-sm text-destructive">{fieldErrors.rawGoal}</p> : null}
-          <button
-            type="button"
-            disabled={loading || !flow.rawGoal.trim()}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            onClick={() => void submitRawGoal()}
-          >
-            {loading ? "Submitting…" : "Submit Goal"}
-          </button>
-        </div>
-      )}
-
-      {flow.step === "goal_options" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Choose the clearest version of your goal</h2>
-          {flow.goalOptions.map((opt, i) => (
-            <button
-              key={i}
-              type="button"
-              disabled={loading}
-              className="block w-full rounded-md border border-border p-3 text-left text-sm hover:border-primary"
-              onClick={() => selectGoal(opt)}
-            >
-              {opt}
+    <ErectorFlowShell title={shellTitle} subtitle="Erector refinement before reality validation">
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {error ? (
+          <div className="rounded-lg border border-red-500/40 bg-red-950/40 p-3 text-sm text-red-300">
+            <p>{error}</p>
+            <button type="button" className="mt-2 text-xs underline" onClick={() => setError("")}>
+              Dismiss
             </button>
-          ))}
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => goBack("raw_goal")}>
-            ← Edit raw goal
-          </button>
-        </div>
-      )}
+          </div>
+        ) : null}
 
-      {flow.step === "raw_purpose" && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Why do you want to build this?</h2>
-          <p className="text-xs text-muted-foreground">Selected goal: {flow.selectedGoal}</p>
-          <textarea
-            className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={flow.rawPurpose}
-            onChange={(e) => persist({ ...flow, rawPurpose: e.target.value })}
-            placeholder="I want to help people turn ideas into daily progress"
-          />
-          {fieldErrors.rawPurpose ? <p className="text-sm text-destructive">{fieldErrors.rawPurpose}</p> : null}
-          <button
-            type="button"
-            disabled={loading || !flow.rawPurpose.trim()}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            onClick={() => void submitRawPurpose()}
-          >
-            {loading ? "Submitting…" : "Submit Purpose"}
-          </button>
-        </div>
-      )}
-
-      {flow.step === "purpose_options" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Choose the clearest version of your purpose</h2>
-          {flow.purposeOptions.map((opt, i) => (
-            <button
-              key={i}
-              type="button"
-              disabled={loading}
-              className="block w-full rounded-md border border-border p-3 text-left text-sm hover:border-primary"
-              onClick={() => selectPurpose(opt)}
-            >
-              {opt}
-            </button>
-          ))}
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => goBack("raw_purpose")}>
-            ← Edit raw purpose
-          </button>
-        </div>
-      )}
-
-      {flow.step === "context" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Context & timeframe</h2>
-          <p className="text-xs text-muted-foreground">
-            Goal: {flow.selectedGoal}
-            <br />
-            Purpose: {flow.selectedPurpose}
-          </p>
-
-          <label className="block text-sm font-medium">
-            Location
-            <input
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={contextForm.location}
-              onChange={(e) => setContextForm((c) => ({ ...c, location: e.target.value }))}
-              placeholder="United States"
-            />
-          </label>
-          {fieldErrors.location ? <p className="text-sm text-destructive">{fieldErrors.location}</p> : null}
-
-          <label className="block text-sm font-medium">
-            Timeframe
-            <select
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={contextForm.timeframeDays}
-              onChange={(e) =>
-                setContextForm((c) => ({ ...c, timeframeDays: Number(e.target.value) }))
-              }
-            >
-              {TIMEFRAME_DAYS.map((t) => (
-                <option key={t.days} value={t.days}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-medium">
-            Commitment level
-            <select
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={contextForm.commitment}
-              onChange={(e) =>
-                setContextForm((c) => ({ ...c, commitment: e.target.value as CommitmentKey }))
-              }
-            >
-              {COMMITMENT_OPTIONS.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-medium">
-            Domain / business type
-            <select
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={contextForm.domain}
-              onChange={(e) => setContextForm((c) => ({ ...c, domain: e.target.value }))}
-            >
-              {DOMAIN_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-medium">
-            What is involved in this business? (optional)
+        {flow.step === "raw_goal" && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-white">What do you want to build?</h2>
             <textarea
-              className="mt-1 min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={contextForm.currentContext}
-              onChange={(e) => setContextForm((c) => ({ ...c, currentContext: e.target.value }))}
+              className="min-h-[100px] w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+              value={flow.rawGoal}
+              onChange={(e) => persist({ ...flow, rawGoal: e.target.value })}
+              placeholder="Describe your idea — we will polish spelling and grammar"
             />
-          </label>
+            {fieldErrors.rawGoal ? <p className="text-sm text-red-400">{fieldErrors.rawGoal}</p> : null}
+            <button
+              type="button"
+              disabled={loading || !flow.rawGoal.trim()}
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={() => void submitRawGoal()}
+            >
+              {loading ? "Submitting…" : "Submit Goal"}
+            </button>
+          </div>
+        )}
 
-          <button
-            type="button"
-            disabled={loading || !canStartValidation}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            onClick={() => void startValidation()}
-          >
-            Start Validation
-          </button>
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => goBack("purpose_options")}>
-            ← Change purpose
-          </button>
-        </div>
-      )}
+        {flow.step === "goal_options" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Choose the clearest version of your goal</h2>
+            {flow.goalOptions.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                disabled={loading}
+                className="block w-full rounded-lg border border-slate-600 bg-slate-800/50 p-4 text-left text-sm text-slate-100 hover:border-violet-500"
+                onClick={() => selectGoal(opt)}
+              >
+                {opt}
+              </button>
+            ))}
+            <button type="button" className="text-xs text-violet-400 underline" onClick={() => goBack("raw_goal")}>
+              ← Edit raw goal
+            </button>
+          </div>
+        )}
 
-      {flow.step === "validating" && (
-        <div className="flex flex-col items-center py-12 gap-4 text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm font-medium">Bhudhi is validating your idea...</p>
-        </div>
-      )}
-    </div>
+        {flow.step === "raw_purpose" && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-white">Why do you want to build this?</h2>
+            <p className="text-xs text-slate-400">Selected goal: {flow.selectedGoal}</p>
+            <textarea
+              className="min-h-[100px] w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+              value={flow.rawPurpose}
+              onChange={(e) => persist({ ...flow, rawPurpose: e.target.value })}
+              placeholder="Explain why this matters"
+            />
+            {fieldErrors.rawPurpose ? <p className="text-sm text-red-400">{fieldErrors.rawPurpose}</p> : null}
+            <button
+              type="button"
+              disabled={loading || !flow.rawPurpose.trim()}
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={() => void submitRawPurpose()}
+            >
+              {loading ? "Submitting…" : "Submit Purpose"}
+            </button>
+          </div>
+        )}
+
+        {flow.step === "purpose_options" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Choose the clearest version of your purpose</h2>
+            {flow.purposeOptions.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                disabled={loading}
+                className="block w-full rounded-lg border border-slate-600 bg-slate-800/50 p-4 text-left text-sm text-slate-100 hover:border-violet-500"
+                onClick={() => selectPurpose(opt)}
+              >
+                {opt}
+              </button>
+            ))}
+            <button type="button" className="text-xs text-violet-400 underline" onClick={() => goBack("raw_purpose")}>
+              ← Edit raw purpose
+            </button>
+          </div>
+        )}
+
+        {flow.step === "context" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Context & timeframe</h2>
+            <p className="text-xs text-slate-400">
+              Goal: {flow.selectedGoal}
+              <br />
+              Purpose: {flow.selectedPurpose}
+            </p>
+
+            <CountrySelector
+              value={contextForm.country}
+              onChange={(country) => setContextForm((c) => ({ ...c, country }))}
+              disabled={loading}
+              error={fieldErrors.country}
+            />
+
+            <label className="block text-sm font-medium text-slate-200">
+              Timeframe
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+                value={contextForm.timeframeDays}
+                onChange={(e) =>
+                  setContextForm((c) => ({ ...c, timeframeDays: Number(e.target.value) }))
+                }
+              >
+                {TIMEFRAME_DAYS.map((t) => (
+                  <option key={t.days} value={t.days}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-slate-200">
+              Commitment level
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+                value={contextForm.commitment}
+                onChange={(e) =>
+                  setContextForm((c) => ({ ...c, commitment: e.target.value as CommitmentKey }))
+                }
+              >
+                {COMMITMENT_OPTIONS.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-slate-200">
+              Domain / business type
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+                value={contextForm.domain}
+                onChange={(e) => setContextForm((c) => ({ ...c, domain: e.target.value }))}
+              >
+                {DOMAIN_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-slate-200">
+              What is involved in this business? (optional)
+              <textarea
+                className="mt-1 min-h-[80px] w-full rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-sm text-white"
+                value={contextForm.currentContext}
+                onChange={(e) => setContextForm((c) => ({ ...c, currentContext: e.target.value }))}
+              />
+            </label>
+
+            <button
+              type="button"
+              disabled={loading || !canStartValidation}
+              className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={() => void startValidation()}
+            >
+              Start Validation
+            </button>
+            <button type="button" className="text-xs text-violet-400 underline" onClick={() => goBack("purpose_options")}>
+              ← Change purpose
+            </button>
+          </div>
+        )}
+      </div>
+    </ErectorFlowShell>
   );
 }

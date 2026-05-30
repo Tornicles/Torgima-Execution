@@ -1,5 +1,6 @@
 import type { AlignedIntakeForm } from "@/components/onboarding/AlignedGoalIntake";
 import type { CommitmentKey } from "@/components/onboarding/erector-intake-types";
+import type { CountrySelection } from "@/lib/countries";
 
 function commitmentForApi(level: CommitmentKey): "low" | "medium" | "high" | "full" {
   if (level === "LOW") return "low";
@@ -52,7 +53,7 @@ export function buildOnboardingGoalPayload(
 }
 
 export type ErectorContextForm = {
-  location: string;
+  country: CountrySelection | null;
   domain: string;
   commitment: CommitmentKey;
   currentContext: string;
@@ -117,7 +118,7 @@ export function buildOnboardingGoalFlatPayload(
     goal: state.selectedGoal.trim(),
     purpose: state.selectedPurpose.trim(),
     timeframe: normalizeTimeframe(state.context.timeframeDays),
-    location: state.context.location.trim(),
+    location: state.context.country?.countryName?.trim() ?? "",
     commitmentLevel: normalizeCommitment(state.context.commitment),
     domain,
     idempotencyKey: options.idempotencyKey,
@@ -158,7 +159,7 @@ export function buildErectorValidationPayload(
       pace: state.context.pace,
     },
     context: {
-      location: state.context.location.trim(),
+      location: state.context.country?.countryName?.trim() ?? "",
       commitment: commitmentForApi(state.context.commitment),
       domain: state.context.domain.trim() || "Other",
       current_context: state.context.currentContext.trim() || undefined,
@@ -174,7 +175,7 @@ export function buildErectorValidationPayload(
 
 export function validateErectorContext(context: ErectorContextForm): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (!context.location.trim()) errors.location = "Location is required.";
+  if (!context.country?.countryName?.trim()) errors.country = "Select a country from the list.";
   if (!context.domain.trim()) errors.domain = "Domain / business type is required.";
   if (!context.commitment) errors.commitment = "Select a commitment level.";
   if (!context.timeframeDays || context.timeframeDays < 1) errors.timeframe = "Select a timeframe.";

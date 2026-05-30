@@ -787,22 +787,15 @@ export default function OnboardingPage() {
 
   if (step <= 5) {
     return (
-      <OnboardingShell flowStep={1} maxReachableStep={maxReachableStep} onFlowStepClick={handleFlowStepClick}>
-        <ErectorOnboardingRefinementFlow
-          idempotencyKey={idempotencyKeyRef.current}
-          tier={selectedTier ?? "starter"}
-          mode={selectedMode ?? "individual"}
-          onValidationStarted={(validationId) => {
-            setStep(7);
-            setErectorPhase("scores");
-            setLoading(true);
-            setError("");
-            sessionStorage.setItem("torgima_validation_results", validationId);
-            void loadValidationResults(validationId);
-          }}
-        />
-        {error && <p className="text-center text-sm text-red-600 pb-8">{error}</p>}
-      </OnboardingShell>
+      <ErectorOnboardingRefinementFlow
+        idempotencyKey={idempotencyKeyRef.current}
+        tier={selectedTier ?? "starter"}
+        mode={selectedMode ?? "individual"}
+        onValidationStarted={(validationId) => {
+          sessionStorage.setItem("torgima_validation_results", validationId);
+          setLocation(`/validation/${validationId}/results`);
+        }}
+      />
     );
   }
 

@@ -8,7 +8,7 @@ import {
 
 describe("Start Validation flat payload", () => {
   const context = {
-    location: "United States",
+    country: { countryName: "United States", countryCode: "US" },
     domain: "SaaS",
     commitment: "HIGH" as const,
     currentContext: "Solo founder",
@@ -79,7 +79,7 @@ describe("Start Validation flat payload", () => {
 
   it("context validation blocks missing domain", () => {
     const errors = validateErectorContext({
-      location: "US",
+      country: { countryName: "United States", countryCode: "US" },
       domain: "",
       commitment: "MEDIUM",
       currentContext: "",
@@ -87,5 +87,17 @@ describe("Start Validation flat payload", () => {
       pace: "moderate",
     });
     expect(errors.domain).toBeDefined();
+  });
+
+  it("context validation blocks arbitrary country text like D", () => {
+    const errors = validateErectorContext({
+      country: null,
+      domain: "SaaS",
+      commitment: "MEDIUM",
+      currentContext: "",
+      timeframeDays: 90,
+      pace: "moderate",
+    });
+    expect(errors.country).toBeDefined();
   });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { ApiError } from "@workspace/api-client-react";
-import { PreLaunchShell } from "@/components/shell/PreLaunchShell";
+import { ErectorFlowShell } from "@/components/erector/ErectorFlowShell";
 import { ValidationResultsDashboard } from "@/components/validation/ValidationResultsDashboard";
 import { ValidationWorkspacePanel } from "@/components/validation/ValidationWorkspacePanel";
 import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
@@ -143,30 +143,30 @@ export default function ValidationResultsPage() {
 
   if (checking || loading) {
     return (
-      <PreLaunchShell step={3}>
+      <ErectorFlowShell title="Validation Results" subtitle="Loading your validation report…">
         <div className="flex items-center justify-center py-32">
-          <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      </PreLaunchShell>
+      </ErectorFlowShell>
     );
   }
 
   if (error || !validation) {
     return (
-      <PreLaunchShell step={3}>
+      <ErectorFlowShell title="Validation Results" subtitle="Reality check complete">
         <div className="max-w-lg mx-auto py-20 text-center space-y-4">
-          <p className="text-red-600 text-sm">{error || "No results"}</p>
-          <button type="button" onClick={() => void loadResults()} className="text-emerald-600 underline text-sm">
+          <p className="text-red-400 text-sm">{error || "No results"}</p>
+          <button type="button" onClick={() => void loadResults()} className="text-violet-400 underline text-sm">
             Retry
           </button>
         </div>
-      </PreLaunchShell>
+      </ErectorFlowShell>
     );
   }
 
   return (
-    <PreLaunchShell step={3}>
-      <div className="max-w-5xl mx-auto px-4 space-y-6 pb-12">
+    <ErectorFlowShell title="Validation Results" subtitle="Reality check complete. Here's what we found and recommend.">
+      <div className="max-w-6xl mx-auto px-4 space-y-6 pb-12 bg-[#f3f4f6] text-gray-900 rounded-t-2xl min-h-full">
       <ValidationResultsDashboard
         data={validation}
         validationId={validationId}
@@ -187,6 +187,6 @@ export default function ValidationResultsPage() {
       />
       {validationId ? <ValidationWorkspacePanel validationId={validationId} /> : null}
       </div>
-    </PreLaunchShell>
+    </ErectorFlowShell>
   );
 }

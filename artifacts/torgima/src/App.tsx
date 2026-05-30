@@ -24,6 +24,7 @@ import UnsubscribePage from "@/pages/unsubscribe";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
+const ErectorDashboard = lazy(() => import("@/pages/erector-dashboard"));
 const ValidatePage = lazy(() => import("@/pages/validate"));
 const ValidationResultsPage = lazy(() => import("@/pages/validation-results"));
 const ValidationScoresPage = lazy(() => import("@/pages/validation-scores"));
@@ -163,6 +164,7 @@ function withTierFeatureGate(required: "growth" | "ultimate", Page: RoutePage): 
 }
 
 const ProtectedOnboarding = protect(Onboarding);
+const ProtectedErectorDashboard = protect(ErectorDashboard);
 const ProtectedValidate = protect(ValidatePage);
 const ProtectedValidationResults = protect(ValidationResultsPage);
 const ProtectedValidationScores = protect(ValidationScoresPage);
@@ -278,6 +280,7 @@ function AppRoutes() {
         <Route path="/validate" component={ValidateRoute} />
         <Route path="/validation/:id/results" component={ValidationResultsRoute} />
         <Route path="/onboarding/goal" component={ValidateRoute} />
+        <Route path="/erector" component={ProtectedErectorDashboard} />
         <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/validation/:id/running" component={ProtectedValidationRunning} />
         <Route path="/validation/scores" component={ValidationScoresRoute} />

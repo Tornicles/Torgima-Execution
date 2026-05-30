@@ -2,6 +2,7 @@
  * Goal + Purpose Refinement — delegates to BhudhiInterpretationEngine (BHUDHI_SYSTEM_SPECIFICATION).
  */
 import type { GoalUnderstanding, PurposeUnderstanding } from "../../types/erector-refinement.js";
+import { polishGoalOptions, polishPurposeOptions } from "../../lib/refinementTextPolish.js";
 
 function extractObject(raw: string): string {
   const lower = raw.toLowerCase();
@@ -36,14 +37,8 @@ export function understandGoalDeterministic(rawGoal: string): GoalUnderstanding 
   return { object, domain, impliedUser, impliedOutcome, unclear };
 }
 
-export function generateGoalOptionsDeterministic(rawGoal: string, understanding: GoalUnderstanding): string[] {
-  const base = rawGoal.replace(/^i want to\s+/i, "").replace(/^build\s+/i, "").trim();
-  const topic = base.charAt(0).toUpperCase() + base.slice(1);
-  return [
-    `Create ${topic} that helps users follow structured steps, track progress, and build consistent habits toward the stated outcome.`,
-    `Build ${topic} for a clearly defined niche audience, with culturally relevant execution, progress tracking, and accountability.`,
-    `Launch ${topic} as a focused business: prove demand with a minimum version, acquire first users, and validate a repeatable revenue path.`,
-  ];
+export function generateGoalOptionsDeterministic(rawGoal: string, _understanding: GoalUnderstanding): string[] {
+  return polishGoalOptions(rawGoal);
 }
 
 export function understandPurposeDeterministic(rawPurpose: string, goalFinal?: string): PurposeUnderstanding {
@@ -65,13 +60,10 @@ export function understandPurposeDeterministic(rawPurpose: string, goalFinal?: s
 
 export function generatePurposeOptionsDeterministic(
   rawPurpose: string,
-  understanding: PurposeUnderstanding,
+  _understanding: PurposeUnderstanding,
+  selectedGoal?: string,
 ): string[] {
-  return [
-    `The purpose is to help ${understanding.targetUser} overcome ${understanding.problem.toLowerCase()} by providing structured support and accountability.`,
-    `The purpose is to help ${understanding.targetUser} achieve ${understanding.change.toLowerCase()} through an experience designed for their lifestyle and resources.`,
-    `The purpose is to serve an underserved segment by combining practical execution, community, and clear progress toward ${understanding.change.toLowerCase()}.`,
-  ];
+  return polishPurposeOptions(rawPurpose, selectedGoal ?? "");
 }
 
 export async function refineGoal(rawGoal: string, ctx: { userId: string; blueprintId: string }) {
