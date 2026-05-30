@@ -24,5 +24,12 @@ describe("refinementTextPolish", () => {
       expect(o).toMatch(/\.$/);
       expect(o.toLowerCase()).not.toBe(rawPurpose.toLowerCase());
     }
+    expect(options[0]).toMatch(/purpose is/i);
+  });
+
+  it("preserves fitness in goal options", () => {
+    const options = polishGoalOptions("I want to create a fitness app");
+    expect(options[0]).toMatch(/fitness/i);
+    expect(options.every((o) => !/\bachieve achieve\b/i.test(o))).toBe(true);
   });
 });

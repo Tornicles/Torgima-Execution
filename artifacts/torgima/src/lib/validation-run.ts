@@ -103,11 +103,14 @@ export async function postValidationRun(
   };
 }
 
-/** Prefer /validation/:id/running (polls then → results). Fall back to API redirect if it is a valid app path. */
+/** Route to validation results after a successful run; use running only when explicitly requested. */
 export function validationRunNavigatePath(
   validationId: string,
   redirectTo?: string | null,
 ): string {
   if (redirectTo?.startsWith("/validation/")) return redirectTo;
-  return `/validation/${validationId}/running`;
+  if (redirectTo?.includes("/onboarding") && validationId) {
+    return `/validation/${validationId}/results`;
+  }
+  return `/validation/${validationId}/results`;
 }

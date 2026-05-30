@@ -42,19 +42,99 @@ import { checkOutcomeIntegrity, getOpenFlags } from "../engines/outcome/OutcomeV
 import { evaluatePhaseReadiness } from "../engines/blueprint/PhaseProgressionEngine.js";
 import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
 
+async function buildNoActiveBlueprintDashboardState(userId: string) {
+  const [user, signals, recentFeedback, activeOrders] = await Promise.all([
+    getUser(userId),
+    SignalService.getCurrent(userId),
+    FeedbackService.getRecent(userId, 5).catch(() => []),
+    OrderService.getActive(userId).catch(() => []),
+  ]);
+
+  const condEffective = {
+    condition: signals.condition,
+    durationDays: 0,
+    recoveryRequired: false,
+    escalationLevel: 0,
+    transitionReason: null as string | null,
+    previousCondition: null as string | null,
+  };
+
+  const dashboardUiState = deriveDashboardUiState({
+    hasBlueprint: false,
+    blueprintStatus: null,
+    systemOperational: true,
+    condition: condEffective.condition,
+    recoveryRequired: false,
+    currentActionStatus: null,
+    currentActionTaskType: null,
+    hasAwaitingFeedbackOrder: false,
+    hasBlockedOrder: false,
+    hasPendingOrActiveTask: false,
+  });
+
+  return {
+    hasActiveBlueprint: false,
+    state: "NO_ACTIVE_BLUEPRINT" as const,
+    user,
+    identity: {
+      stage: null,
+      label: null,
+      summary: null,
+      lastEvaluatedAt: null,
+    },
+    latestReward: null,
+    outcomeIntegrity: { openFlags: [], canAdvancePhase: true, blockers: [] },
+    phaseReadiness: null,
+    academyTasks: { pending: [], blocksExecution: false },
+    frameworks: { active: [], hasEnforcedDecision: false },
+    simplifiedSignalLabel: null,
+    signals,
+    activeBlueprint: null,
+    recentCompletionBlueprint: null,
+    activeOrders,
+    recentFeedback,
+    streakDays: signals.streak,
+    tasksCompletedToday: 0,
+    tasksCompletedThisWeek: 0,
+    stateVersion: 0,
+    pivotReviewOpen: false,
+    pivotReviewId: null,
+    pivotReview: null,
+    conditionDetail: condEffective,
+    signalProjection: null,
+    enforcement: null,
+    currentAction: null,
+    health: { systemOperational: true },
+    featureFlags: {} as Record<string, boolean>,
+    operationalAwareness: [] as string[],
+    signalBlueprintBridge: [] as Array<{ headline: string; cite: string }>,
+    executionIdentityLines: [] as string[],
+    dashboardUiState,
+    pendingSync: false,
+    alerts: buildDashboardAlerts({
+      uiState: dashboardUiState,
+      hasBlockedOrder: false,
+      recoveryRequired: false,
+      pivotReviewOpen: false,
+      assumptionDrift: [],
+      openFalseProgressCount: 0,
+    }),
+    intelligence: {
+      headline: "No active blueprint yet.",
+      bodyText: "Complete validation and launch your direction to start execution.",
+      nextActionSuggestion: "Review validation results or start a new idea in Erector.",
+      fallbackUsed: true,
+    },
+    prediction: null,
+    externalIntelligenceFreshness: "none" as const,
+  };
+}
+
 export const DashboardService = {
   async getDashboardState(userId: string) {
     logger.info({ userId }, "DashboardService.getDashboardState");
 
-    const [user, userBlueprints, activeOrders, signals, recentFeedback, primaryTask] = await Promise.all([
-      getUser(userId),
-      BlueprintService.list(userId),
-      OrderService.getActive(userId),
-      SignalService.getCurrent(userId),
-      FeedbackService.getRecent(userId, 5),
-      OrderService.getPrimaryDashboardTask(userId),
-    ]);
-
+    const userBlueprints = await BlueprintService.list(userId);
     const activeBlueprint = userBlueprints.find((b) => b.status === BlueprintStatus.ACTIVE) ?? null;
     /** When execution just finished there is often no longer an "active" row — surface completion UI briefly. */
     let recentCompletionBlueprint: (typeof userBlueprints)[number] | null = null;
@@ -71,6 +151,18 @@ export const DashboardService = {
         if (ageMs >= 0 && ageMs <= 72 * 60 * 60 * 1000) recentCompletionBlueprint = top;
       }
     }
+
+    if (!activeBlueprint && !recentCompletionBlueprint) {
+      return buildNoActiveBlueprintDashboardState(userId);
+    }
+
+    const [user, activeOrders, signals, recentFeedback, primaryTask] = await Promise.all([
+      getUser(userId),
+      OrderService.getActive(userId),
+      SignalService.getCurrent(userId),
+      FeedbackService.getRecent(userId, 5),
+      OrderService.getPrimaryDashboardTask(userId),
+    ]);
 
     const blueprintId = activeBlueprint?.id ?? null;
 
@@ -622,6 +714,8 @@ export const DashboardService = {
     }
 
     return {
+      hasActiveBlueprint: Boolean(activeBlueprint),
+      state: activeBlueprint ? ("ACTIVE_BLUEPRINT" as const) : ("NO_ACTIVE_BLUEPRINT" as const),
       user,
       identity: {
         ...identity,

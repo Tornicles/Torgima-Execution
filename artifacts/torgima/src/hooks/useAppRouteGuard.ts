@@ -5,7 +5,7 @@ import { getGetDashboardStateQueryOptions } from "@workspace/api-client-react";
 import { getAuthSession } from "@/lib/torgima-api";
 import { getDashboardUiState, toDashboardProjection } from "@/lib/dashboard-types";
 
-const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding"];
+const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding", "/erector"];
 const POST_LAUNCH_HOME = "/dashboard";
 
 function isPreLaunchPath(path: string): boolean {
@@ -50,9 +50,14 @@ export function useAppRouteGuard(mode: "pre-launch" | "post-launch") {
       return;
     }
 
-    if (mode === "pre-launch" && hasActiveBlueprint && location === "/validate") {
-      // Allow validation results even with active blueprint
-      if (!location.includes("/results")) {
+    if (mode === "pre-launch" && hasActiveBlueprint) {
+      const onValidationResults =
+        location.startsWith("/validation/") && location.endsWith("/results");
+      const onErectorFlow =
+        location.startsWith("/onboarding") ||
+        location.startsWith("/erector") ||
+        location.startsWith("/validation/");
+      if (!onValidationResults && !onErectorFlow && location === "/validate") {
         setLocation(POST_LAUNCH_HOME);
       }
     }

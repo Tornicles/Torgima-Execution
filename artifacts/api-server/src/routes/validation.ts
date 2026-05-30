@@ -365,7 +365,7 @@ router.post("/v1/validation/run", async (req, res) => {
       }) as unknown as Record<string, unknown>,
       feasibility: result?.scores.realityScore ?? finalRow?.reality_score ?? undefined,
     }).catch(() => null);
-    const redirectTo = `/onboarding?id=${validationId}`;
+    const redirectTo = `/validation/${validationId}/results`;
     const [runCount] = await runDb
       .select({ count: runSql<number>`count(*)::int` })
       .from(runValidations)

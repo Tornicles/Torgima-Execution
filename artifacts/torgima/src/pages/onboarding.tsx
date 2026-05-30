@@ -235,14 +235,14 @@ export default function OnboardingPage() {
     const params = new URLSearchParams(window.location.search);
     const queryId = params.get("id") ?? params.get("validationId");
     if (queryId) {
-      void loadValidationResults(queryId);
+      setLocation(`/validation/${queryId}/results`);
       return;
     }
     const pendingId = sessionStorage.getItem("torgima_validation_results");
     if (!pendingId) return;
     sessionStorage.removeItem("torgima_validation_results");
-    void loadValidationResults(pendingId);
-  }, []);
+    setLocation(`/validation/${pendingId}/results`);
+  }, [setLocation]);
 
   useEffect(() => {
     if (step === 7 && erectorPhase === "blueprint" && !isValidationPayloadReady(validation)) {
@@ -629,20 +629,24 @@ export default function OnboardingPage() {
           setError("Validation did not return a blueprint id.");
           return;
         }
+        const validationIdForNav = String(
+          payload.erectorValidationId ?? runData.validationId ?? "",
+        );
         const resultsPath =
-          String(runData.redirectTo ?? runData.redirect_to ?? "") ||
-          `/onboarding?id=${payload.erectorValidationId ?? runData.validationId ?? ""}`;
+          validationIdForNav ? `/validation/${validationIdForNav}/results` : "";
         console.log("[VALIDATION_NAVIGATE]", {
           to: resultsPath,
           erectorPhase: "scores",
-          validationId: payload.erectorValidationId,
+          validationId: validationIdForNav,
         });
         setValidation(payload);
+        if (resultsPath) {
+          sessionStorage.setItem("torgima_validation_results", validationIdForNav);
+          setLocation(resultsPath);
+          return;
+        }
         setErectorPhase("scores");
         setStep(7);
-        if (resultsPath.startsWith("/onboarding")) {
-          setLocation(resultsPath);
-        }
         setPathConfirmed(false);
       } else if (payload?.status === "needs_clarification") {
         setError("We need a bit more detail. Go back and fill in missing fields, then try again.");
