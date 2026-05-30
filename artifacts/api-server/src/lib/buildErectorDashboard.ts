@@ -292,12 +292,12 @@ export async function buildErectorDashboard(userId: string): Promise<ErectorDash
       .limit(8);
 
     const [bpTitle] = await db
-      .select({ title: blueprints.title, goal: blueprints.goal })
+      .select({ goal: blueprints.goal, goal_final: blueprints.goal_final })
       .from(blueprints)
       .where(eq(blueprints.id, activeBlueprintId))
       .limit(1);
 
-    const projectName = bpTitle?.title ?? bpTitle?.goal ?? null;
+    const projectName = bpTitle?.goal_final ?? bpTitle?.goal ?? null;
 
     simulationScenarios = runs.map((r) => {
       const overall = r.score ?? 50;
@@ -349,7 +349,7 @@ export async function buildErectorDashboard(userId: string): Promise<ErectorDash
       .select({
         id: academyTasks.id,
         title: academyTasks.title,
-        skill_area: academyTasks.skill_area,
+        skill_target: academyTasks.skill_target,
         status: academyTasks.status,
       })
       .from(academyTasks)
@@ -362,7 +362,7 @@ export async function buildErectorDashboard(userId: string): Promise<ErectorDash
       learningProgress.push({
         id: t.id,
         courseName: t.title,
-        courseType: t.skill_area ?? "Academy",
+        courseType: t.skill_target ?? "Academy",
         progressPercent: done ? 100 : 0,
         action: done ? "Review" : "Continue",
         href: "/knowledge",

@@ -128,6 +128,7 @@ async function buildNoActiveBlueprintDashboardState(userId: string) {
     },
     prediction: null,
     externalIntelligenceFreshness: "none" as const,
+    homePanels: null,
   };
 }
 
@@ -723,7 +724,14 @@ export const DashboardService = {
           recommendedAction: prediction.recommendedAction,
           primaryRisk: prediction.primaryRisk,
           primaryOpportunity: prediction.primaryOpportunity,
-          confidence: prediction.confidence,
+          confidence:
+            prediction.confidence === "LOW"
+              ? 0.35
+              : prediction.confidence === "MEDIUM"
+                ? 0.65
+                : prediction.confidence === "HIGH"
+                  ? 0.9
+                  : null,
         }
       : null;
 

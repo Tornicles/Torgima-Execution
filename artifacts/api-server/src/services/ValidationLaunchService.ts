@@ -8,6 +8,7 @@ import type { Blueprint } from "../types/blueprint.js";
 import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { PlatformUpgradeService } from "./PlatformUpgradeService.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
+import { dispatchPendingEvents } from "./EventDispatcher.js";
 
 export type SelectedDirection = {
   path?: LaunchPathType;
@@ -190,7 +191,7 @@ export const ValidationLaunchService = {
       "[BlueprintLaunch] Task generation job queued / order ensured after launch",
     );
 
-    await dispatchPendingEvents().catch((err) => {
+    await dispatchPendingEvents().catch((err: unknown) => {
       logger.warn(
         { err: err instanceof Error ? err.message : String(err) },
         "[BlueprintLaunch] Event dispatch after launch failed (non-fatal)",

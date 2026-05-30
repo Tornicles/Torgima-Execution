@@ -157,7 +157,7 @@ export function buildDeterministicExplanation(
             heading: "Signal window",
             body: `Completion ${cr}% · momentum ${mom} · trend ${ctx.trend ?? "stable"} · confidence ${ctx.signalConfidence ?? "unknown"}.`,
           },
-          { heading: "Interpretation", body: baseWhy ?? ctx.operationalLines.join(" ") || "Signals reflect recent order and feedback outcomes." },
+          { heading: "Interpretation", body: baseWhy ?? (ctx.operationalLines.join(" ") || "Signals reflect recent order and feedback outcomes.") },
           { heading: "Source", body: baseCite },
         ],
         confidence: 0.8,
