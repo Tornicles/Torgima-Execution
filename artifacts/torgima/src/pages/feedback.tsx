@@ -1,23 +1,34 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api-base";
 import { useParams, useLocation } from "wouter";
 import { FeedbackDashboardView } from "@/components/views/feedback/FeedbackDashboardView";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, MinusCircle, SkipForward, AlertTriangle, ChevronRight } from "lucide-react";
+import { CheckCircle2, XCircle, MinusCircle, SkipForward, AlertTriangle, ChevronRight, Loader2 } from "lucide-react";
 import {
   getOrder,
-  submitExecutionFeedback,
   submitOrderFeedback,
   answerFeedbackInterrogation,
   getGetDashboardStateQueryKey,
+  getDashboardState,
 } from "@/lib/torgima-api";
+import { LANGUAGE } from "@/lib/language";
+
+const DIFFICULTY_OPTIONS = (
+  Object.entries(LANGUAGE.task.difficulty) as Array<
+    [keyof typeof LANGUAGE.task.difficulty, string]
+  >
+).map(([value, label]) => ({ value, label }));
 
 const STATUS_OPTIONS = [
-  { value: "completed", label: "Executed", sub: "Order fully executed with proof", icon: CheckCircle2, color: "border-green-500 bg-green-50", textColor: "text-green-700" },
-  { value: "partial", label: "Partial", sub: "Execution started but not complete", icon: MinusCircle, color: "border-yellow-500 bg-yellow-50", textColor: "text-yellow-700" },
-  { value: "failed", label: "Blocked", sub: "Execution blocked — cannot proceed", icon: XCircle, color: "border-red-500 bg-red-50", textColor: "text-red-700" },
-  { value: "skipped", label: "Skipped", sub: "Chose not to execute this order", icon: SkipForward, color: "border-gray-300 bg-gray-50", textColor: "text-gray-600" },
+  { value: "completed", label: LANGUAGE.task.completion.completed, sub: "Fully completed with proof", icon: CheckCircle2, color: "border-green-500 bg-green-50", textColor: "text-green-700" },
+  { value: "partial", label: LANGUAGE.task.completion.partial, sub: "Started but not finished", icon: MinusCircle, color: "border-yellow-500 bg-yellow-50", textColor: "text-yellow-700" },
+  { value: "failed", label: LANGUAGE.task.completion.blocked, sub: "Something blocked progress", icon: XCircle, color: "border-red-500 bg-red-50", textColor: "text-red-700" },
+  { value: "skipped", label: LANGUAGE.task.completion.skipped, sub: "Chose not to do this step", icon: SkipForward, color: "border-gray-300 bg-gray-50", textColor: "text-gray-600" },
 ];
+
+const BLOCKER_OPTIONS = Object.entries(LANGUAGE.feedback.blockerTypes).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export default function FeedbackPage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -32,6 +43,8 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
   const [score, setScore] = useState(7);
+  const [difficultyFelt, setDifficultyFelt] = useState("moderate");
+  const [blockerType, setBlockerType] = useState("other");
   const [reflection, setReflection] = useState("");
   const [proofText, setProofText] = useState("");
   const [blocker, setBlocker] = useState("");
@@ -41,20 +54,13 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
   const [error, setError] = useState("");
   const [interrogation, setInterrogation] = useState<{ feedbackId: string; question?: string } | null>(null);
   const [interrogationAnswer, setInterrogationAnswer] = useState("");
-  const [blueprintId, setBlueprintId] = useState<string | null>(null);
-  const [postSubmit, setPostSubmit] = useState<{
-    message: string;
-    nextOrderId?: string;
-    condition?: string;
-  } | null>(null);
+  const [postSubmit, setPostSubmit] = useState<{ message: string } | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
     void getOrder(orderId)
       .then((d) => {
         setProofRequired(Boolean((d as { proofRequired?: boolean }).proofRequired));
-        const bp = (d as { blueprintId?: string }).blueprintId;
-        if (bp) setBlueprintId(bp);
       })
       .catch(() => null);
   }, [orderId]);
@@ -66,13 +72,13 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
     if (reflection.length < 10) return "Reflection must be at least 10 characters";
     if (status === "completed" && score <= 2) return "Score is too low for a completed execution";
     if (status === "failed" && score >= 9) return "Cannot report failed execution with a score of 9–10";
-    if (proofRequired && proofText.trim().length < 5) return "Proof is required for this order";
+    if (proofRequired && proofText.trim().length < 5) return "Please add your evidence (at least a few characters).";
     return null;
   }
 
   async function submit() {
     if (!orderId) {
-      setError("Missing order");
+      setError(LANGUAGE.errors.taskNotAvailable);
       return;
     }
     const validationError = validate();
@@ -85,69 +91,43 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
     setError("");
 
     try {
-      const started = Date.now();
-      const usePrimaryLoop = Boolean(blueprintId);
-      const res = await apiFetch(
-        usePrimaryLoop ?
-          `/api/execution/feedback`
-        : `/api/orders/${orderId}/feedback`,
-        {
-          method: "POST",
-          body: JSON.stringify(
-            usePrimaryLoop ?
-              {
-                orderId,
-                blueprintId,
-                completionStatus: status,
-                score,
-                feedbackText: reflection,
-              }
-            : {
-                completionStatus: status,
-                score,
-                reflection,
-                proofJson: proofText.trim() ? { text: proofText } : undefined,
-                blockerJson: status === "failed" || hasBlocker ? { description: blocker, type: "manual" } : null,
-                idempotencyKey: `feedback-${orderId}-${Date.now()}`,
-              },
-          ),
-        },
-      );
+      const envelope = await submitOrderFeedback(orderId, {
+        completionStatus: status as "completed" | "partial" | "failed" | "skipped",
+        score,
+        reflection,
+        proofJson: proofText.trim() ? { text: proofText } : undefined,
+        blockerJson:
+          status === "failed" || hasBlocker
+            ? { description: blocker, type: blockerType || "other" }
+            : undefined,
+        idempotencyKey: `feedback-${orderId}-${Date.now()}`,
+        difficultyFelt,
+      } as Parameters<typeof submitOrderFeedback>[1]);
 
-      const data = await res.json();
-      if (!data.ok) {
-        setError(data.error?.message ?? "Submission failed");
-        return;
-      }
-
-      const result = data.data as {
-        requiresInterrogation?: boolean;
-        feedbackId?: string;
-        interrogationQuestion?: string;
-        nextOrderId?: string;
-      };
+      const result = envelope.data as
+        | {
+            requiresInterrogation?: boolean;
+            feedbackId?: string;
+            interrogationQuestion?: string | null;
+            message?: string;
+          }
+        | undefined;
 
       if (result?.requiresInterrogation && result.feedbackId) {
         setInterrogation({
           feedbackId: result.feedbackId,
-          question: result.interrogationQuestion,
+          question: result.interrogationQuestion ?? undefined,
         });
         return;
       }
 
+      setPostSubmit({
+        message: result?.message ?? "Feedback received. Preparing your next step…",
+      });
+
+      await new Promise((r) => setTimeout(r, 2000));
       await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
-
-      if (usePrimaryLoop) {
-        const elapsed = Date.now() - started;
-        const waitMs = Math.max(0, 3000 - elapsed);
-        await new Promise((r) => setTimeout(r, waitMs));
-        setPostSubmit({
-          message: "Execution continuity maintained.",
-          nextOrderId: result.nextOrderId,
-        });
-        return;
-      }
-
+      await getDashboardState().catch(() => null);
       setLocation("/dashboard");
     } catch {
       setError("Cannot connect to execution server");
@@ -183,33 +163,20 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
 
   if (postSubmit) {
     return (
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Report received</h1>
-        <p className="text-sm text-green-700 font-medium">{postSubmit.message}</p>
-        {postSubmit.nextOrderId ? (
-          <button
-            type="button"
-            onClick={() => setLocation(`/tasks/${postSubmit.nextOrderId}`)}
-            className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl"
-          >
-            View next Order →
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setLocation("/dashboard")}
-            className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl"
-          >
-            Return to dashboard
-          </button>
-        )}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 space-y-4 text-center shadow-xl">
+          <Loader2 className="w-10 h-10 text-green-600 animate-spin mx-auto" />
+          <h1 className="text-xl font-bold text-gray-900">Report received</h1>
+          <p className="text-sm text-green-700 font-medium">{postSubmit.message}</p>
+          <p className="text-xs text-gray-500">Refreshing your execution queue…</p>
+        </div>
       </div>
     );
   }
 
   if (interrogation) {
     return (
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
         <h1 className="text-2xl font-bold text-gray-900">Clarification required</h1>
         <p className="text-sm text-gray-600">
           {interrogation.question ?? "Your report needs more detail before the execution loop can continue."}
@@ -235,15 +202,15 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Execution report</h1>
-        <p className="text-sm text-gray-500 mt-1">Honest reporting drives the next execution order.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{LANGUAGE.feedback.title}</h1>
+        <p className="text-sm text-gray-500 mt-1">{LANGUAGE.feedback.subtitle}</p>
       </div>
 
       <div className="space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution status</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {STATUS_OPTIONS.map((opt) => {
             const isSelected = status === opt.value;
             return (
@@ -265,14 +232,44 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
       </div>
 
       <div className="space-y-3 bg-white border border-gray-200 rounded-2xl p-5">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution quality</p>
-        <input type="range" min={0} max={10} value={score} onChange={(e) => setScore(Number(e.target.value))} className="w-full accent-gray-900" />
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution quality (1–10)</p>
+        <input type="range" min={1} max={10} value={score} onChange={(e) => setScore(Number(e.target.value))} className="w-full accent-gray-900" />
         <p className="text-center text-2xl font-bold">{score}/10</p>
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reflection {score < 6 ? "(required)" : ""}</p>
-        <textarea value={reflection} onChange={(e) => setReflection(e.target.value)} rows={4} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm" />
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          {LANGUAGE.feedback.difficultyLabel}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DIFFICULTY_OPTIONS.map((opt) => (
+            <button
+              type="button"
+              key={opt.value}
+              onClick={() => setDifficultyFelt(opt.value)}
+              className={`text-xs px-3 py-2 rounded-lg border-2 font-medium transition-all ${
+                difficultyFelt === opt.value
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          {LANGUAGE.feedback.reflectionLabel} {score < 6 ? "(required)" : ""}
+        </p>
+        <textarea
+          value={reflection}
+          onChange={(e) => setReflection(e.target.value)}
+          rows={4}
+          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm"
+          placeholder={LANGUAGE.feedback.reflectionPlaceholder}
+        />
       </div>
 
       {proofRequired && (
@@ -288,13 +285,34 @@ function OrderFeedbackForm({ orderId }: { orderId: string }) {
         <ChevronRight className={`w-4 h-4 ml-auto ${hasBlocker ? "rotate-90" : ""}`} />
       </button>
       {hasBlocker && (
-        <input value={blocker} onChange={(e) => setBlocker(e.target.value)} className="w-full border rounded-xl px-4 py-3 text-sm" placeholder="What blocked execution?" />
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-gray-500 uppercase">
+            {LANGUAGE.feedback.blockerTypeLabel}
+          </label>
+          <select
+            value={blockerType}
+            onChange={(e) => setBlockerType(e.target.value)}
+            className="w-full border rounded-xl px-4 py-3 text-sm"
+          >
+            {BLOCKER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={blocker}
+            onChange={(e) => setBlocker(e.target.value)}
+            className="w-full border rounded-xl px-4 py-3 text-sm"
+            placeholder={LANGUAGE.feedback.reflectionPlaceholder}
+          />
+        </div>
       )}
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
       <button type="button" onClick={() => void submit()} disabled={submitting} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl disabled:opacity-40">
-        {submitting ? "Submitting…" : "Submit execution report"}
+        {submitting ? LANGUAGE.feedback.submitting : LANGUAGE.feedback.submit}
       </button>
     </div>
   );

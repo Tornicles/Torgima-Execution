@@ -193,8 +193,12 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
 
 const DIFFICULTY_LEVELS = ["very_easy", "easy", "moderate", "hard", "very_hard"];
 
-function applyTierOverrides(base: BaseConditionRules, tier: string): BaseConditionRules {
-  return { ...base, ...applyTierToConditionRules(base, tier) };
+function applyTierOverrides(
+  base: BaseConditionRules,
+  tier: string,
+  condition: string,
+): BaseConditionRules {
+  return { ...base, ...applyTierToConditionRules(base, tier, condition) };
 }
 
 function applyCapabilityModifier(base: BaseConditionRules, capabilityLevel: string): BaseConditionRules {
@@ -353,7 +357,7 @@ export async function generateEnforcementPackage(params: {
     rules = { ...rules, taskMin: 2, taskMax: 2 };
   }
 
-  rules = applyTierOverrides(rules, tier);
+  rules = applyTierOverrides(rules, tier, params.condition);
   rules = applyCapabilityModifier(rules, capabilityLevel);
 
   const { rules: rulesLoaded, loadScore } = await applyCognitiveLoadModifier(

@@ -80,7 +80,10 @@ describe("Prompt 6 — Execution language", () => {
         file.includes("TaskQueuePanel") ||
         file.includes("DashboardFeedbackForm") ||
         file.includes("MiniPlanAllocationPanel") ||
-        file.includes("StructuredFeedbackFlow");
+        file.includes("StructuredFeedbackFlow") ||
+        file.includes("feedback.tsx") ||
+        file.includes("LaunchNothingnessDashboard") ||
+        file.includes("language.ts");
       if (hasStandaloneTask(src) && !taskWordOk) {
         violations.push(`${file}: standalone 'task'`);
       }

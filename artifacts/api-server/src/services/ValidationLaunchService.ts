@@ -9,6 +9,8 @@ import { ensureActiveOrder } from "../engines/task-guarantee/ContinuousTaskGuara
 import { PlatformUpgradeService } from "./PlatformUpgradeService.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { dispatchPendingEvents } from "./EventDispatcher.js";
+import { generateInitialTasks } from "../engines/tasks/generateInitialTasks.js";
+import { normalizeProjectName } from "../lib/projectName.js";
 
 export type SelectedDirection = {
   path?: LaunchPathType;
@@ -25,6 +27,7 @@ export interface ValidationLaunchInput {
   selectedPath?: LaunchPathType;
   tier?: "starter" | "growth" | "ultimate";
   mode?: "individual" | "team";
+  projectName?: string;
 }
 
 export interface ValidationLaunchResult {
@@ -177,7 +180,50 @@ export const ValidationLaunchService = {
       }
     }
 
+    if (input.projectName?.trim()) {
+      const { blueprints: blueprintsTable } = await import("@workspace/db");
+      await db
+        .update(blueprintsTable)
+        .set({
+          project_name: normalizeProjectName(input.projectName, row.domain ?? undefined),
+        })
+        .where(eq(blueprintsTable.id, row.blueprint_id));
+    }
+
     const blueprint = await BlueprintService.get(row.blueprint_id, input.userId);
+
+    const [freshValidation] = await db
+      .select()
+      .from(validations)
+      .where(eq(validations.id, row.id))
+      .limit(1);
+
+    if (freshValidation) {
+      try {
+        const taskCount = await generateInitialTasks({
+          blueprintId: row.blueprint_id,
+          userId: input.userId,
+          validation: freshValidation,
+          selectedPath: selectedPathType,
+        });
+        logger.info(
+          { blueprintId: row.blueprint_id, taskCount },
+          "[LAUNCH] 8 initial tasks generated for blueprint",
+        );
+        await db
+          .update(validations)
+          .set({
+            is_finalized: true,
+            finalized_at: new Date(),
+            launch_blocked: false,
+          })
+          .where(eq(validations.id, row.id));
+      } catch (taskErr: unknown) {
+        const message = taskErr instanceof Error ? taskErr.message : String(taskErr);
+        console.error("[LAUNCH] Task generation error (non-fatal):", message);
+        logger.warn({ blueprintId: row.blueprint_id, message }, "[LAUNCH] Initial task generation failed");
+      }
+    }
 
     await writeEvent({
       eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,

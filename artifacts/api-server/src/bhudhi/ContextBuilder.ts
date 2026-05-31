@@ -7,6 +7,8 @@ import { retrieveMemoryWithIds } from "./MemoryService.js";
 import { ZoneRouter } from "./ZoneRouter.js";
 import { DomainIntelligenceService } from "./DomainIntelligenceService.js";
 import { stripSecretsFromRecord } from "./contextSanitizer.js";
+import { sanitizeBhudhiInput } from "../lib/security/sanitizeBhudhiInput.js";
+import { buildMemoryContextForBlueprint } from "./BhudhiMemoryContext.js";
 import { getMaxTokensForTrigger } from "./UsageController.js";
 
 export interface BuildContextParams {
@@ -26,7 +28,7 @@ export async function buildContextPacket(params: BuildContextParams): Promise<Bh
     triggerType: params.triggerType,
     requestedMode: undefined,
     stateVersion: params.worldStateVersion,
-    input: params.userInput,
+    input: params.userInput ? sanitizeBhudhiInput(params.userInput) : undefined,
     facts: params.payload,
     currentCondition: params.currentCondition,
   });
@@ -64,12 +66,17 @@ export async function buildContextPacket(params: BuildContextParams): Promise<Bh
     allowedActions: (packet.allowedActions as string[]) ?? [],
     forbiddenActions: (packet.forbiddenActions as string[]) ?? [],
     currentOrder,
-    userInput: params.userInput,
     systemFacts: stripSecretsFromRecord({
       ...(params.payload ?? {}),
       worldModel: world,
     }),
-    memoryContext: typeof packet.memorySummary === "string" ? packet.memorySummary : undefined,
+    memoryContext:
+      typeof packet.memorySummary === "string" ?
+        packet.memorySummary
+      : params.blueprintId ?
+        await buildMemoryContextForBlueprint(params.userId, params.blueprintId).catch(() => undefined)
+      : undefined,
+    userInput: params.userInput ? sanitizeBhudhiInput(params.userInput) : undefined,
     outputContractName: contract?.name ?? "unknown",
     maxTokens: getMaxTokensForTrigger(params.triggerType),
   };

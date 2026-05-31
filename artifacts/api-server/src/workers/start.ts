@@ -26,6 +26,7 @@ import "./MemoryExpiryWorker.js";
 import "./EISWorker.js";
 import "./PredictionWorker.js";
 import "./FalseProgressWorker.js";
+import "./BlueprintPositionWorker.js";
 import { startCalendarNotificationPoller } from "./CalendarNotificationWorker.js";
 import { startNotificationDeliveryPoller } from "./NotificationDeliveryWorker.js";
 import { startAnalyticsPoller } from "./AnalyticsWorker.js";

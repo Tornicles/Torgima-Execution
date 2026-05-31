@@ -9,6 +9,7 @@ export type WeeklyCommitmentKey = "LIGHT" | "MODERATE" | "HIGH" | "INTENSIVE";
 export type PacingKey = "LIGHT" | "FOCUSED" | "INTENSE" | "AGGRESSIVE";
 
 export type PreValidationDraft = {
+  projectName: string;
   goal: string;
   purpose: string;
   quickContext: PreValidationQuickContext;
@@ -40,6 +41,7 @@ function defaultEndDate(): string {
 }
 
 export const DEFAULT_PRE_VALIDATION_DRAFT: PreValidationDraft = {
+  projectName: "",
   goal: "",
   purpose: "",
   quickContext: {

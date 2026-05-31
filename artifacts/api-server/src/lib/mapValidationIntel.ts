@@ -1,4 +1,5 @@
 import type { validations } from "@workspace/db";
+import { enrichedFromValidationRow, mapCompetitorsForApi } from "./enrichedValidationIntel.js";
 
 type ValidationRow = typeof validations.$inferSelect;
 
@@ -33,32 +34,12 @@ export function intelligenceFromRow(row: ValidationRow): Record<string, unknown>
 }
 
 export function competitorsFromValidationRow(row: ValidationRow): Array<Record<string, unknown>> {
-  const intel = intelligenceFromRow(row);
-  const fromIntel = competitorListFromUnknown(
-    intel.competitors ?? intel.primaryCompetitors ?? intel.competitor_analysis ?? intel.competitorAnalysis,
-  );
-  const fromColumn = competitorListFromUnknown(row.competitor_analysis);
-  const merged = fromIntel.length > 0 ? fromIntel : fromColumn;
-  const real = merged.filter((c) => {
-    const name = String((c as { name?: string }).name ?? "").trim();
-    return name.length > 0 && !/ operator \d+$/i.test(name);
-  });
-  const list = real.slice(0, 3);
-  return list.map((c) => {
-    const item = c as Record<string, unknown>;
-    return {
-      name: item.name ?? item.competitorName,
-      description: item.description ?? item.summary ?? item.positioningStrategy ?? item.positioning_strategy,
-      strengths: item.strengths ?? item.strength_points ?? [],
-      weaknesses: item.weaknesses ?? item.weakness_points ?? [],
-      marketShare: item.marketShare ?? item.market_share ?? "—",
-    };
-  });
+  return mapCompetitorsForApi(enrichedFromValidationRow(row).competitors) as Array<Record<string, unknown>>;
 }
 
 export function pathsFromValidationRow(row: ValidationRow): Record<string, unknown> {
   const intel = intelligenceFromRow(row);
-  const pathsCol = row.paths as Record<string, unknown> | null;
+  const pathsCol = (row as ValidationRow & { paths?: unknown }).paths as Record<string, unknown> | null;
   if (pathsCol && typeof pathsCol === "object") return pathsCol;
   return {
     current: intel.paths && typeof intel.paths === "object"

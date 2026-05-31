@@ -29,6 +29,25 @@ function normalizePayload(payload: ValidationPayload): ValidationPayload {
   return { ...payload, status: "validated" };
 }
 
+function mergeResultsEnrichment(
+  payload: ValidationPayload | null,
+  results: Record<string, unknown>,
+): ValidationPayload {
+  const erector = (payload?.intelligence?.erector ?? {}) as Record<string, unknown>;
+  return normalizePayload({
+    ...(payload ?? {}),
+    intelligence: {
+      ...(payload?.intelligence ?? {}),
+      erector: {
+        ...erector,
+        competitors: results.competitors ?? erector.competitors,
+        opportunities: results.opportunities ?? erector.opportunities,
+        economicContext: results.economicContext ?? erector.economicContext,
+      },
+    },
+  });
+}
+
 function mergeErectorApiPayload(
   payload: ValidationPayload | null,
   erectorResult: Record<string, unknown>,
@@ -98,11 +117,15 @@ export default function ValidationResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [launchError, setLaunchError] = useState("");
+  const [projectName, setProjectName] = useState(() => loadPreValidationDraft().projectName);
+  const [editingProjectName, setEditingProjectName] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<PathKey>("adjusted");
   const [selectedTier, setSelectedTier] = useState<TierId>("starter");
   const [isFinalized, setIsFinalized] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   const loadResults = useCallback(async () => {
     if (!validationId) return;
@@ -116,6 +139,13 @@ export default function ValidationResultsPage() {
       const runEnvelope = await apiFetchEnvelope<Record<string, unknown>>(`/api/v1/validation/${validationId}`);
       if (runEnvelope.ok && runEnvelope.data) {
         payload = mergeErectorApiPayload(payload, runEnvelope.data, validationId);
+      }
+
+      const resultsEnvelope = await apiFetchEnvelope<Record<string, unknown>>(
+        `/api/v1/validations/${validationId}/results`,
+      );
+      if (resultsEnvelope.ok && resultsEnvelope.data) {
+        payload = mergeResultsEnrichment(payload, resultsEnvelope.data);
       }
 
       if (!payload?.blueprintId) {
@@ -175,6 +205,7 @@ export default function ValidationResultsPage() {
         path: selectedPath,
         tier: selectedTier,
         selected_blueprint_type: selectedTier,
+        projectName: projectName.trim(),
       });
       await completeOnboarding();
       window.location.href = result.redirectTo ?? result.redirect_to ?? "/dashboard";
@@ -194,8 +225,31 @@ export default function ValidationResultsPage() {
     }
   }
 
-  function handleDownload() {
-    window.print();
+  async function handleDownload() {
+    if (!validationId) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const response = await fetch(`/api/v1/validations/${validationId}/report`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Report generation failed");
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? `torgima-validation-report-${validationId}.pdf`;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError("Could not generate report. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   if (checking || loading) {
@@ -236,12 +290,20 @@ export default function ValidationResultsPage() {
         saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
       }}
       onLaunch={() => void handleLaunch()}
-      onDownload={handleDownload}
+      onDownload={() => void handleDownload()}
+      downloading={downloading}
+      downloadError={downloadError}
       launching={launching}
       launchError={launchError}
       launchReady={hasPaths && Boolean(selectedPath) && !timeframeMissing}
       timeframeMissing={timeframeMissing}
       onEditContext={() => setLocation("/validate")}
+      projectName={projectName}
+      editingProjectName={editingProjectName}
+      onEditProjectName={() => setEditingProjectName(true)}
+      onProjectNameChange={setProjectName}
+      onProjectNameEditDone={() => setEditingProjectName(false)}
+      goalSummary={validation.goal}
     />
   );
 }

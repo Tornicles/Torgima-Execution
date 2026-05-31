@@ -63,14 +63,23 @@ export function getTierProfile(tier: string): TierProfile {
   };
 }
 
+const TIER_CONDITION_TASK_MAX: Record<string, Record<string, number>> = {
+  starter: { nothingness: 2, stability: 2, power: 4, affluence: 4 },
+  growth: { nothingness: 3, stability: 5, power: 7, affluence: 8 },
+  ultimate: { nothingness: 4, stability: 6, power: 8, affluence: 10 },
+};
+
 export function getTaskLimitsForTier(
   tier: string,
   condition: string,
 ): { min: number; max: number; difficultyMax: string } {
   const profile = getTierProfile(tier);
-  let max = profile.taskMax;
+  const tierKey = profile.tier;
+  const condKey = condition.toLowerCase();
+  const tierCap = TIER_CONDITION_TASK_MAX[tierKey]?.[condKey];
+  let max = tierCap ?? profile.taskMax;
   if (condition === "danger") max = Math.min(max, 2);
-  if (condition === "nothingness") max = 1;
+  if (condition === "nothingness" && tierCap == null) max = Math.min(max, tierKey === "starter" ? 2 : 3);
   return { min: profile.taskMin, max, difficultyMax: profile.difficultyMax };
 }
 
@@ -87,8 +96,9 @@ export function mapStarterSignalLabel(condition: string): string | null {
 export function applyTierToConditionRules(
   base: { taskMin: number; taskMax: number; difficultyCap: string },
   tier: string,
+  condition = "stability",
 ): { taskMin: number; taskMax: number; difficultyCap: string } {
-  const limits = getTaskLimitsForTier(tier, "stability");
+  const limits = getTaskLimitsForTier(tier, condition);
   const DIFFICULTY_LEVELS = ["very_easy", "easy", "moderate", "medium", "hard", "very_hard"];
   const capIdx = DIFFICULTY_LEVELS.indexOf(base.difficultyCap);
   const tierIdx = DIFFICULTY_LEVELS.indexOf(limits.difficultyMax);

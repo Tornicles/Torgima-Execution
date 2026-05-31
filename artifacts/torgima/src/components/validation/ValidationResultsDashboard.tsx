@@ -14,7 +14,6 @@ import {
   Pencil,
   Rocket,
   Shield,
-  Sparkles,
   Target,
   X,
 } from "lucide-react";
@@ -26,6 +25,13 @@ import {
   type GlanceRow,
   type StatusTone,
 } from "./validation-results-dashboard-model";
+import { LANGUAGE, getProjectDisplayName, getVerdictDisplay } from "@/lib/language";
+import { validateProjectNameInput } from "@/lib/project-name";
+import {
+  CompetitorsSection,
+  EconomicEnvironmentSection,
+  OpportunitiesSection,
+} from "./ValidationEnrichedSections";
 
 const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
 
@@ -133,11 +139,19 @@ export function ValidationResultsDashboard({
   onSelectPath,
   onLaunch,
   onDownload,
+  downloading,
+  downloadError,
   launching,
   launchError,
   launchReady = true,
   timeframeMissing,
   onEditContext,
+  projectName = "",
+  editingProjectName = false,
+  onEditProjectName,
+  onProjectNameChange,
+  onProjectNameEditDone,
+  goalSummary,
 }: {
   data: ValidationScreenData;
   validationId?: string;
@@ -145,11 +159,19 @@ export function ValidationResultsDashboard({
   onSelectPath: (p: PathKey) => void;
   onLaunch: () => void;
   onDownload?: () => void;
+  downloading?: boolean;
+  downloadError?: string;
   launching?: boolean;
   launchError?: string;
   launchReady?: boolean;
   timeframeMissing?: boolean;
   onEditContext?: () => void;
+  projectName?: string;
+  editingProjectName?: boolean;
+  onEditProjectName?: () => void;
+  onProjectNameChange?: (name: string) => void;
+  onProjectNameEditDone?: () => void;
+  goalSummary?: string;
 }) {
   const { data: me } = useGetMe();
   const [scoreHelpOpen, setScoreHelpOpen] = useState(false);
@@ -164,20 +186,14 @@ export function ValidationResultsDashboard({
   });
   const dayLabel = today.toLocaleDateString("en-US", { weekday: "long" });
 
-  const verdictColor =
-    model.verdictUpper === "PROCEED"
-      ? "text-emerald-600"
-      : model.verdictUpper === "STOP"
-        ? "text-red-600"
-        : model.verdictUpper === "PIVOT"
-          ? "text-violet-600"
-          : "text-amber-600";
+  const verdictDisplay = getVerdictDisplay(model.verdictUpper);
+  const [nameError, setNameError] = useState("");
 
   return (
     <div className="min-h-screen bg-white text-[#0B1220]">
-      <div className="mx-auto max-w-[1400px] px-8 pb-16 pt-8">
+      <div className="mx-auto max-w-[1400px] px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8">
         {/* Header */}
-        <header className="flex flex-wrap items-start justify-between gap-6 border-b border-[#ECECF4] pb-8">
+        <header className="flex flex-col items-stretch gap-6 border-b border-[#ECECF4] pb-8 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <Link
               href="/erector"
@@ -194,7 +210,7 @@ export function ValidationResultsDashboard({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className={`${CARD} flex items-center gap-3 px-4 py-2.5`}>
               <Calendar className="h-4 w-4 text-[#5B21FF]" />
               <div>
@@ -225,28 +241,89 @@ export function ValidationResultsDashboard({
               </div>
               <ChevronDown className="h-4 w-4 text-[#94A3B8]" />
             </button>
-            <button
-              type="button"
-              onClick={onDownload}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0B1220] hover:bg-[#F8FAFC]"
-            >
-              <Download className="h-4 w-4" />
-              Download Full Report
-            </button>
-            <div className="text-right">
+            <div className="w-full sm:w-auto sm:text-right">
+              <button
+                type="button"
+                disabled={downloading}
+                onClick={onDownload}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0B1220] hover:bg-[#F8FAFC] disabled:opacity-60 sm:w-auto"
+              >
+                <Download className={`h-4 w-4 ${downloading ? "animate-pulse" : ""}`} />
+                {downloading ? LANGUAGE.states.preparing : LANGUAGE.validation.download}
+              </button>
+              {downloadError ? (
+                <p className="mt-1 text-xs text-red-600">{downloadError}</p>
+              ) : null}
+            </div>
+            <div className="w-full sm:w-auto sm:text-right">
               <button
                 type="button"
                 disabled={launching || data.launchBlocked || !launchReady}
                 onClick={onLaunch}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/50 hover:opacity-95 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/50 hover:opacity-95 disabled:opacity-50 sm:w-auto"
               >
                 <Rocket className="h-4 w-4" />
-                {launching ? "Launching…" : "Launch This Direction"}
+                {launching ? LANGUAGE.validation.launching : LANGUAGE.validation.launchButton}
               </button>
-              <p className="mt-1 text-[11px] text-[#94A3B8]">Build blueprint and start execution</p>
+              <p className="mt-1 text-[11px] text-[#94A3B8]">{LANGUAGE.validation.launchSubtext}</p>
             </div>
           </div>
         </header>
+
+        <section className={`${CARD} mt-8 p-6 sm:p-8`}>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#5B21FF]">
+            {LANGUAGE.project.yourProject}
+          </p>
+          <hr className="my-4 border-[#ECECF4]" />
+          {editingProjectName ? (
+            <div className="space-y-3">
+              <input
+                value={projectName}
+                onChange={(e) => {
+                  onProjectNameChange?.(e.target.value.slice(0, 50));
+                  setNameError("");
+                }}
+                className="w-full rounded-xl border border-[#E2E8F0] px-4 py-3 text-lg font-bold outline-none focus:border-[#5B21FF]"
+                maxLength={50}
+              />
+              {nameError ? <p className="text-xs text-red-600">{nameError}</p> : null}
+              <button
+                type="button"
+                onClick={() => {
+                  const err = validateProjectNameInput(projectName);
+                  if (err) {
+                    setNameError(err);
+                    return;
+                  }
+                  onProjectNameEditDone?.();
+                }}
+                className="rounded-lg bg-[#5B21FF] px-4 py-2 text-sm font-semibold text-white"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold text-[#0B1220]">
+                {getProjectDisplayName(projectName, goalSummary ?? null)}
+              </h2>
+              <button
+                type="button"
+                onClick={onEditProjectName}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#5B21FF]"
+              >
+                <Pencil className="h-4 w-4" />
+                {LANGUAGE.project.editName}
+              </button>
+            </div>
+          )}
+          {goalSummary ? (
+            <p className="mt-4 text-sm text-[#64748B]">
+              <span className="font-semibold text-[#0B1220]">Goal: </span>
+              {goalSummary}
+            </p>
+          ) : null}
+        </section>
 
         {launchError ? (
           <pre className="mt-6 whitespace-pre-wrap rounded-xl border border-red-100 bg-red-50 p-4 text-xs text-red-700">
@@ -391,7 +468,12 @@ export function ValidationResultsDashboard({
           <section className={`${CARD} lg:col-span-3 flex flex-col items-center justify-center p-6 text-center`}>
             <Shield className="h-10 w-10 text-emerald-500" strokeWidth={1.5} />
             <p className="mt-4 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Final Verdict</p>
-            <p className={`mt-2 text-3xl font-black tracking-tight ${verdictColor}`}>{model.verdictUpper}</p>
+            <p
+              className="mt-2 text-3xl font-black tracking-tight"
+              style={{ color: verdictDisplay.color }}
+            >
+              {verdictDisplay.icon} {verdictDisplay.label}
+            </p>
             <p className="mt-2 text-sm text-[#64748B]">{model.verdictDescription}</p>
             <span className="mt-4 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
               {model.confidenceBadge}
@@ -425,45 +507,11 @@ export function ValidationResultsDashboard({
           </section>
         </div>
 
+        <EconomicEnvironmentSection economic={model.economicContext} />
+
         {/* Row 2: Competitors, Pros/Cons, Opportunities */}
         <div className="mt-8 grid gap-6 lg:grid-cols-12">
-          <section className="lg:col-span-5">
-            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top 3 Competitors</p>
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-              {model.competitorCards.map((c) => (
-                <article key={c.name} className={`${CARD} p-4`}>
-                  <p className="font-bold text-[#0B1220]">{c.name}</p>
-                  <p className="mt-1 text-xs text-[#64748B] line-clamp-2">{c.description}</p>
-                  <p className="mt-3 text-[10px] font-bold uppercase text-emerald-600">Strengths</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {c.strengths.slice(0, 2).map((s) => (
-                      <li key={s} className="flex gap-1.5 text-xs text-[#475569]">
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-500" />
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-3 text-[10px] font-bold uppercase text-red-500">Weaknesses</p>
-                  <ul className="mt-1 space-y-0.5">
-                    {c.weaknesses.slice(0, 2).map((w) => (
-                      <li key={w} className="flex gap-1.5 text-xs text-[#475569]">
-                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400" />
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-3 text-[10px] font-semibold text-[#94A3B8]">Market Share</p>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#F1F5F9]">
-                    <div
-                      className="h-full rounded-full bg-[#5B21FF]"
-                      style={{ width: `${c.marketShare}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs font-bold text-[#5B21FF]">{c.marketShare}%</p>
-                </article>
-              ))}
-            </div>
-          </section>
+          <CompetitorsSection competitors={model.enrichedCompetitors} />
 
           <section className={`${CARD} lg:col-span-4 overflow-hidden p-0`}>
             <p className="border-b border-[#F1F5F9] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#0B1220]">
@@ -495,33 +543,7 @@ export function ValidationResultsDashboard({
             </div>
           </section>
 
-          <section className={`${CARD} lg:col-span-3 p-5`}>
-            <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top Opportunities</p>
-            <ul className="mt-4 space-y-3">
-              {model.opportunities.map((o) => (
-                <li key={o.title} className="flex items-start justify-between gap-2">
-                  <span className="flex gap-2 text-sm text-[#475569]">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#5B21FF]" />
-                    {o.title}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      o.impact === "High Impact"
-                        ? "bg-[#F5F3FF] text-[#5B21FF]"
-                        : o.impact === "Medium Impact"
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-[#F8FAFC] text-[#64748B]"
-                    }`}
-                  >
-                    {o.impact}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="mt-4 text-xs font-semibold text-[#5B21FF] hover:underline">
-              View all opportunities →
-            </button>
-          </section>
+          <OpportunitiesSection opportunities={model.enrichedOpportunities} />
         </div>
 
         {/* Row 3: Paths, Risks, Success Plan */}
@@ -635,13 +657,9 @@ export function ValidationResultsDashboard({
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-10 py-4 text-base font-bold text-white shadow-xl shadow-violet-200/60 hover:opacity-95 disabled:opacity-50"
           >
             <Rocket className="h-5 w-5" />
-            {launching ? "Loading…" : "Launch This Direction"}
+            {launching ? LANGUAGE.validation.launching : LANGUAGE.validation.launchButton}
           </button>
         </div>
-
-        {validationId ? (
-          <p className="mt-4 text-right text-[10px] text-[#CBD5E1]">Validation {validationId.slice(0, 8)}…</p>
-        ) : null}
       </div>
     </div>
   );

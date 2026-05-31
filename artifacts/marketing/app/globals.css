@@ -3,62 +3,68 @@
 @tailwind utilities;
 
 :root {
-  --color-black: #050507;
-  --color-surface-1: #0a0a0f;
-  --color-surface-2: #0f0f17;
-  --color-surface-3: #14141e;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-
-  --color-text-primary: #f0f0f5;
-  --color-text-secondary: #8888a0;
-  --color-text-muted: #4a4a60;
-
-  --color-accent-blue: #4f8cff;
-  --color-accent-purple: #7c5cfc;
-  --color-accent-glow: rgba(124, 92, 252, 0.15);
-  --color-accent-subtle: rgba(79, 140, 255, 0.08);
-
-  --space-section: 140px;
-  --space-section-sm: 80px;
-
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --primary: #6b21a8;
+  --primary-bright: #a855f7;
+  --primary-glow: rgba(107, 33, 168, 0.15);
+  --dark: #0f0a1a;
+  --dark-card: #1a1025;
+  --dark-border: #2d1f40;
+  --light: #fafaf9;
+  --text-primary: #fafaf9;
+  --text-secondary: #a1a1aa;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration-fast: 200ms;
-  --duration-base: 350ms;
-  --duration-slow: 600ms;
 }
 
 @layer base {
   html {
-    @apply scroll-smooth;
-    color-scheme: dark;
-    background-color: var(--color-black);
+    @apply scroll-smooth antialiased;
   }
 
   body {
-    @apply font-dm antialiased text-[var(--color-text-primary)] bg-[var(--color-black)];
+    @apply font-dm text-[var(--text-primary)] bg-[var(--dark)];
   }
 
   ::selection {
-    background: rgba(124, 92, 252, 0.28);
-    color: var(--color-text-primary);
-  }
-
-  .focus-ring:focus-visible {
-    outline: 2px solid var(--color-accent-purple);
-    outline-offset: 4px;
+    background: rgba(168, 85, 247, 0.35);
+    color: white;
   }
 }
 
-/* Subtle hero grid overlay */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-[#c4b5fd];
+  }
+
+  .mesh-bg {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(107, 33, 168, 0.45), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(168, 85, 247, 0.2), transparent),
+      radial-gradient(ellipse 50% 30% at 0% 50%, rgba(107, 33, 168, 0.15), transparent),
+      var(--dark);
+  }
+
+  .glass-card {
+    @apply border border-[var(--dark-border)] backdrop-blur-xl;
+    background-color: rgba(26, 16, 37, 0.8);
+  }
+
+  .section-light {
+    @apply bg-[var(--light)] text-[#18181b];
+  }
+
+  .section-dark {
+    @apply bg-[var(--dark)] text-[var(--text-primary)];
+  }
+}
+
 .hero-grid-bg {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 25%, transparent 70%);
+  background-image:
+    linear-gradient(rgba(168, 85, 247, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
 }

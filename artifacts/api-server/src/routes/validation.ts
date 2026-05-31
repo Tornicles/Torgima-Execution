@@ -5,6 +5,7 @@ import { logger } from "../lib/logger.js";
 import { ValidationService } from "../services/ValidationService.js";
 import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
 import { success, failure, handleError } from "../lib/utils.js";
+import { isTorgimaError } from "../lib/errors.js";
 import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
 import { runErectorValidation } from "../engines/erector/ErectorOrchestrationService.js";
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
@@ -51,6 +52,8 @@ export const validationLaunchBodySchema = z.object({
   blueprint_level: tierSchema.optional(),
   blueprint_type: tierSchema.optional(),
   mode: modeSchema.optional(),
+  projectName: z.string().min(3).max(50).optional(),
+  project_name: z.string().min(3).max(50).optional(),
 });
 
 const validationLaunchHandler = async (req: import("express").Request, res: import("express").Response) => {
@@ -94,14 +97,19 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
         body.selected_direction?.blueprint_level ??
         body.selected_direction?.blueprint_type,
       mode: body.mode ?? body.selected_direction?.mode,
+      projectName: body.projectName ?? body.project_name,
     });
 
     success(res, result, result.idempotent ? 200 : 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Launch] Route crashed:", message, stack);
-    handleError(req, res, err);
+    console.error("[Launch CRASH]", message, "\n", stack);
+    if (isTorgimaError(err)) {
+      handleError(req, res, err);
+      return;
+    }
+    failure(res, "LAUNCH_FAILED", message, 500);
   }
 };
 
@@ -585,6 +593,35 @@ router.get("/v1/validations/:id/status", async (req, res) => {
   }
 });
 
+// GET /api/v1/validations/:id/report — PDF validation report
+router.get("/v1/validations/:id/report", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const { generateValidationReportPdf, reportFilename } = await import(
+      "../lib/generateValidationReportPdf.js"
+    );
+    const [row] = await db.select().from(validations).where(eq(validations.id, req.params.id)).limit(1);
+    if (!row || row.user_id !== auth.userId) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    const pdf = await generateValidationReportPdf(row);
+    const filename = reportFilename(row);
+    await db
+      .update(validations)
+      .set({ report_generated_at: new Date() } as never)
+      .where(eq(validations.id, row.id))
+      .catch(() => null);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdf);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // GET /api/v1/validations/:id/results — shaped payload for results dashboard
 router.get("/v1/validations/:id/results", async (req, res) => {
   try {
@@ -927,21 +964,23 @@ router.get("/validation/:id/result", async (req, res) => {
       const { competitorsFromValidationRow, userGoalFromRow, userPurposeFromRow } = await import(
         "../lib/mapValidationIntel.js"
       );
+      const shaped = buildOnboardingValidationResultsPayload(row);
       const erector = rowToErectorResult(row);
-      const competitors = competitorsFromValidationRow(row);
+      const competitors = shaped.competitors;
       const userPurpose = userPurposeFromRow(row);
       const userGoal = userGoalFromRow(row);
       const competitorAnalysis = { competitors };
       success(res, {
+        ...shaped,
         validationId: row.id,
         validationContractId: row.contract_id,
         blueprintId: row.blueprint_id,
         goal: userGoal,
         purpose: userPurpose,
-        verdict: row.verdict ?? "adjust",
+        verdict: row.verdict ?? shaped.verdict ?? "adjust",
         launchBlocked: row.launch_blocked ?? false,
         isFinalized: row.is_finalized ?? false,
-        paths: erector.paths,
+        paths: erector.paths ?? shaped.paths,
         intelligence: {
           erector: {
             ...erector,
@@ -949,6 +988,8 @@ router.get("/validation/:id/result", async (req, res) => {
             raw_goal: userGoal,
             purpose: userPurpose,
             competitors,
+            opportunities: shaped.opportunities,
+            economicContext: shaped.economicContext,
             competitor_analysis: competitorAnalysis,
             competitorAnalysis,
             timeframe: row.timeframe,

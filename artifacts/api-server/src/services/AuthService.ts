@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { users, sessions, blueprints } from "@workspace/db";
-import { eq, and, gt, like } from "drizzle-orm";
+import { eq, and, gt, like, not } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { sendEmail, EMAIL_FROM_HEADER } from "../lib/resend.js";
@@ -10,7 +10,7 @@ import type { AuthContext, SafeUser } from "../types/auth.js";
 
 const SESSION_MAX_HOURS = 24 * 30;
 const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
-const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const MAGIC_LINK_EXPIRY_MINUTES = 10;
 const MAGIC_PREFIX = "magic:";
 
 export type SendMagicLinkResult = {
@@ -164,7 +164,12 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.user_id, users.id))
-    .where(eq(sessions.token_hash, tokenHash))
+    .where(
+      and(
+        eq(sessions.token_hash, tokenHash),
+        not(like(sessions.token_hash, `${MAGIC_PREFIX}%`)),
+      ),
+    )
     .limit(1);
 
   if (!row) {

@@ -1,4 +1,5 @@
 import type { ArchetypeResolutionOutput, ErectorValidationInput } from "../../types/erector.js";
+import { domainFallbackCompetitors } from "../../lib/enrichedValidationIntel.js";
 
 function clamp(score: number): number {
   return Math.max(0, Math.min(10, Number(score.toFixed(1))));
@@ -38,9 +39,24 @@ export function buildDeterministicErectorPayload(
     sustainabilityScore: Math.max(1, economy.politicalStability - economy.corruptionIndex * 0.1),
   };
   const competitorAnalysis = {
-    competitors: Array.from({ length: 5 }, (_, index) => ({
-      name: `${economy.name} operator ${index + 1}`,
-      positioningStrategy: "Local proof, visible outcomes, and narrow wedge positioning.",
+    competitors: domainFallbackCompetitors(
+      input.domainHint ?? "",
+      input.businessModel,
+      goal,
+      input.location.country,
+    ).map((c) => ({
+      name: c.name,
+      tagline: c.tagline,
+      description: c.description,
+      founded: c.founded,
+      estimatedRevenue: c.estimatedRevenue,
+      userBase: c.userBase,
+      geography: c.geography,
+      strengths: c.strengths,
+      weaknesses: c.weaknesses,
+      marketShare: c.marketShare,
+      whereYourIdeaFits: c.whereYourIdeaFits,
+      positioningStrategy: c.tagline,
       monetizationModel: input.businessModel,
       acquisitionChannels:
         economy.archetypeNumber === 14 ? ["WhatsApp", "referrals", "community proof"] : ["content", "search", "partner referrals"],

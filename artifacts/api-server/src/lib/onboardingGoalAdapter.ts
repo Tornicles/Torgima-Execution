@@ -19,6 +19,7 @@ export type AdaptedOnboardingGoal = {
   idempotencyKey: string;
   rawGoal?: string;
   rawPurpose?: string;
+  projectName?: string;
   selectedBlueprintTier: "starter" | "growth" | "ultimate";
   selectedBlueprintMode: "individual" | "team";
 };
@@ -159,6 +160,14 @@ export function adaptOnboardingGoalRequest(body: unknown):
   const rawPurpose =
     typeof b.rawPurpose === "string" && b.rawPurpose.trim() ? b.rawPurpose.trim() : undefined;
 
+  const projectNameRaw =
+    typeof b.projectName === "string"
+      ? b.projectName
+      : typeof b.project_name === "string"
+        ? b.project_name
+        : "";
+  const projectName = projectNameRaw.trim() || undefined;
+
   const tierRaw = b.selectedBlueprintTier ?? b.tier;
   const modeRaw = b.selectedBlueprintMode ?? b.mode;
 
@@ -169,6 +178,7 @@ export function adaptOnboardingGoalRequest(body: unknown):
       idempotencyKey,
       rawGoal,
       rawPurpose,
+      projectName,
       selectedBlueprintTier:
         tierRaw === "growth" || tierRaw === "ultimate" ? tierRaw : "starter",
       selectedBlueprintMode: modeRaw === "team" ? "team" : "individual",
@@ -201,5 +211,6 @@ export function flatToParsedGoal(adapted: AdaptedOnboardingGoal, body?: Record<s
     idempotencyKey: adapted.idempotencyKey,
     tier: adapted.selectedBlueprintTier,
     mode: adapted.selectedBlueprintMode,
+    projectName: adapted.projectName,
   };
 }

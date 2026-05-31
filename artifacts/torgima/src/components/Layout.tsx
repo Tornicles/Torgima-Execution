@@ -23,29 +23,32 @@ import {
 import { useGetMe } from "@workspace/api-client-react";
 import { apiGet } from "@/lib/torgima-api";
 import type { FeatureStatusPayload } from "@/lib/feature-gate";
+import { LANGUAGE } from "@/lib/language";
+import { PageBackground } from "@workspace/design-system";
+import { DESIGN_TOKENS } from "@workspace/design-system/tokens";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/app/bhudhi", label: "Bhudhi", icon: Sparkles },
-  { href: "/erector", label: "Erector", icon: Zap },
-  { href: "/signals", label: "Signals", icon: Activity },
-  { href: "/blueprint-index", label: "Projects", icon: Map },
-  { href: "/feedback", label: "Messages", icon: MessageSquare },
-  { href: "/character", label: "Community", icon: Users },
-  { href: "/knowledge", label: "Academy", icon: GraduationCap },
+  { href: "/dashboard", label: LANGUAGE.nav.home, icon: LayoutDashboard },
+  { href: "/app/bhudhi", label: LANGUAGE.nav.bhudhi, icon: Sparkles },
+  { href: "/erector", label: LANGUAGE.nav.erector, icon: Zap },
+  { href: "/signals", label: LANGUAGE.nav.progress, icon: Activity },
+  { href: "/blueprint", label: LANGUAGE.nav.project, icon: Map },
+  { href: "/feedback", label: LANGUAGE.nav.messages, icon: MessageSquare },
+  { href: "/character", label: LANGUAGE.nav.community, icon: Users },
+  { href: "/knowledge", label: LANGUAGE.nav.academy, icon: GraduationCap },
 ];
 
-const NAV_SECONDARY = [{ href: "/settings", label: "Settings", icon: Settings }];
+const NAV_SECONDARY = [{ href: "/settings", label: LANGUAGE.nav.settings, icon: Settings }];
 
 const MOBILE_NAV = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/orders", label: "Orders", icon: Map },
-  { href: "/signals", label: "Signals", icon: Activity },
-  { href: "/app/bhudhi", label: "Bhudhi", icon: Sparkles },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: LANGUAGE.nav.home, icon: LayoutDashboard },
+  { href: "/orders", label: LANGUAGE.nav.tasks, icon: Map },
+  { href: "/signals", label: LANGUAGE.nav.progress, icon: Activity },
+  { href: "/app/bhudhi", label: LANGUAGE.nav.bhudhi, icon: Sparkles },
+  { href: "/settings", label: LANGUAGE.nav.settings, icon: Settings },
 ];
 
-const HOME_PURPLE = "#5B21FF";
+const HOME_PURPLE = DESIGN_TOKENS.colors.primaryBright;
 
 function TorgimaLogo({ compact }: { compact?: boolean }) {
   return (
@@ -58,10 +61,10 @@ function TorgimaLogo({ compact }: { compact?: boolean }) {
       </svg>
       {!compact && (
         <div>
-          <span className="font-bold text-xs tracking-tight text-gray-900 leading-tight block">
+          <span className="font-bold text-xs tracking-tight text-foreground leading-tight block font-heading">
             TORGIMA
           </span>
-          <p className="text-[8px] text-gray-400 leading-tight uppercase tracking-wide">
+          <p className="text-[8px] text-muted-foreground leading-tight uppercase tracking-wide">
             Execution System
           </p>
         </div>
@@ -106,12 +109,11 @@ function NavLink({
         onClick={onNavigate}
         className={`flex items-center gap-2.5 px-3 py-2 rounded-r-lg cursor-pointer transition-all text-sm border-l-[3px] ${
           isActive
-            ? "font-semibold border-[#5B21FF]"
-            : "text-gray-600 border-transparent hover:bg-gray-100 hover:text-gray-900"
+            ? "font-semibold border-primary-bright bg-primary/15 text-primary-bright"
+            : "text-muted-foreground border-transparent hover:bg-dark-hover hover:text-foreground"
         }`}
-        style={isActive ? { backgroundColor: "#F5F3FF", color: HOME_PURPLE } : undefined}
       >
-        <Icon className="w-4 h-4 shrink-0" style={isActive ? { color: HOME_PURPLE } : { color: "#9CA3AF" }} />
+        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary-bright" : "text-muted-foreground"}`} />
         <span className="flex-1 truncate">{label}</span>
         {locked && <Lock className="w-3 h-3 text-gray-400 shrink-0" />}
       </div>
@@ -166,7 +168,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
 
   const sidebar = (
     <>
-      <div className="px-4 py-4 border-b border-gray-100">
+      <div className="px-4 py-4 border-b border-dark-border">
         <TorgimaLogo />
         {featureStatus?.sequenceStatus && (
           <p className="text-[10px] text-gray-500 mt-2">
@@ -196,7 +198,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
               onNavigate={() => setMobileOpen(false)}
             />
           ))}
-        <div className="pt-3 mt-2 border-t border-gray-100">
+        <div className="pt-3 mt-2 border-t border-dark-border">
           {NAV_SECONDARY.map((item) => (
             <NavLink key={item.href} {...item} location={location} onNavigate={() => setMobileOpen(false)} />
           ))}
@@ -286,9 +288,10 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden bg-dark relative">
+      <PageBackground />
       <aside
-        className={`hidden lg:flex shrink-0 flex-col border-r border-gray-200 bg-white transition-all ${
+        className={`hidden lg:flex shrink-0 flex-col border-r border-dark-border bg-dark-card transition-all ${
           sidebarCollapsed ? "w-[72px]" : "w-[220px]"
         }`}
       >
@@ -303,7 +306,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative w-[200px] max-w-[85vw] h-full flex flex-col bg-white shadow-xl">
+          <aside className="relative w-[200px] max-w-[85vw] h-full flex flex-col bg-dark-card shadow-xl border-r border-dark-border">
             <button
               type="button"
               className="absolute top-3 right-3 p-1 rounded-lg hover:bg-gray-100"
@@ -318,7 +321,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-dark-border bg-dark-card shrink-0">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -329,7 +332,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
           </button>
           <TorgimaLogo />
         </div>
-        <main className="flex-1 overflow-y-auto bg-white pb-20 lg:pb-0">
+        <main className="flex-1 overflow-y-auto bg-dark pb-20 lg:pb-0 relative">
           {(pageTitle || pageSubtitle) && (
             <div className="px-6 pt-4 hidden">
               {pageTitle && <h1 className="text-lg font-bold">{pageTitle}</h1>}
@@ -339,7 +342,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
           {children}
         </main>
 
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white flex justify-around py-2 safe-area-pb">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-dark-border bg-dark-card flex justify-around py-2 safe-area-pb">
           {MOBILE_NAV.map((item) => {
             const isActive =
               location === item.href ||
@@ -348,8 +351,9 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
             return (
               <Link key={item.href} href={item.href}>
                 <div
-                  className="flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px]"
-                  style={isActive ? { color: HOME_PURPLE } : { color: "#94A3B8" }}
+                  className={`flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px] ${
+                    isActive ? "text-primary-bright" : "text-muted-foreground"
+                  }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span className="text-[10px] font-medium">{item.label}</span>

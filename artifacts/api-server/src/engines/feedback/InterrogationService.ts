@@ -2,6 +2,7 @@ import { db, feedback, orders } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { TorgimaError } from "../../lib/errors.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { dispatchPendingEvents } from "../../services/EventDispatcher.js";
 import { recordOperatingLoopStage } from "../../services/OperatingLoopRecorder.js";
 
 export async function answerInterrogation(params: {
@@ -91,6 +92,8 @@ export async function answerInterrogation(params: {
     entityId: row.id,
     correlation: { feedback_id: row.id, order_id: row.order_id },
   }).catch(() => null);
+
+  await dispatchPendingEvents().catch(() => null);
 
   return { feedbackId: row.id, eventId, resumed: true };
 }

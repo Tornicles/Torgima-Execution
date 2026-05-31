@@ -1,5 +1,5 @@
 import { processFeedback } from "../feedback/FeedbackProcessingEngine.js";
-import { generateNextTask } from "./generateNextTask.js";
+import { dispatchPendingEvents } from "../../services/EventDispatcher.js";
 
 export interface FeedbackSubmission {
   userId: string;
@@ -20,6 +20,8 @@ export interface PrimaryLoopResult {
   feedbackId?: string;
   queued: boolean;
   nextOrderId?: string;
+  nextStep?: "answer_question" | "loop_running";
+  message?: string;
   generationMs?: number;
   requiresInterrogation?: boolean;
   interrogationQuestion?: string;
@@ -27,8 +29,8 @@ export interface PrimaryLoopResult {
 }
 
 /**
- * Primary loop entry (Prompt 5): persist feedback via FeedbackProcessingEngine,
- * let event workers run signal → condition → control, attempt immediate next task.
+ * Primary loop entry: persist feedback, dispatch events — workers run the full chain.
+ * No synchronous generateNextTask (bypasses signal → condition → enforcement).
  */
 export async function runPrimaryLoop(
   userId: string,
@@ -55,6 +57,8 @@ export async function runPrimaryLoop(
     return {
       feedbackId: result.feedbackId,
       queued: true,
+      nextStep: "answer_question" as const,
+      message: "Please answer the question to continue.",
       requiresInterrogation: true,
       interrogationQuestion: result.interrogationQuestion,
       verdictStatus: result.verdictStatus,
@@ -62,16 +66,13 @@ export async function runPrimaryLoop(
     };
   }
 
-  const next = await generateNextTask(userId, {
-    blueprintId: data.blueprintId,
-    reason: "FEEDBACK_COMPLETE",
-    generationMode: "post_feedback",
-  });
+  await dispatchPendingEvents().catch(() => null);
 
   return {
     feedbackId: result.feedbackId,
     queued: true,
-    nextOrderId: next.order?.id,
+    nextStep: "loop_running" as const,
+    message: "Feedback received. Next task is being prepared.",
     verdictStatus: result.verdictStatus,
     generationMs: Date.now() - start,
   };

@@ -1,28 +1,26 @@
 import type { Config } from "tailwindcss";
+import { withTorgimaPreset } from "@workspace/design-system/tailwind";
 
-const config: Config = {
+const config: Config = withTorgimaPreset({
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "../../packages/design-system/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
-      fontFamily: {
-        syne: ["var(--font-syne)", "system-ui", "sans-serif"],
-        dm: ["var(--font-dm)", "system-ui", "sans-serif"],
-        jet: ["var(--font-jet)", "ui-monospace", "monospace"],
-      },
-      spacing: {
-        section: "140px",
-        "section-sm": "80px",
-      },
-      maxWidth: {
-        content: "720px",
-        panel: "960px",
+      colors: {
+        "dark-hover": "#241535",
+        primary: {
+          DEFAULT: "#6B21A8",
+          bright: "#A855F7",
+          soft: "#7C3AED",
+        },
       },
     },
   },
   plugins: [],
-};
+});
+
 export default config;

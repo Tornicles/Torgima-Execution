@@ -16,6 +16,8 @@ import {
 import { TorgimaPreLaunchLogo } from "./TorgimaPreLaunchLogo";
 import { PreValidationStepper } from "./PreValidationStepper";
 import type { PreValidationDraft, PreValidationQuickContext } from "@/lib/pre-validation-draft";
+import { LANGUAGE } from "@/lib/language";
+import { validateProjectNameInput } from "@/lib/project-name";
 
 const DOMAIN_OPTIONS = [
   "SaaS",
@@ -125,7 +127,7 @@ export function GoalPurposeInputScreen({
   onSaveDraft: () => void;
   onContinue: () => void;
 }) {
-  const [errors, setErrors] = useState<{ goal?: string; purpose?: string }>({});
+  const [errors, setErrors] = useState<{ projectName?: string; goal?: string; purpose?: string }>({});
 
   function updateQuickContext(patch: Partial<PreValidationQuickContext>) {
     onDraftChange({
@@ -134,13 +136,20 @@ export function GoalPurposeInputScreen({
   }
 
   function handleContinue() {
-    const next: { goal?: string; purpose?: string } = {};
+    const next: { projectName?: string; goal?: string; purpose?: string } = {};
+    const nameErr = validateProjectNameInput(draft.projectName);
+    if (nameErr) next.projectName = nameErr;
     if (draft.goal.trim().length < 20) next.goal = "Enter at least 20 characters for your goal.";
     if (draft.purpose.trim().length < 20) next.purpose = "Enter at least 20 characters for your purpose.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onContinue();
   }
+
+  const canContinue =
+    !validateProjectNameInput(draft.projectName) &&
+    draft.goal.trim().length >= 20 &&
+    draft.purpose.trim().length >= 20;
 
   return (
     <div className="min-h-screen bg-white text-[#0B1220]">
@@ -174,6 +183,34 @@ export function GoalPurposeInputScreen({
       </div>
 
       <main className="mx-auto max-w-6xl px-6 pb-44 pt-10 lg:px-10">
+        <section className="mb-8 overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#5B21FF]">
+            {LANGUAGE.project.nameSectionTitle}
+          </p>
+          <hr className="my-4 border-[#E2E8F0]" />
+          <label className="block">
+            <span className="text-sm font-semibold text-[#0B1220]">
+              What do you want to call this project?
+            </span>
+            <input
+              type="text"
+              value={draft.projectName}
+              onChange={(e) => {
+                onDraftChange({ projectName: e.target.value.slice(0, 50) });
+                if (errors.projectName) setErrors((prev) => ({ ...prev, projectName: undefined }));
+              }}
+              placeholder={LANGUAGE.project.namePlaceholder}
+              className="mt-3 w-full rounded-2xl border border-[#E2E8F0] bg-[#FAFAFA] px-4 py-3.5 text-sm text-[#0B1220] placeholder:text-[#94A3B8] outline-none transition-colors focus:border-[#5B21FF] focus:ring-2 focus:ring-[#5B21FF]/15"
+            />
+            <p className="mt-2 text-right text-xs text-[#94A3B8]">{draft.projectName.length} / 50</p>
+            {errors.projectName ? (
+              <p className="text-xs text-red-600">{errors.projectName}</p>
+            ) : (
+              <p className="mt-2 text-xs text-[#64748B]">{LANGUAGE.project.nameHint}</p>
+            )}
+          </label>
+        </section>
+
         <section className="overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-white shadow-sm">
           <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-[#E2E8F0]">
             <div className="space-y-5 p-6 sm:p-8 lg:p-10">
@@ -307,16 +344,16 @@ export function GoalPurposeInputScreen({
             className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-5 py-2.5 text-sm font-semibold text-[#0B1220] shadow-sm transition-colors hover:border-[#C7D2FE] hover:bg-[#F8FAFC]"
           >
             <Save className="h-4 w-4 text-[#5B21FF]" />
-            Save Draft
+            {LANGUAGE.onboarding.saveButton}
           </button>
           <button
             type="button"
             onClick={handleContinue}
-            disabled={draft.goal.trim().length < 20 || draft.purpose.trim().length < 20}
+            disabled={!canContinue}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/60 transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
-            Continue to Next Step
+            {LANGUAGE.onboarding.continueButton}
             <span aria-hidden>→</span>
           </button>
         </div>

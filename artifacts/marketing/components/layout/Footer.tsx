@@ -1,93 +1,92 @@
 import Link from "next/link";
-import { BrandLogo } from "@/components/BrandLogo";
-import { DividerDot } from "@/components/ui/Divider";
-import { Twitter, Linkedin } from "lucide-react";
 
-const cols = [
+const COLS = [
   {
     title: "Product",
     links: [
-      ["Features", "/features"],
-      ["How It Works", "/how-it-works"],
-      ["Pricing", "/pricing"],
-      ["Changelog", "/blog"],
+      { href: "/features", label: "Features" },
+      { href: "/how-it-works", label: "How It Works" },
+      { href: "/pricing", label: "Pricing" },
+      { href: "/faq", label: "FAQ" },
     ],
   },
   {
-    title: "Resources",
+    title: "Use Cases",
     links: [
-      ["Blog", "/blog"],
-      ["Academy", "/features#academy"],
+      { href: "/use-cases/creators", label: "For Creators" },
+      { href: "/use-cases/solopreneurs", label: "For Solopreneurs" },
+      { href: "/use-cases/agencies", label: "For Agency Owners" },
+      { href: "/use-cases/coaches", label: "For Coaches" },
+      { href: "/use-cases/startups", label: "For Startups" },
+    ],
+  },
+  {
+    title: "Compare",
+    links: [
+      { href: "/compare/torgima-vs-notion", label: "vs Notion" },
+      { href: "/compare/torgima-vs-clickup", label: "vs ClickUp" },
+      { href: "/compare/torgima-vs-asana", label: "vs Asana" },
+      { href: "/compare/torgima-vs-todoist", label: "vs Todoist" },
     ],
   },
   {
     title: "Company",
     links: [
-      ["About", "/about"],
-      ["Contact", "mailto:support@torgima.com"],
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      ["Privacy", "/privacy"],
-      ["Terms", "/terms"],
+      { href: "/about", label: "About" },
+      { href: "/blog", label: "Blog" },
+      { href: "/legal/privacy", label: "Privacy Policy" },
+      { href: "/legal/terms", label: "Terms of Service" },
     ],
   },
 ];
 
 export function Footer() {
   return (
-    <footer className="border-t border-[var(--color-border)] bg-[var(--color-black)] pt-16 pb-10 px-4 sm:px-6">
-      <div className="mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8">
-        <div className="lg:col-span-1 space-y-3">
-          <BrandLogo height={28} />
-          <p className="font-dm text-[13px] text-[var(--color-text-muted)] max-w-xs">
-            Execute with intelligence.
-          </p>
-        </div>
-        {cols.map((c) => (
-          <div key={c.title}>
-            <p className="font-jet text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
-              {c.title}
-            </p>
-            <ul className="space-y-2.5">
-              {c.links.map(([label, href]) => (
-                <li key={label}>
-                  <Link
-                    href={href}
-                    className="font-dm text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors focus-ring rounded-sm"
-                  >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+    <footer className="border-t border-dark-border bg-[#080510]">
+      <div className="mx-auto max-w-content px-4 sm:px-6 py-16">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
+          <div className="lg:col-span-1">
+            <p className="font-syne font-extrabold text-xl text-white">TORGIMA</p>
+            <p className="mt-2 text-sm text-zinc-400">The Execution Operating System</p>
+            <p className="mt-1 text-sm font-semibold text-primary-bright">Stop Planning. Start Executing.</p>
+            <div className="mt-4 flex gap-4 text-xs text-zinc-500">
+              <a href="https://twitter.com/torgima" className="hover:text-white">
+                Twitter
+              </a>
+              <a href="https://linkedin.com/company/torgima" className="hover:text-white">
+                LinkedIn
+              </a>
+              <a href="https://youtube.com/@torgima" className="hover:text-white">
+                YouTube
+              </a>
+            </div>
           </div>
-        ))}
-      </div>
+          {COLS.map((col) => (
+            <div key={col.title}>
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">{col.title}</p>
+              <ul className="mt-4 space-y-2">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="text-sm text-zinc-400 hover:text-white transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
 
-      <div className="mx-auto max-w-6xl mt-14 flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-[var(--color-border)]">
-        <p className="font-jet text-[11px] text-[var(--color-text-muted)] text-center sm:text-left">
-          © 2026 Torgima.
-          <DividerDot />
-          All rights reserved.
+        <p className="mt-12 text-xs text-zinc-600 leading-relaxed max-w-3xl">
+          Torgima is a daily task manager, habit tracker, project management platform, and AI execution
+          system built for creators, solopreneurs, founders, and agency owners. Replace Notion,
+          ClickUp, Asana, and Todoist with one intelligent system that tells you exactly what to do
+          every day.
         </p>
-        <div className="flex items-center gap-4">
-          <a
-            href="https://twitter.com/torgima"
-            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] focus-ring rounded-sm p-1"
-            aria-label="Torgima on X"
-          >
-            <Twitter className="h-5 w-5" />
-          </a>
-          <a
-            href="https://linkedin.com/company/torgima"
-            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] focus-ring rounded-sm p-1"
-            aria-label="Torgima on LinkedIn"
-          >
-            <Linkedin className="h-5 w-5" />
-          </a>
+
+        <div className="mt-8 pt-8 border-t border-dark-border flex flex-wrap justify-between gap-4 text-xs text-zinc-500">
+          <span>© {new Date().getFullYear()} Torgima. All rights reserved.</span>
+          <span className="italic">Built for people who execute.</span>
         </div>
       </div>
     </footer>

@@ -1,57 +1,60 @@
 import type { Metadata } from "next";
+import { PageHero } from "@/components/pages/PageHero";
+import { FinalCTA } from "@/components/home/FinalCTA";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About",
-  description: "Mission, philosophy, and what Torgima is — and is not.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "About Torgima — The Story Behind the Execution System",
+  description:
+    "Torgima was built because planning is not the problem — execution is. Learn our mission and what drives every product decision.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (
-    <div className="py-section-sm lg:py-section px-4 max-w-content mx-auto space-y-14">
-      <header>
-        <h1 className="font-syne font-extrabold text-4xl sm:text-5xl text-[var(--color-text-primary)]">Built for people who execute.</h1>
-      </header>
-
-      <section>
-        <h2 className="font-syne font-bold text-2xl mb-4 text-[var(--color-text-primary)]">Mission</h2>
-        <p className="font-dm text-[var(--color-text-secondary)] leading-relaxed">
-          Torgima exists because most people don&apos;t fail from lack of ideas. They fail from lack of execution structure. We built
-          the system we always needed.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="font-syne font-bold text-2xl mb-4 text-[var(--color-text-primary)]">What Torgima is</h2>
-        <div className="space-y-4 font-dm text-[var(--color-text-secondary)] leading-relaxed">
-          <p>
-            <strong className="text-[var(--color-text-primary)]">Goal → System.</strong>{" "}
-            Not a loose list. A validated map from intent to daily tasks.
+    <>
+      <PageHero title="We built Torgima because planning was never the problem." />
+      <section className="section-light py-16">
+        <div className="mx-auto max-w-content px-4 sm:px-6 max-w-3xl prose prose-zinc">
+          <h2 className="font-syne text-2xl font-bold text-[#18181b]">Origin</h2>
+          <p className="mt-4 text-zinc-600 leading-relaxed">
+            Most people who fail at their goals do not fail because they did not plan. They fail because
+            nothing held them accountable to executing the plan. Nothing adapted when they had a bad day.
+            Nothing told them which of their forty tasks actually mattered today.
           </p>
-          <p>
-            <strong className="text-[var(--color-text-primary)]">Signals → Truth.</strong>{" "}
-            Not vanity streaks. Readouts that steer difficulty, load, and recovery.
+          <p className="mt-4 text-zinc-600 leading-relaxed">
+            We built Torgima to be that system. Not a place to store your plans. An engine that drives
+            execution.
           </p>
-          <p>
-            <strong className="text-[var(--color-text-primary)]">Adaptation → Intelligence.</strong>{" "}
-            Not nagging. The plan changes when reality does.
+          <h2 className="font-syne text-2xl font-bold text-[#18181b] mt-12">Mission</h2>
+          <p className="mt-4 text-zinc-600 leading-relaxed">
+            Give every builder, creator, and founder the execution system that makes the gap between idea
+            and reality as short as possible.
+          </p>
+          <h2 className="font-syne text-2xl font-bold text-[#18181b] mt-12">What we believe</h2>
+          <ul className="mt-4 space-y-2 text-zinc-600 list-disc pl-6">
+            <li>Plans are worthless without execution</li>
+            <li>Real accountability requires real intelligence</li>
+            <li>Daily actions should always connect back to your goal</li>
+            <li>A system that doesn&apos;t adapt to reality will always fail</li>
+            <li>Execution is a skill that can be measured and improved</li>
+          </ul>
+          <h2 className="font-syne text-2xl font-bold text-[#18181b] mt-12">How we&apos;re different</h2>
+          <p className="mt-4 text-zinc-600 leading-relaxed">
+            Every other productivity tool was built to organize information. Torgima was built to drive
+            behavior. There is a fundamental difference between a system that shows you your tasks and a
+            system that tells you exactly which task to do right now, why it matters, and how well you
+            executed it.
+          </p>
+          <h2 className="font-syne text-2xl font-bold text-[#18181b] mt-12">Bhudhi</h2>
+          <p className="mt-4 text-zinc-600 leading-relaxed">
+            Bhudhi is not a chatbot you talk to. It is execution intelligence embedded in your project. It
+            knows your goal, your history, and your signals. It cannot lie to you about your progress.
+            That is by design.
           </p>
         </div>
       </section>
-
-      <section>
-        <h2 className="font-syne font-bold text-2xl mb-4 text-[var(--color-text-primary)]">What Torgima is not</h2>
-        <ul className="list-disc list-inside space-y-2 font-dm text-[var(--color-text-secondary)]">
-          <li>Not a task manager</li>
-          <li>Not a habit tracker</li>
-          <li>Not a project management tool</li>
-          <li>Not a chatbot</li>
-          <li>Not another AI assistant</li>
-        </ul>
-      </section>
-
-      <blockquote className="border-l-2 border-[var(--color-accent-purple)] pl-6 py-2 font-dm text-lg italic text-[var(--color-text-primary)]">
-        Humans execute. Torgima guides. Blueprints structure. Signals reveal truth.
-      </blockquote>
-    </div>
+      <FinalCTA />
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   requireExplicitIdempotencyKey,
 } from "../lib/route-helpers.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { dispatchPendingEvents } from "../services/EventDispatcher.js";
 import { OrderStatus } from "../types/stateMachine.js";
 
 const router = Router();
@@ -64,6 +65,9 @@ const feedbackBodySchema = z.object({
   completionStatus: z.enum(["completed", "partial", "failed", "skipped"]),
   score: z.number().int().min(0).max(10),
   reflection: z.string().min(10).max(5000),
+  difficultyFelt: z
+    .enum(["very_easy", "easy", "moderate", "hard", "very_hard"])
+    .optional(),
   proofJson: z.record(z.string(), z.unknown()).nullish(),
   blockerJson: z.record(z.string(), z.unknown()).nullish(),
   durationMinutes: z.number().optional(),
@@ -346,6 +350,7 @@ router.post("/orders/:id/feedback", async (req, res) => {
       completionStatus: body.completionStatus,
       score: body.score,
       reflection: body.reflection,
+      difficultyFelt: body.difficultyFelt,
       proofJson: body.proofJson ?? undefined,
       blockerJson: body.blockerJson ?? undefined,
       durationMinutes: body.durationMinutes,
@@ -355,7 +360,22 @@ router.post("/orders/:id/feedback", async (req, res) => {
       expectedStateVersion: body.expectedStateVersion,
     });
 
-    success(res, result);
+    if (!result.requiresInterrogation) {
+      await dispatchPendingEvents().catch(() => null);
+    }
+
+    success(res, {
+      feedbackId: result.feedbackId,
+      requiresInterrogation: result.requiresInterrogation,
+      interrogationQuestion: result.interrogationQuestion ?? null,
+      nextStep: result.requiresInterrogation ? "answer_question" : "loop_running",
+      message: result.requiresInterrogation
+        ? "Please answer the question to continue."
+        : "Feedback received. Next task is being prepared.",
+      verdictStatus: result.verdictStatus,
+      weightedScore: result.weightedScore,
+      confidence: result.confidence,
+    });
   } catch (e) {
     handleRouteError(req, res, e);
   }

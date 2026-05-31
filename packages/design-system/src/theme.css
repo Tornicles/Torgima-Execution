@@ -1,0 +1,44 @@
+/* Torgima manifesto — shared CSS variables (website + app) */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap");
+
+:root {
+  --torgima-dark: #0f0a1a;
+  --torgima-dark-card: #1a1025;
+  --torgima-dark-border: #2d1f40;
+  --torgima-dark-hover: #241535;
+
+  --torgima-primary: #6b21a8;
+  --torgima-primary-bright: #a855f7;
+  --torgima-primary-soft: #7c3aed;
+  --torgima-primary-glow: rgba(168, 85, 247, 0.15);
+
+  --torgima-text-primary: #fafaf9;
+  --torgima-text-secondary: #a1a1aa;
+  --torgima-text-muted: #6b7280;
+
+  --torgima-success: #10b981;
+  --torgima-success-soft: rgba(16, 185, 129, 0.1);
+  --torgima-warning: #f59e0b;
+  --torgima-warning-soft: rgba(245, 158, 11, 0.1);
+  --torgima-danger: #ef4444;
+  --torgima-danger-soft: rgba(239, 68, 68, 0.1);
+
+  --torgima-condition-nothingness: #6b7280;
+  --torgima-condition-danger: #ef4444;
+  --torgima-condition-urgency: #f59e0b;
+  --torgima-condition-stability: #10b981;
+  --torgima-condition-power: #6366f1;
+  --torgima-condition-affluence: #a855f7;
+  --torgima-condition-power-change: #f59e0b;
+
+  --torgima-font-heading: "Syne", "Clash Display", sans-serif;
+  --torgima-font-body: "Plus Jakarta Sans", "DM Sans", sans-serif;
+  --torgima-font-mono: "JetBrains Mono", monospace;
+
+  --torgima-shadow-glow: 0 0 40px rgba(168, 85, 247, 0.15);
+  --torgima-shadow-glow-strong: 0 0 60px rgba(168, 85, 247, 0.25);
+  --torgima-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+
+  --torgima-gradient-hero: radial-gradient(ellipse at top center, #3b0764 0%, #0f0a1a 60%);
+  --torgima-gradient-primary: linear-gradient(135deg, #6b21a8 0%, #a855f7 100%);
+}

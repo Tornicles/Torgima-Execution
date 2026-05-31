@@ -927,6 +927,9 @@ components:
           type: integer
         reflection:
           type: string
+        difficultyFelt:
+          type: string
+          enum: [very_easy, easy, moderate, hard, very_hard]
         proofJson:
           type: object
           additionalProperties: true
@@ -956,6 +959,11 @@ components:
         requiresInterrogation:
           type: boolean
         interrogationQuestion:
+          type: string
+        nextStep:
+          type: string
+          enum: [answer_question, loop_running]
+        message:
           type: string
         eventId:
           type: string

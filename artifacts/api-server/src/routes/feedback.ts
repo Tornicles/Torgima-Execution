@@ -351,7 +351,11 @@ router.post("/feedback/:id/interrogation", async (req, res) => {
       idempotencyKey,
     });
 
-    success(res, result);
+    success(res, {
+      ...result,
+      nextStep: "loop_running",
+      message: "Feedback received. Next task is being prepared.",
+    });
   } catch (err) {
     handleRouteError(req, res, err);
   }

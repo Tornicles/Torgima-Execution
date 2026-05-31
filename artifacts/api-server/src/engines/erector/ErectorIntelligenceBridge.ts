@@ -180,14 +180,20 @@ export async function buildErectorOutputs(
       industry_state_narrative:
         industry.data["industry_state_narrative"] ?? industry.data["summary"] ?? base.industryIntelligence.industry_state_narrative,
     }),
-    marketAnalysis: mergeRecord(base.marketAnalysis, market.data),
+    marketAnalysis: mergeRecord(base.marketAnalysis, {
+      ...market.data,
+      opportunities: market.data["opportunities"] ?? [],
+    }),
     competitorAnalysis: mergeRecord(
       base.competitorAnalysis,
-      competitors.data["competitors"] ? competitors.data : { competitors: competitors.data["winners"] ?? base.competitorAnalysis.competitors },
+      competitors.data["competitors"]
+        ? competitors.data
+        : { competitors: competitors.data["winners"] ?? base.competitorAnalysis.competitors },
     ),
     economyBriefing: mergeRecord(base.economyBriefing, {
       ...economy.data,
       briefingNarrative,
+      economicContext: economy.data["economicContext"] ?? economy.data["economic_context"],
     }),
     customerPainAnalysis: mergeRecord(base.customerPainAnalysis, pain.data),
     executionDifficulty: base.executionDifficulty,

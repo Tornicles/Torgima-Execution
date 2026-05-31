@@ -1,34 +1,28 @@
 import { useEffect, useState } from "react";
+import { ConditionBadge } from "@workspace/design-system";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
 
-type ConditionDisplay = {
-  condition: string;
-  label: string;
-  emoji: string;
-  colorKey: string;
-  summary: string;
-  dailyTasksAllowed: number;
-  canProgress: boolean;
-  canScale: boolean;
-  recoveryRequired?: boolean;
-  transitionMessage?: string;
-  restrictedActions?: string[];
-  recoveryTaskTypes?: string[];
-  miniPlanAllocation: { Foundation: number; Operations: number; Growth: number };
-};
-
 type ConditionResponse = {
-  display?: ConditionDisplay | null;
-  frameworkSignals?: Record<string, number> | null;
-  condition?: { condition?: string; durationDays?: number } | null;
-};
-
-const COLOR_RING: Record<string, string> = {
-  danger: "ring-red-400 bg-red-50 text-red-800",
-  urgency: "ring-amber-400 bg-amber-50 text-amber-900",
-  stability: "ring-emerald-400 bg-emerald-50 text-emerald-900",
-  power: "ring-blue-400 bg-blue-50 text-blue-900",
-  neutral: "ring-slate-300 bg-slate-50 text-slate-800",
+  display?: {
+    label: string;
+    emoji?: string;
+    colorKey?: string;
+    summary?: string;
+    transitionMessage?: string;
+    dailyTasksAllowed?: number;
+    miniPlanAllocation?: { Foundation: number; Operations: number; Growth: number };
+    canProgress?: boolean;
+    canScale?: boolean;
+    recoveryRequired?: boolean;
+    recoveryTaskTypes?: string[];
+  };
+  frameworkSignals?: {
+    Production: number;
+    Operations: number;
+    Growth: number;
+    Scale: number;
+  };
+  condition?: { durationDays?: number };
 };
 
 export function ConditionStatusPanel({ blueprintId }: { blueprintId?: string | null }) {
@@ -54,18 +48,19 @@ export function ConditionStatusPanel({ blueprintId }: { blueprintId?: string | n
   const display = data?.display;
   if (!display) return null;
 
-  const ring = COLOR_RING[display.colorKey] ?? COLOR_RING.neutral;
   const alloc = display.miniPlanAllocation;
+  const conditionKey = display.colorKey ?? "nothingness";
 
   return (
-    <section className="rounded-lg border bg-card p-4 space-y-3">
+    <section className="rounded-2xl border border-dark-border bg-dark-card p-4 space-y-3 shadow-card">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Execution condition
       </p>
-      <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ring-1 ${ring}`}>
-        <span>{display.emoji}</span>
-        <span>{display.label}</span>
-      </div>
+      <ConditionBadge
+        condition={conditionKey}
+        label={display.label}
+        emoji={display.emoji}
+      />
       <p className="text-sm text-muted-foreground">
         {display.transitionMessage ?? display.summary}
       </p>
@@ -79,9 +74,11 @@ export function ConditionStatusPanel({ blueprintId }: { blueprintId?: string | n
       )}
       <ul className="text-xs text-muted-foreground space-y-1">
         <li>{display.dailyTasksAllowed} daily tasks allowed</li>
-        <li>
-          Foundation {alloc.Foundation}% · Operations {alloc.Operations}% · Growth {alloc.Growth}%
-        </li>
+        {alloc && (
+          <li>
+            Foundation {alloc.Foundation}% · Operations {alloc.Operations}% · Growth {alloc.Growth}%
+          </li>
+        )}
         <li>{display.canProgress ? "Progression enabled" : "Progression paused"}</li>
         <li>{display.canScale ? "Scaling available" : "Scaling restricted"}</li>
         {display.recoveryRequired && display.recoveryTaskTypes && display.recoveryTaskTypes.length > 0 && (

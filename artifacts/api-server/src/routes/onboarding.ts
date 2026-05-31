@@ -6,6 +6,7 @@ import { db, users, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingGoalAdapter.js";
+import { normalizeProjectName } from "../lib/projectName.js";
 import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
 
 const router = Router();
@@ -67,7 +68,14 @@ router.post("/onboarding/goal", async (req, res) => {
       return;
     }
 
-    const { flat, rawGoal, rawPurpose } = adapted.data;
+    const { flat, rawGoal, rawPurpose, projectName: adaptedProjectName } = adapted.data;
+    const input = flatToParsedGoal(adapted.data, body as Record<string, unknown>);
+    const refinedGoal = flat.goal;
+    const refinedPurpose = flat.purpose;
+    const rawGoalInput = rawGoal ?? refinedGoal;
+    const rawPurposeInput = rawPurpose ?? refinedPurpose;
+    const projectName = normalizeProjectName(adaptedProjectName, flat.domain);
+
     req.log.info(
       {
         shape: "flat",
@@ -75,15 +83,10 @@ router.post("/onboarding/goal", async (req, res) => {
         commitmentLevel: flat.commitmentLevel,
         hasRawGoal: Boolean(rawGoal),
         hasRawPurpose: Boolean(rawPurpose),
+        projectName,
       },
-      "[Onboarding] POST /onboarding/goal normalized payload",
+      "[Onboarding] POST /api/onboarding/goal normalized payload",
     );
-
-    const input = flatToParsedGoal(adapted.data, body as Record<string, unknown>);
-    const refinedGoal = flat.goal;
-    const refinedPurpose = flat.purpose;
-    const rawGoalInput = rawGoal ?? refinedGoal;
-    const rawPurposeInput = rawPurpose ?? refinedPurpose;
 
     const tier = input.selectedBlueprintTier;
     const mode = input.selectedBlueprintMode;
@@ -105,6 +108,7 @@ router.post("/onboarding/goal", async (req, res) => {
         raw_purpose_input: rawPurposeInput,
         goal_final: refinedGoal,
         purpose_final: refinedPurpose,
+        project_name: projectName,
         timeframe_days: input.timeframeDays,
         timeframe_start: timeframeStart,
         timeframe_end: timeframeEnd,

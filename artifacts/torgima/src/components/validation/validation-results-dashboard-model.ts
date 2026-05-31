@@ -20,6 +20,43 @@ export type CompetitorCard = {
   marketShare: number;
 };
 
+export type EnrichedCompetitorCard = {
+  name: string;
+  tagline: string;
+  description: string;
+  founded: string;
+  estimatedRevenue: string;
+  userBase: string;
+  geography: string;
+  strengths: string[];
+  weaknesses: string[];
+  marketShare: string;
+  whereYourIdeaFits: string;
+};
+
+export type EnrichedOpportunityCard = {
+  title: string;
+  impact: "High" | "Medium" | "Low";
+  summary: string;
+  timeWindow: string;
+  marketSignal: string;
+};
+
+export type EconomicContextModel = {
+  country: string;
+  region: string;
+  economicZone: string;
+  gdpContext: string;
+  marketMaturity: string;
+  digitalPenetration: string;
+  politicalClimate: string;
+  regulatoryEnvironment: string;
+  localMarketDynamics: string;
+  globalMarketAccess: string;
+  economicOpportunityRating: "High" | "Medium" | "Low";
+  economicSummary: string;
+};
+
 export type OpportunityRow = { title: string; impact: "High Impact" | "Medium Impact" | "Low Impact" };
 
 export type PathCardModel = {
@@ -53,6 +90,9 @@ export type ResultsDashboardModel = ValidationViewModel & {
   chartYears: string[];
   chartValues: number[];
   competitorCards: CompetitorCard[];
+  enrichedCompetitors: EnrichedCompetitorCard[];
+  enrichedOpportunities: EnrichedOpportunityCard[];
+  economicContext: EconomicContextModel;
   pros: string[];
   cons: string[];
   opportunities: OpportunityRow[];
@@ -144,6 +184,92 @@ function competitorCard(c: Record<string, unknown>, index: number): CompetitorCa
         : ["Premium pricing", "Broad positioning"],
     marketShare: Math.round(marketShare),
   };
+}
+
+function impactNorm(value: unknown): EnrichedOpportunityCard["impact"] {
+  const v = String(value ?? "Medium").toLowerCase();
+  if (v.startsWith("h")) return "High";
+  if (v.startsWith("l")) return "Low";
+  return "Medium";
+}
+
+function parseEnrichedCompetitor(c: Record<string, unknown>): EnrichedCompetitorCard {
+  const desc = String(c.description ?? c.summary ?? "");
+  return {
+    name: String(c.name ?? "Unknown"),
+    tagline: String(c.tagline ?? (desc ? desc.split(".")[0] : "")),
+    description: desc || String(c.tagline ?? ""),
+    founded: String(c.founded ?? "Not available"),
+    estimatedRevenue: String(c.estimatedRevenue ?? c.revenue ?? "Not available"),
+    userBase: String(c.userBase ?? c.users ?? "Not available"),
+    geography: String(c.geography ?? c.location ?? "Global"),
+    strengths: stringList(c.strengths, 5),
+    weaknesses: stringList(c.weaknesses, 5),
+    marketShare: String(c.marketShare ?? c.market_share ?? "Not available"),
+    whereYourIdeaFits: String(c.whereYourIdeaFits ?? c.positioning ?? ""),
+  };
+}
+
+function parseEnrichedOpportunity(o: Record<string, unknown>): EnrichedOpportunityCard {
+  return {
+    title: String(o.title ?? o.name ?? "Opportunity"),
+    impact: impactNorm(o.impact),
+    summary: String(o.summary ?? o.description ?? ""),
+    timeWindow: String(o.timeWindow ?? o.time_window ?? "Not available"),
+    marketSignal: String(o.marketSignal ?? o.signal ?? ""),
+  };
+}
+
+function defaultEconomic(country: string): EconomicContextModel {
+  return {
+    country: country || "Your market",
+    region: "Not available",
+    economicZone: "Not available",
+    gdpContext: "Not available",
+    marketMaturity: "Not available",
+    digitalPenetration: "Not available",
+    politicalClimate: "Not available",
+    regulatoryEnvironment: "Not available",
+    localMarketDynamics: "Economic data not available for this validation.",
+    globalMarketAccess: "Not available",
+    economicOpportunityRating: "Medium",
+    economicSummary: "Economic data not available for this validation.",
+  };
+}
+
+function parseEconomic(raw: Record<string, unknown> | undefined, country: string): EconomicContextModel {
+  if (!raw) return defaultEconomic(country);
+  const rating = String(raw.economicOpportunityRating ?? raw.economic_opportunity_rating ?? "Medium");
+  return {
+    country: String(raw.country ?? country),
+    region: String(raw.region ?? "Not available"),
+    economicZone: String(raw.economicZone ?? raw.economic_zone ?? "Not available"),
+    gdpContext: String(raw.gdpContext ?? raw.gdp_context ?? "Not available"),
+    marketMaturity: String(raw.marketMaturity ?? raw.market_maturity ?? "Not available"),
+    digitalPenetration: String(raw.digitalPenetration ?? raw.digital_penetration ?? "Not available"),
+    politicalClimate: String(raw.politicalClimate ?? raw.political_climate ?? "Not available"),
+    regulatoryEnvironment: String(raw.regulatoryEnvironment ?? raw.regulatory_environment ?? "Not available"),
+    localMarketDynamics: String(raw.localMarketDynamics ?? raw.local_market_dynamics ?? "Not available"),
+    globalMarketAccess: String(raw.globalMarketAccess ?? raw.global_market_access ?? "Not available"),
+    economicOpportunityRating: impactNorm(rating) as EconomicContextModel["economicOpportunityRating"],
+    economicSummary: String(raw.economicSummary ?? raw.economic_summary ?? raw.briefingNarrative ?? "Not available"),
+  };
+}
+
+function defaultEnrichedCompetitors(): EnrichedCompetitorCard[] {
+  return defaultCompetitors().map((c) => ({
+    name: c.name,
+    tagline: c.description,
+    description: c.description,
+    founded: "Not available",
+    estimatedRevenue: "Not available",
+    userBase: "Not available",
+    geography: "Global",
+    strengths: c.strengths,
+    weaknesses: c.weaknesses,
+    marketShare: `${c.marketShare}%`,
+    whereYourIdeaFits: "Your idea can differentiate through a narrower wedge and faster proof for a specific segment.",
+  }));
 }
 
 function defaultCompetitors(): CompetitorCard[] {
@@ -305,6 +431,27 @@ export function buildResultsDashboardModel(
     5,
   );
 
+  const erectorCompetitors = Array.isArray(erector.competitors)
+    ? (erector.competitors as Record<string, unknown>[])
+    : [];
+  const enrichedCompetitors =
+    erectorCompetitors.length > 0
+      ? erectorCompetitors.slice(0, 3).map(parseEnrichedCompetitor)
+      : defaultEnrichedCompetitors();
+
+  const erectorOpportunities = Array.isArray(erector.opportunities)
+    ? (erector.opportunities as Record<string, unknown>[])
+    : [];
+  const enrichedOpportunities =
+    erectorOpportunities.length > 0
+      ? erectorOpportunities.map(parseEnrichedOpportunity)
+      : [];
+
+  const economicContext = parseEconomic(
+    (erector.economicContext ?? erector.economic_context) as Record<string, unknown> | undefined,
+    vm.locationCountry,
+  );
+
   const competitors =
     vm.competitors.length > 0
       ? vm.competitors.slice(0, 3).map((c, i) => competitorCard(c, i))
@@ -405,18 +552,41 @@ export function buildResultsDashboardModel(
     chartYears: ["2023", "2024", "2025", "2026", "2027"],
     chartValues,
     competitorCards: competitors,
+    enrichedCompetitors,
+    enrichedOpportunities:
+      enrichedOpportunities.length > 0
+        ? enrichedOpportunities
+        : [
+            {
+              title: "Underserved niche within your domain",
+              impact: "High" as const,
+              summary:
+                "A focused segment shows unmet demand. Buyers want faster proof than incumbents provide. Capture this with narrow positioning and a single-outcome offer.",
+              timeWindow: "6-12 months",
+              marketSignal: "Rising interest in your problem category.",
+            },
+          ],
+    economicContext,
     pros: pros.length > 0 ? pros : defaultPros,
     cons: cons.length > 0 ? cons.slice(0, 5) : defaultCons,
     opportunities:
-      opportunitiesRaw.length > 0
-        ? opportunitiesRaw.map((title, i) => ({ title, impact: impactFromIndex(i) }))
-        : [
-            { title: "Underserved creators", impact: "High Impact" },
-            { title: "Done-for-you systems", impact: "High Impact" },
-            { title: "Workflow automation", impact: "Medium Impact" },
-            { title: "Niche positioning", impact: "Medium Impact" },
-            { title: "Partnership channels", impact: "Low Impact" },
-          ],
+      enrichedOpportunities.length > 0
+        ? enrichedOpportunities.map((o) => ({
+            title: o.title,
+            impact:
+              o.impact === "High"
+                ? ("High Impact" as const)
+                : o.impact === "Low"
+                  ? ("Low Impact" as const)
+                  : ("Medium Impact" as const),
+          }))
+        : opportunitiesRaw.length > 0
+          ? opportunitiesRaw.map((title, i) => ({ title, impact: impactFromIndex(i) }))
+          : [
+              { title: "Underserved creators", impact: "High Impact" },
+              { title: "Done-for-you systems", impact: "High Impact" },
+              { title: "Workflow automation", impact: "Medium Impact" },
+            ],
     pathCards,
     risks,
     milestones: extractMilestones(erector),

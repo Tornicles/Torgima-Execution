@@ -1,0 +1,77 @@
+export const COMPARE_PAGES = {
+  notion: {
+    competitor: "Notion",
+    title: "Torgima vs Notion",
+    subtitle: "Notion organizes your thoughts. Torgima executes your goals.",
+    rows: [
+      { feature: "Idea validation", torgima: "✓ Built-in", other: "✗ None" },
+      { feature: "Daily task generation (AI)", torgima: "✓ 8/day", other: "✗ Manual only" },
+      { feature: "Adapts to your performance", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Execution signals", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Tells you what to do today", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Competitor analysis", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Built for execution", torgima: "✓ Yes", other: "✗ Docs/notes" },
+      { feature: "Setup time", torgima: "2 minutes", other: "Hours" },
+      { feature: "Price", torgima: "$9/mo", other: "$10/mo" },
+    ],
+    seo: {
+      title: "Torgima vs Notion — Execution System vs Document Tool",
+      description: "Notion organizes your thoughts. Torgima executes your goals. Compare for project management, daily tasks, and execution tracking.",
+      keywords: ["torgima vs notion", "notion alternative", "better than notion"],
+    },
+  },
+  clickup: {
+    competitor: "ClickUp",
+    title: "Torgima vs ClickUp",
+    subtitle: "ClickUp manages your work. Torgima executes your goals.",
+    rows: [
+      { feature: "Idea validation", torgima: "✓ Built-in", other: "✗ None" },
+      { feature: "AI daily tasks", torgima: "✓ Auto-generated", other: "✗ You create all" },
+      { feature: "Performance adaptation", torgima: "✓ 7 states", other: "✗ Static lists" },
+      { feature: "Solo founder focused", torgima: "✓ Yes", other: "Team-first" },
+      { feature: "Setup complexity", torgima: "Minimal", other: "High" },
+      { feature: "Execution signals", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Price entry", torgima: "$9/mo", other: "$7-12/mo+" },
+    ],
+    seo: {
+      title: "Torgima vs ClickUp — Intelligent Execution vs Project Management",
+      description: "See why solopreneurs and founders choose Torgima over ClickUp for daily execution.",
+      keywords: ["torgima vs clickup", "clickup alternative"],
+    },
+  },
+  asana: {
+    competitor: "Asana",
+    title: "Torgima vs Asana",
+    subtitle: "For individuals who need to execute, not coordinate teams.",
+    rows: [
+      { feature: "Built for solo builders", torgima: "✓ Yes", other: "✗ Teams" },
+      { feature: "Idea validation", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Daily task intelligence", torgima: "✓ Yes", other: "✗ Manual" },
+      { feature: "Adaptive difficulty", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Accountability signals", torgima: "✓ Yes", other: "✗ No" },
+    ],
+    seo: {
+      title: "Torgima vs Asana — For Individuals Who Need to Execute",
+      description: "Asana coordinates teams. Torgima drives solo execution toward goals.",
+      keywords: ["torgima vs asana", "asana alternative"],
+    },
+  },
+  todoist: {
+    competitor: "Todoist",
+    title: "Torgima vs Todoist",
+    subtitle: "Intelligent execution vs smart to-do list.",
+    rows: [
+      { feature: "Goal-connected tasks", torgima: "✓ Auto", other: "✗ Manual" },
+      { feature: "Idea validation", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Project hierarchy", torgima: "✓ Full", other: "✗ Lists only" },
+      { feature: "Performance adaptation", torgima: "✓ Yes", other: "✗ No" },
+      { feature: "Why each task matters", torgima: "✓ Always", other: "✗ Optional notes" },
+      { feature: "Never runs out of tasks", torgima: "✓ Yes", other: "✗ You add all" },
+    ],
+    seo: {
+      title: "Torgima vs Todoist — Intelligent Execution vs Smart To-Do List",
+      description: "Todoist captures tasks. Torgima generates and adapts them from your goal.",
+      keywords: ["torgima vs todoist", "todoist alternative", "AI to do list"],
+    },
+  },
+};

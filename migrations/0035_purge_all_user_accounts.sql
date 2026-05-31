@@ -23,7 +23,7 @@ BEGIN
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;
 
-  INSERT INTO platform_upgrade_migrations (id, user_count, summary, rollback_available)
+  INSERT INTO platform_upgrade_migrations (id, user_count, summary, rollback_available) -- rollback_available: false
   VALUES (
     migration_id,
     deleted_users,

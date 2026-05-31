@@ -414,9 +414,7 @@ export class BlueprintEngine {
       //    viable execution. Real package generator runs in Prompt 7+.
       const allowedActions = allowedActionsForTier(tier);
       const restrictedActions = restrictedActionsForTier(tier);
-      const baseMax = tier === "starter" ? 2 : tier === "growth" ? 3 : 4;
-      const adjustedLimits = applyArchetypeToTaskLimits(1, baseMax, lockedIntel?.archetypeExecutionMult);
-      const taskLimits = { min: adjustedLimits.min, max: adjustedLimits.max };
+      const taskLimits = { min: 8, max: 8 };
       const [enforcementPackage] = await tx.insert(enforcementPackages).values({
         blueprint_id:        blueprintId,
         user_id:             userId,
@@ -645,6 +643,26 @@ export class BlueprintEngine {
         approved:       true,
         approved_at:    new Date(),
       });
+
+      await writeEventInTx(
+        {
+          eventType: EVENT_TYPES.BLUEPRINT_STRUCTURE_CREATED,
+          entityType: "blueprint",
+          entityId: blueprintId,
+          userId,
+          blueprintId,
+          payload: {
+            plan_count: chain.planCount,
+            phase_count: chain.phaseCount,
+            target_count: chain.targetCount,
+            action_count: chain.actionCount,
+            plan_id: chain.planId,
+            phase_id: chain.phaseId,
+          },
+          idempotencyKey: `blueprint_structure:${blueprintId}`,
+        },
+        tx,
+      );
 
       // 11. Write BLUEPRINT_LAUNCHED event
       await writeEventInTx(
@@ -918,11 +936,30 @@ export class BlueprintEngine {
   // ── GET POSITION ──────────────────────────────────────────────────────────
 
   async getPosition(blueprintId: string): Promise<BlueprintPosition> {
+    const [bp] = await db
+      .select({
+        current_plan_id: blueprints.current_plan_id,
+        current_phase_id: blueprints.current_phase_id,
+      })
+      .from(blueprints)
+      .where(eq(blueprints.id, blueprintId))
+      .limit(1);
+
     const allPhases = await BlueprintRepository.getPhases(blueprintId);
     const allPlans = await BlueprintRepository.getPlans(blueprintId);
 
-    const activePhase = allPhases.find((p) => p.status === PhaseStatus.ACTIVE) ?? allPhases[0] ?? null;
-    const activePlan = allPlans[0] ?? null;
+    const activePhase =
+      (bp?.current_phase_id
+        ? allPhases.find((p) => p.id === bp.current_phase_id)
+        : null) ??
+      allPhases.find((p) => p.status === PhaseStatus.ACTIVE) ??
+      allPhases[0] ??
+      null;
+    const activePlan =
+      (bp?.current_plan_id ? allPlans.find((p) => p.id === bp.current_plan_id) : null) ??
+      allPlans.find((p) => p.status === "active") ??
+      allPlans[0] ??
+      null;
 
     const completedPhases = allPhases.filter((p) => p.status === PhaseStatus.COMPLETE).length;
     const totalPhases = allPhases.length || 3;
@@ -984,10 +1021,15 @@ export class BlueprintEngine {
   // ── LEGACY SHAPE MAPPER ───────────────────────────────────────────────────
 
   mapToLegacy(bp: typeof blueprints.$inferSelect, phase = 1, totalPhases = 3): import("../../types/blueprint.js").Blueprint {
+    const displayTitle =
+      bp.project_name?.trim() ||
+      bp.goal_final?.slice(0, 80) ||
+      bp.goal.slice(0, 80);
     return {
       id: bp.id,
       userId: bp.user_id,
-      title: bp.goal.slice(0, 80),
+      title: displayTitle,
+      projectName: bp.project_name ?? null,
       rawGoal: bp.goal,
       domain: bp.current_domain ?? "genesis",
       status: bp.status as import("../../types/blueprint.js").BlueprintStatus,

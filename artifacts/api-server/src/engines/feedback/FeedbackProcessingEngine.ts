@@ -1,3 +1,12 @@
+/**
+ * CONTINUOUS LOOP AUDIT (2026-05-27)
+ * Chain (event-only): feedback_submitted → FeedbackWorker → signal_recalculation_requested
+ * → SignalWorker → signal_calculated → ConditionWorker → condition_evaluated
+ * → ControlWorker → enforcement_package_created → TaskGenerationWorker
+ * → task_generation_completed → TaskGuaranteeWorker → dashboard_refresh_requested → ProjectionWorker.
+ * Fixed: removed direct signal_recalculation_requested + task_generation_requested emits here
+ * (duplicated FeedbackWorker and skipped condition/control). Entry: POST /api/orders/:id/feedback.
+ */
 import {
   db,
   feedback,
@@ -9,7 +18,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { OrderStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
-import { writeEvent, writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
+import { writeEventInTx, EVENT_TYPES } from "../../services/EventService.js";
 import { recordOperatingLoopStage } from "../../services/OperatingLoopRecorder.js";
 import { scoreProofForOrder } from "./ProofScoringEngine.js";
 import { runFeedbackCriticCheck } from "../../bhudhi/AdvancedIntelligenceBridge.js";
@@ -37,6 +46,7 @@ export interface FeedbackInput {
   confidenceScore?: number;
   idempotencyKey: string;
   expectedStateVersion?: number;
+  difficultyFelt?: string;
 }
 
 export interface FeedbackResult {
@@ -265,6 +275,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
         duration_minutes: input.durationMinutes ?? null,
         proof_json: input.proofJson ?? {},
         blocker_json: input.blockerJson ?? {},
+        difficulty_felt: input.difficultyFelt ?? null,
         gaming_flag: flagged,
         gaming_reason: gamingReason ?? null,
         late_penalty_applied: latePenalty,
@@ -314,6 +325,22 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
       tx,
     );
   });
+
+  if (input.completionStatus === "completed" && !requiresInterrogation) {
+    const { BlueprintPositionEngine } = await import(
+      "../blueprint/BlueprintPositionEngine.js"
+    );
+    await BlueprintPositionEngine.advanceOnOrderCompleted(
+      input.blueprintId,
+      input.userId,
+      input.orderId,
+    ).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), orderId: input.orderId },
+        "[FeedbackEngine] Position advance failed — non-blocking",
+      );
+    });
+  }
 
   await recordOperatingLoopStage({
     blueprintId: input.blueprintId,
@@ -456,47 +483,6 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
         "[FeedbackEngine] Post-feedback psychology failed",
       );
     });
-  }
-
-  if (!requiresInterrogation) {
-    await writeEvent({
-      eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
-      entityType: "feedback",
-      entityId: feedbackIdOut,
-      userId: input.userId,
-      blueprintId: input.blueprintId,
-      payload: {
-        trigger: "feedback_submitted",
-        feedback_id: feedbackIdOut,
-        order_id: input.orderId,
-        completion_status: input.completionStatus,
-        score: input.score,
-      },
-      idempotencyKey: `signal_recalc:feedback:${feedbackIdOut}`,
-      causationEventId: eventId,
-    }).catch(() => null);
-
-    await writeEvent({
-      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
-      entityType: "feedback",
-      entityId: feedbackIdOut,
-      userId: input.userId,
-      blueprintId: input.blueprintId,
-      payload: {
-        generation_mode: "post_feedback",
-        generation_trigger: "feedback_submitted",
-        previous_order_id: input.orderId,
-        previous_verdict: input.completionStatus,
-        queue_fill: true,
-      },
-      idempotencyKey: `task_gen:feedback:${feedbackIdOut}`,
-      causationEventId: eventId,
-    }).catch(() => null);
-
-    logger.info(
-      { blueprintId: input.blueprintId, feedbackId: feedbackIdOut },
-      "[Feedback] Signal + task generation jobs queued",
-    );
   }
 
   logger.info(

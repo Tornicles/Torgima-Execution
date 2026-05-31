@@ -51,6 +51,7 @@ export type ValidationLaunchDirection = {
   tier?: "starter" | "growth" | "ultimate";
   selected_blueprint_type?: "starter" | "growth" | "ultimate";
   mode?: "individual" | "team";
+  projectName?: string;
 };
 
 export type ValidationLaunchResult = {
@@ -92,6 +93,7 @@ export async function launchValidationBlueprint(
   return apiPost<ValidationLaunchResult>(`/api/v1/validations/${validationId}/launch`, {
     validation_id: validationId,
     selected_blueprint_type: tier,
+    projectName: selectedDirection.projectName,
     selected_direction: {
       path: selectedDirection.path,
       tier,
@@ -99,6 +101,13 @@ export async function launchValidationBlueprint(
       mode: selectedDirection.mode,
     },
   });
+}
+
+export async function updateBlueprintProjectName(
+  blueprintId: string,
+  projectName: string,
+): Promise<{ blueprintId: string; projectName: string }> {
+  return apiPatch(`/api/blueprints/${blueprintId}/project-name`, { projectName });
 }
 
 /** POST helper for routes not yet in OpenAPI — still uses customFetch (not raw fetch). */

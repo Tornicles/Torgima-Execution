@@ -3,10 +3,9 @@ import { validateSession } from "../services/AuthService.js";
 import { TorgimaError } from "./errors.js";
 import { logger } from "./logger.js";
 import type { AuthClass, AuthContext } from "../types/auth.js";
+import { extractInternalToken, getInternalAuthSecret } from "./security/internalAuth.js";
 
 export const SESSION_COOKIE_NAME = "torgima_session";
-const INTERNAL_AUTH_HEADER = "x-internal-auth";
-const INTERNAL_AUTH_SECRET = process.env["INTERNAL_AUTH_SECRET"] ?? "";
 
 function extractSessionToken(req: Request): string | null {
   const cookieToken = (req.cookies as Record<string, string | undefined>)[SESSION_COOKIE_NAME];
@@ -34,13 +33,20 @@ export async function requireAuth(req: Request, authClass: AuthClass): Promise<A
   }
 
   if (authClass === "INTERNAL_SERVICE" || authClass === "ADMIN_INTERNAL") {
-    // Browser-origin requests must be rejected
     if (req.headers.origin) {
-      logger.error({ origin: req.headers.origin }, "[Auth] Browser attempted to call internal route");
+      logger.error(
+        { origin: req.headers.origin, path: req.path, ip: req.ip },
+        "[SECURITY] Internal route accessed without service context (browser origin)",
+      );
       throw new TorgimaError("FORBIDDEN", "Internal route not accessible from browser");
     }
-    const secret = req.headers[INTERNAL_AUTH_HEADER] as string | undefined;
-    if (!INTERNAL_AUTH_SECRET || !secret || secret !== INTERNAL_AUTH_SECRET) {
+    const configured = getInternalAuthSecret();
+    const secret = extractInternalToken(req);
+    if (!configured || !secret || secret !== configured) {
+      logger.error(
+        { path: req.path, ip: req.ip },
+        "[SECURITY] Internal route accessed without valid internal token",
+      );
       throw new TorgimaError("FORBIDDEN", "Internal auth required");
     }
     return buildInternalContext();

@@ -42,6 +42,8 @@ import { checkOutcomeIntegrity, getOpenFlags } from "../engines/outcome/OutcomeV
 import { evaluatePhaseReadiness } from "../engines/blueprint/PhaseProgressionEngine.js";
 import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
 import { buildHomeDashboardPanels } from "../lib/homeDashboardPanels.js";
+import { buildLaunchDashboardProjection } from "../lib/buildLaunchDashboardProjection.js";
+import { buildBlueprintPositionProjection } from "../lib/buildBlueprintPositionProjection.js";
 
 async function buildNoActiveBlueprintDashboardState(userId: string) {
   const [user, signals, recentFeedback, activeOrders] = await Promise.all([
@@ -424,7 +426,22 @@ export const DashboardService = {
     }
 
     const hasBlockedOrder = activeOrders.some((o) => o.status === OrderStatus.BLOCKED);
-    const hasPendingOrActiveTask = Boolean(primaryTask);
+    let foundationOrderCount = 0;
+    if (blueprintId) {
+      const [fc] = await db
+        .select({ c: sql<number>`count(*)::int` })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.blueprint_id, blueprintId),
+            eq(orders.user_id, userId),
+            eq(orders.generation_reason, "blueprint_launched_initial_set"),
+            inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
+          ),
+        );
+      foundationOrderCount = fc?.c ?? 0;
+    }
+    const hasPendingOrActiveTask = Boolean(primaryTask) || foundationOrderCount > 0;
 
     const condEffective = conditionDetail ?? {
       condition: signals.condition,
@@ -766,9 +783,55 @@ export const DashboardService = {
       }
     }
 
+    let launchFirstLoad: Awaited<ReturnType<typeof buildLaunchDashboardProjection>> | null = null;
+    if (
+      blueprintId &&
+      activeBlueprint &&
+      (condEffective.condition ?? "").toLowerCase() === "nothingness"
+    ) {
+      const [bpLaunch] = await db
+        .select({
+          goal: blueprints.goal,
+          purpose: blueprints.purpose,
+          domain: blueprints.domain,
+          selected_path: blueprints.selected_path,
+          validation_verdict: blueprints.validation_verdict,
+          reality_score: blueprints.reality_score,
+          project_name: blueprints.project_name,
+        })
+        .from(blueprints)
+        .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, userId)))
+        .limit(1);
+      const limits = enforcementProjection?.taskLimits as { min?: number; max?: number } | undefined;
+      launchFirstLoad = await buildLaunchDashboardProjection({
+        userId,
+        blueprintId,
+        projectName: bpLaunch?.project_name ?? activeBlueprint.projectName ?? null,
+        goal: bpLaunch?.goal ?? activeBlueprint.rawGoal ?? activeBlueprint.title ?? "",
+        purpose: bpLaunch?.purpose ?? "",
+        domain: bpLaunch?.domain ?? "general",
+        verdict: bpLaunch?.validation_verdict ?? null,
+        realityScore: bpLaunch?.reality_score ?? null,
+        selectedPath: bpLaunch?.selected_path ?? "adjusted",
+        taskLimitMin: limits?.min ?? 8,
+        taskLimitMax: limits?.max ?? 8,
+        difficultyCap:
+          typeof enforcementProjection?.difficultyCap === "string"
+            ? enforcementProjection.difficultyCap
+            : "easy",
+      });
+    }
+
+    const blueprintPosition =
+      blueprintId && activeBlueprint
+        ? await buildBlueprintPositionProjection(blueprintId, userId).catch(() => null)
+        : null;
+
     return {
       hasActiveBlueprint: Boolean(activeBlueprint),
       state: activeBlueprint ? ("ACTIVE_BLUEPRINT" as const) : ("NO_ACTIVE_BLUEPRINT" as const),
+      launchFirstLoad,
+      blueprintPosition,
       user,
       identity: {
         ...identity,

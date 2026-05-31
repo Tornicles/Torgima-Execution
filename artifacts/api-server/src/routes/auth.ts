@@ -9,6 +9,10 @@ import {
 import { requireAuth } from "../lib/auth.js";
 import { SESSION_COOKIE_NAME } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
+import {
+  magicLinkHourlyLimit,
+  magicLinkVerifyLimit,
+} from "../middleware/apiRateLimit.js";
 
 const router = Router();
 
@@ -53,7 +57,15 @@ router.post("/verify", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid request", 422);
       return;
     }
-    const { sessionToken, user } = await verifyMagicLink(result.data.token, result.data.email);
+    const email = result.data.email;
+    const verifyAllowed = await magicLinkVerifyLimit(email);
+    if (!verifyAllowed) {
+      failure(res, "RATE_LIMITED", "Too many verification attempts. Try again later.", 429, {
+        retryable: true,
+      });
+      return;
+    }
+    const { sessionToken, user } = await verifyMagicLink(result.data.token, email);
 
     res.cookie(SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions);
 

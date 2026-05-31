@@ -4,8 +4,9 @@ import { getGetDashboardStateQueryKey, getGetDashboardStateQueryOptions } from "
 import { useBlueprintStore } from "@/store/blueprintStore";
 import { getDashboardUiState, toDashboardProjection, type DashboardProjection } from "@/lib/dashboard-types";
 
-const DEFAULT_POLL_MS = 5000;
+const DEFAULT_POLL_MS = 3000;
 const FAST_POLL_MS = 1500;
+const LAUNCH_SYNC_POLL_MS = 3000;
 
 export const dashboardQueryKey = getGetDashboardStateQueryKey();
 
@@ -22,7 +23,7 @@ export function useDashboardProjection() {
     refetchInterval: (q) => {
       const data = q.state.data ? toDashboardProjection(q.state.data) : undefined;
       const ui = getDashboardUiState(data ?? null);
-      if (ui === "PENDING_SYNC" || data?.pendingSync) return FAST_POLL_MS;
+      if (ui === "PENDING_SYNC" || data?.pendingSync) return LAUNCH_SYNC_POLL_MS;
       return DEFAULT_POLL_MS;
     },
     refetchIntervalInBackground: true,

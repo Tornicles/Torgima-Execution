@@ -68,10 +68,22 @@ export type OrderFeedbackInputProofJson = { [key: string]: unknown };
 
 export type OrderFeedbackInputBlockerJson = { [key: string]: unknown };
 
+export type OrderFeedbackInputDifficultyFelt =
+  (typeof OrderFeedbackInputDifficultyFelt)[keyof typeof OrderFeedbackInputDifficultyFelt];
+
+export const OrderFeedbackInputDifficultyFelt = {
+  very_easy: "very_easy",
+  easy: "easy",
+  moderate: "moderate",
+  hard: "hard",
+  very_hard: "very_hard",
+} as const;
+
 export interface OrderFeedbackInput {
   completionStatus: OrderFeedbackInputCompletionStatus;
   score: number;
   reflection: string;
+  difficultyFelt?: OrderFeedbackInputDifficultyFelt;
   proofJson?: OrderFeedbackInputProofJson;
   blockerJson?: OrderFeedbackInputBlockerJson;
   idempotencyKey: string;
@@ -96,14 +108,24 @@ export const OrderFeedbackResultConfidence = {
   low: "low",
 } as const;
 
+export type OrderFeedbackResultNextStep =
+  (typeof OrderFeedbackResultNextStep)[keyof typeof OrderFeedbackResultNextStep];
+
+export const OrderFeedbackResultNextStep = {
+  answer_question: "answer_question",
+  loop_running: "loop_running",
+} as const;
+
 export interface OrderFeedbackResult {
   feedbackId: string;
   verdictStatus: OrderFeedbackResultVerdictStatus;
   weightedScore: number;
   confidence: OrderFeedbackResultConfidence;
   requiresInterrogation: boolean;
-  interrogationQuestion?: string;
-  eventId: string;
+  interrogationQuestion?: string | null;
+  nextStep?: OrderFeedbackResultNextStep;
+  message?: string;
+  eventId?: string;
 }
 
 export interface HealthStatus {

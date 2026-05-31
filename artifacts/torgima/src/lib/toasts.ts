@@ -1,0 +1,16 @@
+export const TOASTS = {
+  feedbackSubmitted: "Feedback saved. Preparing your next task...",
+  taskStarted: "Task started. Good luck!",
+  taskCompleted: "✓ Task marked as done!",
+  projectLaunched: "🚀 Your project has launched! Your first tasks are ready.",
+  projectSaved: "Project saved.",
+  nameUpdated: "Project name updated.",
+  validationComplete: "Your idea analysis is complete!",
+  reportDownloading: "Generating your report...",
+  sessionExpired: "Your session expired. Please sign in again.",
+  connectionError: "Connection issue. Retrying...",
+  dataRefreshed: "Dashboard updated.",
+  streakMaintained: "🔥 Day streak maintained! Keep it up.",
+  conditionImproved: "⚡ Your execution is improving!",
+  conditionDropped: "⚠️ Let's get back on track. Your next task is easier.",
+} as const;

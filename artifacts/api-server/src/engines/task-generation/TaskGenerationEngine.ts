@@ -131,7 +131,12 @@ async function loadContext(params: {
     ? await db
         .select()
         .from(actions)
-        .where(and(eq(actions.project_id, currentProject.id), eq(actions.status, "pending")))
+        .where(
+          and(
+            eq(actions.project_id, currentProject.id),
+            inArray(actions.status, ["pending", "active"]),
+          ),
+        )
         .orderBy(actions.order_index)
         .limit(1)
         .then((r) => r[0] ?? null)

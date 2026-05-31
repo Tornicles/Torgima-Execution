@@ -5,6 +5,7 @@ import { OUTPUT_ENVELOPE_SCHEMAS } from "./schemas/outputSchemas.js";
 import { buildErectorFactsContext, ERECTOR_JSON_PREFIX } from "./erectorWebSearch.js";
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
+import { registerErectorEnrichedPrompts } from "./erectorEnrichedPrompts.js";
 
 export interface PromptContract {
   name:            string;
@@ -1175,6 +1176,7 @@ Return ONLY JSON:
 }
 
 bootstrapPromptRegistry({ registry, modeRegistry, byName });
+registerErectorEnrichedPrompts(registry);
 
 /** All Bhudhi intelligence routes through Anthropic Claude via TriggerRouter. */
 const CLAUDE_EXECUTION_TRIGGERS: BhudhiTriggerType[] = [

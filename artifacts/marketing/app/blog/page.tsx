@@ -1,45 +1,38 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { PageHero } from "@/components/pages/PageHero";
 import { blogPosts } from "@/lib/blog-data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Execution Intelligence",
-  description: "Thinking on goals, systems, and what it takes to finish.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Torgima Blog — Execution, Productivity, and Goal Achievement",
+  description:
+    "Practical guides on execution, habit building, project management, goal setting, and building real businesses.",
+  path: "/blog",
+});
 
 export default function BlogIndexPage() {
   return (
-    <div className="py-section-sm lg:py-section px-4 max-w-5xl mx-auto">
-      <header className="max-w-2xl mb-16">
-        <p className="font-jet text-[11px] uppercase tracking-[0.14em] text-[var(--color-accent-blue)] mb-3">Blog</p>
-        <h1 className="font-syne font-extrabold text-4xl sm:text-5xl text-[var(--color-text-primary)]">
-          Execution Intelligence
-        </h1>
-        <p className="mt-4 font-dm text-lg text-[var(--color-text-secondary)]">
-          Thinking on goals, systems, and what it takes to finish.
-        </p>
-      </header>
-
-      <div className="grid sm:grid-cols-2 gap-6">
-        {blogPosts.map((post) => (
-          <article
-            key={post.slug}
-            className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-2)] p-6 hover:border-[var(--color-border-hover)] hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <span className="font-jet text-[10px] uppercase tracking-wider text-[var(--color-accent-blue)]">{post.category}</span>
-            <h2 className="mt-3 font-syne font-bold text-xl text-[var(--color-text-primary)]">
-              <Link href={`/blog/${post.slug}`} className="hover:text-[var(--color-accent-blue)] focus-ring rounded-sm">
-                {post.title}
+    <>
+      <PageHero title="Execution intelligence" subtitle="Practical guides for builders who execute." />
+      <section className="section-dark py-16">
+        <div className="mx-auto max-w-content px-4 sm:px-6 space-y-8">
+          {blogPosts.map((post) => (
+            <article key={post.slug} className="glass-card rounded-2xl p-8 hover:border-primary/30 transition-colors">
+              <p className="text-xs font-bold uppercase text-primary-bright">{post.category}</p>
+              <Link href={`/blog/${post.slug}`}>
+                <h2 className="mt-2 font-syne text-2xl font-bold text-white hover:text-primary-bright">
+                  {post.title}
+                </h2>
               </Link>
-            </h2>
-            <div className="mt-4 flex gap-2 font-dm text-xs text-[var(--color-text-muted)]">
-              <time dateTime={post.date}>{post.date}</time>
-              <span>·</span>
-              <span>{post.readMins} min read</span>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
+              <p className="mt-3 text-zinc-400">{post.description}</p>
+              <p className="mt-4 text-xs text-zinc-600">
+                {post.date} · {post.readMins} min read
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }

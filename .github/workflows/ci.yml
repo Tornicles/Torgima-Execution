@@ -132,6 +132,13 @@ jobs:
         run: pnpm -F @workspace/api-server exec vitest run src/tests/e2e/phase9/scenarios.test.ts --testTimeout=120000 --hookTimeout=120000
         env:
           CI: "true"
+      - name: Security suite (unit)
+        run: pnpm -F @workspace/api-server exec vitest run src/tests/security/torgima-security-suite.test.ts
+      - name: 14-day execution simulation
+        run: pnpm -F @workspace/scripts sim:14day
+        timeout-minutes: 25
+      - name: DB healing diagnostics (read-only)
+        run: pnpm -F @workspace/scripts heal:db
 
   playwright:
     name: Playwright smoke

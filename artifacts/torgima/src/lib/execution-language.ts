@@ -1,5 +1,7 @@
 /** Torgima execution language — client-side mirror of server substitutions (Prompt 6). */
 
+import { CONDITION_STYLES } from "@workspace/design-system";
+
 export const FORBIDDEN_PATTERNS = [
   /\bgreat job\b/i,
   /\bcongratulations\b/i,
@@ -50,26 +52,57 @@ export const CONDITION_LABELS: Record<string, string> = {
   power_change: "PowerChange",
 };
 
+/** Manifesto-aligned condition colors — shared with marketing site */
 export const CONDITION_COLORS: Record<
   string,
   { bg: string; text: string; ring: string }
 > = {
-  nothingness: { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-300" },
-  danger: { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-400" },
-  urgency: { bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-400" },
-  stability: { bg: "bg-emerald-100", text: "text-emerald-800", ring: "ring-emerald-400" },
-  power: { bg: "bg-blue-100", text: "text-blue-800", ring: "ring-blue-400" },
-  affluence: { bg: "bg-purple-100", text: "text-purple-700", ring: "ring-purple-400" },
-  power_change: { bg: "bg-yellow-100", text: "text-yellow-700", ring: "ring-yellow-400" },
+  nothingness: {
+    bg: CONDITION_STYLES.nothingness.bg,
+    text: CONDITION_STYLES.nothingness.text,
+    ring: CONDITION_STYLES.nothingness.border,
+  },
+  danger: {
+    bg: CONDITION_STYLES.danger.bg,
+    text: CONDITION_STYLES.danger.text,
+    ring: CONDITION_STYLES.danger.border,
+  },
+  urgency: {
+    bg: CONDITION_STYLES.urgency.bg,
+    text: CONDITION_STYLES.urgency.text,
+    ring: CONDITION_STYLES.urgency.border,
+  },
+  stability: {
+    bg: CONDITION_STYLES.stability.bg,
+    text: CONDITION_STYLES.stability.text,
+    ring: CONDITION_STYLES.stability.border,
+  },
+  power: {
+    bg: CONDITION_STYLES.power.bg,
+    text: CONDITION_STYLES.power.text,
+    ring: CONDITION_STYLES.power.border,
+  },
+  affluence: {
+    bg: CONDITION_STYLES.affluence.bg,
+    text: CONDITION_STYLES.affluence.text,
+    ring: CONDITION_STYLES.affluence.border,
+  },
+  power_change: {
+    bg: CONDITION_STYLES.power_change.bg,
+    text: CONDITION_STYLES.power_change.text,
+    ring: CONDITION_STYLES.power_change.border,
+  },
 };
 
 export function signalLevelLabel(value: number): {
   label: string;
   color: string;
 } {
-  if (value <= 0.2) return { label: "Critical", color: "text-red-600" };
-  if (value <= 0.4) return { label: "Low", color: "text-orange-600" };
-  if (value <= 0.6) return { label: "Steady", color: "text-yellow-700" };
-  if (value <= 0.8) return { label: "Good", color: "text-blue-600" };
-  return { label: "Strong", color: "text-green-600" };
+  if (value <= 0.2) return { label: "Critical", color: "text-red-400" };
+  if (value <= 0.4) return { label: "Low", color: "text-amber-400" };
+  if (value <= 0.6) return { label: "Steady", color: "text-emerald-400" };
+  if (value <= 0.8) return { label: "Good", color: "text-indigo-400" };
+  return { label: "Strong", color: "text-primary-bright" };
 }
+
+export { getConditionLabel } from "./language";

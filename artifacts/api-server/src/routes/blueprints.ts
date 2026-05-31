@@ -22,6 +22,7 @@ import {
 import { BlueprintInfrastructureService } from "../services/BlueprintInfrastructureService.js";
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { validateProjectNameStrict } from "../lib/projectName.js";
 import { BlueprintStatus, PivotReviewStatus } from "../types/stateMachine.js";
 import {
   createPivotReview,
@@ -224,6 +225,38 @@ router.get("/blueprints/:id", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprint = await BlueprintService.get(req.params.id!, auth.userId);
     success(res, blueprint);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// PATCH /api/blueprints/:id/project-name — user-facing display name
+router.patch("/blueprints/:id/project-name", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = String(req.params.id ?? "").trim();
+    if (!blueprintId) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const raw = body.projectName ?? body.project_name;
+    const errMsg = validateProjectNameStrict(raw);
+    if (errMsg) {
+      failure(res, "VALIDATION_ERROR", errMsg, 400);
+      return;
+    }
+    const name = String(raw).trim();
+    const [updated] = await db
+      .update(blueprints)
+      .set({ project_name: name })
+      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)))
+      .returning({ id: blueprints.id, project_name: blueprints.project_name });
+    if (!updated) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+    success(res, { blueprintId: updated.id, projectName: updated.project_name });
   } catch (err) {
     handleError(req, res, err);
   }

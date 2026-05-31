@@ -14,9 +14,9 @@ describe("Validation results page wiring", () => {
     expect(page).not.toContain("AlignedValidationResults");
   });
 
-  it("dashboard renders Launch This Direction button", () => {
+  it("dashboard renders launch button via language layer", () => {
     const dashboard = readRepo("artifacts/torgima/src/components/validation/ValidationResultsDashboard.tsx");
-    expect(dashboard).toContain("Launch This Direction");
+    expect(dashboard).toContain("LANGUAGE.validation.launchButton");
   });
 
   it("validation results route uses onboarding layout without app sidebar", () => {

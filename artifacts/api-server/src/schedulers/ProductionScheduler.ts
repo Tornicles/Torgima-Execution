@@ -114,6 +114,20 @@ export function startProductionSchedulers(): void {
 
   startValidationWorkerSchedules(schedule);
 
+  schedule(60 * 60 * 1000, "constitution_audit", async () => {
+    const { runConstitutionAudit } = await import("../governance/TorgimaConstitution.js");
+    const report = await runConstitutionAudit();
+    if (report.violations_found > 0) {
+      logger.warn(
+        {
+          violations: report.violations_found,
+          repaired: report.violations_auto_repaired,
+        },
+        "[ProductionScheduler] Constitution audit completed with violations",
+      );
+    }
+  });
+
   schedule(60 * 1000, "metrics_snapshot", async () => {
     const metrics = await collectProductionMetrics();
     if (metrics.pending_event_count > 100 || metrics.dead_letter_count > 20) {

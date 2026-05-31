@@ -408,7 +408,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="torgima-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="torgima-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

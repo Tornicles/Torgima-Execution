@@ -1,11 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "@workspace/design-system/theme.css";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
+@source "../../../packages/design-system/src/**/*.tsx";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-dark: #0f0a1a;
+  --color-dark-card: #1a1025;
+  --color-dark-border: #2d1f40;
+  --color-dark-hover: #241535;
+  --color-primary-bright: #a855f7;
+  --color-primary-soft: #7c3aed;
+  --color-text-primary: #fafaf9;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #6b7280;
+
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-border: hsl(var(--border));
@@ -57,9 +70,10 @@
   --color-sidebar-accent-border: var(--sidebar-accent-border);
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
-  --font-sans: var(--app-font-sans);
+  --font-sans: var(--torgima-font-body);
+  --font-heading: var(--torgima-font-heading);
   --font-serif: var(--app-font-serif);
-  --font-mono: var(--app-font-mono);
+  --font-mono: var(--torgima-font-mono);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -68,63 +82,64 @@
 }
 
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(168, 85, 247, 0.2);
+  --badge-outline: rgba(168, 85, 247, 0.1);
 
-  --opaque-button-border-intensity: -8;
+  --opaque-button-border-intensity: 9;
 
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(168, 85, 247, 0.06);
+  --elevate-2: rgba(168, 85, 247, 0.12);
 
-  --background: 220 30% 98%;
-  --foreground: 220 40% 10%;
+  /* Manifesto: purple on black — default execution surface */
+  --background: 260 45% 7%;
+  --foreground: 60 9% 98%;
 
-  --border: 220 20% 90%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 40% 10%;
-  --card-border: 220 20% 90%;
+  --border: 270 30% 19%;
+  --card: 270 35% 11%;
+  --card-foreground: 60 9% 98%;
+  --card-border: 270 30% 19%;
 
-  --sidebar: 220 30% 96%;
-  --sidebar-foreground: 220 40% 10%;
-  --sidebar-border: 220 20% 90%;
-  --sidebar-primary: 190 90% 45%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 20% 90%;
-  --sidebar-accent-foreground: 220 40% 10%;
-  --sidebar-ring: 190 90% 45%;
+  --sidebar: 260 45% 6%;
+  --sidebar-foreground: 60 9% 95%;
+  --sidebar-border: 270 30% 16%;
+  --sidebar-primary: 271 66% 39%;
+  --sidebar-primary-foreground: 60 9% 98%;
+  --sidebar-accent: 270 35% 14%;
+  --sidebar-accent-foreground: 271 91% 65%;
+  --sidebar-ring: 271 91% 65%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 220 40% 10%;
-  --popover-border: 220 20% 90%;
+  --popover: 270 35% 11%;
+  --popover-foreground: 60 9% 98%;
+  --popover-border: 270 30% 19%;
 
-  --primary: 190 90% 45%; /* Sharp Cyan */
-  --primary-foreground: 0 0% 100%;
+  --primary: 271 66% 39%;
+  --primary-foreground: 60 9% 98%;
 
-  --secondary: 220 20% 92%;
-  --secondary-foreground: 220 40% 20%;
+  --secondary: 270 35% 14%;
+  --secondary-foreground: 60 9% 95%;
 
-  --muted: 220 20% 94%;
-  --muted-foreground: 220 20% 40%;
+  --muted: 270 30% 14%;
+  --muted-foreground: 240 5% 65%;
 
-  --accent: 190 90% 95%;
-  --accent-foreground: 190 90% 30%;
+  --accent: 271 50% 18%;
+  --accent-foreground: 271 91% 75%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 20% 90%;
-  --ring: 190 90% 45%;
-  
-  --chart-1: 190 90% 45%;
-  --chart-2: 150 80% 40%;
-  --chart-3: 40 100% 50%;
-  --chart-4: 0 84% 60%;
-  --chart-5: 280 70% 50%;
+  --input: 270 30% 19%;
+  --ring: 271 91% 65%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --chart-1: 271 91% 65%;
+  --chart-2: 160 84% 39%;
+  --chart-3: 38 92% 50%;
+  --chart-4: 0 84% 60%;
+  --chart-5: 271 66% 50%;
+
+  --app-font-sans: var(--torgima-font-body);
   --app-font-serif: Georgia, serif;
-  --app-font-mono: 'JetBrains Mono', monospace;
-  --radius: 0.25rem;
+  --app-font-mono: var(--torgima-font-mono);
+  --radius: 0.625rem;
   
   --shadow-2xs: 0px 1px 0px 0px rgba(0,0,0,0.05);
   --shadow-xs: 0px 1px 2px 0px rgba(0,0,0,0.05);
@@ -148,70 +163,57 @@
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-
+  --button-outline: rgba(168, 85, 247, 0.2);
+  --badge-outline: rgba(168, 85, 247, 0.1);
   --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(168, 85, 247, 0.06);
+  --elevate-2: rgba(168, 85, 247, 0.12);
 
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  --background: 220 50% 6%; /* Deep midnight/terminal blue-black */
-  --foreground: 190 30% 90%; /* Slightly tinted white */
-
-  --border: 220 40% 16%;
-  --card: 220 45% 8%;
-  --card-foreground: 190 30% 90%;
-  --card-border: 220 40% 16%;
-
-  --sidebar: 220 50% 5%;
-  --sidebar-foreground: 190 30% 85%;
-  --sidebar-border: 220 40% 14%;
-  --sidebar-primary: 190 90% 50%;
-  --sidebar-primary-foreground: 220 50% 6%;
-  --sidebar-accent: 220 40% 14%;
-  --sidebar-accent-foreground: 190 90% 50%;
-  --sidebar-ring: 190 90% 50%;
-
-  --popover: 220 45% 8%;
-  --popover-foreground: 190 30% 90%;
-  --popover-border: 220 40% 16%;
-
-  --primary: 190 90% 50%; /* Electric Cyan */
-  --primary-foreground: 220 50% 6%;
-
-  --secondary: 220 40% 16%;
-  --secondary-foreground: 190 30% 90%;
-
-  --muted: 220 40% 12%;
-  --muted-foreground: 220 20% 60%;
-
-  --accent: 190 90% 15%;
-  --accent-foreground: 190 90% 60%;
-
+  --background: 260 45% 7%;
+  --foreground: 60 9% 98%;
+  --border: 270 30% 19%;
+  --card: 270 35% 11%;
+  --card-foreground: 60 9% 98%;
+  --card-border: 270 30% 19%;
+  --sidebar: 260 45% 6%;
+  --sidebar-foreground: 60 9% 95%;
+  --sidebar-border: 270 30% 16%;
+  --sidebar-primary: 271 66% 39%;
+  --sidebar-primary-foreground: 60 9% 98%;
+  --sidebar-accent: 270 35% 14%;
+  --sidebar-accent-foreground: 271 91% 65%;
+  --sidebar-ring: 271 91% 65%;
+  --popover: 270 35% 11%;
+  --popover-foreground: 60 9% 98%;
+  --popover-border: 270 30% 19%;
+  --primary: 271 66% 39%;
+  --primary-foreground: 60 9% 98%;
+  --secondary: 270 35% 14%;
+  --secondary-foreground: 60 9% 95%;
+  --muted: 270 30% 14%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 271 50% 18%;
+  --accent-foreground: 271 91% 75%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-
-  --input: 220 40% 16%;
-  --ring: 190 90% 50%;
-  
-  --chart-1: 190 90% 50%;
-  --chart-2: 150 80% 45%;
-  --chart-3: 40 100% 50%;
+  --input: 270 30% 19%;
+  --ring: 271 91% 65%;
+  --chart-1: 271 91% 65%;
+  --chart-2: 160 84% 39%;
+  --chart-3: 38 92% 50%;
   --chart-4: 0 84% 60%;
-  --chart-5: 280 70% 60%;
-
+  --chart-5: 271 66% 50%;
 }
 
-/** Prompt 15 / DOC conditions — semantic hex for overlays and badges */
+/** Condition semantics — manifesto colors (website demo + app) */
 :root,
 .dark {
-  --condition-nothingness: #9ca3af;
+  --condition-nothingness: #6b7280;
   --condition-danger: #ef4444;
-  --condition-urgency: #f97316;
-  --condition-stability: #3b82f6;
-  --condition-power: #8b5cf6;
-  --condition-affluence: #10b981;
+  --condition-urgency: #f59e0b;
+  --condition-stability: #10b981;
+  --condition-power: #6366f1;
+  --condition-affluence: #a855f7;
   --condition-power-change: #f59e0b;
 }
 
@@ -222,6 +224,11 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-family: var(--torgima-font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--torgima-font-heading);
   }
 }
 
@@ -292,20 +299,25 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }
 
 :root {
-  --torgima-primary: #1a8c3a;
-  --torgima-primary-hover: #157a33;
-  --torgima-primary-light: #f0faf3;
-  --torgima-page-bg: #ffffff;
-  --torgima-card-bg: #ffffff;
-  --torgima-border: #e5e7eb;
-  --torgima-text: #111827;
-  --torgima-muted: #6b7280;
-  --torgima-blue: #3b82f6;
-  --torgima-orange: #f97316;
-  --torgima-purple: #7c3aed;
-  --torgima-red: #dc2626;
+  --torgima-primary: #6b21a8;
+  --torgima-primary-hover: #7c3aed;
+  --torgima-primary-light: rgba(168, 85, 247, 0.12);
+  --torgima-page-bg: #0f0a1a;
+  --torgima-card-bg: #1a1025;
+  --torgima-border: #2d1f40;
+  --torgima-text: #fafaf9;
+  --torgima-muted: #a1a1aa;
+  --torgima-blue: #6366f1;
+  --torgima-orange: #f59e0b;
+  --torgima-purple: #a855f7;
+  --torgima-red: #ef4444;
   --torgima-amber: #f59e0b;
+  --torgima-success: #10b981;
 }

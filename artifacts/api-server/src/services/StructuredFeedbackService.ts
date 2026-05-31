@@ -377,35 +377,8 @@ export const StructuredFeedbackService = {
       idempotencyKey: `structured_feedback_submit:${payload.sessionId}`,
     });
 
-    await writeEvent({
-      eventType: EVENT_TYPES.SIGNAL_RECALCULATION_REQUESTED,
-      entityType: "active_feedback_session",
-      entityId: payload.sessionId,
-      userId,
-      blueprintId: row.blueprint_id,
-      payload: {
-        trigger: "structured_feedback_submitted",
-        execution_score: engineMetrics.final_execution_score,
-        structured_session_id: payload.sessionId,
-      },
-      idempotencyKey: `signal_recalc:structured:${payload.sessionId}`,
-      causationEventId: eventId,
-    });
-
-    await writeEvent({
-      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
-      entityType: "active_feedback_session",
-      entityId: payload.sessionId,
-      userId,
-      blueprintId: row.blueprint_id,
-      payload: {
-        generation_mode: "post_feedback",
-        generation_trigger: "structured_feedback_submitted",
-        queue_fill: true,
-      },
-      idempotencyKey: `task_gen:structured:${payload.sessionId}`,
-      causationEventId: eventId,
-    });
+    const { dispatchPendingEvents } = await import("./EventDispatcher.js");
+    await dispatchPendingEvents().catch(() => null);
 
     await processFeedbackRegeneration({
       blueprintId: row.blueprint_id,

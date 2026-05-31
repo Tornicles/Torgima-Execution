@@ -48,6 +48,10 @@ import { infrastructureEngine } from "./infrastructure/infrastructure-engine/Inf
 import { erectorRuntime } from "./erector/runtime/ErectorRuntime.js";
 import { civilizationEngine } from "./civilization/civilization-engine/CivilizationEngine.js";
 import { expansionEngine } from "./expansion/expansion-engine/ExpansionEngine.js";
+import { sanitizeBhudhiInput } from "../lib/security/sanitizeBhudhiInput.js";
+import { appendBhudhiSecurityPrompt } from "../lib/security/bhudhiSecurityPrompt.js";
+import { deepSanitizeStrings } from "../lib/security/deepSanitizeStrings.js";
+import { buildCorrectionPrompt } from "./bhudhiSelfCorrection.js";
 
 /** Sole LLM transport — implemented only in TriggerRouter (Bhudhi B1). */
 export type BhudhiModelInvoker = (params: {
@@ -153,6 +157,10 @@ export async function runBhudhiPipeline<T = unknown>(
       };
     }
     return { ok: false, fallbackUsed: true, logId: "", failureReason: stabilityCheck.reason };
+  }
+
+  if (request.userInput) {
+    request = { ...request, userInput: sanitizeBhudhiInput(request.userInput) };
   }
 
   const contract = resolvePromptContract(request);
@@ -735,18 +743,10 @@ export async function runBhudhiPipeline<T = unknown>(
       contract.maxTokens,
       getMaxTokensForTrigger(request.triggerType),
     );
-    const systemPrompt = ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)
+    const baseSystemPrompt = ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)
       ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
       : contract.systemPrompt;
-
-    const invokeParams = {
-      provider,
-      systemPrompt,
-      userPrompt,
-      maxTokens,
-      temperature: contract.temperature,
-      timeoutMs: timeout,
-    };
+    const systemPrompt = appendBhudhiSecurityPrompt(baseSystemPrompt);
 
     const parseModelText = (text: string): unknown => {
       const cleaned = text
@@ -757,32 +757,57 @@ export async function runBhudhiPipeline<T = unknown>(
       return JSON.parse(cleaned) as unknown;
     };
 
-    let modelResult = await deps.invokeModel(invokeParams);
-    if (!modelResult?.text) {
-      throw new Error("BHUDHI_MODEL_EMPTY");
-    }
+    let activeUserPrompt = userPrompt;
+    let schemaAttempts = 0;
+    const maxSchemaAttempts = 2;
 
-    inputTokens = modelResult.inputTokens;
-    outputTokens = modelResult.outputTokens;
-    webSearchCalls = modelResult.webSearchCalls;
-    intelligenceGrounded = modelResult.intelligenceGrounded;
-
-    try {
-      rawOutput = parseModelText(modelResult.text);
-    } catch {
-      modelResult = await deps.invokeModel(invokeParams);
-      if (!modelResult?.text) throw new Error("BHUDHI_JSON_PARSE");
-      rawOutput = parseModelText(modelResult.text);
-    }
-
-    if (contract.outputSchema) {
-      const zodParsed = contract.outputSchema.safeParse(rawOutput);
-      if (!zodParsed.success) {
-        throw new Error(
-          `Schema validation failed: ${zodParsed.error.issues.map((i) => i.message).join(", ")}`,
-        );
+    while (schemaAttempts < maxSchemaAttempts) {
+      schemaAttempts += 1;
+      const modelResult = await deps.invokeModel({
+        provider,
+        systemPrompt,
+        userPrompt: activeUserPrompt,
+        maxTokens,
+        temperature: contract.temperature,
+        timeoutMs: timeout,
+      });
+      if (!modelResult?.text) {
+        throw new Error("BHUDHI_MODEL_EMPTY");
       }
-      rawOutput = zodParsed.data;
+
+      inputTokens += modelResult.inputTokens;
+      outputTokens += modelResult.outputTokens;
+      webSearchCalls += modelResult.webSearchCalls;
+      intelligenceGrounded = intelligenceGrounded || modelResult.intelligenceGrounded;
+
+      let parsed: unknown;
+      try {
+        parsed = parseModelText(modelResult.text);
+      } catch {
+        if (schemaAttempts >= maxSchemaAttempts) throw new Error("BHUDHI_JSON_PARSE");
+        activeUserPrompt = buildCorrectionPrompt(userPrompt, "json_parse_failure");
+        continue;
+      }
+
+      if (contract.outputSchema) {
+        const zodParsed = contract.outputSchema.safeParse(parsed);
+        if (!zodParsed.success) {
+          if (schemaAttempts >= maxSchemaAttempts) {
+            throw new Error(
+              `Schema validation failed: ${zodParsed.error.issues.map((i) => i.message).join(", ")}`,
+            );
+          }
+          activeUserPrompt = buildCorrectionPrompt(
+            userPrompt,
+            JSON.stringify(zodParsed.error.issues),
+          );
+          continue;
+        }
+        rawOutput = deepSanitizeStrings(zodParsed.data);
+      } else {
+        rawOutput = deepSanitizeStrings(parsed);
+      }
+      break;
     }
   } catch (error) {
     const errMsg  = error instanceof Error ? error.message : String(error);

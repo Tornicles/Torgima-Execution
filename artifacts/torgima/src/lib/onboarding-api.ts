@@ -34,6 +34,7 @@ export function buildOnboardingGoalBody(draft: PreValidationDraft, idempotencyKe
     "Other";
 
   return {
+    projectName: draft.projectName.trim(),
     goal: draft.goal.trim(),
     purpose: draft.purpose.trim(),
     location: draft.countryName.trim(),
@@ -110,7 +111,7 @@ export async function postOnboardingGoal(
   }
   const blueprintId = extractBlueprintId(data);
   if (!blueprintId) {
-    return { ok: false, message: "Blueprint was created but no id was returned. Please retry." };
+    return { ok: false, message: "Project was created but no id was returned. Please retry." };
   }
   return { ok: true, blueprintId };
 }

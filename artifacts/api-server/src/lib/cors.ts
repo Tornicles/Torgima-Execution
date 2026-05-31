@@ -3,7 +3,7 @@ import { PRODUCTION_FRONTEND_URL } from "../config/production.js";
 
 const ALLOW_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
 const ALLOW_HEADERS =
-  "Content-Type,Authorization,x-internal-auth,x-expected-state-version,idempotency-key,Cookie";
+  "Content-Type,Authorization,x-internal-auth,x-internal-token,x-expected-state-version,idempotency-key,Cookie";
 const MAX_AGE = "86400";
 
 function devOrigins(): string[] {

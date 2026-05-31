@@ -21,6 +21,7 @@ export interface Blueprint {
   id: string;
   userId: string;
   title: string;
+  projectName?: string | null;
   rawGoal: string;
   domain: string;
   status: BlueprintStatus;

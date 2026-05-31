@@ -7,10 +7,16 @@ import authRouter from "./routes/auth.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
+import { securityHeadersMiddleware } from "./middleware/securityHeaders.js";
+import { apiRateLimitMiddleware } from "./middleware/apiRateLimit.js";
 
 const app: Express = express();
 
+app.disable("x-powered-by");
+
 // CORS + GET /health are registered on the root app in index.ts before this mounts.
+
+app.use(securityHeadersMiddleware);
 
 app.use(
   pinoHttp({
@@ -32,7 +38,13 @@ app.use(
   }),
 );
 
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  hsts: { maxAge: 31536000 },
+  noSniff: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+}));
 
 app.use(cookieParser());
 
@@ -45,9 +57,10 @@ app.use(
   webhooksRouter,
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
+app.use("/api", apiRateLimitMiddleware);
 app.use("/api", bhudhiRateLimitMiddleware);
 
 app.use("/api/auth", authRouter);

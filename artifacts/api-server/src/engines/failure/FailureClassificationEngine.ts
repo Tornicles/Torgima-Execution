@@ -133,9 +133,35 @@ export async function classifyFailure(params: {
   const blockerJson = fb.blocker_json as Record<string, unknown> | null;
   const hadBlocker = blockerKeys(blockerJson) > 0;
   const blockerType =
-    typeof blockerJson?.blocker_type === "string" ? blockerJson.blocker_type : undefined;
+    typeof blockerJson?.blocker_type === "string"
+      ? blockerJson.blocker_type
+      : typeof blockerJson?.type === "string"
+        ? blockerJson.type
+        : undefined;
 
   if (hadBlocker) {
+    const bt = (blockerType ?? "").toLowerCase();
+    if (
+      bt.includes("capability") ||
+      bt.includes("skill") ||
+      bt === "knowledge_gap" ||
+      bt === "capability_gap"
+    ) {
+      const correctionType = "academy_task_requested";
+      return buildClassifiedResult({
+        primaryCategory: "CAPABILITY_FAILURE",
+        correctionType,
+        confidence: "HIGH",
+        severity: "MEDIUM",
+        repeatFailure: false,
+        evidenceSummary: `Capability blocker: ${blockerType ?? "capability_gap"}`,
+        blueprintId: params.blueprintId,
+        feedbackId: params.feedbackId,
+        orderId: params.orderId,
+        userId: params.userId,
+      });
+    }
+
     const correctionType = "dependency_resolution_requested";
     return {
       primaryCategory:     "DEPENDENCY_FAILURE",

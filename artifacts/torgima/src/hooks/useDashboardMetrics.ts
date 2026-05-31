@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
 import { toDashboardProjection } from "@/lib/dashboard-types";
+import { getConditionLabel } from "@/lib/language";
 import type { Order } from "@workspace/api-client-react";
 
 export function useDashboardMetrics() {
@@ -34,7 +35,8 @@ export function useDashboardMetrics() {
       isLoading,
       isError,
       refetch,
-      conditionLabel: conditionRaw.replace(/_/g, " ").toUpperCase(),
+      conditionLabel: getConditionLabel(conditionRaw).label,
+      conditionDisplay: getConditionLabel(conditionRaw),
       conditionRaw,
       completionRate,
       momentum,

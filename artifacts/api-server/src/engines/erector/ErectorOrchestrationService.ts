@@ -13,6 +13,7 @@ import { emitArchetypeResolved } from "./emitErectorEvents.js";
 import { rowToErectorResult } from "./ErectorOrchestrationHelpers.js";
 import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
 import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
+import { extractEnrichedFromOutputs } from "../../lib/enrichedValidationIntel.js";
 
 function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
   const country = input.location.country;
@@ -141,11 +142,15 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     paths,
     scores,
   };
+  const enriched = extractEnrichedFromOutputs(outputs, input, archetypeResolution);
   const intelligencePayload = {
     erector: true,
     archetypeResolution,
     scores,
     economyBriefing: outputs.economyBriefing,
+    competitors: enriched.competitors,
+    opportunities: enriched.opportunities,
+    economicContext: enriched.economicContext,
     bhudhiTriggerCount: outputs.bhudhiTriggerCount,
     bhudhiFallbackCount: outputs.bhudhiFallbackCount,
     systemsProgress: { ERECTOR: "complete" },
@@ -154,6 +159,12 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
   if (!payloadCheck.success) {
     throw new Error(`Erector payload failed schema check: ${payloadCheck.error.message}`);
   }
+
+  const enrichedDbPatch = {
+    economic_context: enriched.economicContext,
+    enriched_competitors: enriched.competitors,
+    enriched_opportunities: enriched.opportunities,
+  };
 
   const [complete] = await db
     .update(validations)
@@ -203,7 +214,8 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
       payload_version: 1,
       erector_payload: erectorPayload,
       intelligence_payload: intelligencePayload,
-    })
+      ...enrichedDbPatch,
+    } as never)
     .where(eq(validations.id, created.id))
     .returning();
 
