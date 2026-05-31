@@ -78,10 +78,10 @@ describe("Platform upgrade frontend routing", () => {
     expect(appTsx).toMatch(/UpgradeGate/);
   });
 
-  it("onboarding page uses ErectorOnboardingRefinementFlow only", () => {
-    expect(onboardingPage).toContain("ErectorOnboardingRefinementFlow");
+  it("onboarding page uses four-step goal entry only", () => {
+    expect(onboardingPage).toContain("OnboardingGoalPage");
+    expect(onboardingPage).not.toContain("ErectorOnboardingRefinementFlow");
     expect(onboardingPage).not.toContain("AlignedValidationResults");
-    expect(onboardingPage).not.toContain("OnboardingShell");
   });
 
   it("upgrade page offers Start New Validation and archived data", () => {

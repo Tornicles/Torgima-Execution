@@ -96,7 +96,10 @@ export function adaptOnboardingGoalRequest(body: unknown):
     ).trim();
 
   const timeframe = normalizeTimeframe(
-    b.timeframe ?? (context ? undefined : b.timeframeDays) ?? context?.timeframe,
+    b.timeframe ??
+      b.timeframeDays ??
+      (context ? undefined : b.timeframeDays) ??
+      context?.timeframe,
   );
 
   const location =
@@ -173,14 +176,22 @@ export function adaptOnboardingGoalRequest(body: unknown):
   };
 }
 
-export function flatToParsedGoal(adapted: AdaptedOnboardingGoal) {
+export function flatToParsedGoal(adapted: AdaptedOnboardingGoal, body?: Record<string, unknown>) {
   const { flat } = adapted;
-  const timeframeDays = parseTimeframeDays(flat.timeframe);
+  const b = body ?? {};
+  const timeframeDays =
+    parseTimeframeDays(flat.timeframe) ??
+    (typeof b.timeframeDays === "number" ? b.timeframeDays : null) ??
+    90;
+  const startRaw = typeof b.timeframeStart === "string" ? b.timeframeStart : null;
+  const endRaw = typeof b.timeframeEnd === "string" ? b.timeframeEnd : null;
   return {
     rawGoal: flat.goal,
     purpose: flat.purpose,
-    timeframe: `${flat.timeframe} days`,
+    timeframe: `${timeframeDays} days`,
     timeframeDays,
+    timeframeStart: startRaw,
+    timeframeEnd: endRaw,
     commitmentLevel: flat.commitmentLevel,
     domain: flat.domain,
     currentContext: flat.currentContext,

@@ -50,7 +50,7 @@ export const DEFAULT_PRE_VALIDATION_DRAFT: PreValidationDraft = {
   },
   timeframeDays: 365,
   commitment: "MODERATE",
-  weeklyCommitment: "MODERATE",
+  weeklyCommitment: "HIGH",
   countryName: "",
   locationCity: "",
   currentSituation: "",

@@ -17,6 +17,9 @@ export interface ValidationScreenData {
   erectorValidationId?: string;
   erectorValidationContractId?: string;
   blueprintId?: string;
+  /** User-submitted goal/purpose from validation row (not AI analysis). */
+  goal?: string;
+  purpose?: string;
   verdict?: string;
   readiness?: string;
   launchBlocked?: boolean;

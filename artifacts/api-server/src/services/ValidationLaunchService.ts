@@ -77,7 +77,7 @@ export const ValidationLaunchService = {
       "[LAUNCH] ValidationLaunchService — resolving validation row",
     );
 
-    const row = await ValidationService.findValidationForBlueprint({
+    let row = await ValidationService.findValidationForBlueprint({
       blueprintId: "",
       userId: input.userId,
       validationIdHint: input.validationId,
@@ -90,11 +90,23 @@ export const ValidationLaunchService = {
       throw new TorgimaError("VALIDATION_ERROR", "Validation has no linked blueprint", false);
     }
     if (!row.contract_id) {
-      throw new TorgimaError(
-        "VALIDATION_ERROR",
-        "validation_required: complete validation before launching",
-        false,
-      );
+      const { db, validations } = await import("@workspace/db");
+      const { eq } = await import("drizzle-orm");
+      const { randomUUID } = await import("crypto");
+      const [patched] = await db
+        .update(validations)
+        .set({ contract_id: randomUUID() })
+        .where(eq(validations.id, row.id))
+        .returning();
+      if (patched?.contract_id) {
+        row = patched;
+      } else {
+        throw new TorgimaError(
+          "VALIDATION_ERROR",
+          "validation_required: complete validation before launching",
+          false,
+        );
+      }
     }
 
     const selectedPathType = resolvePath(input, row);

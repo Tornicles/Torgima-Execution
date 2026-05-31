@@ -79,7 +79,7 @@ router.post("/onboarding/goal", async (req, res) => {
       "[Onboarding] POST /onboarding/goal normalized payload",
     );
 
-    const input = flatToParsedGoal(adapted.data);
+    const input = flatToParsedGoal(adapted.data, body as Record<string, unknown>);
     const refinedGoal = flat.goal;
     const refinedPurpose = flat.purpose;
     const rawGoalInput = rawGoal ?? refinedGoal;
@@ -87,6 +87,11 @@ router.post("/onboarding/goal", async (req, res) => {
 
     const tier = input.selectedBlueprintTier;
     const mode = input.selectedBlueprintMode;
+
+    const timeframeStart = input.timeframeStart
+      ? new Date(input.timeframeStart)
+      : null;
+    const timeframeEnd = input.timeframeEnd ? new Date(input.timeframeEnd) : null;
 
     const [inserted] = await db
       .insert(blueprints)
@@ -101,6 +106,8 @@ router.post("/onboarding/goal", async (req, res) => {
         goal_final: refinedGoal,
         purpose_final: refinedPurpose,
         timeframe_days: input.timeframeDays,
+        timeframe_start: timeframeStart,
+        timeframe_end: timeframeEnd,
         commitment_level: input.commitmentLevel,
         domain_hint: flat.domain,
         domain: flat.domain,

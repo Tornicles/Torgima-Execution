@@ -34,8 +34,25 @@ function mergeErectorApiPayload(
   erectorResult: Record<string, unknown>,
   validationId: string,
 ): ValidationPayload {
+  const userPurpose =
+    typeof erectorResult.purpose === "string"
+      ? erectorResult.purpose
+      : typeof payload?.purpose === "string"
+        ? payload.purpose
+        : "";
+  const userGoal =
+    typeof erectorResult.rawGoal === "string"
+      ? erectorResult.rawGoal
+      : typeof erectorResult.raw_goal === "string"
+        ? erectorResult.raw_goal
+        : typeof payload?.goal === "string"
+          ? payload.goal
+          : "";
+
   return normalizePayload({
     ...(payload ?? {}),
+    goal: userGoal || payload?.goal,
+    purpose: userPurpose || payload?.purpose,
     erectorValidationId: validationId,
     validationContractId: String(
       erectorResult.validationContractId ?? erectorResult.contract_id ?? payload?.validationContractId ?? "",
@@ -47,8 +64,8 @@ function mergeErectorApiPayload(
       erector: {
         ...(typeof payload?.intelligence?.erector === "object" ? (payload.intelligence.erector as object) : {}),
         ...erectorResult,
-        rawGoal: erectorResult.rawGoal ?? erectorResult.raw_goal ?? payload?.intelligence?.erector,
-        purpose: erectorResult.purpose ?? payload?.intelligence?.erector,
+        rawGoal: userGoal || erectorResult.rawGoal || erectorResult.raw_goal,
+        purpose: userPurpose,
         timeframe: erectorResult.timeframe,
         timeframeDays: erectorResult.timeframeDays ?? erectorResult.timeframe_days,
         commitmentLevel: erectorResult.commitmentLevel,

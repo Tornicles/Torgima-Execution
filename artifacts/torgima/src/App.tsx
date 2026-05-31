@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Layout } from "@/components/Layout";
+import { OnboardingLayout } from "@/components/OnboardingLayout";
 import { TierFeatureGate } from "@/components/sequence/TierFeatureGate";
 import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
@@ -24,7 +25,11 @@ import VerifyPage from "@/pages/verify";
 import UnsubscribePage from "@/pages/unsubscribe";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
-const Onboarding = lazy(() => import("@/pages/onboarding"));
+const OnboardingGoalPage = lazy(() => import("@/pages/onboarding/index"));
+const OnboardingContextPage = lazy(() => import("@/pages/onboarding/context"));
+const OnboardingReviewPage = lazy(() => import("@/pages/onboarding/review"));
+const OnboardingValidatingPage = lazy(() => import("@/pages/onboarding/validating"));
+const OnboardingResultsRedirectPage = lazy(() => import("@/pages/onboarding/results"));
 const ErectorDashboard = lazy(() => import("@/pages/erector-dashboard"));
 const AcademyPage = lazy(() => import("@/pages/academy"));
 const ValidatePage = lazy(() => import("@/pages/validate"));
@@ -167,7 +172,11 @@ function withTierFeatureGate(required: "growth" | "ultimate", Page: RoutePage): 
   return Gated;
 }
 
-const ProtectedOnboarding = protect(Onboarding);
+const ProtectedOnboardingGoal = protect(OnboardingGoalPage);
+const ProtectedOnboardingContext = protect(OnboardingContextPage);
+const ProtectedOnboardingReview = protect(OnboardingReviewPage);
+const ProtectedOnboardingValidating = protect(OnboardingValidatingPage);
+const ProtectedOnboardingResults = protect(OnboardingResultsRedirectPage);
 const ProtectedErectorDashboard = protect(ErectorDashboard);
 const ProtectedAcademyPage = protect(AcademyPage);
 const ProtectedValidate = protect(ValidatePage);
@@ -217,10 +226,26 @@ function withAppLayout(Page: ComponentType) {
   return Wrapped;
 }
 
+function withOnboardingLayout(Page: ComponentType) {
+  function Wrapped() {
+    return (
+      <OnboardingLayout>
+        <Page />
+      </OnboardingLayout>
+    );
+  }
+  Wrapped.displayName = `WithOnboardingLayout(${displayNameFor(Page)})`;
+  return Wrapped;
+}
+
 /** Pre-launch flows — no app sidebar. */
-const OnboardingRoute = ProtectedOnboarding;
-const ValidateRoute = ProtectedValidate;
-const ValidationResultsRoute = withAppLayout(ProtectedValidationResults);
+const OnboardingRoute = withOnboardingLayout(ProtectedOnboardingGoal);
+const OnboardingContextRoute = withOnboardingLayout(ProtectedOnboardingContext);
+const OnboardingReviewRoute = withOnboardingLayout(ProtectedOnboardingReview);
+const OnboardingValidatingRoute = withOnboardingLayout(ProtectedOnboardingValidating);
+const OnboardingResultsRoute = withOnboardingLayout(ProtectedOnboardingResults);
+const ValidateRoute = withOnboardingLayout(ProtectedValidate);
+const ValidationResultsRoute = withOnboardingLayout(ProtectedValidationResults);
 const ValidationBlueprintRoute = ProtectedValidationBlueprint;
 const ValidationScoresRoute = ProtectedValidationScores;
 const UpgradeRoute = ProtectedUpgrade;
@@ -292,12 +317,16 @@ function AppRoutes() {
         <Route path="/validate" component={ValidateRoute} />
         <Route path="/validation/:id/results" component={ValidationResultsRoute} />
         <Route path="/validation/:id/blueprint" component={ValidationBlueprintRoute} />
-        <Route path="/onboarding/goal" component={ValidateRoute} />
+        <Route path="/onboarding" component={OnboardingRoute} />
+        <Route path="/onboarding/context" component={OnboardingContextRoute} />
+        <Route path="/onboarding/review" component={OnboardingReviewRoute} />
+        <Route path="/onboarding/validating" component={OnboardingValidatingRoute} />
+        <Route path="/onboarding/results" component={OnboardingResultsRoute} />
+        <Route path="/onboarding/goal" component={OnboardingRoute} />
         <Route path="/erector" component={ErectorRoute} />
         <Route path="/academy" component={AcademyRoute} />
         <Route path="/academy/course/:courseId" component={AcademyRoute} />
         <Route path="/academy/lesson/:lessonId" component={AcademyRoute} />
-        <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/validation/:id/running" component={ProtectedValidationRunning} />
         <Route path="/validation/scores" component={ValidationScoresRoute} />
         <Route path="/validation" component={ValidationScoresRoute} />

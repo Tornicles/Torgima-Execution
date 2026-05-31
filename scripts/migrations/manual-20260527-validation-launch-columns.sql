@@ -1,0 +1,20 @@
+-- Manual mirror of migrations/0034_validation_launch_columns.sql (Railway)
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS is_finalized boolean DEFAULT false;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS finalized_at timestamptz;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS handoff_package jsonb;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS selected_path text;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS selected_path_type text;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS validation_version integer DEFAULT 1;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS launch_blocked boolean DEFAULT false;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS readiness text;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS contract_id uuid DEFAULT gen_random_uuid();
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS intelligence_payload jsonb;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS blueprint_contract jsonb;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS paths jsonb;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS verdict text;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS reality_result jsonb;
+ALTER TABLE validations ADD COLUMN IF NOT EXISTS selected_direction jsonb;
+UPDATE validations SET contract_id = gen_random_uuid() WHERE contract_id IS NULL;
+UPDATE validations SET is_finalized = false WHERE is_finalized IS NULL;
+UPDATE validations SET launch_blocked = false WHERE launch_blocked IS NULL;
+UPDATE validations SET validation_version = 1 WHERE validation_version IS NULL;

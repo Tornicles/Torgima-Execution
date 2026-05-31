@@ -27,7 +27,8 @@ function isUpgradeAllowedPath(path: string): boolean {
   return (
     path === "/upgrade" ||
     path === "/validate" ||
-    path.startsWith("/onboarding") ||
+    path === "/onboarding" ||
+    path.startsWith("/onboarding/") ||
     path.startsWith("/validation/") ||
     isPreLaunchPath(path)
   );

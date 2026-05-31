@@ -19,9 +19,10 @@ describe("Validation results page wiring", () => {
     expect(dashboard).toContain("Launch This Direction");
   });
 
-  it("validation results route uses app layout", () => {
+  it("validation results route uses onboarding layout without app sidebar", () => {
     const app = readRepo("artifacts/torgima/src/App.tsx");
-    expect(app).toContain("withAppLayout(ProtectedValidationResults)");
+    expect(app).toContain("withOnboardingLayout(ProtectedValidationResults)");
+    expect(app).not.toContain("withAppLayout(ProtectedValidationResults)");
   });
 
   it("dashboard model exposes goal purpose timeframe direction", () => {

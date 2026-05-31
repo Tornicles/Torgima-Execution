@@ -378,7 +378,7 @@ export function buildResultsDashboardModel(
   return {
     ...vm,
     ideaTitle: vm.rawGoal.split(/[.!?]/)[0]?.trim() || "Your Idea",
-    ideaSubtitle: vm.purpose || vm.rawGoal,
+    ideaSubtitle: vm.purpose,
     timeframeLabel: formatTimeframe(erector),
     contextLabel: `${vm.locationCountry} · ${vm.commitmentLevel} commitment`,
     selectedDirectionLabel: directionLabel(selectedPath),

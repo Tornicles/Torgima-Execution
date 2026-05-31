@@ -17,6 +17,10 @@ import { SequenceTrackingService } from "../services/SequenceTrackingService.js"
 import { ErectorRefinementService } from "../services/ErectorRefinementService.js";
 import { runErectorTwentyStages } from "../engines/erector/ErectorStageRunner.js";
 import { rowToErectorResult } from "../engines/erector/ErectorOrchestrationHelpers.js";
+import {
+  buildOnboardingValidationResultsPayload,
+  validationProgressFromStatus,
+} from "../lib/buildOnboardingValidationResults.js";
 import { resolveValidationTimeframeFields } from "../lib/validationTimeframe.js";
 import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
@@ -93,7 +97,10 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
     });
 
     success(res, result, result.idempotent ? 200 : 201);
-  } catch (err) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[Launch] Route crashed:", message, stack);
     handleError(req, res, err);
   }
 };
@@ -556,6 +563,45 @@ router.get("/v1/validation/:id", async (req, res) => {
   }
 });
 
+// GET /api/v1/validations/:id/status — polling for onboarding validating screen
+router.get("/v1/validations/:id/status", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ id: validations.id, status: validations.status, user_id: validations.user_id })
+      .from(validations)
+      .where(eq(validations.id, req.params.id))
+      .limit(1);
+    if (!row || row.user_id !== auth.userId) {
+      success(res, { status: "running", progress: 0 });
+      return;
+    }
+    const status = String(row.status ?? "running");
+    success(res, { status, progress: validationProgressFromStatus(status) });
+  } catch (err) {
+    success(res, { status: "running", progress: 0 });
+  }
+});
+
+// GET /api/v1/validations/:id/results — shaped payload for results dashboard
+router.get("/v1/validations/:id/results", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const { db, validations } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db.select().from(validations).where(eq(validations.id, req.params.id)).limit(1);
+    if (!row || row.user_id !== auth.userId) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    success(res, buildOnboardingValidationResultsPayload(row));
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 // POST /api/v1/validation/resolve-archetype — preview economy mapping for a country/city.
 router.post("/v1/validation/resolve-archetype", async (req, res) => {
   try {
@@ -878,11 +924,20 @@ router.get("/validation/:id/result", async (req, res) => {
     }
 
     if (row.validation_kind === ValidationKind.ERECTOR) {
+      const { competitorsFromValidationRow, userGoalFromRow, userPurposeFromRow } = await import(
+        "../lib/mapValidationIntel.js"
+      );
       const erector = rowToErectorResult(row);
+      const competitors = competitorsFromValidationRow(row);
+      const userPurpose = userPurposeFromRow(row);
+      const userGoal = userGoalFromRow(row);
+      const competitorAnalysis = { competitors };
       success(res, {
         validationId: row.id,
         validationContractId: row.contract_id,
         blueprintId: row.blueprint_id,
+        goal: userGoal,
+        purpose: userPurpose,
         verdict: row.verdict ?? "adjust",
         launchBlocked: row.launch_blocked ?? false,
         isFinalized: row.is_finalized ?? false,
@@ -890,9 +945,12 @@ router.get("/validation/:id/result", async (req, res) => {
         intelligence: {
           erector: {
             ...erector,
-            rawGoal: row.raw_goal ?? row.goal_final,
-            raw_goal: row.raw_goal ?? row.goal_final,
-            purpose: row.purpose ?? row.purpose_final,
+            rawGoal: userGoal,
+            raw_goal: userGoal,
+            purpose: userPurpose,
+            competitors,
+            competitor_analysis: competitorAnalysis,
+            competitorAnalysis,
             timeframe: row.timeframe,
             timeframeDays: row.timeframe_days,
             timeframe_days: row.timeframe_days,

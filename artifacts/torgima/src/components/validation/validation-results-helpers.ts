@@ -24,6 +24,7 @@ export type ValidationViewModel = {
   scores: Record<string, number | undefined>;
   verdict: string;
   rawGoal: string;
+  /** User-submitted purpose from validation row — not AI decomposition. */
   purpose: string;
   locationCountry: string;
   commitmentLevel: string;
@@ -47,6 +48,12 @@ export function buildViewModel(data: ValidationScreenData): ValidationViewModel 
   const erector = (data.intelligence?.erector ?? data.intelligence ?? {}) as Record<string, unknown>;
   const scores = (erector.scores ?? data.scores ?? {}) as Record<string, number | undefined>;
   const verdict = String(data.verdict ?? scores.verdict ?? erector.verdict ?? "adjust").toLowerCase();
+  const topPurpose =
+    typeof (data as { purpose?: unknown }).purpose === "string"
+      ? (data as { purpose: string }).purpose
+      : "";
+  const topGoal =
+    typeof (data as { goal?: unknown }).goal === "string" ? (data as { goal: string }).goal : "";
 
   const pathsRaw = data.paths ?? (erector.paths as ValidationScreenData["paths"]);
   const realityScore = Number(erector.realityScore ?? erector.reality_score ?? scores.realityScore ?? 0);
@@ -54,13 +61,18 @@ export function buildViewModel(data: ValidationScreenData): ValidationViewModel 
     100,
     Math.max(0, Math.round(realityScore <= 10 ? realityScore * 10 : realityScore)),
   );
+  const erectorPurpose = erector.purpose;
+  const purposeFromErector =
+    typeof erectorPurpose === "string"
+      ? erectorPurpose
+      : String(erector.raw_purpose ?? erector.purpose_final ?? "");
 
   return {
     erector,
     scores,
     verdict,
-    rawGoal: String(erector.rawGoal ?? erector.raw_goal ?? erector.goal_final ?? ""),
-    purpose: String(erector.purpose ?? erector.purpose_final ?? ""),
+    rawGoal: String(topGoal || erector.rawGoal || erector.raw_goal || erector.goal_final || ""),
+    purpose: String(topPurpose || purposeFromErector),
     locationCountry: String(erector.locationCountry ?? erector.location_country ?? "your area"),
     commitmentLevel: String(erector.commitmentLevel ?? erector.commitment_level ?? "medium"),
     businessModel: String(erector.businessModel ?? erector.business_model ?? "your business"),

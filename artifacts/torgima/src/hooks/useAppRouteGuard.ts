@@ -9,7 +9,7 @@ const PRE_LAUNCH_PREFIXES = ["/validate", "/validation/", "/onboarding", "/erect
 const POST_LAUNCH_HOME = "/dashboard";
 
 export function isPreLaunchPath(path: string): boolean {
-  if (path === "/validate" || path === "/erector" || path === "/upgrade" || path.startsWith("/onboarding")) return true;
+  if (path === "/validate" || path === "/erector" || path === "/upgrade" || path === "/onboarding" || path.startsWith("/onboarding/")) return true;
   if (path.startsWith("/validation/") && !path.includes("/results") && path.endsWith("/running")) return true;
   if (path.includes("/validation/") && path.endsWith("/results")) return true;
   if (path.includes("/validation/") && path.endsWith("/blueprint")) return true;

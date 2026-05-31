@@ -135,8 +135,8 @@ export function GoalPurposeInputScreen({
 
   function handleContinue() {
     const next: { goal?: string; purpose?: string } = {};
-    if (!draft.goal.trim()) next.goal = "Enter your goal before continuing.";
-    if (!draft.purpose.trim()) next.purpose = "Enter your purpose before continuing.";
+    if (draft.goal.trim().length < 20) next.goal = "Enter at least 20 characters for your goal.";
+    if (draft.purpose.trim().length < 20) next.purpose = "Enter at least 20 characters for your purpose.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onContinue();
@@ -312,7 +312,8 @@ export function GoalPurposeInputScreen({
           <button
             type="button"
             onClick={handleContinue}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/60 transition-opacity hover:opacity-95"
+            disabled={draft.goal.trim().length < 20 || draft.purpose.trim().length < 20}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/60 transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
             Continue to Next Step

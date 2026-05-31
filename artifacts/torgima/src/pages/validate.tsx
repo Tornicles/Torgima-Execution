@@ -1,6 +1,13 @@
-import PreValidationPage from "@/pages/pre-validation";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 
-/** Pre-activation goal & purpose intake — no app shell or sidebar. */
+/** Legacy /validate entry — redirects to canonical onboarding flow. */
 export default function ValidatePage() {
-  return <PreValidationPage />;
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/onboarding");
+  }, [setLocation]);
+
+  return null;
 }

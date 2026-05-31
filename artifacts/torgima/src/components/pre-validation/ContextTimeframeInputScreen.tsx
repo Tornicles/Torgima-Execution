@@ -211,6 +211,7 @@ export function ContextTimeframeInputScreen({
       next.endDate = "End date must be after start date.";
     }
     if (!draft.pacing) next.pacing = "Select your pacing.";
+    if (!draft.weeklyCommitment) next.weeklyCommitment = "Select your weekly commitment.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 

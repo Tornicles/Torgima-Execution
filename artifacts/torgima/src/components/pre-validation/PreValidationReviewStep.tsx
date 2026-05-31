@@ -86,11 +86,15 @@ export function PreValidationReviewStep({
   onBack,
   onContinue,
   onEditStep,
+  continueDisabled = false,
+  continueLabel,
 }: {
   draft: PreValidationDraft;
   onBack: () => void;
   onContinue: () => void;
   onEditStep: (step: 1 | 2) => void;
+  continueDisabled?: boolean;
+  continueLabel?: string;
 }) {
   const [editMenuOpen, setEditMenuOpen] = useState(false);
   const editMenuRef = useRef<HTMLDivElement>(null);
@@ -328,7 +332,8 @@ export function PreValidationReviewStep({
             <button
               type="button"
               onClick={onContinue}
-              className="mt-4 flex w-full flex-col items-center rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-4 py-3.5 text-center shadow-lg shadow-violet-200/60 transition-opacity hover:opacity-95"
+              disabled={continueDisabled}
+              className="mt-4 flex w-full flex-col items-center rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-4 py-3.5 text-center shadow-lg shadow-violet-200/60 transition-opacity hover:opacity-95 disabled:opacity-60"
             >
               <span className="flex items-center gap-2 text-sm font-bold text-white">
                 <Sparkles className="h-4 w-4" />
@@ -363,9 +368,10 @@ export function PreValidationReviewStep({
           <button
             type="button"
             onClick={onContinue}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/60 hover:opacity-95"
+            disabled={continueDisabled}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-violet-200/60 hover:opacity-95 disabled:opacity-60"
           >
-            Continue to Validate Idea →
+            {continueLabel ?? "Continue to Validate Idea →"}
           </button>
         </div>
       </div>
