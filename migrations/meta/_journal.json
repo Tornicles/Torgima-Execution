@@ -71,6 +71,13 @@
       "when": 1779900000000,
       "tag": "0033_platform_upgrade_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0035_purge_all_user_accounts",
+      "breakpoints": true
     }
   ]
 }
