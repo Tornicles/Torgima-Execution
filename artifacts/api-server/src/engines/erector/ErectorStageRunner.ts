@@ -10,6 +10,8 @@ import { stageDeterministicFallbacks, searchPreamble } from "./erectorStageDeter
 import type { HandoffPackage, ValidationFeedInput } from "../../types/erector-complete.js";
 import type { BhudhiTriggerType } from "../../types/bhudhi.js";
 import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
+import { transitionBlueprintToPathSelection } from "../../lib/transitionBlueprintToPathSelection.js";
+import { resolveDefaultSelectedPath } from "../../lib/validationPathSelection.js";
 import { writeEvent, EventTypes } from "../../services/EventService.js";
 import { logger } from "../../lib/logger.js";
 import type { ErectorValidationInput } from "../../types/erector.js";
@@ -269,6 +271,22 @@ export async function runErectorTwentyStages(feed: ValidationFeedInput): Promise
     payload: { validationId: row.id, pipeline: "20_stage", verdict: decision },
     idempotencyKey: `erector_20_stage_complete:${row.id}`,
   }).catch(() => null);
+
+  await transitionBlueprintToPathSelection({
+    blueprintId: feed.blueprintId,
+    userId: feed.userId,
+    validationId: row.id,
+    verdict,
+    selectedPath: resolveDefaultSelectedPath(verdict),
+    realityScore: decision === "proceed" ? 72 : decision === "adjust" ? 58 : 42,
+    pathOptions: {
+      current: paths.momentum ?? paths.foundation,
+      adjusted: paths.foundation ?? null,
+      alternative: paths.overdrive ?? null,
+    },
+    recommendedTier: feed.tier ?? "starter",
+    validationKind: ValidationKind.ERECTOR,
+  });
 
   return { validationId: row.id };
 }

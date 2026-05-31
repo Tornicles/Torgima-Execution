@@ -23,6 +23,8 @@ import { BlueprintInfrastructureService } from "../services/BlueprintInfrastruct
 import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/BlueprintTypeRegistry.js";
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
 import { validateProjectNameStrict } from "../lib/projectName.js";
+import { validateUUID } from "../lib/security/validateUuid.js";
+import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
 import { BlueprintStatus, PivotReviewStatus } from "../types/stateMachine.js";
 import {
   createPivotReview,
@@ -320,6 +322,85 @@ router.post("/blueprints/:id/configure-selection", async (req, res) => {
       parsed.data,
     );
     success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// PATCH /api/blueprints/:id/select-path — persist path choice before launch
+router.patch("/blueprints/:id/select-path", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = String(req.params.id ?? "").trim();
+    if (!validateUUID(blueprintId)) {
+      failure(res, "VALIDATION_ERROR", "Invalid blueprint id", 400);
+      return;
+    }
+    const schema = z.object({ selectedPath: pathTypeSchema });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "selectedPath is required (current, adjusted, or alternative)", 422);
+      return;
+    }
+    const selectedPath = parsed.data.selectedPath;
+
+    const [bp] = await db
+      .select({ id: blueprints.id, validation_id: blueprints.validation_id })
+      .from(blueprints)
+      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)))
+      .limit(1);
+    if (!bp) {
+      failure(res, "NOT_FOUND", "Blueprint not found", 404);
+      return;
+    }
+
+    const validationId = bp.validation_id;
+    if (!validationId) {
+      failure(res, "VALIDATION_ERROR", "Complete validation before selecting a path", 400);
+      return;
+    }
+
+    const [val] = await db.select().from(validations).where(eq(validations.id, validationId)).limit(1);
+    if (!val || val.user_id !== auth.userId) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+
+    await db
+      .update(blueprints)
+      .set({
+        selected_path: selectedPath,
+        status: BlueprintStatus.PATH_SELECTION,
+      })
+      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)));
+
+    await db
+      .update(validations)
+      .set({
+        selected_path: selectedPath,
+        selected_path_type: selectedPath,
+        selected_at: new Date(),
+      })
+      .where(eq(validations.id, validationId));
+
+    await transitionBlueprintToPathSelection({
+      blueprintId,
+      userId: auth.userId,
+      validationId,
+      verdict: val.verdict,
+      selectedPath,
+      realityScore: val.reality_score,
+      intelligencePayload: (val.intelligence_payload as Record<string, unknown> | null) ?? null,
+      pathOptions: {
+        current: val.path_current,
+        adjusted: val.path_adjusted,
+        alternative: val.path_alternative,
+      },
+      recommendedTier: val.recommended_blueprint_level ?? "starter",
+      validationKind: val.validation_kind,
+    });
+
+    success(res, { blueprintId, selectedPath });
   } catch (err) {
     handleError(req, res, err);
   }

@@ -496,6 +496,15 @@ export const ValidationService = {
     }
 
     logger.info({ blueprintId: params.blueprintId, selectedPath: params.selectedPath }, "[ValidationService] Path selected");
+
+    await db
+      .update(blueprints)
+      .set({
+        selected_path: params.selectedPath,
+        status: BlueprintStatus.PATH_SELECTION,
+      })
+      .where(and(eq(blueprints.id, params.blueprintId), eq(blueprints.user_id, params.userId)));
+
     return { selected: true, blueprintContract };
   },
 

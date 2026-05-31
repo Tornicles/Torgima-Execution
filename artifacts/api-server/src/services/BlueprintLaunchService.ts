@@ -24,6 +24,7 @@ import {
   requiresLaunchFinalization,
   ValidationFinalizationService,
 } from "./ValidationFinalizationService.js";
+import { ensureBlueprintReadyForLaunch } from "../lib/transitionBlueprintToPathSelection.js";
 
 function assertValidationReadyForLaunch(
   row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>,
@@ -121,6 +122,8 @@ export const BlueprintLaunchService = {
     });
 
     validationRow = await ValidationService.getValidationByContractId(input.validationContractId);
+
+    await ensureBlueprintReadyForLaunch(input.blueprintId, input.userId, validationRow);
 
     if (requiresLaunchFinalization(validationRow)) {
       throw new TorgimaError(

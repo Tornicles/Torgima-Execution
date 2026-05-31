@@ -83,6 +83,14 @@ export async function finalizeValidationBlueprint(
   return envelope.data;
 }
 
+/** PATCH /api/blueprints/:id/select-path — persist user's path choice before launch. */
+export async function selectBlueprintPath(
+  blueprintId: string,
+  selectedPath: "current" | "adjusted" | "alternative",
+): Promise<{ blueprintId: string; selectedPath: string }> {
+  return apiPatch(`/api/blueprints/${blueprintId}/select-path`, { selectedPath });
+}
+
 /** POST /api/v1/validations/:id/launch — activate blueprint from completed validation. */
 export async function launchValidationBlueprint(
   validationId: string,

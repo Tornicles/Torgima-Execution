@@ -24,6 +24,7 @@ import { buildEisExecutionFields } from "../../../bhudhi/AdvancedIntelligenceBri
 import type { FullValidationResult, ReadinessState, ValidationIntelligencePayload } from "./validation-intelligence-types.js";
 import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
 import { resolveDefaultSelectedPath } from "../../../lib/validationPathSelection.js";
+import { transitionBlueprintToPathSelection } from "../../../lib/transitionBlueprintToPathSelection.js";
 
 export async function runFullValidation(params: {
   blueprintId: string;
@@ -287,13 +288,25 @@ export async function runFullValidation(params: {
     .limit(1)
     .then((r) => r[0]);
 
-  const nextStatus =
-    bpRow?.selection_confirmed_at && bpRow?.tier ? "path_selection" : "awaiting_selection";
+  await transitionBlueprintToPathSelection({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    validationId,
+    verdict,
+    selectedPath: defaultPath,
+    realityScore: scores.realism.score,
+    intelligencePayload: intelligence as unknown as Record<string, unknown>,
+    pathOptions: paths,
+    recommendedTier: tier,
+    validationKind: ValidationKind.INTELLIGENCE,
+  });
 
-  await db
-    .update(blueprints)
-    .set({ validation_id: validationId, status: nextStatus })
-    .where(eq(blueprints.id, params.blueprintId));
+  if (!bpRow?.selection_confirmed_at || !bpRow?.tier) {
+    logger.info(
+      { blueprintId: params.blueprintId },
+      "[ValidationOrchestrator] Blueprint in path_selection — tier/mode selection still required before launch",
+    );
+  }
 
   logger.info({ blueprintId: params.blueprintId, verdict, launchBlocked, tier }, "[ValidationOrchestrator] complete");
 

@@ -12,6 +12,7 @@ import {
   finalizeValidationBlueprint,
   formatApiEnvelopeError,
   launchValidationBlueprint,
+  selectBlueprintPath,
 } from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 import {
@@ -184,6 +185,17 @@ export default function ValidationResultsPage() {
     validation?.paths?.current && validation?.paths?.adjusted && validation?.paths?.alternative,
   );
 
+  async function handleSelectPath(path: PathKey) {
+    setSelectedPath(path);
+    saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
+    if (!validation?.blueprintId) return;
+    try {
+      await selectBlueprintPath(validation.blueprintId, path);
+    } catch (err) {
+      console.error("[PathSelect]", err);
+    }
+  }
+
   async function handleLaunch() {
     if (!validation?.blueprintId || launching || timeframeMissing) return;
 
@@ -191,9 +203,11 @@ export default function ValidationResultsPage() {
     setLaunchError("");
 
     try {
+      await selectBlueprintPath(validation.blueprintId, selectedPath ?? "adjusted");
+
       await apiFetchResponseWithRetry(`/api/v1/validation/${validationId}/select-path`, {
         method: "POST",
-        body: JSON.stringify({ selectedPath }),
+        body: JSON.stringify({ selectedPath: selectedPath ?? "adjusted" }),
       });
 
       if (!isFinalized) {
@@ -285,10 +299,7 @@ export default function ValidationResultsPage() {
       data={validation}
       validationId={validationId}
       selectedPath={selectedPath}
-      onSelectPath={(path) => {
-        setSelectedPath(path);
-        saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
-      }}
+      onSelectPath={(path) => void handleSelectPath(path)}
       onLaunch={() => void handleLaunch()}
       onDownload={() => void handleDownload()}
       downloading={downloading}

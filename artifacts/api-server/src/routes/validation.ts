@@ -26,6 +26,7 @@ import { resolveValidationTimeframeFields } from "../lib/validationTimeframe.js"
 import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
 import { ValidationKind } from "@workspace/state-machine";
+import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
 
 const router = Router();
 
@@ -105,6 +106,10 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
     console.error("[Launch CRASH]", message, "\n", stack);
+    if (message.startsWith("[LAUNCH]")) {
+      failure(res, "VALIDATION_ERROR", message.replace(/^\[LAUNCH\]\s*/, ""), 400);
+      return;
+    }
     if (isTorgimaError(err)) {
       handleError(req, res, err);
       return;
@@ -792,6 +797,24 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       .where(eq(validations.id, row.id));
     const firstWeekPlan = await persistFirstWeekPlan(row, auth.userId, selected);
     const [bp] = await db.select({ tier: blueprints.tier }).from(blueprints).where(eq(blueprints.id, row.blueprint_id)).limit(1);
+
+    await transitionBlueprintToPathSelection({
+      blueprintId: row.blueprint_id,
+      userId: auth.userId,
+      validationId: row.id,
+      verdict: row.verdict,
+      selectedPath: selected,
+      realityScore: row.reality_score,
+      intelligencePayload: (row.intelligence_payload as Record<string, unknown> | null) ?? null,
+      pathOptions: {
+        current: row.path_current,
+        adjusted: row.path_adjusted,
+        alternative: row.path_alternative,
+      },
+      recommendedTier: row.recommended_blueprint_level ?? bp?.tier ?? "starter",
+      validationKind: row.validation_kind,
+    });
+
     await SequenceTrackingService.recordValidationResult(row.blueprint_id, bp?.tier, selected).catch(() => null);
 
     await writeEvent({

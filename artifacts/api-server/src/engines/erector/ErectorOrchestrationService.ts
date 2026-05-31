@@ -11,6 +11,8 @@ import { buildTimeSimulations, generatePaths } from "./PathEngine.js";
 import { ErectorValidationStage, ValidationKind, ValidationStatus } from "@workspace/state-machine";
 import { emitArchetypeResolved } from "./emitErectorEvents.js";
 import { rowToErectorResult } from "./ErectorOrchestrationHelpers.js";
+import { transitionBlueprintToPathSelection } from "../../lib/transitionBlueprintToPathSelection.js";
+import { resolveDefaultSelectedPath } from "../../lib/validationPathSelection.js";
 import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
 import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
 import { extractEnrichedFromOutputs } from "../../lib/enrichedValidationIntel.js";
@@ -234,7 +236,25 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     idempotencyKey: `erector_complete:${created.id}`,
   }).catch(() => null);
 
-  const result = rowToErectorResult(complete ?? created);
+  const completedRow = complete ?? created;
+  await transitionBlueprintToPathSelection({
+    blueprintId: input.blueprintId,
+    userId: input.userId,
+    validationId: completedRow.id,
+    verdict: scores.verdict,
+    selectedPath: resolveDefaultSelectedPath(scores.verdict),
+    realityScore: scores.realityScore,
+    intelligencePayload: intelligencePayload as Record<string, unknown>,
+    pathOptions: {
+      current: paths.current,
+      adjusted: paths.adjusted,
+      alternative: paths.alternative,
+    },
+    recommendedTier: scores.recommendedBlueprintLevel,
+    validationKind: ValidationKind.ERECTOR,
+  });
+
+  const result = rowToErectorResult(completedRow);
   await populateWorkspaceAfterRun(created.id, result, {
     ...input,
     goalFinal: input.goalFinal,

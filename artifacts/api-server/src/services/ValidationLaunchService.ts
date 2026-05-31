@@ -11,6 +11,7 @@ import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { dispatchPendingEvents } from "./EventDispatcher.js";
 import { generateInitialTasks } from "../engines/tasks/generateInitialTasks.js";
 import { normalizeProjectName } from "../lib/projectName.js";
+import { ensureBlueprintReadyForLaunch } from "../lib/transitionBlueprintToPathSelection.js";
 
 export type SelectedDirection = {
   path?: LaunchPathType;
@@ -143,6 +144,15 @@ export const ValidationLaunchService = {
     await ValidationFinalizationService.finalizeValidation(row.id, input.userId, {
       selectedPath: selectedPathType,
     });
+
+    const validationRow = await ValidationService.getValidationByContractId(row.contract_id!);
+    try {
+      await ensureBlueprintReadyForLaunch(row.blueprint_id, input.userId, validationRow);
+    } catch (launchPrepErr: unknown) {
+      const msg = launchPrepErr instanceof Error ? launchPrepErr.message : String(launchPrepErr);
+      logger.error({ blueprintId: row.blueprint_id, msg }, "[LAUNCH] Blueprint pre-launch check failed");
+      throw new TorgimaError("VALIDATION_ERROR", msg.replace(/^\[LAUNCH\]\s*/, ""), false);
+    }
 
     const { db, validations } = await import("@workspace/db");
     const { eq } = await import("drizzle-orm");
