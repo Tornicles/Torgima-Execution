@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { DashboardAlert, DashboardProjection } from "@/lib/dashboard-types";
+import { SignalPanel, type SignalBreakdown } from "@/components/SignalPanel";
 import { ConditionState } from "@workspace/state-machine";
 
 const CONDITION_UI: Record<string, { icon: string; message: string; bg: string; color: string }> = {
@@ -48,6 +49,12 @@ export function ConditionPanel({ state }: { state: DashboardProjection }) {
       </Link>
     </section>
   );
+}
+
+export function SignalFormulaPanel({ state }: { state: DashboardProjection }) {
+  const breakdown = (state as DashboardProjection & { signal_breakdown?: SignalBreakdown | null })
+    .signal_breakdown;
+  return <SignalPanel breakdown={breakdown ?? null} />;
 }
 
 export function SignalSummaryPanel({ state }: { state: DashboardProjection }) {

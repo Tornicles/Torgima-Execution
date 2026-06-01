@@ -89,19 +89,19 @@ describe("assignCondition — representative matrix", () => {
   it("assigns danger when production signal critical", () =>
     expect(assignCondition(makemetrics({ completion_rate: 0.2, weighted_score: 3.5, trend: "declining", momentum: 0 }), "urgency")).toBe("danger"));
 
-  it("assigns urgency when both core signals below 0.70", () =>
+  it("assigns stability when completion 65% and score 6.0 (metric matrix fallback)", () =>
     expect(assignCondition(makemetrics({ completion_rate: 0.65, weighted_score: 6.0, trend: "flat" }), "stability")).toBe(
-      "urgency",
+      "stability",
     ));
 
   it("assigns stability for balanced healthy signals", () =>
-    expect(assignCondition(makemetrics({ completion_rate: 0.78, weighted_score: 6.5, trend: "stable" }), "stability")).toBe(
+    expect(assignCondition(makemetrics({ completion_rate: 0.62, weighted_score: 6.2, trend: "stable" }), "stability")).toBe(
       "stability",
     ));
 
   it("assigns power when production and operations excel", () =>
     expect(
-      assignCondition(makemetrics({ completion_rate: 0.88, weighted_score: 7.8, momentum: 2, trend: "rising" }), "stability"),
+      assignCondition(makemetrics({ completion_rate: 0.75, weighted_score: 7.5, momentum: 4, trend: "rising" }), "stability"),
     ).toBe("power"));
 
   it("assigns affluence for exceptional performance", () =>

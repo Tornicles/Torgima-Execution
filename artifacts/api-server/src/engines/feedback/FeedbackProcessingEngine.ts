@@ -31,6 +31,7 @@ import { capabilityEngine } from "../capability/CapabilityEngine.js";
 import { behaviorPatternEngine } from "../behavior/BehaviorPatternEngine.js";
 import { runBhudhiFeedbackCycle } from "../../bhudhi/integration/TorgimaIntegration.js";
 import type { TaskFeedbackBhudhiResult } from "../../bhudhi/integration/TorgimaIntegration.js";
+import { calculateConfidenceWeight } from "./confidenceWeight.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -173,35 +174,27 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
   }
 
   const ref = input.reflection.trim();
-  let weight = 1.0;
-  let flagged = false;
-  let gamingReason: string | undefined;
-
-  if (ref.length < 30) weight -= 0.2;
-  if (input.score >= 9 && ref.length < 50) {
-    weight -= 0.3;
-    flagged = true;
-    gamingReason = "High score with weak reflection";
-  }
-  if (input.score === 10 && ref.length < 100) weight -= 0.2;
-  if (input.completionStatus === "completed" && input.score <= 2) weight -= 0.2;
-
   const proof = (input.proofJson ?? {}) as Record<string, unknown>;
   const proofScore = scoreProofForOrder(order, proof);
-  if (order.proof_required) {
-    weight *= Math.max(0.35, 0.45 + 0.55 * proofScore.normalized);
-  }
 
-  weight = Math.max(0.3, weight);
-  const weightedScoreBase = input.score * weight;
+  const weightResult = calculateConfidenceWeight({
+    score: input.score,
+    reflection: ref,
+    completion: input.completionStatus,
+    proof_json: proof,
+    started_at: order.started_at,
+    proofRequired: Boolean(order.proof_required),
+    proofNormalized: order.proof_required ? proofScore.normalized : undefined,
+  });
+
+  let { weight, confidence, flagged } = weightResult;
+  let gamingReason = weightResult.flag_reason;
 
   const hoursAfter = order.started_at
     ? (Date.now() - order.started_at.getTime()) / 3600000
     : 0;
   const latePenalty = hoursAfter > 12;
-  const weightedScore = latePenalty ? weightedScoreBase * 0.9 : weightedScoreBase;
-
-  const confidence = weight >= 0.9 ? "high" : weight >= 0.7 ? "medium" : "low";
+  const weightedScore = input.score * weight;
 
   let requiresInterrogation = confidence === "low" && input.completionStatus === "completed";
   let interrogationQuestion: string | undefined = requiresInterrogation
@@ -268,6 +261,7 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
         user_id: input.userId,
         completion_status: input.completionStatus,
         score: input.score,
+        confidence_weight: weight,
         weighted_score: weightedScore,
         reflection: ref,
         friction_score: input.frictionScore ?? null,

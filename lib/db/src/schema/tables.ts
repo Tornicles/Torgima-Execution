@@ -929,6 +929,7 @@ export const feedback = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     completion_status: text("completion_status").notNull(),
     score: integer("score"),
+    confidence_weight: doublePrecision("confidence_weight"),
     weighted_score: doublePrecision("weighted_score"),
     reflection: text("reflection"),
     friction_score: doublePrecision("friction_score"),

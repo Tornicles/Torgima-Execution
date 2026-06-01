@@ -126,6 +126,33 @@ export type BlueprintPositionProjection = {
   };
 };
 
+export type DashboardSignalBreakdown = {
+  completion_rate: number;
+  weighted_score: number;
+  momentum: number;
+  trend: string;
+  confidence: string;
+  tasks_in_window: number;
+  condition: string;
+  formula_steps: Array<{
+    step: number;
+    label: string;
+    value: string;
+    passed: boolean;
+    explanation: string;
+  }>;
+  matched_rule: {
+    condition: string;
+    rule_description: string;
+    your_value: string;
+    threshold: string;
+  };
+  window_start: string;
+  window_end: string;
+  snapshot_id: string;
+  generated_at: string;
+};
+
 export type DashboardProjection = DashboardState & {
   dashboardUiState?: DashboardUiState;
   pendingSync?: boolean;
@@ -133,6 +160,16 @@ export type DashboardProjection = DashboardState & {
   homePanels?: HomeDashboardPanels | null;
   launchFirstLoad?: LaunchFirstLoadProjection | null;
   blueprintPosition?: BlueprintPositionProjection | null;
+  signal_breakdown?: DashboardSignalBreakdown | null;
+  activeCondition?: {
+    condition?: string;
+    task_limit_min?: number;
+    task_limit_max?: number;
+    difficulty_cap?: string;
+    allowed_actions?: string[];
+    blocked_actions?: string[];
+    recovery_required?: boolean;
+  };
 };
 
 export function toDashboardProjection(state: DashboardState): DashboardProjection {

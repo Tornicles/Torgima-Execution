@@ -20,10 +20,11 @@ import {
   phases,
   frameworkActivations,
   frameworkDecisions,
+  feedback as feedbackTable,
 } from "@workspace/db";
 import { checkAssumptionDrift } from "../engines/validation/AssumptionMonitoringService.js";
 import { buildDashboardAlerts, deriveDashboardUiState } from "./DashboardUiState.js";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   deriveExecutionIdentityLines,
   deriveOperationalAwarenessLines,
@@ -44,6 +45,7 @@ import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
 import { buildHomeDashboardPanels } from "../lib/homeDashboardPanels.js";
 import { buildLaunchDashboardProjection } from "../lib/buildLaunchDashboardProjection.js";
 import { buildBlueprintPositionProjection } from "../lib/buildBlueprintPositionProjection.js";
+import { buildSignalBreakdownFromSnapshot } from "../engines/signal/SignalFormulaBreakdown.js";
 
 async function buildNoActiveBlueprintDashboardState(userId: string) {
   const [user, signals, recentFeedback, activeOrders] = await Promise.all([
@@ -226,6 +228,8 @@ export const DashboardService = {
       skipRatio: number | null;
     } | null = null;
 
+    let signalBreakdown: ReturnType<typeof buildSignalBreakdownFromSnapshot> | null = null;
+
     let operationalAwareness: string[] = [];
     let signalBlueprintBridge: Array<{ headline: string; cite: string }> = [];
     let executionIdentityLines: string[] = [];
@@ -314,6 +318,17 @@ export const DashboardService = {
       }
 
       if (snapRow) {
+        const windowStart = snapRow.window_start ?? new Date(Date.now() - 7 * 86400000);
+        const [{ count: tasksInWindow }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(feedbackTable)
+          .where(
+            and(
+              eq(feedbackTable.blueprint_id, blueprintId),
+              gte(feedbackTable.created_at, windowStart),
+            ),
+          );
+
         signalProjection = {
           completionRate: Number(snapRow.completion_rate),
           weightedScore: Number(snapRow.weighted_score),
@@ -323,6 +338,8 @@ export const DashboardService = {
           blockerRatio: snapRow.blocker_ratio != null ? Number(snapRow.blocker_ratio) : null,
           skipRatio: snapRow.skip_ratio != null ? Number(snapRow.skip_ratio) : null,
         };
+
+        signalBreakdown = buildSignalBreakdownFromSnapshot(snapRow, tasksInWindow);
       }
 
       try {
@@ -860,6 +877,22 @@ export const DashboardService = {
       pivotReview,
       conditionDetail: condEffective,
       signalProjection,
+      signal_breakdown: signalBreakdown,
+      activeCondition: {
+        condition: signalBreakdown?.condition ?? condEffective.condition,
+        task_limit_min:
+          (enforcementProjection?.taskLimits as { min?: number } | undefined)?.min ??
+          (enforcementProjection?.task_limit_min as number | undefined) ??
+          2,
+        task_limit_max:
+          (enforcementProjection?.taskLimits as { max?: number } | undefined)?.max ??
+          (enforcementProjection?.task_limit_max as number | undefined) ??
+          3,
+        difficulty_cap: (enforcementProjection?.difficultyCap as string | undefined) ?? "easy",
+        allowed_actions: (enforcementProjection?.allowedActions as string[] | undefined) ?? [],
+        blocked_actions: (enforcementProjection?.blockedActions as string[] | undefined) ?? [],
+        recovery_required: Boolean(enforcementProjection?.recoveryRequired ?? condEffective.recoveryRequired),
+      },
       enforcement: enforcementProjection,
       currentAction: primaryTask,
       health,

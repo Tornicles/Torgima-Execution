@@ -376,11 +376,10 @@ export function calcCompletionRate(rows: (typeof feedback.$inferSelect)[]): numb
 
 export function calcWeightedScore(rows: (typeof feedback.$inferSelect)[]): number {
   if (rows.length === 0) return 0;
-  const totalWeight = rows.reduce((sum, f) => {
-    const w = f.weighted_score ?? f.score ?? 0;
-    return sum + w;
-  }, 0);
-  return totalWeight / rows.length;
+  const scored = rows.filter((f) => f.weighted_score != null);
+  if (scored.length === 0) return 0;
+  const totalWeight = scored.reduce((sum, f) => sum + Number(f.weighted_score), 0);
+  return totalWeight / scored.length;
 }
 
 export function calcRawScore(rows: (typeof feedback.$inferSelect)[]): number {

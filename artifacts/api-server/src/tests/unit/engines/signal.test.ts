@@ -140,9 +140,9 @@ describe("assignCondition", () => {
   });
   it("assigns power for strong production + operations", () => {
     const m = {
-      completion_rate: 0.88,
-      weighted_score: 7.8,
-      momentum: 2,
+      completion_rate: 0.75,
+      weighted_score: 7.5,
+      momentum: 4,
       trend: "rising",
       confidence: "high",
       tasks_in_window: 8,

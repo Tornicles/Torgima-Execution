@@ -1,5 +1,5 @@
 import type { DashboardProjection } from "@/lib/dashboard-types";
-import { ConditionPanel, SignalSummaryPanel } from "./DashboardPanels";
+import { ConditionPanel, SignalFormulaPanel } from "./DashboardPanels";
 import { GamificationWidget } from "@/components/gamification/GamificationWidget";
 import { MiniPlanAllocationPanel } from "./MiniPlanAllocationPanel";
 import { ConditionStatusPanel } from "./ConditionStatusPanel";
@@ -17,7 +17,7 @@ export function DashboardRightPanel({ state }: { state: DashboardProjection }) {
       <TaskQueuePanel blueprintId={state.activeBlueprint?.id} />
       <ConditionStatusPanel blueprintId={state.activeBlueprint?.id} />
       <MiniPlanAllocationPanel blueprintId={state.activeBlueprint?.id} />
-      <SignalSummaryPanel state={state} />
+      <SignalFormulaPanel state={state} />
       <p className="text-[10px] text-gray-400 leading-relaxed">
         State version {state.stateVersion ?? 0} · refreshed from server every few seconds.
       </p>

@@ -3,6 +3,7 @@
  */
 import type { OperationalMathematicsDocument } from "../signal/SignalOperationalMathematicsEngine.js";
 import type { SignalMetrics } from "../signal/SignalCalculationEngine.types.js";
+import { assignConditionFromMetricMatrix } from "../signal/ConditionMetricMatrix.js";
 import { CONDITIONS, type Condition } from "../../constants/conditions.js";
 import { dailyTasksForCondition, DAILY_TASKS_BY_CONDITION } from "../../constants/conditionSpec.js";
 import {
@@ -302,27 +303,43 @@ export function assignConditionFromMetrics(
     return CONDITIONS.NOTHINGNESS;
   }
 
+  if (options?.structuredSignals?.production_signal != null) {
+    const framework = metricsToFrameworkSignals(
+      metrics,
+      options?.operationalMathematics,
+      options.structuredSignals,
+    );
+    let core = determineConditionFromFrameworkSignals(framework);
+    core = applyConditionExitHysteresis(previousCondition, core, framework, {
+      blockerCount: estimateBlockerCountFromMetrics(metrics),
+    });
+
+    if (
+      core === CONDITIONS.POWER &&
+      framework.production >= 0.9 &&
+      framework.operations >= 0.85 &&
+      framework.growth >= 0.82 &&
+      framework.scale >= 0.88
+    ) {
+      return CONDITIONS.AFFLUENCE;
+    }
+
+    return core;
+  }
+
   const framework = metricsToFrameworkSignals(
     metrics,
     options?.operationalMathematics,
     options?.structuredSignals,
   );
-  let core = determineConditionFromFrameworkSignals(framework);
-  core = applyConditionExitHysteresis(previousCondition, core, framework, {
+  const matrixCore = assignConditionFromMetricMatrix(metrics, previousCondition);
+  if (matrixCore === CONDITIONS.NOTHINGNESS || matrixCore === CONDITIONS.AFFLUENCE) {
+    return matrixCore;
+  }
+  const coreFour = matrixCore as CoreFourCondition;
+  return applyConditionExitHysteresis(previousCondition, coreFour, framework, {
     blockerCount: estimateBlockerCountFromMetrics(metrics),
   });
-
-  if (
-    core === CONDITIONS.POWER &&
-    framework.production >= 0.9 &&
-    framework.operations >= 0.85 &&
-    framework.growth >= 0.82 &&
-    framework.scale >= 0.88
-  ) {
-    return CONDITIONS.AFFLUENCE;
-  }
-
-  return core;
 }
 
 export function getConditionDisplaySpec(condition: string): ConditionDisplaySpec {
