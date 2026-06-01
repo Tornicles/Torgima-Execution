@@ -239,13 +239,14 @@ export async function guaranteeTask(params: {
       enforcementPackageId: params.enforcementPackageId,
       causationEventId: params.causationEventId,
       queueFill:
+        resolvedQueueFill ??
         params.queueFill ??
         (forceInitial ||
           trigger === "guarantee_check" ||
           trigger === "guarantee_worker" ||
           trigger === "manual_force" ||
           trigger === "api_guarantee"),
-      targetCount: params.targetCount,
+      targetCount: resolvedTargetCount ?? params.targetCount,
     });
 
     if (result.orders_generated > 0 && result.order_ids[0]) {

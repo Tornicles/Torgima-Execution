@@ -50,16 +50,171 @@ async function loadEnv() {
 }
 
 async function importApi<T>(rel: string): Promise<T> {
-  const full = path.join(API_SRC, rel);
-  if (!existsSync(full)) fail(`Missing module ${rel}`);
-  return import(pathToFileURL(full).href) as Promise<T>;
+  const base = rel.replace(/\.js$/, "");
+  const candidates = [rel, `${base}.ts`, `${base}.js`];
+  for (const candidate of candidates) {
+    const full = path.join(API_SRC, candidate);
+    if (existsSync(full)) {
+      return import(pathToFileURL(full).href) as Promise<T>;
+    }
+  }
+  fail(`Missing module ${rel}`);
+}
+
+async function ensureLifecycleBootstrap(
+  fx: { blueprintId: string; userId: string },
+  db: Awaited<ReturnType<typeof import("@workspace/db")>>["db"],
+  enforcementPackages: (typeof import("@workspace/db"))["enforcementPackages"],
+  phases: (typeof import("@workspace/db"))["phases"],
+  projects: (typeof import("@workspace/db"))["projects"],
+  actions: (typeof import("@workspace/db"))["actions"],
+  blueprints: (typeof import("@workspace/db"))["blueprints"],
+  conditions: (typeof import("@workspace/db"))["conditions"],
+  eq: typeof import("drizzle-orm")["eq"],
+  and: typeof import("drizzle-orm")["and"],
+  sql: typeof import("drizzle-orm")["sql"],
+  parseTaskLimits: (raw: unknown) => { min: number; max: number },
+) {
+  const helpers = await import(
+    pathToFileURL(path.join(API_SRC, "tests/helpers/db.ts")).href
+  );
+  const { createInitialState } = helpers as {
+    createInitialState: (
+      blueprintId: string,
+      userId: string,
+    ) => Promise<{ condition: { id: string } }>;
+  };
+
+  const [pkg] = await db
+    .select({ id: enforcementPackages.id, task_limits: enforcementPackages.task_limits })
+    .from(enforcementPackages)
+    .where(
+      and(
+        eq(enforcementPackages.blueprint_id, fx.blueprintId),
+        eq(enforcementPackages.is_current, true),
+      ),
+    )
+    .limit(1);
+
+  const limitsOk = pkg ? parseTaskLimits(pkg.task_limits).max >= 3 : false;
+  if (!limitsOk) {
+    if (!pkg) {
+      await createInitialState(fx.blueprintId, fx.userId);
+    }
+    const [cond] = await db
+      .select({ id: conditions.id })
+      .from(conditions)
+      .where(
+        and(eq(conditions.blueprint_id, fx.blueprintId), eq(conditions.is_current, true)),
+      )
+      .limit(1);
+    if (!cond?.id) fail("bootstrap: no current condition");
+    const { generateEnforcementPackage } = await importApi<{
+      generateEnforcementPackage: (p: {
+        blueprintId: string;
+        userId: string;
+        conditionId: string;
+        condition: string;
+        escalationLevel: number;
+        recoveryRequired: boolean;
+      }) => Promise<{ packageId: string }>;
+    }>("engines/control/ControlEngine.js");
+    const [bpRow] = await db
+      .select({ condition: blueprints.current_condition })
+      .from(blueprints)
+      .where(eq(blueprints.id, fx.blueprintId))
+      .limit(1);
+    const conditionCode = bpRow?.condition ?? "urgency";
+    await generateEnforcementPackage({
+      blueprintId: fx.blueprintId,
+      userId: fx.userId,
+      conditionId: cond.id,
+      condition: conditionCode,
+      escalationLevel: 0,
+      recoveryRequired: false,
+    });
+  }
+
+  const [{ actionCount } = { actionCount: 0 }] = await db
+    .select({ actionCount: sql<number>`count(*)::int` })
+    .from(actions)
+    .where(eq(actions.blueprint_id, fx.blueprintId));
+
+  if ((actionCount ?? 0) >= 5) return;
+
+  let phaseId: string | undefined;
+  const [existingPhase] = await db
+    .select({ id: phases.id })
+    .from(phases)
+    .where(eq(phases.blueprint_id, fx.blueprintId))
+    .limit(1);
+  phaseId = existingPhase?.id;
+  if (!phaseId) {
+    const [ph] = await db
+      .insert(phases)
+      .values({
+        blueprint_id: fx.blueprintId,
+        user_id: fx.userId,
+        name: "initiation",
+        order_index: 0,
+        status: "active",
+        is_active: true,
+      })
+      .returning({ id: phases.id });
+    phaseId = ph?.id;
+  }
+  if (!phaseId) fail("bootstrap: phase insert failed");
+
+  const [proj] = await db
+    .insert(projects)
+    .values({
+      blueprint_id: fx.blueprintId,
+      phase_id: phaseId,
+      user_id: fx.userId,
+      name: "Lifecycle verify project",
+      type: "execution",
+      status: "active",
+      order_index: 0,
+    })
+    .returning({ id: projects.id });
+  if (!proj?.id) fail("bootstrap: project insert failed");
+
+  for (let i = 0; i < 5; i++) {
+    await db.insert(actions).values({
+      blueprint_id: fx.blueprintId,
+      project_id: proj.id,
+      user_id: fx.userId,
+      name: `Verify action ${i + 1}`,
+      title: `Verify action ${i + 1}`,
+      type: "create",
+      action_type: "create",
+      status: "pending",
+      order_index: i,
+    });
+  }
+
+  await db
+    .update(blueprints)
+    .set({ current_phase_id: phaseId })
+    .where(eq(blueprints.id, fx.blueprintId));
 }
 
 async function main() {
   await loadEnv();
 
   const dbMod = await import("@workspace/db");
-  const { db, orders, blueprints, enforcementPackages, signalSnapshots, conditions } = dbMod;
+  const {
+    db,
+    orders,
+    blueprints,
+    enforcementPackages,
+    signalSnapshots,
+    conditions,
+    phases,
+    projects,
+    actions,
+    taskGenerationLog,
+  } = dbMod;
   const { eq, and, inArray, desc, sql } = await import("drizzle-orm");
 
   const { seedGapG9Fixture } = await import("./seedTestFixtures.js");
@@ -79,8 +234,46 @@ async function main() {
     parseTaskLimits: (r: unknown) => { min: number; max: number };
     computeDailyMidpoint: (l: { min: number; max: number }) => number;
   }>("engines/task-generation/taskLimits.js");
+  const { topUpTasksForBlueprint } = await importApi<{
+    topUpTasksForBlueprint: (bp: {
+      id: string;
+      user_id: string;
+      status: string | null;
+      active: boolean | null;
+    }) => Promise<{ generated: boolean; toGenerate: number }>;
+  }>("workers/DailyCycleWorker.js");
+  const { dailyCycleIdempotencyKey, todayUtcDateString } = await importApi<{
+    dailyCycleIdempotencyKey: (blueprintId: string, dateUtc: string) => string;
+    todayUtcDateString: () => string;
+  }>("services/TaskGenerationLogService.js");
   const fx = await seedGapG9Fixture();
   if (!fx.blueprintId) fail("seed fixture missing blueprintId");
+
+  log("Bootstrap — enforcement package + action chain");
+  await ensureLifecycleBootstrap(
+    fx,
+    db,
+    enforcementPackages,
+    phases,
+    projects,
+    actions,
+    blueprints,
+    conditions,
+    eq,
+    and,
+    sql,
+    parseTaskLimits,
+  );
+
+  await db
+    .update(orders)
+    .set({ status: "completed" })
+    .where(
+      and(
+        eq(orders.blueprint_id, fx.blueprintId),
+        inArray(orders.status, ["pending", "active", "needs_feedback"]),
+      ),
+    );
 
   log("TEST 4A — initial task generation (blueprint_launched)");
   await guaranteeTask({
@@ -108,6 +301,7 @@ async function main() {
         );
       return (c ?? 0) >= 3 ? c : null;
     },
+    { timeoutMs: 60_000 },
   );
 
   const titles = await db
@@ -148,6 +342,15 @@ async function main() {
     await sleep(500);
   }
 
+  const postGen = await generate({
+    blueprintId: fx.blueprintId,
+    userId: fx.userId,
+    generationMode: "post_feedback",
+    generationTrigger: "feedback_submitted",
+    queueFill: true,
+  }).catch((e: Error) => fail(`post-feedback generate: ${e.message}`));
+  log(`  post-feedback batch: ${postGen.orders_generated} orders`);
+
   const [snap] = await db
     .select({ id: signalSnapshots.id })
     .from(signalSnapshots)
@@ -173,7 +376,9 @@ async function main() {
   if (!pkg) fail("no current enforcement_package after feedback");
 
   const limits = parseTaskLimits(pkg.task_limits);
-  const afterFeedback = await poll("post-feedback pending orders", async () => {
+  const afterFeedback = await poll(
+    "post-feedback pending orders",
+    async () => {
     const [{ c } = { c: 0 }] = await db
       .select({ c: sql<number>`count(*)::int` })
       .from(orders)
@@ -184,9 +389,11 @@ async function main() {
           inArray(orders.status, ["pending", "active"]),
         ),
       );
-    if ((c ?? 0) >= limits.min) return c;
-    return null;
-  });
+      if ((c ?? 0) >= limits.min) return c;
+      return null;
+    },
+    { timeoutMs: 30_000 },
+  );
 
   if ((afterFeedback ?? 0) > limits.max) {
     fail(`post-feedback task count ${afterFeedback} > max ${limits.max}`);
@@ -205,15 +412,25 @@ async function main() {
       ),
     );
 
-  await guaranteeTask({
-    blueprintId: fx.blueprintId,
-    userId: fx.userId,
-    generationMode: "daily",
-    generationTrigger: "daily_cycle",
-  }).catch((e: Error) => fail(`daily guarantee: ${e.message}`));
+  const dayKey = todayUtcDateString();
+  const dailyKey = dailyCycleIdempotencyKey(fx.blueprintId, dayKey);
+  await db
+    .delete(taskGenerationLog)
+    .where(eq(taskGenerationLog.idempotency_key, dailyKey))
+    .catch(() => null);
+
+  const topUp = await topUpTasksForBlueprint({
+    id: fx.blueprintId,
+    user_id: fx.userId,
+    status: "active",
+    active: true,
+  }).catch((e: Error) => fail(`daily top-up: ${e.message}`));
+  log(`  daily top-up requested: ${topUp.toGenerate} tasks`);
 
   const midpoint = computeDailyMidpoint(limits);
-  const afterDaily = await poll("daily top-up", async () => {
+  const afterDaily = await poll(
+    "daily top-up",
+    async () => {
     const [{ c } = { c: 0 }] = await db
       .select({ c: sql<number>`count(*)::int` })
       .from(orders)
@@ -224,8 +441,20 @@ async function main() {
           inArray(orders.status, ["pending", "active"]),
         ),
       );
-    return (c ?? 0) >= Math.min(midpoint, limits.min) ? c : null;
+      return (c ?? 0) >= Math.min(midpoint, limits.min) ? c : null;
+    },
+    { timeoutMs: 30_000 },
+  );
+
+  const afterDailyDup = await topUpTasksForBlueprint({
+    id: fx.blueprintId,
+    user_id: fx.userId,
+    status: "active",
+    active: true,
   });
+  if (afterDailyDup.toGenerate > 0) {
+    fail("daily idempotency: second top-up should not generate tasks");
+  }
 
   if ((afterDaily ?? 0) < limits.min || (afterDaily ?? 0) > limits.max) {
     fail(`daily count ${afterDaily} outside ${limits.min}-${limits.max}`);

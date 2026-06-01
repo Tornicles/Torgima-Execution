@@ -115,7 +115,7 @@ export function computeAdditionalTasksToGenerate(args: {
     const midpoint = computeDailyMidpoint({ min, max });
     if (pendingCount >= midpoint && pendingCount >= min) return 0;
     const target = targetCount ?? midpoint;
-    return Math.max(0, Math.min(target - pendingCount - generatedThisInvocation, max - pendingCount));
+    return Math.max(0, Math.min(target - pendingCount, max - pendingCount));
   }
 
   if (targetCount != null) {

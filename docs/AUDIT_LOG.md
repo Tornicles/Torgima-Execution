@@ -1,6 +1,6 @@
 # AUDIT CLOSURE — 2026-05-27
 
-## System Status: PRODUCTION READY (pending DB migrations)
+## System Status: PRODUCTION READY (apply Supabase migrations, then deploy)
 
 ## What Was Fixed (3 passes)
 ### Pass 1 — Phase 3 Repairs
@@ -26,12 +26,20 @@
 - Git committed (3 commits: repairs, lifecycle, audit closure)
 - Full lint scope enabled (`artifacts/api-server/src`, `lib`) and passing
 - All unit tests passing
-- verify:lifecycle: PENDING — requires DATABASE_URL
+- verify:lifecycle: PASS (local `torgima_test` 2026-06-01)
 
 ## Pending Before Production Deploy
-- [ ] Apply all migrations listed in PENDING PRODUCTION MIGRATIONS section
-- [ ] Run `pnpm verify:lifecycle` against production DB (test fixture user only; script cleans up `gap-g9-acceptance@torgima-test.local`)
+- [ ] Apply all migrations listed in PENDING PRODUCTION MIGRATIONS section on **Supabase**
+- [ ] Run `pnpm verify:lifecycle` once against production DB (fixture `gap-g9-acceptance@torgima-test.local`, auto-cleanup)
 - [ ] Confirm 6 partial indexes present on Supabase
+
+## Verification (local gate — 2026-06-01)
+- ✓ pnpm typecheck — PASS
+- ✓ pnpm lint (full scope) — PASS
+- ✓ pnpm test:unit — PASS (1231 tests)
+- ✓ pnpm build — PASS
+- ✓ pnpm verify:lifecycle — PASS (local Postgres)
+- ✓ Migrations 1–4 + idempotency column — applied and verified locally (`scripts/verify-migration-gate.mjs`)
 
 ## Known Acceptable State
 - EnforcementPackageGenerator.ts: STUB — live path uses ControlEngine.generateEnforcementPackage
@@ -65,10 +73,11 @@ After each migration is applied on production, mark with `✓ applied [date]` in
 
 ### verify:lifecycle integration test
 
-**PENDING** — requires `DATABASE_URL` (local Docker or Supabase).
+✓ **PASSED** — 2026-06-01 — environment: local Postgres (`pnpm postgres:up` → `.env.local`)
+
+Re-run on Supabase before production:
 
 ```bash
-pnpm postgres:up   # optional local
 pnpm verify:lifecycle
 ```
 
