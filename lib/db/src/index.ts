@@ -30,7 +30,7 @@ export function getPool(): pg.Pool {
       connectionTimeoutMillis: 10000,
     });
     poolInstance.on("error", (err) => {
-      console.error("[DB] Pool error:", err.message);
+      process.stderr.write(`[DB] Pool error: ${err.message}\n`);
     });
   }
   return poolInstance;

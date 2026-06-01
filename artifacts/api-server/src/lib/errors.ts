@@ -24,6 +24,8 @@ export type ErrorCode =
   | "VALIDATION_PAYLOAD_CORRUPT"
   | "FALSE_PROGRESS_BLOCKED"
   | "PHASE_NOT_READY"
+  | "BHUDHI_LOG_FAILURE"
+  | "ENFORCEMENT_PACKAGE_MISSING"
   | "INTERNAL";
 
 export class TorgimaError extends Error {
@@ -63,6 +65,8 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
     case "RATE_LIMITED":
       return 429;
     case "SCHEMA_OUT_OF_DATE":
+    case "BHUDHI_LOG_FAILURE":
+    case "ENFORCEMENT_PACKAGE_MISSING":
       return 503;
     default:
       return 500;

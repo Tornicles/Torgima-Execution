@@ -148,6 +148,9 @@ describe("B1 TriggerRouter — provider failure fallback (T4)", () => {
       vi.spyOn(stability, "enterAgentChain").mockReturnValue({ allowed: true, depth: 0 });
       vi.spyOn(stability, "exitAgentChain").mockImplementation(() => undefined);
 
+      const usage = await import("../../../bhudhi/UsageController.js");
+      vi.spyOn(usage, "logUsage").mockResolvedValue("00000000-0000-0000-0000-000000000099");
+
       const { routeBhudhiRequest } = await import("../../../bhudhi/TriggerRouter.js");
       const result = await routeBhudhiRequest({
         sourceEngine: "TASK_GENERATION",

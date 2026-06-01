@@ -2021,11 +2021,15 @@ export const taskGenerationLog = pgTable(
     debate_used: boolean("debate_used").notNull().default(false),
     generation_ms: integer("generation_ms"),
     control_rule_applied: jsonb("control_rule_applied").notNull().default(sql`'{}'::jsonb`),
+    idempotency_key: text("idempotency_key"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("idx_task_generation_log_blueprint_id").on(t.blueprint_id),
     index("idx_task_generation_log_trigger").on(t.generation_trigger),
+    uniqueIndex("idx_task_generation_log_idempotency_key")
+      .on(t.idempotency_key)
+      .where(sql`${t.idempotency_key} is not null`),
   ],
 );
 
