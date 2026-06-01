@@ -115,7 +115,7 @@ export async function ensureBlueprintReadyForLaunch(
     throw new Error(`[LAUNCH] Blueprint not found: ${blueprintId}`);
   }
 
-  console.log("[LAUNCH] Blueprint current status:", bp.status, "ID:", blueprintId);
+  logger.info({ blueprintId, status: bp.status }, "[LAUNCH] Blueprint current status");
 
   const launchableStatuses = new Set<string>([
     BlueprintStatus.PATH_SELECTION,
@@ -163,5 +163,5 @@ export async function ensureBlueprintReadyForLaunch(
     validationKind: validationRow.validation_kind,
   });
 
-  console.log("[LAUNCH] Force-transitioned blueprint to path_selection:", blueprintId);
+  logger.info({ blueprintId }, "[LAUNCH] Force-transitioned blueprint to path_selection");
 }

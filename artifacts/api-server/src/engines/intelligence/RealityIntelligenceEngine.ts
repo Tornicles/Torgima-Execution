@@ -5,6 +5,7 @@ import {
   type RealityIntelligenceData,
 } from "../../types/reality-intelligence.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
+import { logger } from "../../lib/logger.js";
 
 export type RealityIntelligence = RealityIntelligenceData;
 
@@ -118,7 +119,7 @@ export class RealityIntelligenceEngine {
         .where(eq(blueprints.id, blueprintId));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[RealityIntelligence] Persist failed:", msg);
+      logger.error({ err: msg }, "[RealityIntelligence] Persist failed");
     }
   }
 

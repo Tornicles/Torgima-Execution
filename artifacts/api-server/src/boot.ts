@@ -51,8 +51,9 @@ export async function mountExpressApp(setListener: (fn: NodeListener) => void): 
   setListener((req: IncomingMessage, res: ServerResponse) => {
     app(req, res);
   });
-  console.log("[SERVER] API routes mounted");
-  console.log(
+  const { logger } = await import("./lib/logger.js");
+  logger.info("[SERVER] API routes mounted");
+  logger.info(
     "[SERVER] Launch routes: POST /api/v1/validations/:id/launch | POST /api/v1/validation/:id/launch | POST /api/v1/onboarding/select-blueprint | POST /api/onboarding/select-blueprint | POST /api/blueprints/:id/activate",
   );
   const { logBhudhiProviderRouting } = await import("./bhudhi/bhudhiProviders.js");
@@ -85,7 +86,7 @@ export async function runBackgroundStartup(): Promise<void> {
         ),
       ),
     ]);
-    console.log("[DB READY] Database connection OK");
+    logger.info("[DB READY] Database connection OK");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(

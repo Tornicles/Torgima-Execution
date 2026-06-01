@@ -4,6 +4,7 @@
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { applyCorsHeaders, applyPreflightHeaders } from "./lib/cors.js";
+import { logger } from "./lib/logger.js";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = "0.0.0.0";
@@ -47,8 +48,8 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[SERVER START] Listening on http://${HOST}:${PORT}`);
-  console.log("[HEALTH READY] GET /health");
+  logger.info({ host: HOST, port: PORT }, "[SERVER START] Listening");
+  logger.info("[HEALTH READY] GET /health");
 
   void import("./boot.js")
     .then(async ({ mountExpressApp, runBackgroundStartup, registerShutdown }) => {
@@ -60,19 +61,19 @@ server.listen(PORT, HOST, () => {
     })
     .catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[SERVER] Boot failed (GET /health still works):", msg);
+      logger.error({ err: msg }, "[SERVER] Boot failed (GET /health still works)");
     });
 });
 
 server.on("error", (err) => {
-  console.error("[SERVER] HTTP server error:", err);
+  logger.error({ err }, "[SERVER] HTTP server error");
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error("[SERVER] Unhandled promise rejection:", reason);
+  logger.error({ reason }, "[SERVER] Unhandled promise rejection");
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("[SERVER] Uncaught exception:", err);
+  logger.error({ err }, "[SERVER] Uncaught exception");
 });

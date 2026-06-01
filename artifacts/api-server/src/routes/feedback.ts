@@ -1,42 +1,14 @@
 import { Router } from "express";
 import { z } from "zod/v4";
-import {
-  db,
-  blueprints,
-  weeklyReviews,
-  phaseCheckpoints,
-  habits,
-  habitCheckins,
-  phases,
-} from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-import { FeedbackService } from "../services/FeedbackService.js";
-import { UserService } from "../services/UserService.js";
 import { routeBhudhiRequest } from "../bhudhi/TriggerRouter.js";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { handleRouteError } from "../lib/route-helpers.js";
-import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
-import { BlueprintEngine } from "../engines/blueprint/BlueprintEngine.js";
-import {
-  outcomeValidationEngine,
-  assertPhaseAdvancementAllowed,
-} from "../engines/outcome/OutcomeValidationEngine.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { answerInterrogation } from "../engines/feedback/InterrogationService.js";
+import { FeedbackAuxiliaryService } from "../services/FeedbackAuxiliaryService.js";
 
 const router = Router();
-const blueprintEngine = new BlueprintEngine();
-
-function currentUtcWeekBounds(d = new Date()): { start: Date; end: Date } {
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 6);
-  end.setUTCHours(23, 59, 59, 999);
-  return { start, end };
-}
 
 const weeklyReviewSchema = z.object({
   blueprintId: z.string().uuid(),
@@ -76,70 +48,8 @@ router.post("/feedback/weekly-review", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid input", 422);
       return;
     }
-    const input = parsed.data;
-
-    const [bp] = await db
-      .select({ id: blueprints.id })
-      .from(blueprints)
-      .where(
-        and(
-          eq(blueprints.id, input.blueprintId),
-          eq(blueprints.user_id, auth.userId),
-          eq(blueprints.active, true),
-        ),
-      )
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Active blueprint not found", 404);
-      return;
-    }
-
-    const { start: weekStart, end: weekEnd } = currentUtcWeekBounds();
-
-    const [review] = await db
-      .insert(weeklyReviews)
-      .values({
-        blueprint_id: input.blueprintId,
-        user_id: auth.userId,
-        week_start: weekStart,
-        week_end: weekEnd,
-        wins: input.wins,
-        failures: input.failures ?? null,
-        patterns: input.patterns ?? null,
-        next_focus: input.nextFocus,
-      })
-      .returning({ id: weeklyReviews.id });
-
-    if (!review) {
-      failure(res, "INTERNAL_ERROR", "Failed to create review", 500);
-      return;
-    }
-
-    await writeEvent({
-      eventType: EVENT_TYPES.OUTCOME_VALIDATION_REQUESTED,
-      entityType: "weekly_review",
-      entityId: review.id,
-      userId: auth.userId,
-      blueprintId: input.blueprintId,
-      payload: { trigger: "weekly_review", phase: "weekly" },
-      idempotencyKey: `outcome_validation:weekly:${review.id}`,
-    });
-
-    await writeEvent({
-      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
-      entityType: "weekly_review",
-      entityId: review.id,
-      userId: auth.userId,
-      blueprintId: input.blueprintId,
-      payload: {
-        generation_mode: "post_feedback",
-        generation_trigger: "weekly_review_submitted",
-      },
-      idempotencyKey: `weekly_review_task:${review.id}:${input.idempotencyKey}`,
-    });
-
-    success(res, { reviewId: review.id, submitted: true });
+    const result = await FeedbackAuxiliaryService.submitWeeklyReview(auth.userId, parsed.data);
+    success(res, { reviewId: result.reviewId, submitted: true });
   } catch (e) {
     if (isTorgimaError(e)) {
       failure(res, e.code, e.message, torgimaErrorToStatus(e.code));
@@ -159,82 +69,11 @@ router.post("/feedback/phase-checkpoint", async (req, res) => {
       return;
     }
     const input = parsed.data;
-
-    const [phase] = await db
-      .select({ id: phases.id })
-      .from(phases)
-      .where(and(eq(phases.id, input.phaseId), eq(phases.blueprint_id, input.blueprintId)))
-      .limit(1);
-
-    if (!phase) {
-      failure(res, "NOT_FOUND", "Phase not found", 404);
-      return;
-    }
-
-    const [checkpoint] = await db
-      .insert(phaseCheckpoints)
-      .values({
-        blueprint_id: input.blueprintId,
-        phase_id: input.phaseId,
-        user_id: auth.userId,
-        outcomes_achieved: input.outcomes,
-        evidence_summary: input.evidence,
-        bottlenecks: input.blockers ?? null,
-        next_risks: input.risks ?? null,
-        readiness: input.readiness,
-        evaluated_at: new Date(),
-      })
-      .returning({ id: phaseCheckpoints.id });
-
-    const [phaseRow] = await db
-      .select({ name: phases.name })
-      .from(phases)
-      .where(eq(phases.id, input.phaseId))
-      .limit(1);
-
-    await writeEvent({
-      eventType: EVENT_TYPES.OUTCOME_VALIDATION_REQUESTED,
-      entityType: "phase_checkpoint",
-      entityId: checkpoint?.id ?? input.phaseId,
-      userId: auth.userId,
-      blueprintId: input.blueprintId,
-      payload: {
-        trigger: "phase_checkpoint",
-        phase: phaseRow?.name ?? input.phaseId,
-      },
-      idempotencyKey: `outcome_validation:phase:${input.phaseId}:${input.idempotencyKey}`,
-    });
-
-    let phaseAdvanced = false;
-    if (input.readiness === "ready") {
-      await outcomeValidationEngine.validate({
-        userId: auth.userId,
-        blueprintId: input.blueprintId,
-        phase: phaseRow?.name,
-        trigger: "phase_checkpoint",
-      });
-      await assertPhaseAdvancementAllowed(input.blueprintId, auth.userId);
-      const adv = await blueprintEngine.advanceBlueprintPosition(input.blueprintId, auth.userId);
-      phaseAdvanced = adv.advanced;
-
-      await writeEvent({
-        eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
-        entityType: "phase",
-        entityId: input.phaseId,
-        userId: auth.userId,
-        blueprintId: input.blueprintId,
-        payload: {
-          generation_mode: "post_feedback",
-          generation_trigger: "phase_completed",
-        },
-        idempotencyKey: `phase_task_gen:${input.phaseId}:${input.idempotencyKey}`,
-      });
-    }
-
+    const result = await FeedbackAuxiliaryService.submitPhaseCheckpoint(auth.userId, input);
     success(res, {
-      checkpointId: checkpoint?.id,
+      checkpointId: result.checkpointId,
       submitted: true,
-      phaseAdvanced: input.readiness === "ready" ? phaseAdvanced : false,
+      phaseAdvanced: input.readiness === "ready" ? result.phaseAdvanced : false,
     });
   } catch (e) {
     if (isTorgimaError(e)) {
@@ -255,80 +94,15 @@ router.post("/feedback/habit-checkin", async (req, res) => {
       return;
     }
     const input = parsed.data;
-
-    const [habit] = await db
-      .select()
-      .from(habits)
-      .where(
-        and(
-          eq(habits.id, input.habitId),
-          eq(habits.user_id, auth.userId),
-          eq(habits.blueprint_id, input.blueprintId),
-        ),
-      )
-      .limit(1);
-
-    if (!habit) {
-      failure(res, "NOT_FOUND", "Habit not found", 404);
-      return;
-    }
-
-    const [checkin] = await db
-      .insert(habitCheckins)
-      .values({
-        habit_id: input.habitId,
-        blueprint_id: input.blueprintId,
-        user_id: auth.userId,
-        completed: input.completed,
-        effort_score: input.effortScore,
-        note: input.notes ?? null,
-      })
-      .returning({ id: habitCheckins.id });
-
-    if (input.completed) {
-      await db
-        .update(habits)
-        .set({ streak_count: habit.streak_count + 1 })
-        .where(eq(habits.id, input.habitId))
-        .catch(() => null);
-    } else {
-      await db
-        .update(habits)
-        .set({ streak_count: 0 })
-        .where(eq(habits.id, input.habitId))
-        .catch(() => null);
-    }
-
-    success(res, { checkinId: checkin?.id, submitted: true });
+    const result = await FeedbackAuxiliaryService.submitHabitCheckin(auth.userId, input);
+    success(res, { checkinId: result.checkinId, submitted: true });
   } catch (e) {
     handleRouteError(req, res, e);
   }
 });
 
-// POST /api/feedback/task — legacy path (demo user) for older clients
-router.post("/feedback/task", async (req, res) => {
-  try {
-    const user = UserService.getDemoUser();
-    const { orderId, completionRating, effortRating, notes, blockers } = req.body as {
-      orderId: string;
-      completionRating: number;
-      effortRating?: number;
-      notes?: string;
-      blockers?: string[];
-    };
-    const feedback = await FeedbackService.submit(
-      user.id,
-      orderId,
-      completionRating,
-      effortRating ?? null,
-      notes ?? null,
-      blockers ?? [],
-    );
-    success(res, feedback, 201);
-  } catch (err) {
-    handleRouteError(req, res, err);
-  }
-});
+// Removed: POST /api/feedback/task — legacy demo route (no frontend callers).
+// All order feedback goes through POST /api/orders/:id/feedback → processFeedback() + FEEDBACK_SUBMITTED.
 
 // POST /api/feedback/:id/interrogation — answer interrogation and resume primary loop
 router.post("/feedback/:id/interrogation", async (req, res) => {

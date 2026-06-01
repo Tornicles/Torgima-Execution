@@ -17,6 +17,7 @@ export function sanitizeBhudhiInput(rawInput: string | undefined | null): string
   let cleaned = rawInput.replace(/<[^>]*>/g, "");
   cleaned = cleaned.replace(/\[INST\][\s\S]*?\[\/INST\]/gi, "");
   cleaned = cleaned.replace(/<<SYS>>[\s\S]*?<<\/SYS>>/gi, "");
+  // eslint-disable-next-line no-control-regex -- strip control chars from user input
   cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
   cleaned = cleaned.substring(0, 2000);
 

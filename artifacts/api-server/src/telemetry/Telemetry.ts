@@ -1,4 +1,5 @@
 import { getEnvironment } from "../config/environments.js";
+import { logger } from "../lib/logger.js";
 
 export interface TelemetryEvent {
   event: string;
@@ -44,12 +45,15 @@ export class Telemetry {
   ingest(events: TelemetryEvent[]) {
     if (!this.enabled || events.length === 0) return;
     for (const e of events.slice(0, MAX_EVENTS_PER_REQUEST)) {
-      console.info("[bhudhi:telemetry]", {
-        event: e.event,
-        userId: e.userId,
-        blueprintId: e.blueprintId,
-        at: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-      });
+      logger.info(
+        {
+          event: e.event,
+          userId: e.userId,
+          blueprintId: e.blueprintId,
+          at: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+        },
+        "[bhudhi:telemetry]",
+      );
     }
   }
 

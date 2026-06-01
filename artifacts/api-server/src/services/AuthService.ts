@@ -207,7 +207,24 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
 
 export async function revokeSession(sessionToken: string): Promise<void> {
   const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
+  const [sessionRow] = await db
+    .select({ user_id: sessions.user_id })
+    .from(sessions)
+    .where(eq(sessions.token_hash, tokenHash))
+    .limit(1);
+
   await db.delete(sessions).where(eq(sessions.token_hash, tokenHash));
+
+  if (sessionRow?.user_id) {
+    const { BhudhiMemoryService } = await import("../bhudhi/BhudhiMemoryService.js");
+    await BhudhiMemoryService.clearSessionScopeForUser(sessionRow.user_id).catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), userId: sessionRow.user_id },
+        "[AuthService] Session memory cleanup failed",
+      );
+    });
+  }
+
   logger.info("[AuthService] Session revoked");
 }
 

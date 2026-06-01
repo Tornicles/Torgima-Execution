@@ -24,8 +24,7 @@ export async function getBoss(): Promise<PgBoss> {
   if (!globalForBoss.boss) {
     globalForBoss.boss = createBoss();
     globalForBoss.boss.on("error", (error: Error) => {
-      console.error("[Queue] pg-boss error:", error.message);
-      logger.error({ err: error }, "pg-boss error");
+      logger.error({ err: error, message: error.message }, "[Queue] pg-boss error");
     });
     await globalForBoss.boss.start();
     logger.info("pg-boss queue started");

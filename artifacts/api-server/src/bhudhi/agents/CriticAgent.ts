@@ -112,7 +112,7 @@ export async function reviewOutput(input: CriticReviewInput): Promise<CriticRevi
     });
   }
 
-  let confidenceTier = layers.confidenceTier;
+  const confidenceTier = layers.confidenceTier;
   let flagReason: string | undefined;
   if (confidenceTier === "LOW") {
     flagReason = "Low confidence — treat as provisional";

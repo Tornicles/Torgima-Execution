@@ -52,6 +52,44 @@ import { sanitizeBhudhiInput } from "../lib/security/sanitizeBhudhiInput.js";
 import { appendBhudhiSecurityPrompt } from "../lib/security/bhudhiSecurityPrompt.js";
 import { deepSanitizeStrings } from "../lib/security/deepSanitizeStrings.js";
 import { buildCorrectionPrompt } from "./bhudhiSelfCorrection.js";
+import { TorgimaError } from "../lib/errors.js";
+import type { BhudhiTriggerType } from "../types/bhudhi.js";
+
+/** Triggers where a missing bhudhi_logs row must abort (execution loop integrity). */
+const CRITICAL_BHUDHI_LOG_TRIGGERS = new Set<BhudhiTriggerType>([
+  "TASK_DRAFTING",
+  "EXECUTION_SUPPORT",
+  "FEEDBACK_CLASSIFICATION",
+  "STATE_EXPLANATION",
+  "RECOVERY_COPY",
+  "BLUEPRINT_GENERATION",
+  "BLUEPRINT_INTERPRETATION",
+]);
+
+function handleBhudhiLogWriteFailure(
+  triggerType: BhudhiTriggerType,
+  userId: string,
+  error: unknown,
+): { logId: string; abort: false } | { abort: true; err: TorgimaError } {
+  const logMsg = error instanceof Error ? error.message : String(error);
+  logger.error(
+    { error: logMsg, triggerType, userId },
+    "[BhudhiCore] BhudhiLog write failed",
+  );
+
+  if (CRITICAL_BHUDHI_LOG_TRIGGERS.has(triggerType)) {
+    return {
+      abort: true,
+      err: new TorgimaError(
+        "BHUDHI_LOG_FAILURE",
+        `Bhudhi audit log write failed for critical trigger ${triggerType}: ${logMsg}`,
+        true,
+      ),
+    };
+  }
+
+  return { logId: "", abort: false };
+}
 
 /** Sole LLM transport — implemented only in TriggerRouter (Bhudhi B1). */
 export type BhudhiModelInvoker = (params: {
@@ -710,12 +748,16 @@ export async function runBhudhiPipeline<T = unknown>(
       errorCode:     undefined,
     });
   } catch (error) {
-    const logMsg = error instanceof Error ? error.message : String(error);
-    logger.warn(
-      { error: logMsg, triggerType: request.triggerType, userId: request.userId },
-      "[BhudhiCore] Log write failed (non-fatal) — continuing Bhudhi call",
+    const logFailure = handleBhudhiLogWriteFailure(
+      request.triggerType,
+      request.userId,
+      error,
     );
-    logId = "";
+    if (logFailure.abort) {
+      exitAgentChain(chainId);
+      throw logFailure.err;
+    }
+    logId = logFailure.logId;
   }
 
   const timeout = getTimeout(request.triggerType);

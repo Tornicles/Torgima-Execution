@@ -6,6 +6,7 @@ import {
   understandPurposeDeterministic,
 } from "../engines/erector/ErectorRefinementEngine.js";
 import { polishGoalOptions, polishPurposeOptions } from "./refinementTextPolish.js";
+import { logger } from "./logger.js";
 
 export function zodFieldErrors(error: z.ZodError): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -83,7 +84,7 @@ export function safeRefineGoalOptions(rawGoal: string): string[] {
     const options = refineGoalOptions(rawGoal);
     if (options.length >= 3) return options.slice(0, 3);
   } catch (err) {
-    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    logger.warn({ err }, "[Refinement] Bhudhi unavailable, using fallback");
   }
   return buildRefinementFallbackOptions(rawGoal);
 }
@@ -93,7 +94,7 @@ export function safeRefinePurposeOptions(rawPurpose: string, selectedGoal: strin
     const options = refinePurposeOptions(rawPurpose, selectedGoal);
     if (options.length >= 3) return options.slice(0, 3);
   } catch (err) {
-    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    logger.warn({ err }, "[Refinement] Bhudhi unavailable, using fallback");
   }
   return polishPurposeOptions(rawPurpose, selectedGoal);
 }

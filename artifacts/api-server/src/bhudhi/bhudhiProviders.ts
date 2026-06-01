@@ -1,5 +1,6 @@
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
+import { logger } from "../lib/logger.js";
 
 /** Anthropic Claude is the sole Bhudhi model provider. */
 export type BhudhiProvider = "claude";
@@ -31,7 +32,8 @@ export function modelIdForProvider(_provider: BhudhiProvider): string {
 }
 
 export function logBhudhiProviderRouting(): void {
-  console.log("[Bhudhi] Provider routing: Anthropic Claude only");
-  console.log(`  Model: ${BHUDHI_MODEL}`);
-  console.log("  Erector search-enriched prompts:", [...ERECTOR_SEARCH_TRIGGERS].join(", "));
+  logger.info(
+    { model: BHUDHI_MODEL, erectorTriggers: [...ERECTOR_SEARCH_TRIGGERS] },
+    "[Bhudhi] Provider routing: Anthropic Claude only",
+  );
 }

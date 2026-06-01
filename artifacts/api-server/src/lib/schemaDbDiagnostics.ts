@@ -1,3 +1,5 @@
+import { logger } from "./logger.js";
+
 /** Safe Postgres error logging for schema mismatch diagnosis (no user content). */
 export function logSchemaDbError(
   operation: string,
@@ -29,13 +31,16 @@ export function logSchemaDbError(
   const missingColumn = message.match(/column "([^"]+)"/i)?.[1];
   const missingRelation = message.match(/relation "([^"]+)"/i)?.[1];
 
-  console.error("[DB schema]", {
-    operation,
-    table,
-    pgCode: pgCode ?? null,
-    message: message.slice(0, 500),
-    missingColumn: missingColumn ?? null,
-    missingRelation: missingRelation ?? null,
-    ...meta,
-  });
+  logger.error(
+    {
+      operation,
+      table,
+      pgCode: pgCode ?? null,
+      message: message.slice(0, 500),
+      missingColumn: missingColumn ?? null,
+      missingRelation: missingRelation ?? null,
+      ...meta,
+    },
+    "[DB schema]",
+  );
 }

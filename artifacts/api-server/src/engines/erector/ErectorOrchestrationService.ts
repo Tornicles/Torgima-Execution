@@ -16,6 +16,7 @@ import { resolveDefaultSelectedPath } from "../../lib/validationPathSelection.js
 import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
 import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
 import { extractEnrichedFromOutputs } from "../../lib/enrichedValidationIntel.js";
+import { logger } from "../../lib/logger.js";
 
 function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
   const country = input.location.country;
@@ -93,8 +94,10 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
     .select({ count: sql<number>`count(*)::int` })
     .from(validations)
     .catch(() => [{ count: -1 }]);
-  console.log("[VALIDATION RUN] Created validation ID:", created.id);
-  console.log("[VALIDATION RUN] DB confirmed write — count now:", countAfterCreate?.count ?? "unknown");
+  logger.info(
+    { validationId: created.id, countAfterCreate: countAfterCreate?.count },
+    "[VALIDATION RUN] Created validation and confirmed DB write",
+  );
 
   await writeEvent({
     eventType: EventTypes.ERECTOR_VALIDATION_STARTED,

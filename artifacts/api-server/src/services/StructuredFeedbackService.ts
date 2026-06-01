@@ -315,6 +315,10 @@ export const StructuredFeedbackService = {
       })
       .where(eq(activeFeedbackSessions.id, payload.sessionId));
 
+    const createdFeedbackIds: string[] = [];
+    let primaryFeedbackId: string | undefined;
+    let primaryOrderId: string | undefined;
+
     for (const entry of taskStates) {
       const completionStatus = taskStateToCompletionStatus(entry.state);
       const orderStatus = taskStateToOrderStatus(entry.state);
@@ -337,25 +341,53 @@ export const StructuredFeedbackService = {
         payload.realitySummary?.trim() ||
         `Structured feedback: ${entry.state} — ${payload.emotionalState.join(", ")}`;
 
-      await db.insert(feedback).values({
-        order_id: entry.task_id,
-        blueprint_id: row.blueprint_id,
-        user_id: userId,
-        completion_status: completionStatus,
-        score: null,
-        weighted_score: engineMetrics.final_execution_score * 10,
-        reflection: reflectionText.slice(0, 2000),
-        friction_score: Math.abs(engineMetrics.energy_score) * 10,
-        confidence_score: engineMetrics.confidence * 10,
-        proof_json: { structured_session_id: payload.sessionId, task_state: entry.state },
-        blocker_json:
-          entry.state === "Blocked"
-            ? { friction: payload.frictionType }
-            : payload.frictionType.length
+      const [fbRow] = await db
+        .insert(feedback)
+        .values({
+          order_id: entry.task_id,
+          blueprint_id: row.blueprint_id,
+          user_id: userId,
+          completion_status: completionStatus,
+          score: null,
+          weighted_score: engineMetrics.final_execution_score * 10,
+          reflection: reflectionText.slice(0, 2000),
+          friction_score: Math.abs(engineMetrics.energy_score) * 10,
+          confidence_score: engineMetrics.confidence * 10,
+          proof_json: { structured_session_id: payload.sessionId, task_state: entry.state },
+          blocker_json:
+            entry.state === "Blocked"
               ? { friction: payload.frictionType }
-              : {},
-      });
+              : payload.frictionType.length
+                ? { friction: payload.frictionType }
+                : {},
+        })
+        .returning({ id: feedback.id });
+
+      if (!fbRow?.id) {
+        throw new TorgimaError(
+          "INTERNAL_ERROR",
+          "Failed to persist structured feedback record",
+          false,
+        );
+      }
+
+      createdFeedbackIds.push(fbRow.id);
+      if (entry.state === "Finished") {
+        primaryFeedbackId = fbRow.id;
+        primaryOrderId = entry.task_id;
+      }
     }
+
+    if (createdFeedbackIds.length === 0) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "Structured feedback produced no feedback records",
+        false,
+      );
+    }
+
+    const feedbackId = primaryFeedbackId ?? createdFeedbackIds[createdFeedbackIds.length - 1]!;
+    const orderId = primaryOrderId ?? taskStates[0]!.task_id;
 
     await recalculatePermanentFrameworkSignals({
       blueprintId: row.blueprint_id,
@@ -370,9 +402,17 @@ export const StructuredFeedbackService = {
       blueprintId: row.blueprint_id,
       payload: {
         structured: true,
+        feedback_id: feedbackId,
+        feedback_ids: createdFeedbackIds,
+        order_id: orderId,
         execution_score: engineMetrics.final_execution_score,
         signal_snapshot: signalSnapshot,
         feedback_session_id: payload.sessionId,
+        weighted_score: engineMetrics.final_execution_score,
+        confidence: engineMetrics.confidence,
+        requires_interrogation: false,
+        completion_status:
+          engineMetrics.completion_rate >= 0.7 ? "completed" : "partial",
       },
       idempotencyKey: `structured_feedback_submit:${payload.sessionId}`,
     });

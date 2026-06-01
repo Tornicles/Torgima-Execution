@@ -22,6 +22,7 @@ import {
 } from "../lib/erectorRefinementRoutes.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -59,8 +60,8 @@ router.post("/v1/erector/refinement/goal/understand", async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Erector] POST /v1/erector/refinement/goal/understand", message, stack);
-    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    logger.error({ message, stack }, "[Erector] POST /v1/erector/refinement/goal/understand");
+    logger.warn({ err }, "[Refinement] Bhudhi unavailable, using fallback");
     success(res, { options: safeRefineGoalOptions(String(req.body?.rawGoal ?? "")) });
   }
 });
@@ -118,8 +119,8 @@ router.post("/v1/erector/refinement/purpose/understand", async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Erector] POST /v1/erector/refinement/purpose/understand", message, stack);
-    console.error("[Refinement] Bhudhi unavailable, using fallback", err);
+    logger.error({ message, stack }, "[Erector] POST /v1/erector/refinement/purpose/understand");
+    logger.warn({ err }, "[Refinement] Bhudhi unavailable, using fallback");
     const body = req.body as { rawPurpose?: string; selectedGoal?: string } | undefined;
     const rawPurpose = typeof body?.rawPurpose === "string" ? body.rawPurpose : "";
     const selectedGoal = typeof body?.selectedGoal === "string" ? body.selectedGoal : "";

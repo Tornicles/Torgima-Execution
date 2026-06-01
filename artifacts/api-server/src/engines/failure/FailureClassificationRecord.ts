@@ -125,10 +125,10 @@ export async function classifyFailureWithRecord(params: {
     primaryLikelihood = candidates[0]!.likelihood;
   }
 
-  let secondary = base.secondaryCategories[0]
+  const secondary = base.secondaryCategories[0]
     ? mapToPrompt7Category(base.secondaryCategories[0], reflection)
     : PROMPT7_CATEGORIES[2];
-  let tertiary = base.secondaryCategories[1]
+  const tertiary = base.secondaryCategories[1]
     ? mapToPrompt7Category(base.secondaryCategories[1], reflection)
     : PROMPT7_CATEGORIES[8];
 

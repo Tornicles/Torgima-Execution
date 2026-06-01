@@ -257,7 +257,7 @@ export const ValidationLaunchService = {
           .where(eq(validations.id, row.id));
       } catch (taskErr: unknown) {
         const message = taskErr instanceof Error ? taskErr.message : String(taskErr);
-        console.error("[LAUNCH] Task generation error (non-fatal):", message);
+        logger.warn({ err: message }, "[LAUNCH] Task generation error (non-fatal)");
         logger.warn({ blueprintId: row.blueprint_id, message }, "[LAUNCH] Initial task generation failed");
       }
     }

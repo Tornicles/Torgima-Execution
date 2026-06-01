@@ -297,7 +297,7 @@ export async function run14DaySimulation(): Promise<SimulationReport> {
 
   try {
     // DAY 1
-    let day1Tasks = await ensureMinTasks(blueprintId, userId, 8, breaks, 1);
+    const day1Tasks = await ensureMinTasks(blueprintId, userId, 8, breaks, 1);
     if (day1Tasks.length < 8) {
       errors.push(`DAY 1 FAIL: Less than 8 tasks (${day1Tasks.length})`);
     }

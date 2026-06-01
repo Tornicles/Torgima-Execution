@@ -204,7 +204,7 @@ export async function buildBlueprintPositionProjection(
       ? {
           id: currentPhase.id,
           name: currentPhase.name,
-          phaseType: String(currentPhase.name) ?? null,
+          phaseType: currentPhase.name ?? null,
           status: currentPhase.status,
         }
       : null,

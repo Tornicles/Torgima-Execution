@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { randomUUID } from "node:crypto";
+import { logger } from "../lib/logger.js";
 
 const suspiciousActivity = new Map<string, number>();
 
@@ -28,7 +29,7 @@ export function securityHeadersMiddleware(
     const count = (suspiciousActivity.get(key) ?? 0) + 1;
     suspiciousActivity.set(key, count);
     if (count > 10) {
-      console.error("[SECURITY ALERT] Possible internal route scanning from IP:", ip);
+      logger.error({ ip }, "[SECURITY ALERT] Possible internal route scanning");
     }
   }
 

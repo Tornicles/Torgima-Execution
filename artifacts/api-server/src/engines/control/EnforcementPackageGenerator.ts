@@ -2,11 +2,11 @@ import { logger } from "../../lib/logger.js";
 import type { EnforcementPackage } from "../../types/enforcement.js";
 
 /**
- * EnforcementPackageGenerator — Serializes the ControlEngine output into
- * a concrete enforcement package that can be stored and consumed by
- * TaskGenerationEngine.
+ * STUB — not called in production.
+ * Live enforcement packages are created by ControlEngine.generateEnforcementPackage().
+ * Do not call this class from workers or routes.
  *
- * TODO (Prompt 8): Implement serialization and storage
+ * EnforcementPackageGenerator — legacy placeholder for serialization experiments.
  */
 export class EnforcementPackageGenerator {
   generate(partial: Partial<EnforcementPackage>): EnforcementPackage {

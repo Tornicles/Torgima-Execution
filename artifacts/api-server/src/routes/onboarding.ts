@@ -156,8 +156,8 @@ router.post("/onboarding/goal", async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Onboarding] POST /api/onboarding/goal", message, stack);
-    console.error(err);
+    logger.error({ message, stack }, "[Onboarding] POST /api/onboarding/goal");
+    logger.error({ err }, "[Onboarding] POST /api/onboarding/goal");
     logSchemaDbError("insert", "blueprints", err, { route: "POST /api/onboarding/goal" });
     handleError(req, res, err);
   }
@@ -233,7 +233,10 @@ export const selectBlueprintLaunchHandler = async (
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[SelectBlueprint CRASH]", message, err instanceof Error ? err.stack : "");
+    logger.error(
+      { message, stack: err instanceof Error ? err.stack : undefined },
+      "[SelectBlueprint CRASH]",
+    );
     if (message.startsWith("[LAUNCH]")) {
       failure(res, "VALIDATION_ERROR", message.replace(/^\[LAUNCH\]\s*/, ""), 400);
       return;

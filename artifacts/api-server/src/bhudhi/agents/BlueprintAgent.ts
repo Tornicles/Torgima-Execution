@@ -153,7 +153,7 @@ export async function analyzeBlueprint(input: BlueprintAnalysisInput): Promise<B
   const gaps = detectStructuralGaps(structure);
   const proposals = gapsToProposals(gaps);
 
-  let confidenceTier: "HIGH" | "MEDIUM" | "LOW" = gaps.length === 0 ? "HIGH" : "MEDIUM";
+  const confidenceTier: "HIGH" | "MEDIUM" | "LOW" = gaps.length === 0 ? "HIGH" : "MEDIUM";
   let resolvedConfidence: "HIGH" | "MEDIUM" | "LOW" = confidenceTier;
   let agentAssessment = `Blueprint health scan (${input.triggerReason}): ${gaps.length} gap(s) detected.`;
 

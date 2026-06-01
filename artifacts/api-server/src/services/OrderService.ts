@@ -10,8 +10,13 @@ import {
   knowledgeObjects,
   orderDependencies,
   signalSnapshots,
+  actions,
+  phases,
+  projects,
+  decisionTraces,
 } from "@workspace/db";
 import { and, desc, eq, inArray, count } from "drizzle-orm";
+import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { computeOrderPriorityDimensions } from "../engines/order/OrderPrioritizationEngine.js";
 import { ApiOrderStatus, OrderStatus } from "@workspace/state-machine";
 
@@ -258,39 +263,298 @@ export const OrderService = {
     return o;
   },
 
-  async start(id: string, userId: string): Promise<Order> {
-    const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: ApiOrderStatus.IN_PROGRESS, startedAt: now() };
-    store.set(id, updated);
-    return updated;
+  async getBlueprintIdForOrder(orderId: string, userId: string): Promise<string | null> {
+    const [row] = await db
+      .select({ blueprint_id: ordersTable.blueprint_id })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.user_id, userId)))
+      .limit(1);
+    return row?.blueprint_id ?? null;
   },
 
-  async finish(id: string, userId: string): Promise<Order> {
-    const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: ApiOrderStatus.COMPLETE, completedAt: now() };
-    store.set(id, updated);
-    return updated;
+  async getDecisionTrace(orderId: string, userId: string) {
+    const [order] = await db
+      .select({ id: ordersTable.id, blueprint_id: ordersTable.blueprint_id })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.user_id, userId)))
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+
+    const traces = await db
+      .select()
+      .from(decisionTraces)
+      .where(
+        and(
+          eq(decisionTraces.blueprint_id, order.blueprint_id),
+          eq(decisionTraces.entity_id, orderId),
+        ),
+      )
+      .orderBy(desc(decisionTraces.created_at))
+      .limit(5);
+
+    const primary = traces[0];
+    return {
+      orderId,
+      summary: primary?.reasoning ?? "This order was selected from your active blueprint execution chain.",
+      decisionType: primary?.decision_type ?? "task_selection",
+      inputs: primary?.inputs_json ?? {},
+      outputs: primary?.outputs_json ?? {},
+      traces: traces.map((t) => ({
+        id: t.id,
+        decisionType: t.decision_type,
+        reasoning: t.reasoning,
+        engine: t.engine,
+        createdAt: t.created_at,
+      })),
+    };
   },
 
-  async block(id: string, userId: string, reason: string): Promise<Order> {
-    const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: ApiOrderStatus.BLOCKED, blockedReason: reason };
-    store.set(id, updated);
-    return updated;
+  async getOrderDetail(orderId: string, userId: string) {
+    const [joined] = await db
+      .select({
+        order: ordersTable,
+        actionName: actions.name,
+        phaseName: phases.name,
+        projectName: projects.name,
+      })
+      .from(ordersTable)
+      .leftJoin(actions, eq(ordersTable.action_id, actions.id))
+      .leftJoin(phases, eq(ordersTable.linked_phase_id, phases.id))
+      .leftJoin(projects, eq(ordersTable.linked_project_id, projects.id))
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.user_id, userId)))
+      .limit(1);
+
+    if (!joined?.order) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+
+    const order = joined.order;
+    const linkRows = await db
+      .select({
+        kid: knowledgeObjects.id,
+        title: knowledgeObjects.title,
+        content: knowledgeObjects.content,
+        type: knowledgeObjects.type,
+      })
+      .from(orderKnowledgeLinks)
+      .innerJoin(knowledgeObjects, eq(orderKnowledgeLinks.knowledge_id, knowledgeObjects.id))
+      .where(eq(orderKnowledgeLinks.order_id, order.id))
+      .limit(3);
+
+    return { order, joined, linkRows };
   },
 
-  async pause(id: string, userId: string): Promise<Order> {
-    const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: ApiOrderStatus.PAUSED };
-    store.set(id, updated);
-    return updated;
+  async startPendingOrder(orderId: string, userId: string): Promise<void> {
+    const [pending] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          eq(ordersTable.status, OrderStatus.PENDING),
+        ),
+      )
+      .limit(1);
+    if (!pending) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+    await db
+      .update(ordersTable)
+      .set({ status: OrderStatus.ACTIVE, started_at: new Date() })
+      .where(eq(ordersTable.id, orderId));
   },
 
-  async resume(id: string, userId: string): Promise<Order> {
-    const o = await OrderService.get(id, userId);
-    const updated: Order = { ...o, status: ApiOrderStatus.ACTIVE };
-    store.set(id, updated);
-    return updated;
+  async finishOrder(
+    orderId: string,
+    userId: string,
+    input: { outputSummary?: string; proof?: Record<string, unknown> },
+  ): Promise<{ status: string; requiresProof: boolean }> {
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          inArray(ordersTable.status, ["active", "paused"]),
+        ),
+      )
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+
+    const requiresProof =
+      order.proof_required && (input.proof == null || Object.keys(input.proof).length === 0);
+    const newStatus = requiresProof ? "needs_proof" : "needs_feedback";
+
+    await db
+      .update(ordersTable)
+      .set({
+        status: newStatus,
+        output_summary: input.outputSummary ?? null,
+        proof_json: input.proof ?? null,
+        finished_at: new Date(),
+      })
+      .where(eq(ordersTable.id, orderId));
+
+    return { status: newStatus, requiresProof };
+  },
+
+  async blockOrder(
+    orderId: string,
+    userId: string,
+    input: {
+      blockerType: string;
+      blockerDescription: string;
+      dependencyReference?: string;
+      idempotencyKey: string;
+    },
+  ): Promise<{ blueprintId: string }> {
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          inArray(ordersTable.status, ["pending", "active"]),
+        ),
+      )
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+
+    await db
+      .update(ordersTable)
+      .set({
+        status: "blocked",
+        blocker_type: input.blockerType,
+        blocker_description: input.blockerDescription,
+        dependency_reference: input.dependencyReference ?? null,
+      })
+      .where(eq(ordersTable.id, orderId));
+
+    await writeEvent({
+      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+      entityType: "order",
+      entityId: orderId,
+      userId,
+      blueprintId: order.blueprint_id,
+      payload: {
+        generation_mode: "post_feedback",
+        generation_trigger: "task_blocked",
+        blocker_type: input.blockerType,
+      },
+      idempotencyKey: `block_task_gen:${orderId}:${input.idempotencyKey}`,
+    });
+
+    return { blueprintId: order.blueprint_id };
+  },
+
+  async unblockOrder(orderId: string, userId: string): Promise<void> {
+    const [order] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          eq(ordersTable.status, OrderStatus.BLOCKED),
+        ),
+      )
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Blocked order not found", false);
+    }
+    await db
+      .update(ordersTable)
+      .set({
+        status: OrderStatus.ACTIVE,
+        blocker_type: null,
+        blocker_description: null,
+        dependency_reference: null,
+      })
+      .where(eq(ordersTable.id, orderId));
+  },
+
+  async pauseOrder(orderId: string, userId: string): Promise<void> {
+    const [order] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          eq(ordersTable.status, OrderStatus.ACTIVE),
+        ),
+      )
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Active order not found", false);
+    }
+    await db.update(ordersTable).set({ status: "paused" }).where(eq(ordersTable.id, orderId));
+  },
+
+  async resumeOrder(orderId: string, userId: string): Promise<void> {
+    const [order] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.id, orderId),
+          eq(ordersTable.user_id, userId),
+          eq(ordersTable.status, OrderStatus.PAUSED),
+        ),
+      )
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Paused order not found", false);
+    }
+    await db.update(ordersTable).set({ status: OrderStatus.ACTIVE }).where(eq(ordersTable.id, orderId));
+  },
+
+  async resetOrder(orderId: string, userId: string): Promise<{ blueprintId: string }> {
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.user_id, userId)))
+      .limit(1);
+    if (!order) {
+      throw new TorgimaError("NOT_FOUND", "Order not found", false);
+    }
+    await db.update(ordersTable).set({ status: "cancelled" }).where(eq(ordersTable.id, orderId));
+    await writeEvent({
+      eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
+      entityType: "order",
+      entityId: orderId,
+      userId,
+      blueprintId: order.blueprint_id,
+      payload: {
+        generation_mode: "recovery",
+        generation_trigger: "manual_regeneration",
+      },
+      idempotencyKey: `order_reset:${orderId}:${Date.now()}`,
+    });
+    return { blueprintId: order.blueprint_id };
+  },
+
+  async countPendingAndActive(blueprintId: string, userId: string): Promise<number> {
+    const [{ c } = { c: 0 }] = await db
+      .select({ c: count() })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.blueprint_id, blueprintId),
+          eq(ordersTable.user_id, userId),
+          inArray(ordersTable.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
+        ),
+      );
+    return Number(c ?? 0);
   },
 
   seed(blueprintId: string, userId: string): void {

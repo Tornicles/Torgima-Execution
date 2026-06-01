@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { PRODUCTION_FRONTEND_URL } from "../config/production.js";
+import { logger } from "./logger.js";
 
 const ALLOW_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
 const ALLOW_HEADERS =
@@ -56,7 +57,7 @@ export function createCorsMiddleware() {
         return;
       }
     } else if (req.method === "OPTIONS") {
-      console.warn("[CORS] Blocked preflight from origin:", origin);
+      logger.warn({ origin }, "[CORS] Blocked preflight from origin");
       res.statusCode = 204;
       res.end();
       return;

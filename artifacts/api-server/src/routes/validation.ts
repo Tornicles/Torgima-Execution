@@ -113,7 +113,7 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[Launch CRASH]", message, "\n", stack);
+    logger.error({ message, stack }, "[Launch CRASH]");
     if (message.startsWith("[LAUNCH]")) {
       failure(res, "VALIDATION_ERROR", message.replace(/^\[LAUNCH\]\s*/, ""), 400);
       return;
@@ -272,7 +272,10 @@ router.post("/v1/validation/run", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const parsed = erectorValidationInputSchema.safeParse(req.body);
     if (!parsed.success) {
-      console.error("[RUN_FAILURE]", { userId: auth.userId, reason: "invalid_input", issues: parsed.error.issues });
+      logger.error(
+        { userId: auth.userId, reason: "invalid_input", issues: parsed.error.issues },
+        "[RUN_FAILURE]",
+      );
       failure(res, "VALIDATION_ERROR", "Invalid Erector validation input", 422);
       return;
     }
@@ -334,12 +337,15 @@ router.post("/v1/validation/run", async (req, res) => {
       }
     }
 
-    console.log("[RUN_START]", {
-      userId: auth.userId,
-      blueprintId,
-      idempotencyKey: parsed.data.idempotencyKey,
-      pipeline: useTwentyStage ? "20_stage" : "legacy_erector",
-    });
+    logger.info(
+      {
+        userId: auth.userId,
+        blueprintId,
+        idempotencyKey: parsed.data.idempotencyKey,
+        pipeline: useTwentyStage ? "20_stage" : "legacy_erector",
+      },
+      "[RUN_START]",
+    );
 
     let validationId: string;
     let result: Awaited<ReturnType<typeof runErectorValidation>> | null = null;
@@ -449,12 +455,12 @@ router.post("/v1/validation/run", async (req, res) => {
       .select({ count: runSql<number>`count(*)::int` })
       .from(runValidations)
       .catch(() => [{ count: -1 }]);
-    console.log("[VALIDATION RUN] Created validation ID:", validationId);
-    console.log("[VALIDATION RUN] DB confirmed write — count now:", runCount?.count ?? "unknown");
+    logger.info({ validationId }, "[VALIDATION RUN] Created validation ID");
+    logger.info({ count: runCount?.count ?? "unknown" }, "[VALIDATION RUN] DB confirmed write");
 
     const verdict = result?.verdict ?? finalRow?.verdict ?? "adjust";
 
-    console.log("[RUN_SUCCESS]", { validationId, verdict, redirectTo });
+    logger.info({ validationId, verdict, redirectTo }, "[RUN_SUCCESS]");
     success(res, {
       success: true,
       validationId,
@@ -470,7 +476,7 @@ router.post("/v1/validation/run", async (req, res) => {
       route: "POST /api/v1/validation/run",
     });
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[RUN_FAILURE]", { error: message });
+    logger.error({ error: message }, "[RUN_FAILURE]");
     handleError(req, res, err);
   }
 });

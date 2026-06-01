@@ -24,25 +24,13 @@ import { getClientFeatureManifest } from "../engines/blueprint/infrastructure/Bl
 import { parseMode, parseTier } from "../engines/blueprint/BlueprintRuleEngine.js";
 import { validateProjectNameStrict } from "../lib/projectName.js";
 import { validateUUID } from "../lib/security/validateUuid.js";
-import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
-import { BlueprintStatus, PivotReviewStatus } from "../types/stateMachine.js";
+import { BlueprintStatus } from "../types/stateMachine.js";
 import {
   createPivotReview,
   resolvePivotReview,
   dismissPivotReview,
 } from "../engines/lifecycle/PivotEngine.js";
-import {
-  db,
-  blueprints,
-  pivotReviews,
-  domainHistory,
-  frameworkActivations,
-  frameworkDecisions,
-  behaviorPatterns,
-  events,
-  validations,
-} from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { BlueprintRouteService } from "../services/BlueprintRouteService.js";
 
 const router = Router();
 
@@ -88,43 +76,6 @@ export const blueprintLaunchBodySchema = z
     commitmentLevel: data.commitment_level,
     purpose: data.purpose,
   }));
-
-async function resolveLaunchValidationContract(
-  blueprintId: string,
-  userId: string,
-  hints: { validationContractId?: string; validationId?: string },
-): Promise<{ contractId: string; selectedPath?: string } | null> {
-  if (hints.validationContractId) {
-    return { contractId: hints.validationContractId };
-  }
-
-  if (hints.validationId) {
-    const [byId] = await db
-      .select({
-        contract_id: validations.contract_id,
-        selected_path: validations.selected_path,
-      })
-      .from(validations)
-      .where(and(eq(validations.id, hints.validationId), eq(validations.user_id, userId)))
-      .limit(1);
-    if (byId) {
-      return { contractId: byId.contract_id, selectedPath: byId.selected_path ?? undefined };
-    }
-  }
-
-  const [latest] = await db
-    .select({
-      contract_id: validations.contract_id,
-      selected_path: validations.selected_path,
-    })
-    .from(validations)
-    .where(and(eq(validations.blueprint_id, blueprintId), eq(validations.user_id, userId)))
-    .orderBy(desc(validations.updated_at))
-    .limit(1);
-
-  if (!latest) return null;
-  return { contractId: latest.contract_id, selectedPath: latest.selected_path ?? undefined };
-}
 
 // GET /api/blueprints/features — client-side feature gating manifest
 router.get("/blueprints/features", async (req, res) => {
@@ -249,16 +200,12 @@ router.patch("/blueprints/:id/project-name", async (req, res) => {
       return;
     }
     const name = String(raw).trim();
-    const [updated] = await db
-      .update(blueprints)
-      .set({ project_name: name })
-      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)))
-      .returning({ id: blueprints.id, project_name: blueprints.project_name });
-    if (!updated) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-    success(res, { blueprintId: updated.id, projectName: updated.project_name });
+    const updated = await BlueprintRouteService.updateProjectName(
+      blueprintId,
+      auth.userId,
+      name,
+    );
+    success(res, updated);
   } catch (err) {
     handleError(req, res, err);
   }
@@ -342,65 +289,12 @@ router.patch("/blueprints/:id/select-path", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "selectedPath is required (current, adjusted, or alternative)", 422);
       return;
     }
-    const selectedPath = parsed.data.selectedPath;
-
-    const [bp] = await db
-      .select({ id: blueprints.id, validation_id: blueprints.validation_id })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
-    const validationId = bp.validation_id;
-    if (!validationId) {
-      failure(res, "VALIDATION_ERROR", "Complete validation before selecting a path", 400);
-      return;
-    }
-
-    const [val] = await db.select().from(validations).where(eq(validations.id, validationId)).limit(1);
-    if (!val || val.user_id !== auth.userId) {
-      failure(res, "NOT_FOUND", "Validation not found", 404);
-      return;
-    }
-
-    await db
-      .update(blueprints)
-      .set({
-        selected_path: selectedPath,
-        status: BlueprintStatus.PATH_SELECTION,
-      })
-      .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, auth.userId)));
-
-    await db
-      .update(validations)
-      .set({
-        selected_path: selectedPath,
-        selected_path_type: selectedPath,
-        selected_at: new Date(),
-      })
-      .where(eq(validations.id, validationId));
-
-    await transitionBlueprintToPathSelection({
+    const result = await BlueprintRouteService.selectPath(
       blueprintId,
-      userId: auth.userId,
-      validationId,
-      verdict: val.verdict,
-      selectedPath,
-      realityScore: val.reality_score,
-      intelligencePayload: (val.intelligence_payload as Record<string, unknown> | null) ?? null,
-      pathOptions: {
-        current: val.path_current,
-        adjusted: val.path_adjusted,
-        alternative: val.path_alternative,
-      },
-      recommendedTier: val.recommended_blueprint_level ?? "starter",
-      validationKind: val.validation_kind,
-    });
-
-    success(res, { blueprintId, selectedPath });
+      auth.userId,
+      parsed.data.selectedPath,
+    );
+    success(res, result);
   } catch (err) {
     handleError(req, res, err);
   }
@@ -420,7 +314,10 @@ const blueprintLaunchHandler = async (req: import("express").Request, res: impor
     const blueprintId = String(req.params.id ?? "");
     const body = parsed.data;
 
-    const resolved = await resolveLaunchValidationContract(blueprintId, auth.userId, {
+    const resolved = await BlueprintRouteService.resolveLaunchValidationContract(
+      blueprintId,
+      auth.userId,
+      {
       validationContractId: body.validationContractId,
       validationId: body.validationId,
     });
@@ -467,38 +364,8 @@ router.get("/blueprints/:id/phase-readiness", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const blueprintId = req.params.id!;
-    const { evaluatePhaseReadiness } = await import(
-      "../engines/blueprint/PhaseProgressionEngine.js"
-    );
-    const { db: database, phases, blueprints: bpTable } = await import("@workspace/db");
-    const { eq: eqOp, and: andOp } = await import("drizzle-orm");
-
-    const [bp] = await database
-      .select({ currentPhaseId: bpTable.current_phase_id })
-      .from(bpTable)
-      .where(andOp(eqOp(bpTable.id, blueprintId), eqOp(bpTable.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp?.currentPhaseId) {
-      success(res, { canAdvance: false, blockers: ["No active phase"], completionPercentage: 0 });
-      return;
-    }
-
-    const [phase] = await database
-      .select({ name: phases.name, started_at: phases.started_at, created_at: phases.created_at })
-      .from(phases)
-      .where(eqOp(phases.id, bp.currentPhaseId))
-      .limit(1);
-
-    const readiness = await evaluatePhaseReadiness(blueprintId, bp.currentPhaseId);
-    const started = phase?.started_at ?? phase?.created_at ?? new Date();
-    const daysActive = Math.floor((Date.now() - started.getTime()) / 86400000);
-
-    success(res, {
-      ...readiness,
-      currentPhase: phase?.name ?? "Active phase",
-      currentPhaseDaysActive: daysActive,
-    });
+    const readiness = await BlueprintRouteService.getPhaseReadiness(blueprintId, auth.userId);
+    success(res, readiness);
   } catch (err) {
     handleError(req, res, err);
   }
@@ -532,35 +399,10 @@ router.get("/blueprints/:id/execution-feed", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
 
-    const [bp] = await db
-      .select({ id: blueprints.id })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
     const limitRaw = parseInt(String(req.query.limit ?? "80"), 10);
     const limit = Math.min(Number.isFinite(limitRaw) ? limitRaw : 80, 150);
 
-    const feed = await db
-      .select({
-        id: events.id,
-        eventType: events.event_type,
-        entityType: events.entity_type,
-        entityId: events.entity_id,
-        payload: events.payload,
-        status: events.status,
-        createdAt: events.created_at,
-      })
-      .from(events)
-      .where(eq(events.blueprint_id, id))
-      .orderBy(desc(events.created_at))
-      .limit(limit);
-
+    const feed = await BlueprintRouteService.getExecutionFeed(id, auth.userId, limit);
     success(res, { blueprintId: id, events: feed });
   } catch (err) {
     handleError(req, res, err);
@@ -573,23 +415,7 @@ router.get("/blueprints/:id/domain-history", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
 
-    const [bp] = await db
-      .select({ id: blueprints.id })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
-    const history = await db
-      .select()
-      .from(domainHistory)
-      .where(eq(domainHistory.blueprint_id, id))
-      .orderBy(desc(domainHistory.entered_at))
-      .limit(20);
+    const history = await BlueprintRouteService.getDomainHistory(id, auth.userId);
 
     success(res, {
       history: history.map((h) => ({
@@ -612,31 +438,10 @@ router.get("/blueprints/:id/framework-activations", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
 
-    const [bp] = await db
-      .select({ id: blueprints.id })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
-    const activations = await db
-      .select()
-      .from(frameworkActivations)
-      .where(eq(frameworkActivations.blueprint_id, id))
-      .orderBy(desc(frameworkActivations.created_at))
-      .limit(20);
-
-    const decisions = await db
-      .select()
-      .from(frameworkDecisions)
-      .where(eq(frameworkDecisions.blueprint_id, id))
-      .orderBy(desc(frameworkDecisions.created_at))
-      .limit(10);
-
+    const { activations, decisions } = await BlueprintRouteService.getFrameworkActivations(
+      id,
+      auth.userId,
+    );
     success(res, { activations, decisions });
   } catch (err) {
     handleError(req, res, err);
@@ -649,24 +454,7 @@ router.get("/blueprints/:id/behavior-patterns", async (req, res) => {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
 
-    const [bp] = await db
-      .select({ id: blueprints.id })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, id), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
-    const patterns = await db
-      .select()
-      .from(behaviorPatterns)
-      .where(and(eq(behaviorPatterns.user_id, auth.userId), eq(behaviorPatterns.blueprint_id, id)))
-      .orderBy(desc(behaviorPatterns.last_detected_at))
-      .limit(30);
-
+    const patterns = await BlueprintRouteService.getBehaviorPatterns(id, auth.userId);
     success(res, { patterns });
   } catch (err) {
     handleError(req, res, err);
@@ -744,29 +532,10 @@ router.post("/blueprints/:id/complete", async (req, res) => {
 router.get("/blueprints/:id/pause-status", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    const [bp] = await db
-      .select({
-        id: blueprints.id,
-        status: blueprints.status,
-        paused_at: blueprints.paused_at,
-        pause_reason: blueprints.pause_reason,
-        goal: blueprints.goal,
-      })
-      .from(blueprints)
-      .where(and(eq(blueprints.id, req.params.id!), eq(blueprints.user_id, auth.userId)))
-      .limit(1);
-
-    if (!bp) {
-      failure(res, "NOT_FOUND", "Blueprint not found", 404);
-      return;
-    }
-
-    const pauseGapDays = bp.paused_at
-      ? Math.floor((Date.now() - bp.paused_at.getTime()) / 86400000)
-      : 0;
-
-    const resumeMode =
-      pauseGapDays <= 2 ? "normal" : pauseGapDays <= 7 ? "check_in" : pauseGapDays <= 30 ? "recovery" : "restart";
+    const { bp, pauseGapDays, resumeMode } = await BlueprintRouteService.getPauseStatus(
+      req.params.id!,
+      auth.userId,
+    );
 
     success(res, {
       isPaused: bp.status === BlueprintStatus.PAUSED,
@@ -785,17 +554,10 @@ router.get("/blueprints/:id/pause-status", async (req, res) => {
 router.get("/blueprints/:id/pivot-review/current", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    const [review] = await db
-      .select()
-      .from(pivotReviews)
-      .where(
-        and(
-          eq(pivotReviews.blueprint_id, req.params.id!),
-          eq(pivotReviews.user_id, auth.userId),
-          eq(pivotReviews.status, PivotReviewStatus.OPEN),
-        ),
-      )
-      .limit(1);
+    const review = await BlueprintRouteService.getCurrentPivotReview(
+      req.params.id!,
+      auth.userId,
+    );
 
     success(res, {
       pivotReviewOpen: !!review,

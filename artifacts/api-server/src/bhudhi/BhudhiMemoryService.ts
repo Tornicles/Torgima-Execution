@@ -1,7 +1,7 @@
 /**
  * BHUDHI_UPGRADE_PROMPT 1 — operational memory (CIS + KIS).
  */
-import { db, bhudhiMemory, feedback } from "@workspace/db";
+import { db, bhudhiMemory, feedback, users } from "@workspace/db";
 import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { allowedMemoryTypesForTrigger, MIN_RELEVANCE_SCORE } from "./memoryPolicy.js";
@@ -35,6 +35,40 @@ export interface BhudhiMemoryRecord {
 const MAX_CONTENT = 800;
 const MAX_CONTEXT = 500;
 const MAX_RETRIEVE = 5;
+
+/** Tier-based memory depth (session / 7d / 30d). */
+export const MEMORY_DEPTH_BY_TIER = {
+  starter: { scope: "SESSION" as const, ttl_days: 0 },
+  growth: { scope: "BLUEPRINT" as const, ttl_days: 7 },
+  ultimate: { scope: "BLUEPRINT" as const, ttl_days: 30 },
+} as const;
+
+type UserTier = keyof typeof MEMORY_DEPTH_BY_TIER;
+
+async function resolveUserTier(userId: string): Promise<UserTier> {
+  const [row] = await db
+    .select({ tier: users.tier })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const tier = row?.tier ?? "starter";
+  if (tier === "growth" || tier === "ultimate") return tier;
+  return "starter";
+}
+
+function expiresAtForTier(tier: UserTier): Date | null {
+  const depth = MEMORY_DEPTH_BY_TIER[tier];
+  if (depth.ttl_days <= 0) {
+    const end = new Date();
+    end.setUTCHours(23, 59, 59, 999);
+    return end;
+  }
+  return new Date(Date.now() + depth.ttl_days * 86400000);
+}
+
+function scopeForTier(tier: UserTier): BhudhiMemoryRecord["scope"] {
+  return tier === "starter" ? "SESSION" : "BLUEPRINT";
+}
 
 const CREDENTIAL_RE =
   /(?:api[_-]?key|password|secret|token|bearer\s|sk-[a-z0-9]{10,}|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i;
@@ -82,11 +116,13 @@ function sanitizeContent(content: string): string | null {
   return content.length > MAX_CONTENT ? `${content.slice(0, MAX_CONTENT - 3)}...` : content;
 }
 
-function expiryDaysForType(memoryType: MemoryType): number | undefined {
-  if (memoryType === "PROMPT_SUMMARY") return 90;
-  if (memoryType === "FRICTION_PATTERN") return 180;
-  if (memoryType === "USER_PREFERENCE" || memoryType === "GOAL_CONTEXT") return undefined;
-  return 365;
+function expiryDaysForType(memoryType: MemoryType, tier: UserTier): number | undefined {
+  const tierCap = MEMORY_DEPTH_BY_TIER[tier].ttl_days;
+  if (tierCap === 0) return 0;
+  if (memoryType === "PROMPT_SUMMARY") return Math.min(90, tierCap);
+  if (memoryType === "FRICTION_PATTERN") return Math.min(180, tierCap);
+  if (memoryType === "USER_PREFERENCE" || memoryType === "GOAL_CONTEXT") return tierCap;
+  return tierCap;
 }
 
 export const BhudhiMemoryService = {
@@ -175,10 +211,17 @@ export const BhudhiMemoryService = {
     const content = sanitizeContent(params.content);
     if (!content) return null;
 
-    const expiresInDays = expiryDaysForType(params.memoryType);
-    const expiresAt = expiresInDays
-      ? new Date(Date.now() + expiresInDays * 86400000)
-      : null;
+    const tier = await resolveUserTier(params.userId);
+    const tierScope = scopeForTier(tier);
+    const effectiveScope = tier === "starter" ? tierScope : params.scope;
+
+    const expiresInDays = expiryDaysForType(params.memoryType, tier);
+    const expiresAt =
+      expiresInDays === 0
+        ? expiresAtForTier(tier)
+        : expiresInDays
+          ? new Date(Date.now() + expiresInDays * 86400000)
+          : expiresAtForTier(tier);
 
     const [existing] = await db
       .select({ id: bhudhiMemory.id })
@@ -187,7 +230,7 @@ export const BhudhiMemoryService = {
         and(
           eq(bhudhiMemory.user_id, params.userId),
           eq(bhudhiMemory.memory_type, params.memoryType),
-          eq(bhudhiMemory.scope, params.scope),
+          eq(bhudhiMemory.scope, effectiveScope),
           params.blueprintId
             ? eq(bhudhiMemory.blueprint_id, params.blueprintId)
             : isNull(bhudhiMemory.blueprint_id),
@@ -222,7 +265,7 @@ export const BhudhiMemoryService = {
         user_id: params.userId,
         blueprint_id: params.blueprintId,
         memory_type: params.memoryType,
-        scope: params.scope,
+        scope: effectiveScope,
         content,
         content_json: { text: content, source_id: params.sourceId },
         source_type: params.sourceType,
@@ -235,6 +278,26 @@ export const BhudhiMemoryService = {
       .returning({ id: bhudhiMemory.id });
 
     return row?.id ?? null;
+  },
+
+  /** Starter-tier session memory — purge on logout. */
+  async clearSessionScopeForUser(userId: string): Promise<number> {
+    const result = await db
+      .update(bhudhiMemory)
+      .set({ active: false, disabled_at: new Date(), updated_at: new Date() })
+      .where(
+        and(
+          eq(bhudhiMemory.user_id, userId),
+          eq(bhudhiMemory.scope, "SESSION"),
+          eq(bhudhiMemory.active, true),
+          isNull(bhudhiMemory.disabled_at),
+        ),
+      )
+      .returning({ id: bhudhiMemory.id });
+    if (result.length > 0) {
+      logger.info({ userId, count: result.length }, "[BhudhiMemoryService] Cleared session-scope memory");
+    }
+    return result.length;
   },
 
   async expireOldMemory(): Promise<number> {
