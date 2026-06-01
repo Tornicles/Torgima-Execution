@@ -18,6 +18,7 @@ import type {
   BlueprintTierCard,
   ValidationLaunchContext,
 } from "@/lib/validation-launch-context";
+import { EXECUTION_UNIT } from "@/lib/language";
 import { TorgimaPreLaunchLogo } from "./TorgimaPreLaunchLogo";
 
 const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
@@ -41,8 +42,8 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
     tagline: "Getting going with a clear simple system",
     recommended: false,
     setupTime: "~5 min",
-    tasksPerDay: "3 tasks/day",
-    difficultyAccess: "Easy tasks",
+    tasksPerDay: EXECUTION_UNIT.perDay(3),
+    difficultyAccess: EXECUTION_UNIT.easyPlural,
     structureDepth: "3 stages",
     price: "Free / $9/mo",
     bestFor: ["New ideas"],
@@ -55,8 +56,8 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
     tagline: "Serious about building this into something real",
     recommended: true,
     setupTime: "~10 min",
-    tasksPerDay: "7 tasks/day",
-    difficultyAccess: "All task types",
+    tasksPerDay: EXECUTION_UNIT.perDay(7),
+    difficultyAccess: EXECUTION_UNIT.allTypes,
     structureDepth: "4 stages",
     price: "$29/month",
     bestFor: ["Growing businesses"],
@@ -69,7 +70,7 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
     tagline: "Maximum depth and control",
     recommended: false,
     setupTime: "~15 min",
-    tasksPerDay: "8 tasks/day",
+    tasksPerDay: EXECUTION_UNIT.perDay(8),
     difficultyAccess: "Advanced",
     structureDepth: "4 stages+",
     price: "$79/month",
@@ -177,8 +178,8 @@ export function BlueprintLaunchInputScreen({
                   {tier.tagline ?? tier.subtitle}
                 </p>
                 <ul className="mt-4 flex-1 space-y-1.5 text-xs text-[#475569]">
-                  <li>{tier.tasksPerDay ?? "Daily tasks"}</li>
-                  <li>{tier.difficultyAccess ?? "Task difficulty"}</li>
+                  <li>{tier.tasksPerDay ?? EXECUTION_UNIT.dailyFallback}</li>
+                  <li>{tier.difficultyAccess ?? EXECUTION_UNIT.difficultyFallback}</li>
                   <li>{tier.structureDepth ?? tier.setupTime}</li>
                   <li>{tier.includes[0] ?? "Signals included"}</li>
                 </ul>

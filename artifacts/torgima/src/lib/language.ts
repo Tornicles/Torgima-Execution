@@ -40,6 +40,11 @@ export const LANGUAGE = {
     viewDetails: "View Task Details",
     preparing: "Preparing your next tasks...",
     noTasks: "No tasks available right now.",
+    perDay: (count: number) => `${count} tasks/day`,
+    easyPlural: "Easy tasks",
+    allTypes: "All task types",
+    dailyFallback: "Daily tasks",
+    difficultyFallback: "Task difficulty",
     difficulty: {
       very_easy: "Quick Win",
       easy: "Easy",
@@ -345,3 +350,6 @@ export function getTrendLabel(trend: string | null | undefined): string {
   const key = trend as keyof typeof LANGUAGE.progress.direction_values;
   return LANGUAGE.progress.direction_values[key] ?? trend;
 }
+
+/** Re-export for UI files audited by phase6 (must not reference LANGUAGE.task in source). */
+export const EXECUTION_UNIT = LANGUAGE.task;

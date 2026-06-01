@@ -20,11 +20,21 @@ CREATE TABLE IF NOT EXISTS _manual_migration_ledger (
 );
 `;
 
+const dryRun = process.argv.includes("--dry-run");
+
 const dir = path.join(root, "scripts", "migrations");
 const files = fs
   .readdirSync(dir)
   .filter((f) => f.startsWith("manual-") && f.endsWith(".sql"))
   .sort();
+
+if (dryRun) {
+  console.log(`[apply-all] DRY RUN — ${files.length} manual migration file(s):`);
+  for (const file of files) {
+    console.log(`  ${file}`);
+  }
+  process.exit(0);
+}
 
 const { pool } = await import("@workspace/db");
 const client = await pool.connect();
@@ -35,7 +45,7 @@ let failed = 0;
 try {
   await client.query(LEDGER_DDL);
 
-  const { rows: ledgerRows } = await client.query<{ filename: string }>(
+  const { rows: ledgerRows } = await client.query(
     "SELECT filename FROM _manual_migration_ledger",
   );
   const appliedSet = new Set(ledgerRows.map((r) => r.filename));
