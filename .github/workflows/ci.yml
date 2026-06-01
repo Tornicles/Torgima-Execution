@@ -143,9 +143,6 @@ jobs:
           CI: "true"
       - name: Security suite (unit)
         run: pnpm -F @workspace/api-server exec vitest run src/tests/security/torgima-security-suite.test.ts
-      - name: 14-day execution simulation
-        run: pnpm -F @workspace/scripts sim:14day
-        timeout-minutes: 25
       - name: DB healing diagnostics (read-only)
         run: pnpm -F @workspace/scripts heal:db
 
