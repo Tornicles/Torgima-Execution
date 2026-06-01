@@ -1,6 +1,28 @@
 # AUDIT CLOSURE — 2026-05-27
 
-## System Status: PRODUCTION READY (apply Supabase migrations, then deploy)
+## System Status: BLOCKED — Supabase credentials required in this environment
+
+Production code is on `main` (`56324d7`). Local gate passed (typecheck, lint, test, build, `verify:lifecycle` on `torgima_test`).
+
+**This environment has no `DIRECT_URL` / production `DATABASE_URL`** (only `.env.local` → localhost). Steps 1–2 must be run on your machine with Supabase URLs.
+
+### One-command production gate (after setting env)
+
+```powershell
+$env:DIRECT_URL = "postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres"
+$env:DATABASE_URL = "postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
+node scripts/apply-production-gate.mjs
+pnpm verify:lifecycle
+```
+
+### Railway smoke (2026-06-01, no deploy action taken)
+
+| Endpoint | Result |
+|----------|--------|
+| `GET https://workspaceapi-server-production-63b3.up.railway.app/health` | `{"ok":true}` |
+| `GET .../api/health` | `degraded` — `database: ok`, `workers: ok`, `bhudhi: ok`, `signals: error` |
+
+Deploy is assumed current from last `git push origin main`; Railway CLI not installed here.
 
 ## What Was Fixed (3 passes)
 ### Pass 1 — Phase 3 Repairs
@@ -28,10 +50,12 @@
 - All unit tests passing
 - verify:lifecycle: PASS (local `torgima_test` 2026-06-01)
 
-## Pending Before Production Deploy
-- [ ] Apply all migrations listed in PENDING PRODUCTION MIGRATIONS section on **Supabase**
-- [ ] Run `pnpm verify:lifecycle` once against production DB (fixture `gap-g9-acceptance@torgima-test.local`, auto-cleanup)
-- [ ] Confirm 6 partial indexes present on Supabase
+## Pending Before Production Deploy (owner: operator with Supabase access)
+- [ ] `node scripts/apply-production-gate.mjs` (or apply 5 SQL files below manually)
+- [ ] `pnpm verify:lifecycle` on production `DATABASE_URL`
+- [ ] Mark migrations ✓ in table below
+- [ ] Optional: invalidate stale `enforcement_packages` (SQL in PENDING PRODUCTION MIGRATIONS section)
+- [ ] Confirm Railway `/health` after deploy (already `ok:true` on 2026-06-01)
 
 ## Verification (local gate — 2026-06-01)
 - ✓ pnpm typecheck — PASS

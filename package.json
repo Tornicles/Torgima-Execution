@@ -23,6 +23,7 @@
     "lint": "eslint --max-warnings 0",
     "verify:system": "pnpm -F @workspace/scripts verify:system",
     "verify:lifecycle": "pnpm -F @workspace/scripts exec tsx ../scripts/verify-lifecycle.ts",
+    "apply:production-gate": "node scripts/apply-production-gate.mjs",
     "diagnostic:complete": "pnpm -F @workspace/scripts diagnostic:complete",
     "backfill:25-sequences": "pnpm -F @workspace/scripts backfill:25-sequences",
     "verify:25-sequences": "node scripts/verify-25-sequences.mjs",
