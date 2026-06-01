@@ -4,14 +4,7 @@ import { useGetMe } from "@workspace/api-client-react";
 import { ApiError } from "@workspace/api-client-react";
 import type { TierId } from "@/components/blueprint/BlueprintSelectionPanel";
 import { BlueprintLaunchInputScreen } from "@/components/pre-validation/BlueprintLaunchInputScreen";
-import {
-  apiFetchResponseWithRetry,
-  completeOnboarding,
-  finalizeValidationBlueprint,
-  formatApiEnvelopeError,
-  launchValidationBlueprint,
-  selectBlueprintPath,
-} from "@/lib/torgima-api";
+import { formatApiEnvelopeError, launchFromTierSelection } from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 import {
   loadValidationLaunchContext,
@@ -84,21 +77,13 @@ export default function SelectBlueprintPage() {
     try {
       const selectedPath = context.selectedPath ?? "adjusted";
 
-      await selectBlueprintPath(context.blueprintId, selectedPath);
-      await apiFetchResponseWithRetry(`/api/v1/validation/${validationId}/select-path`, {
-        method: "POST",
-        body: JSON.stringify({ selectedPath }),
-      });
-      await finalizeValidationBlueprint(validationId, selectedPath);
-
-      const result = await launchValidationBlueprint(validationId, {
-        path: selectedPath,
-        tier: selectedTier,
-        blueprintTier: selectedTier,
+      const result = await launchFromTierSelection({
+        validationId,
         blueprintId: context.blueprintId,
-        projectName: projectName.trim(),
+        selectedTier,
+        selectedPath,
+        projectName: projectName.trim() || undefined,
       });
-      await completeOnboarding();
       window.location.href = result.redirectTo ?? result.redirect_to ?? "/dashboard";
     } catch (err) {
       const backendMessage =

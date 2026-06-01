@@ -2,12 +2,32 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
+import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
+import { ValidationService } from "../services/ValidationService.js";
 import { db, users, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
+import { isTorgimaError } from "../lib/errors.js";
 import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingGoalAdapter.js";
 import { normalizeProjectName } from "../lib/projectName.js";
 import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
+import { logger } from "../lib/logger.js";
+
+const pathTypeSchema = z.enum(["current", "adjusted", "alternative"]);
+const tierSchema = z.enum(["starter", "growth", "ultimate"]);
+const modeSchema = z.enum(["individual", "team"]);
+
+const selectBlueprintLaunchBodySchema = z.object({
+  validationId: z.string().uuid(),
+  blueprintId: z.string().uuid().optional(),
+  selectedTier: tierSchema,
+  blueprintTier: tierSchema.optional(),
+  selectedPath: pathTypeSchema.optional(),
+  selected_path: pathTypeSchema.optional(),
+  mode: modeSchema.optional(),
+  projectName: z.string().min(3).max(50).optional(),
+  project_name: z.string().min(3).max(50).optional(),
+});
 
 const router = Router();
 
@@ -142,5 +162,91 @@ router.post("/onboarding/goal", async (req, res) => {
     handleError(req, res, err);
   }
 });
+
+// POST /api/v1/onboarding/select-blueprint — tier selection → full launch transaction
+const selectBlueprintLaunchHandler = async (
+  req: import("express").Request,
+  res: import("express").Response,
+) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const parsed = selectBlueprintLaunchBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      failure(res, "VALIDATION_ERROR", detail || "Invalid select-blueprint body", 400);
+      return;
+    }
+
+    const body = parsed.data;
+    const validationId = body.validationId;
+    const tier = body.blueprintTier ?? body.selectedTier;
+    const selectedPath = body.selectedPath ?? body.selected_path ?? "adjusted";
+    const mode = body.mode ?? "individual";
+    const projectName = body.projectName ?? body.project_name;
+
+    const row = await ValidationService.findValidationForBlueprint({
+      blueprintId: body.blueprintId ?? "",
+      userId: auth.userId,
+      validationIdHint: validationId,
+    });
+
+    if (!row) {
+      failure(res, "NOT_FOUND", "Validation not found", 404);
+      return;
+    }
+    if (!row.contract_id) {
+      failure(res, "VALIDATION_ERROR", "Validation contract missing — complete validation first", 400);
+      return;
+    }
+
+    const blueprintId = body.blueprintId ?? row.blueprint_id;
+    if (!blueprintId) {
+      failure(res, "VALIDATION_ERROR", "Validation has no linked blueprint", 400);
+      return;
+    }
+
+    logger.info(
+      { validationId, blueprintId, tier, selectedPath, userId: auth.userId },
+      "[SelectBlueprint] Launching from tier selection",
+    );
+
+    const result = await ValidationLaunchService.launch({
+      validationId: row.id,
+      userId: auth.userId,
+      selectedPath: selectedPath,
+      tier,
+      mode,
+      projectName,
+      blueprintId,
+    });
+
+    await db.update(users).set({ onboarding_complete: true }).where(eq(users.id, auth.userId));
+
+    success(res, {
+      blueprintId: result.blueprintId,
+      validationId: result.validationId,
+      redirectTo: result.redirectTo,
+      redirect_to: result.redirect_to,
+      launched: result.launched,
+      tier,
+      selectedPath,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[SelectBlueprint CRASH]", message, err instanceof Error ? err.stack : "");
+    if (message.startsWith("[LAUNCH]")) {
+      failure(res, "VALIDATION_ERROR", message.replace(/^\[LAUNCH\]\s*/, ""), 400);
+      return;
+    }
+    if (isTorgimaError(err)) {
+      handleError(req, res, err);
+      return;
+    }
+    failure(res, "LAUNCH_FAILED", message, 500);
+  }
+};
+
+router.post("/v1/onboarding/select-blueprint", selectBlueprintLaunchHandler);
+router.post("/onboarding/select-blueprint", selectBlueprintLaunchHandler);
 
 export default router;

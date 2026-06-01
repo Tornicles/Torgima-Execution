@@ -93,6 +93,36 @@ export async function selectBlueprintPath(
   return apiPatch(`/api/blueprints/${blueprintId}/select-path`, { selectedPath });
 }
 
+export type SelectBlueprintLaunchResult = {
+  blueprintId: string;
+  validationId: string;
+  redirectTo: string;
+  redirect_to: string;
+  launched: boolean;
+  tier: string;
+  selectedPath: string;
+};
+
+/** POST /api/v1/onboarding/select-blueprint — tier selection + full launch in one transaction. */
+export async function launchFromTierSelection(input: {
+  validationId: string;
+  blueprintId: string;
+  selectedTier: "starter" | "growth" | "ultimate";
+  selectedPath?: "current" | "adjusted" | "alternative";
+  mode?: "individual" | "team";
+  projectName?: string;
+}): Promise<SelectBlueprintLaunchResult> {
+  return apiPost<SelectBlueprintLaunchResult>("/api/v1/onboarding/select-blueprint", {
+    validationId: input.validationId,
+    blueprintId: input.blueprintId,
+    selectedTier: input.selectedTier,
+    blueprintTier: input.selectedTier,
+    selectedPath: input.selectedPath ?? "adjusted",
+    mode: input.mode ?? "individual",
+    projectName: input.projectName,
+  });
+}
+
 /** POST /api/v1/validations/:id/launch — activate blueprint from completed validation. */
 export async function launchValidationBlueprint(
   validationId: string,

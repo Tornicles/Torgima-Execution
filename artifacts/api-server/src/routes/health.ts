@@ -161,10 +161,13 @@ router.get("/health/schema", async (_req, res) => {
 const KEY_API_ROUTES = [
   "POST /api/v1/validations/:id/launch",
   "POST /api/v1/validation/:id/launch",
+  "POST /api/v1/onboarding/select-blueprint",
+  "POST /api/onboarding/select-blueprint",
   "POST /api/blueprints/:id/activate",
   "POST /api/v1/blueprints/:id/launch",
   "POST /api/v1/validation/run",
   "POST /api/v1/validation/:id/select-path",
+  "POST /api/v1/validations/:id/select-path",
 ] as const;
 
 // GET /api/v1/health/routes — development / deploy smoke (not for production clients)

@@ -767,23 +767,45 @@ router.get("/v1/validation/:id/first-week", async (req, res) => {
   }
 });
 
-// POST /api/v1/validation/:id/select-path — record selected Erector path and generate first-week plan.
-router.post("/v1/validation/:id/select-path", async (req, res) => {
-  try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const schema = z.object({ selectedPath: z.enum(["current", "adjusted", "alternative"]) });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) {
-      failure(res, "VALIDATION_ERROR", "Invalid path selection", 422);
-      return;
-    }
-    const row = await loadOwnedErectorValidation(req.params.id, auth.userId);
-    if (!row) {
-      failure(res, "NOT_FOUND", "Validation not found", 404);
-      return;
-    }
-    const selected = parsed.data.selectedPath;
-    if (row.verdict === "blocked") {
+async function handleValidationSelectPath(
+  req: import("express").Request,
+  res: import("express").Response,
+  validationId: string,
+) {
+  const auth = await requireAuth(req, "USER_SESSION");
+  const schema = z.object({ selectedPath: z.enum(["current", "adjusted", "alternative"]) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    failure(res, "VALIDATION_ERROR", "Invalid path selection", 422);
+    return;
+  }
+  const row = await loadOwnedErectorValidation(validationId, auth.userId);
+  if (!row) {
+    failure(res, "NOT_FOUND", "Validation not found", 404);
+    return;
+  }
+  const selected = parsed.data.selectedPath;
+
+  if (row.validation_kind !== ValidationKind.ERECTOR) {
+    const out = await ValidationService.selectValidationPath({
+      blueprintId: row.blueprint_id,
+      userId: auth.userId,
+      selectedPath: selected,
+      validationContractId: row.contract_id,
+      validationIdHint: row.id,
+      confirmAdjusted: selected === "adjusted",
+    });
+    success(res, {
+      validation_id: row.id,
+      validation_contract_id: row.contract_id,
+      selected_path: selected,
+      blueprintId: row.blueprint_id,
+      ...out,
+    });
+    return;
+  }
+
+  if (row.verdict === "blocked") {
       failure(res, "VALIDATION_ERROR", "Launch blocked: Reality Score below 2.5. Re-validate your goal.", 422);
       return;
     }
@@ -840,6 +862,21 @@ router.post("/v1/validation/:id/select-path", async (req, res) => {
       recommended_blueprint_level: row.recommended_blueprint_level ?? "starter",
       first_week_plan: firstWeekPlan,
     });
+}
+
+// POST /api/v1/validation/:id/select-path — record path (intelligence + Erector)
+router.post("/v1/validation/:id/select-path", async (req, res) => {
+  try {
+    await handleValidationSelectPath(req, res, String(req.params.id ?? ""));
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/v1/validations/:id/select-path — plural alias (onboarding / results)
+router.post("/v1/validations/:id/select-path", async (req, res) => {
+  try {
+    await handleValidationSelectPath(req, res, String(req.params.id ?? ""));
   } catch (err) {
     handleError(req, res, err);
   }
