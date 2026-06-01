@@ -21,7 +21,7 @@ import {
   trendIntelligence,
   narrativeIntelligence,
 } from "@workspace/db";
-import { eq, and, or, desc, gte, inArray, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, inArray, notInArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
@@ -110,7 +110,13 @@ async function loadContext(params: {
 
   const [pkg] = await db.select().from(enforcementPackages).where(pkgCond).limit(1);
 
-  if (!pkg) throw new TorgimaError("NOT_FOUND", "No active enforcement package", false);
+  if (!pkg) {
+    throw new TorgimaError(
+      "ENFORCEMENT_PACKAGE_MISSING",
+      "Cannot generate tasks without a current enforcement package",
+      false,
+    );
+  }
 
   const [capability] = await db
     .select()
@@ -127,6 +133,20 @@ async function loadContext(params: {
     .orderBy(projects.order_index)
     .limit(1);
 
+  const occupiedRows = await db
+    .select({ action_id: orders.action_id })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.blueprint_id, blueprintId),
+        eq(orders.user_id, userId),
+        inArray(orders.status, ["pending", "active"]),
+      ),
+    );
+  const occupiedActionIds = occupiedRows
+    .map((r) => r.action_id)
+    .filter((id): id is string => Boolean(id));
+
   const nextAction = currentProject
     ? await db
         .select()
@@ -135,6 +155,7 @@ async function loadContext(params: {
           and(
             eq(actions.project_id, currentProject.id),
             inArray(actions.status, ["pending", "active"]),
+            occupiedActionIds.length > 0 ? notInArray(actions.id, occupiedActionIds) : undefined,
           ),
         )
         .orderBy(actions.order_index)
@@ -281,11 +302,12 @@ async function loadContext(params: {
     min: Math.max(parsedLimits.min, taskLimits.min),
     max: Math.max(parsedLimits.max, taskLimits.max),
   };
-  const tierRules = getTierRules(parseTier(blueprint.tier));
-  const tierMax = tierRules.maxDailyOrders;
+  const tier = parseTier(blueprint.tier);
+  const tierBonus = tier === "ultimate" ? 2 : tier === "growth" ? 1 : 0;
+  const tierMax = getTierRules(tier).maxDailyOrders;
   taskLimits = {
-    min: Math.min(taskLimits.min, tierMax),
-    max: Math.min(taskLimits.max, tierMax),
+    min: taskLimits.min,
+    max: Math.min(tierMax, Math.min(8, taskLimits.max + tierBonus)),
   };
   const overrideFlags = (pkg.override_flags as Record<string, unknown>) ?? {};
 
@@ -1229,6 +1251,7 @@ async function insertGenerationLog(params: {
   ordersGenerated: number;
   usedFallback: boolean;
   aiUsed: boolean;
+  idempotencyKey?: string;
 }): Promise<void> {
   await db
     .insert(taskGenerationLog)
@@ -1246,7 +1269,9 @@ async function insertGenerationLog(params: {
       order_ids: params.orderIds,
       used_fallback: params.usedFallback,
       ai_used: params.aiUsed,
+      idempotency_key: params.idempotencyKey ?? null,
     })
+    .onConflictDoNothing()
     .catch(() => null);
 }
 
@@ -1796,6 +1821,7 @@ export async function generate(params: {
     queueFill: params.queueFill,
     targetCount: params.targetCount,
     generatedThisInvocation: generatedSoFar,
+    currentStreak: ctx.capability.current_streak ?? 0,
   });
 
   const iteration = params._batchIteration ?? 0;

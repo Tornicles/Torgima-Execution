@@ -53,8 +53,8 @@ describe("TaskEngine", () => {
     expect(t.definition_of_done.toLowerCase()).toContain("complete");
   });
 
-  it("stability daily total is 9, danger is 3", () => {
-    expect(dailyTaskTotalForCondition("stability")).toBe(9);
-    expect(dailyTaskTotalForCondition("danger")).toBe(3);
+  it("stability daily midpoint is 6, danger is 2", () => {
+    expect(dailyTaskTotalForCondition("stability")).toBe(6);
+    expect(dailyTaskTotalForCondition("danger")).toBe(2);
   });
 });

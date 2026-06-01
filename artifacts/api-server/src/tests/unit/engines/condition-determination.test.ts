@@ -98,11 +98,11 @@ describe("ConditionDeterminationEngine (CONDITION_SYSTEM_SPECIFICATION)", () => 
     ).toBe(CONDITIONS.STABILITY);
   });
 
-  it("exposes spec daily task caps", () => {
-    expect(dailyTasksForCondition("danger")).toBe(3);
-    expect(dailyTasksForCondition("urgency")).toBe(6);
-    expect(dailyTasksForCondition("stability")).toBe(9);
-    expect(dailyTasksForCondition("power")).toBe(12);
+  it("exposes spec daily task midpoints", () => {
+    expect(dailyTasksForCondition("danger")).toBe(2);
+    expect(dailyTasksForCondition("urgency")).toBe(4);
+    expect(dailyTasksForCondition("stability")).toBe(6);
+    expect(dailyTasksForCondition("power")).toBe(7);
   });
 
   it("holds DANGER until exit thresholds met (hysteresis)", () => {

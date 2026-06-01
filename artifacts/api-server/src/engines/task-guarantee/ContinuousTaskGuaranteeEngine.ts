@@ -22,7 +22,10 @@ import {
   fillBlueprintTaskQueue,
 } from "../task-engine/TaskEngine.js";
 import { resolvePublishableOrder } from "../execution-loop/DependencyEngine.js";
-
+import {
+  computeDailyMidpoint,
+  parseTaskLimits,
+} from "../task-generation/taskLimits.js";
 async function applyDependencyPublicationGate(params: {
   blueprintId: string;
   userId: string;
@@ -116,6 +119,37 @@ export async function guaranteeTask(params: {
   }
 
   const mode = params.generationMode ?? "post_feedback";
+  const trigger = params.generationTrigger ?? "guarantee_check";
+  const isDaily =
+    mode === "daily" || trigger === "daily_cycle" || trigger === "daily_visibility_cycle";
+
+  let resolvedTargetCount = params.targetCount;
+  let resolvedQueueFill = params.queueFill;
+
+  if (isDaily) {
+    const limits = await resolveEnforcementTaskLimits(
+      blueprintId,
+      userId,
+      params.enforcementPackageId,
+    );
+    if (!limits) {
+      logger.warn({ blueprintId }, "[Guarantee] Daily cycle — no enforcement package");
+      return { state: "SYSTEM_LOCKED" };
+    }
+    const pending = await countPendingActiveOrders(blueprintId, userId);
+    const midpoint = computeDailyMidpoint(limits);
+    if (pending >= midpoint) {
+      const existing = await findActionableOrder(blueprintId, userId);
+      return applyDependencyPublicationGate({
+        blueprintId,
+        userId,
+        orderId: existing ?? undefined,
+        fallbackState: "SATISFIED",
+      });
+    }
+    resolvedTargetCount = resolvedTargetCount ?? Math.max(0, midpoint - pending);
+    resolvedQueueFill = true;
+  }
 
   const [{ totalOrderCount } = { totalOrderCount: 0 }] = await db
     .select({ totalOrderCount: sql<number>`count(*)::int` })
@@ -166,7 +200,10 @@ export async function guaranteeTask(params: {
     }
   }
 
-  if (existingOrder && (await shouldSatisfyExistingOrder(blueprintId, userId, existingOrder, mode))) {
+  if (
+    existingOrder &&
+    (await shouldSatisfyExistingOrder(blueprintId, userId, existingOrder, mode, trigger))
+  ) {
     logger.info({ blueprintId, orderId: existingOrder }, "[Guarantee] SATISFIED — task already exists");
     return applyDependencyPublicationGate({
       blueprintId,
@@ -186,7 +223,6 @@ export async function guaranteeTask(params: {
     return { state: "SYSTEM_LOCKED" };
   }
 
-  const trigger = params.generationTrigger ?? "guarantee_check";
   const forceInitial =
     !existingOrder &&
     (trigger === "blueprint_launch" ||
@@ -315,11 +351,45 @@ export async function guaranteeTask(params: {
 
 const RECOVERY_TASK_TYPES = ["recovery", "blocker_resolution"] as const;
 
+async function countPendingActiveOrders(blueprintId: string, userId: string): Promise<number> {
+  const [{ count } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.blueprint_id, blueprintId),
+        eq(orders.user_id, userId),
+        inArray(orders.status, [OrderStatus.PENDING, OrderStatus.ACTIVE]),
+      ),
+    );
+  return count ?? 0;
+}
+
+async function resolveEnforcementTaskLimits(
+  blueprintId: string,
+  userId: string,
+  enforcementPackageId?: string,
+): Promise<{ min: number; max: number } | null> {
+  const wherePkg = enforcementPackageId
+    ? and(eq(enforcementPackages.id, enforcementPackageId), eq(enforcementPackages.blueprint_id, blueprintId))
+    : and(eq(enforcementPackages.blueprint_id, blueprintId), eq(enforcementPackages.is_current, true));
+
+  const [pkg] = await db
+    .select({ task_limits: enforcementPackages.task_limits })
+    .from(enforcementPackages)
+    .where(wherePkg)
+    .limit(1);
+
+  if (!pkg?.task_limits) return null;
+  return parseTaskLimits(pkg.task_limits);
+}
+
 async function shouldSatisfyExistingOrder(
   blueprintId: string,
   userId: string,
   orderId: string,
   generationMode: string,
+  generationTrigger?: string,
 ): Promise<boolean> {
   const [order] = await db
     .select({ task_type: orders.task_type })
@@ -344,6 +414,19 @@ async function shouldSatisfyExistingOrder(
 
   if (latestFb?.completion_status === "failed") {
     return RECOVERY_TASK_TYPES.includes(taskType as (typeof RECOVERY_TASK_TYPES)[number]);
+  }
+
+  const isDaily =
+    generationMode === "daily" ||
+    generationTrigger === "daily_cycle" ||
+    generationTrigger === "daily_visibility_cycle";
+
+  if (isDaily) {
+    const limits = await resolveEnforcementTaskLimits(blueprintId, userId);
+    if (!limits) return false;
+    const pending = await countPendingActiveOrders(blueprintId, userId);
+    const midpoint = computeDailyMidpoint(limits);
+    return pending >= midpoint && pending >= limits.min;
   }
 
   return true;

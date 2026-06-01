@@ -92,7 +92,7 @@ export function mapStarterSignalLabel(condition: string): string | null {
   return STARTER_SIGNAL_MAP[condition.toLowerCase()] ?? "STARTING";
 }
 
-/** Apply tier caps onto condition base rules (used by ControlEngine). */
+/** Apply tier bonuses onto condition base rules (used by ControlEngine). */
 export function applyTierToConditionRules(
   base: { taskMin: number; taskMax: number; difficultyCap: string },
   tier: string,
@@ -107,9 +107,12 @@ export function applyTierToConditionRules(
       ? DIFFICULTY_LEVELS[Math.min(capIdx, tierIdx)] ?? base.difficultyCap
       : limits.difficultyMax;
 
+  const tierKey = tier === "ultimate" || tier === "growth" ? tier : "starter";
+  const maxBonus = tierKey === "ultimate" ? 2 : tierKey === "growth" ? 1 : 0;
+
   return {
-    taskMin: Math.max(base.taskMin, limits.min),
-    taskMax: Math.min(base.taskMax, limits.max),
+    taskMin: base.taskMin,
+    taskMax: Math.min(8, base.taskMax + maxBonus),
     difficultyCap,
   };
 }

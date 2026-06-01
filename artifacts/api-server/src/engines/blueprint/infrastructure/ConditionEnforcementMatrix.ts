@@ -6,7 +6,7 @@
 
 
 
-import { dailyTasksForCondition } from "../../../constants/conditionSpec.js";
+import { taskLimitsForCondition } from "../../../constants/conditionSpec.js";
 
 
 
@@ -46,15 +46,15 @@ function contract(
 
 ): ConditionOperationalContract {
 
-  const daily = dailyTasksForCondition(condition);
+  const limits = taskLimitsForCondition(condition);
 
   return {
 
     condition,
 
-    taskMin: daily,
+    taskMin: limits.min,
 
-    taskMax: daily,
+    taskMax: limits.max,
 
     ...partial,
 

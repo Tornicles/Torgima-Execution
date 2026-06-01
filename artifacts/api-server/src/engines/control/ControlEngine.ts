@@ -22,6 +22,15 @@ import type { Blueprint } from "../../types/blueprint.js";
 import { getConditionContract } from "../blueprint/infrastructure/ConditionEnforcementMatrix.js";
 import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
 import { applyTierToConditionRules } from "../../services/TierDifferentiationService.js";
+import { getTierRules, parseTier } from "../blueprint/BlueprintRuleEngine.js";
+
+// Task limit resolution order:
+// 1. Base condition matrix (CONDITION_BASE_RULES)
+// 2. Tier modifier: +1 growth, +2 ultimate (applyTierOverrides)
+// 3. Cognitive load modifier: -2 if score >= 0.8
+// 4. Escalation override: danger escalation_level>=2 tightens to 2-3
+// 5. Cap at maxDailyOrders (starter:7, growth:8, ultimate:8)
+// Final min never exceeds final max
 
 // ── BASE RULES PER CONDITION ─────────────────────────────────────────────────
 
@@ -41,7 +50,7 @@ export interface BaseConditionRules {
 
 const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
   nothingness: {
-    taskMin: 3,
+    taskMin: 2,
     taskMax: 3,
     difficultyCap: "easy",
     allowedActions: ["task_execution", "feedback_submission", "academy_tasks"],
@@ -54,7 +63,7 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   danger: {
-    taskMin: 3,
+    taskMin: 2,
     taskMax: 3,
     difficultyCap: "very_easy",
     allowedActions: ["task_execution", "feedback_submission", "academy_tasks"],
@@ -93,8 +102,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   stability: {
-    taskMin: 9,
-    taskMax: 9,
+    taskMin: 5,
+    taskMax: 7,
     difficultyCap: "moderate",
     allowedActions: [
       "task_execution",
@@ -117,8 +126,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: false,
   },
   power: {
-    taskMin: 12,
-    taskMax: 12,
+    taskMin: 6,
+    taskMax: 8,
     difficultyCap: "hard",
     allowedActions: [
       "task_execution",
@@ -143,8 +152,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: true,
   },
   affluence: {
-    taskMin: 12,
-    taskMax: 12,
+    taskMin: 6,
+    taskMax: 8,
     difficultyCap: "very_hard",
     allowedActions: [
       "task_execution",
@@ -170,8 +179,8 @@ const CONDITION_BASE_RULES: Record<string, BaseConditionRules> = {
     scalingAllowed: true,
   },
   power_change: {
-    taskMin: 6,
-    taskMax: 6,
+    taskMin: 3,
+    taskMax: 5,
     difficultyCap: "moderate",
     allowedActions: [
       "task_execution",
@@ -354,7 +363,7 @@ export async function generateEnforcementPackage(params: {
   let rules = CONDITION_BASE_RULES[params.condition] ?? CONDITION_BASE_RULES.urgency;
 
   if (params.condition === "danger" && params.escalationLevel >= 2) {
-    rules = { ...rules, taskMin: 2, taskMax: 2 };
+    rules = { ...rules, taskMin: 2, taskMax: 3 };
   }
 
   rules = applyTierOverrides(rules, tier, params.condition);
@@ -385,6 +394,13 @@ export async function generateEnforcementPackage(params: {
     archetypeExecutionMult: bpArchetype?.archetypeExecutionMult,
   });
   rules = { ...rules, taskMin: adjusted.min, taskMax: adjusted.max };
+
+  const tierCap = getTierRules(parseTier(tier)).maxDailyOrders;
+  rules = {
+    ...rules,
+    taskMax: Math.min(rules.taskMax, tierCap),
+    taskMin: Math.min(rules.taskMin, rules.taskMax),
+  };
 
   const featurePermissions = buildFeaturePermissions(params.condition, tier, rules.allowedActions);
 

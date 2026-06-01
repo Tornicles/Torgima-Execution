@@ -69,7 +69,7 @@ export const STARTER_BLUEPRINT_CONFIG: BlueprintTypeConfig = {
   dependencyEnforcement: false,
   policyEnforcement: "display",
   validationDepth: "basic",
-  maxDailyOrders: 2,
+  maxDailyOrders: 7,
   maxFrameworkDecisions: 2,
   lockedSystems: [
     "predictive_signals", "advanced_adaptation", "advanced_strategy",
@@ -113,7 +113,7 @@ export const GROWTH_BLUEPRINT_CONFIG: BlueprintTypeConfig = {
   dependencyEnforcement: true,
   policyEnforcement: "applied",
   validationDepth: "structured",
-  maxDailyOrders: 4,
+  maxDailyOrders: 8,
   maxFrameworkDecisions: 4,
   lockedSystems: [
     "predictive_signals", "probability_scoring", "dynamic_rebalancing",
@@ -165,7 +165,7 @@ export const ULTIMATE_BLUEPRINT_CONFIG: BlueprintTypeConfig = {
   dependencyEnforcement: true,
   policyEnforcement: "enforced",
   validationDepth: "simulation",
-  maxDailyOrders: 6,
+  maxDailyOrders: 8,
   maxFrameworkDecisions: 999,
   lockedSystems: [],
   uiMode: "strategic",

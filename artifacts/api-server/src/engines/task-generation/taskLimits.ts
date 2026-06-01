@@ -1,15 +1,9 @@
 /** Condition-based task queue bounds (enforcement package + task generation). */
-export const CONDITION_TASK_LIMITS: Record<string, { min: number; max: number }> = {
-  nothingness: { min: 3, max: 5 },
-  danger: { min: 2, max: 4 },
-  urgency: { min: 3, max: 5 },
-  stability: { min: 4, max: 6 },
-  power: { min: 5, max: 7 },
-  affluence: { min: 5, max: 8 },
-  power_change: { min: 4, max: 6 },
-};
+import { CONDITION_TASK_LIMITS, taskLimitsForCondition } from "../../constants/conditionSpec.js";
 
-const DEFAULT_LIMITS = { min: 3, max: 5 };
+export { CONDITION_TASK_LIMITS, taskLimitsForCondition };
+
+const DEFAULT_LIMITS = CONDITION_TASK_LIMITS.stability;
 
 export function parseTaskLimits(raw: unknown): { min: number; max: number } {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_LIMITS };
@@ -30,11 +24,40 @@ export function applyArchetypeTaskLimits(
   condition: string,
   archetypeExecutionMult?: number | null,
 ): { min: number; max: number } {
-  const base = CONDITION_TASK_LIMITS[condition] ?? DEFAULT_LIMITS;
+  const base = taskLimitsForCondition(condition);
   const mult = archetypeExecutionMult ?? 1;
   const taskMin = Math.max(1, Math.round(base.min * mult));
   const taskMax = Math.min(8, Math.round(base.max * mult));
   return { min: Math.min(taskMin, taskMax), max: Math.max(taskMin, taskMax) };
+}
+
+/** Target batch size for a generation cycle (not cumulative daily total). */
+export function selectTaskCount(params: {
+  task_limits: { min: number; max: number };
+  current_streak: number;
+  generation_mode: string;
+}): number {
+  const { task_limits, current_streak, generation_mode } = params;
+
+  if (generation_mode === "initial") {
+    return Math.min(3, task_limits.max);
+  }
+
+  if (generation_mode === "recovery") {
+    return task_limits.min;
+  }
+
+  if (generation_mode === "daily") {
+    return computeDailyMidpoint(task_limits);
+  }
+
+  const streakBonus = Math.floor(current_streak / 3);
+  const target = task_limits.min + streakBonus;
+  return Math.max(task_limits.min, Math.min(target, task_limits.max));
+}
+
+export function computeDailyMidpoint(limits: { min: number; max: number }): number {
+  return Math.floor((limits.min + limits.max) / 2);
 }
 
 export function computeAdditionalTasksToGenerate(args: {
@@ -46,20 +69,31 @@ export function computeAdditionalTasksToGenerate(args: {
   queueFill?: boolean;
   targetCount?: number;
   generatedThisInvocation: number;
+  currentStreak?: number;
 }): number {
-  const { pendingCount, min, max, generationMode, generationTrigger, queueFill, targetCount, generatedThisInvocation } =
-    args;
+  const {
+    pendingCount,
+    min,
+    max,
+    generationMode,
+    generationTrigger,
+    queueFill,
+    targetCount,
+    generatedThisInvocation,
+    currentStreak = 0,
+  } = args;
 
   if (pendingCount >= max) return 0;
-
-  if (targetCount != null) {
-    return Math.max(0, Math.min(targetCount - generatedThisInvocation, max - pendingCount));
-  }
 
   const initial =
     generationMode === "initial" ||
     generationTrigger === "blueprint_launched" ||
     generationTrigger === "blueprint_launch";
+
+  const isDaily =
+    generationMode === "daily" ||
+    generationTrigger === "daily_cycle" ||
+    generationTrigger === "daily_visibility_cycle";
 
   const fill =
     queueFill ||
@@ -69,11 +103,32 @@ export function computeAdditionalTasksToGenerate(args: {
     generationTrigger === "api_guarantee";
 
   if (initial) {
-    return Math.max(0, max - pendingCount);
+    const want = selectTaskCount({
+      task_limits: { min, max },
+      current_streak: currentStreak,
+      generation_mode: "initial",
+    });
+    return Math.max(0, Math.min(want - generatedThisInvocation, max - pendingCount));
+  }
+
+  if (isDaily) {
+    const midpoint = computeDailyMidpoint({ min, max });
+    if (pendingCount >= midpoint && pendingCount >= min) return 0;
+    const target = targetCount ?? midpoint;
+    return Math.max(0, Math.min(target - pendingCount - generatedThisInvocation, max - pendingCount));
+  }
+
+  if (targetCount != null) {
+    return Math.max(0, Math.min(targetCount - generatedThisInvocation, max - pendingCount));
   }
 
   if (fill || pendingCount < min) {
-    return Math.max(0, Math.min(max - pendingCount, min - pendingCount));
+    const want = selectTaskCount({
+      task_limits: { min, max },
+      current_streak: currentStreak,
+      generation_mode: generationMode,
+    });
+    return Math.max(0, Math.min(want - generatedThisInvocation, max - pendingCount));
   }
 
   if (generatedThisInvocation >= 1) return 0;

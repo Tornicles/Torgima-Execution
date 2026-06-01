@@ -12,6 +12,7 @@ import {
   revealAllDueTasksGlobal,
   topOffTaskQueuesForActiveBlueprints,
 } from "../engines/task-engine/TaskEngine.js";
+import { runDailyCycleForAllActiveBlueprints } from "../workers/DailyCycleWorker.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 const timers: ReturnType<typeof setInterval>[] = [];
@@ -53,9 +54,10 @@ export async function runDailyTaskCycle(): Promise<void> {
     }).catch(() => null);
   }
 
+  const dailyTopUp = await runDailyCycleForAllActiveBlueprints();
   const loopCount = await runDailyLoopsForAllActiveBlueprints();
   logger.info(
-    { blueprints: active.length, loopCount, dayKey },
+    { blueprints: active.length, loopCount, dailyTopUp, dayKey },
     "[ExecutionContinuity] Daily task cycle complete",
   );
 
