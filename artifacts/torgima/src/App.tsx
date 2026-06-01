@@ -30,6 +30,7 @@ const OnboardingContextPage = lazy(() => import("@/pages/onboarding/context"));
 const OnboardingReviewPage = lazy(() => import("@/pages/onboarding/review"));
 const OnboardingValidatingPage = lazy(() => import("@/pages/onboarding/validating"));
 const OnboardingResultsRedirectPage = lazy(() => import("@/pages/onboarding/results"));
+const OnboardingSelectBlueprintPage = lazy(() => import("@/pages/onboarding/select-blueprint"));
 const ErectorDashboard = lazy(() => import("@/pages/erector-dashboard"));
 const AcademyPage = lazy(() => import("@/pages/academy"));
 const ValidatePage = lazy(() => import("@/pages/validate"));
@@ -177,6 +178,7 @@ const ProtectedOnboardingContext = protect(OnboardingContextPage);
 const ProtectedOnboardingReview = protect(OnboardingReviewPage);
 const ProtectedOnboardingValidating = protect(OnboardingValidatingPage);
 const ProtectedOnboardingResults = protect(OnboardingResultsRedirectPage);
+const ProtectedOnboardingSelectBlueprint = protect(OnboardingSelectBlueprintPage);
 const ProtectedErectorDashboard = protect(ErectorDashboard);
 const ProtectedAcademyPage = protect(AcademyPage);
 const ProtectedValidate = protect(ValidatePage);
@@ -244,6 +246,7 @@ const OnboardingContextRoute = withOnboardingLayout(ProtectedOnboardingContext);
 const OnboardingReviewRoute = withOnboardingLayout(ProtectedOnboardingReview);
 const OnboardingValidatingRoute = withOnboardingLayout(ProtectedOnboardingValidating);
 const OnboardingResultsRoute = withOnboardingLayout(ProtectedOnboardingResults);
+const OnboardingSelectBlueprintRoute = withOnboardingLayout(ProtectedOnboardingSelectBlueprint);
 const ValidateRoute = withOnboardingLayout(ProtectedValidate);
 const ValidationResultsRoute = withOnboardingLayout(ProtectedValidationResults);
 const ValidationBlueprintRoute = ProtectedValidationBlueprint;
@@ -322,6 +325,7 @@ function AppRoutes() {
         <Route path="/onboarding/review" component={OnboardingReviewRoute} />
         <Route path="/onboarding/validating" component={OnboardingValidatingRoute} />
         <Route path="/onboarding/results" component={OnboardingResultsRoute} />
+        <Route path="/onboarding/select-blueprint" component={OnboardingSelectBlueprintRoute} />
         <Route path="/onboarding/goal" component={OnboardingRoute} />
         <Route path="/erector" component={ErectorRoute} />
         <Route path="/academy" component={AcademyRoute} />

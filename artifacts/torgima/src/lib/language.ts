@@ -208,7 +208,7 @@ export const LANGUAGE = {
     strengthScore: "Idea Strength Score",
     download: "Download Full Report",
     launching: "Launching Your Project...",
-    launchButton: "🚀 Launch This Project",
+    launchButton: "Launch This Direction",
     launchSubtext: "Start your execution plan and get your first tasks",
     launchBlocked: "Launch Blocked",
     pivotBlocked:

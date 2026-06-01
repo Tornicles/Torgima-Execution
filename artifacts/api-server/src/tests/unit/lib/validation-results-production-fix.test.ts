@@ -6,12 +6,18 @@ const root = resolve(process.cwd(), "../..");
 const readRepo = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("Validation results page wiring", () => {
-  it("uses ValidationResultsDashboard with launch flow", () => {
+  it("uses ValidationResultsDashboard and routes to tier selection", () => {
     const page = readRepo("artifacts/torgima/src/pages/validation-results.tsx");
     expect(page).toContain("ValidationResultsDashboard");
-    expect(page).toContain("finalizeValidationBlueprint");
-    expect(page).toContain("launchValidationBlueprint");
+    expect(page).toContain("/onboarding/select-blueprint");
+    expect(page).not.toContain("launchValidationBlueprint");
     expect(page).not.toContain("AlignedValidationResults");
+  });
+
+  it("select-blueprint page completes launch with tier", () => {
+    const page = readRepo("artifacts/torgima/src/pages/onboarding/select-blueprint.tsx");
+    expect(page).toContain("launchValidationBlueprint");
+    expect(page).toContain("finalizeValidationBlueprint");
   });
 
   it("dashboard renders launch button via language layer", () => {

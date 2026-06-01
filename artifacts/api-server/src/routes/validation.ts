@@ -36,6 +36,10 @@ const modeSchema = z.enum(["individual", "team"]);
 
 export const validationLaunchBodySchema = z.object({
   validation_id: z.string().uuid().optional(),
+  blueprintId: z.string().uuid().optional(),
+  blueprint_id: z.string().uuid().optional(),
+  blueprintTier: tierSchema.optional(),
+  blueprint_tier: tierSchema.optional(),
   selected_blueprint_type: tierSchema.optional(),
   selected_direction: z
     .object({
@@ -90,6 +94,8 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
       selectedDirection: body.selected_direction,
       selectedPath: body.selectedPath ?? body.selected_path,
       tier:
+        body.blueprintTier ??
+        body.blueprint_tier ??
         body.selected_blueprint_type ??
         body.tier ??
         body.blueprint_level ??
@@ -99,6 +105,7 @@ const validationLaunchHandler = async (req: import("express").Request, res: impo
         body.selected_direction?.blueprint_type,
       mode: body.mode ?? body.selected_direction?.mode,
       projectName: body.projectName ?? body.project_name,
+      blueprintId: body.blueprintId ?? body.blueprint_id,
     });
 
     success(res, result, result.idempotent ? 200 : 201);

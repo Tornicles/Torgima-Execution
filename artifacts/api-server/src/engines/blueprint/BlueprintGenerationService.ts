@@ -7,6 +7,9 @@ import { db, actions, blueprints } from "@workspace/db";
 import { and, count, eq } from "drizzle-orm";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { logger } from "../../lib/logger.js";
+import { parseTier } from "./BlueprintRuleEngine.js";
+import { getTierBlueprintConfig } from "./tierBlueprintConfig.js";
+import type { BlueprintTier } from "./infrastructure/blueprint-types.js";
 
 const blueprintEngine = new BlueprintEngine();
 
@@ -14,12 +17,15 @@ export class BlueprintGenerationService {
   /** Ensures hierarchy exists (launch uses activateBlueprint); emits structure-created for workers. */
   static async generate(blueprintId: string, userId: string): Promise<void> {
     const [bp] = await db
-      .select({ goal: blueprints.goal, status: blueprints.status })
+      .select({ goal: blueprints.goal, status: blueprints.status, tier: blueprints.tier })
       .from(blueprints)
       .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, userId)))
       .limit(1);
 
     if (!bp) throw new Error("Blueprint not found");
+
+    const tier = parseTier((bp.tier as BlueprintTier | null) ?? "growth");
+    const tierConfig = getTierBlueprintConfig(tier);
 
     const [actionCount] = await db
       .select({ n: count() })
@@ -48,7 +54,13 @@ export class BlueprintGenerationService {
       userId,
       blueprintId,
       payload: {
-        tier: chain.planCount > 0 ? "generated" : "unknown",
+        tier,
+        tierConfig: {
+          plans: tierConfig.plans.length,
+          targetsPerPlan: tierConfig.targetsPerPlan,
+          dailyTaskMax: tierConfig.dailyTaskMax,
+          difficultyCap: tierConfig.difficultyCap,
+        },
         plan_count: chain.planCount,
         phase_count: chain.phaseCount,
         target_count: chain.targetCount,
@@ -62,9 +74,11 @@ export class BlueprintGenerationService {
     logger.info(
       {
         blueprintId,
+        tier,
         plans: chain.planCount,
         phases: chain.phaseCount,
         actions: chain.actionCount,
+        dailyTaskMax: tierConfig.dailyTaskMax,
       },
       "[BlueprintGen] Hierarchy created",
     );

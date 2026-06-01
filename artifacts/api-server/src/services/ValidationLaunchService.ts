@@ -12,6 +12,8 @@ import { dispatchPendingEvents } from "./EventDispatcher.js";
 import { generateInitialTasks } from "../engines/tasks/generateInitialTasks.js";
 import { normalizeProjectName } from "../lib/projectName.js";
 import { ensureBlueprintReadyForLaunch } from "../lib/transitionBlueprintToPathSelection.js";
+import { intelligenceDepthForTier } from "../engines/blueprint/BlueprintRuleEngine.js";
+import { BlueprintStatus } from "@workspace/state-machine";
 
 export type SelectedDirection = {
   path?: LaunchPathType;
@@ -29,6 +31,7 @@ export interface ValidationLaunchInput {
   tier?: "starter" | "growth" | "ultimate";
   mode?: "individual" | "team";
   projectName?: string;
+  blueprintId?: string;
 }
 
 export interface ValidationLaunchResult {
@@ -67,11 +70,15 @@ function resolveTier(
     input.selectedDirection?.tier ??
     input.selectedDirection?.blueprint_level ??
     (input.selectedDirection as { blueprint_type?: string } | undefined)?.blueprint_type ??
-    row.recommended_blueprint_level ??
     row.selected_blueprint_tier ??
-    "starter";
+    row.recommended_blueprint_level ??
+    null;
   if (raw === "growth" || raw === "ultimate" || raw === "starter") return raw;
-  return "starter";
+  throw new TorgimaError(
+    "VALIDATION_ERROR",
+    "Please select an execution level (Starter, Growth, or Ultimate) before launch.",
+    false,
+  );
 }
 
 export const ValidationLaunchService = {
@@ -154,8 +161,22 @@ export const ValidationLaunchService = {
       throw new TorgimaError("VALIDATION_ERROR", msg.replace(/^\[LAUNCH\]\s*/, ""), false);
     }
 
-    const { db, validations } = await import("@workspace/db");
-    const { eq } = await import("drizzle-orm");
+    const { db, validations, blueprints: blueprintsTable } = await import("@workspace/db");
+    const { eq, and } = await import("drizzle-orm");
+    const depth = intelligenceDepthForTier(tier);
+    await db
+      .update(blueprintsTable)
+      .set({
+        status: BlueprintStatus.PATH_SELECTION,
+        tier,
+        mode: mode ?? "individual",
+        selected_path: selectedPathType,
+        selected_blueprint_level: tier,
+        blueprint_tier: tier,
+        intelligence_depth: depth,
+      })
+      .where(and(eq(blueprintsTable.id, row.blueprint_id), eq(blueprintsTable.user_id, input.userId)));
+
     await db
       .update(validations)
       .set({

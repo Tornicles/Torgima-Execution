@@ -28,10 +28,30 @@ describe("validation launch route", () => {
     expect(routes).toContain("ValidationLaunchService");
   });
 
-  it("validation results page launches blueprint via validations launch URL", () => {
+  it("accepts blueprintTier and blueprintId in launch body", () => {
+    const parsed = validationLaunchBodySchema.safeParse({
+      blueprintTier: "growth",
+      blueprintId: "550e8400-e29b-41d4-a716-446655440000",
+      selectedPath: "adjusted",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.blueprintTier).toBe("growth");
+      expect(parsed.data.blueprintId).toBe("550e8400-e29b-41d4-a716-446655440000");
+    }
+  });
+
+  it("validation results page routes to tier selection before launch", () => {
     const results = readRepo("artifacts/torgima/src/pages/validation-results.tsx");
-    expect(results).toContain("launchValidationBlueprint");
-    expect(results).toContain("finalizeValidationBlueprint");
+    expect(results).toContain("/onboarding/select-blueprint");
+    expect(results).not.toContain("launchValidationBlueprint");
+  });
+
+  it("select-blueprint page launches blueprint with tier", () => {
+    const page = readRepo("artifacts/torgima/src/pages/onboarding/select-blueprint.tsx");
+    expect(page).toContain("launchValidationBlueprint");
+    expect(page).toContain("finalizeValidationBlueprint");
+    expect(page).toContain("blueprintTier");
   });
 
   it("torgima-api exposes launchValidationBlueprint helper", () => {

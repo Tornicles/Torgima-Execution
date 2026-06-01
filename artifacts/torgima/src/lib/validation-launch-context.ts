@@ -9,6 +9,7 @@ export type ValidationLaunchContext = {
   validationId: string;
   blueprintId: string;
   selectedPath: PathKey;
+  selectedTier?: TierId;
   goal: string;
   purpose: string;
   timeframeLabel: string;
@@ -46,10 +47,15 @@ export type BlueprintTierCard = {
   id: TierId;
   label: string;
   subtitle: string;
+  tagline?: string;
   recommended: boolean;
   setupTime: string;
   bestFor: string[];
   includes: string[];
+  tasksPerDay?: string;
+  difficultyAccess?: string;
+  structureDepth?: string;
+  price?: string;
 };
 
 export type BlueprintCreationFlowStep = {

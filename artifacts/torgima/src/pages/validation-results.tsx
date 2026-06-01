@@ -1,17 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ApiError } from "@workspace/api-client-react";
 import { ValidationResultsDashboard } from "@/components/validation/ValidationResultsDashboard";
 import type { ValidationScreenData } from "@/components/validation/ValidationScreen";
 import type { PathKey } from "@/components/validation/PathPanels";
-import type { TierId } from "@/components/blueprint/BlueprintSelectionPanel";
 import {
   apiFetchEnvelope,
   apiFetchResponseWithRetry,
-  completeOnboarding,
-  finalizeValidationBlueprint,
-  formatApiEnvelopeError,
-  launchValidationBlueprint,
   selectBlueprintPath,
 } from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
@@ -117,14 +111,10 @@ export default function ValidationResultsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [launchError, setLaunchError] = useState("");
   const [projectName, setProjectName] = useState(() => loadPreValidationDraft().projectName);
   const [editingProjectName, setEditingProjectName] = useState(false);
-  const [launching, setLaunching] = useState(false);
   const [validation, setValidation] = useState<ValidationPayload | null>(null);
   const [selectedPath, setSelectedPath] = useState<PathKey>("adjusted");
-  const [selectedTier, setSelectedTier] = useState<TierId>("starter");
-  const [isFinalized, setIsFinalized] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
@@ -157,14 +147,6 @@ export default function ValidationResultsPage() {
       const rec: PathKey =
         payload.verdict === "adjust" ? "adjusted" : payload.verdict === "pivot" ? "alternative" : "current";
       setSelectedPath(rec);
-      setIsFinalized(Boolean(payload.isFinalized));
-
-      const recommended = String(
-        runEnvelope.data?.recommendedBlueprintLevel ?? runEnvelope.data?.recommended_blueprint_level ?? "starter",
-      );
-      if (recommended === "growth" || recommended === "ultimate" || recommended === "starter") {
-        setSelectedTier(recommended);
-      }
 
       setValidation(payload);
       saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, payload, rec));
@@ -187,8 +169,8 @@ export default function ValidationResultsPage() {
 
   async function handleSelectPath(path: PathKey) {
     setSelectedPath(path);
-    saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
     if (!validation?.blueprintId) return;
+    saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
     try {
       await selectBlueprintPath(validation.blueprintId, path);
     } catch (err) {
@@ -196,47 +178,11 @@ export default function ValidationResultsPage() {
     }
   }
 
-  async function handleLaunch() {
-    if (!validation?.blueprintId || launching || timeframeMissing) return;
-
-    setLaunching(true);
-    setLaunchError("");
-
-    try {
-      await selectBlueprintPath(validation.blueprintId, selectedPath ?? "adjusted");
-
-      await apiFetchResponseWithRetry(`/api/v1/validation/${validationId}/select-path`, {
-        method: "POST",
-        body: JSON.stringify({ selectedPath: selectedPath ?? "adjusted" }),
-      });
-
-      if (!isFinalized) {
-        await finalizeValidationBlueprint(validationId, selectedPath);
-        setIsFinalized(true);
-      }
-
-      const result = await launchValidationBlueprint(validationId, {
-        path: selectedPath,
-        tier: selectedTier,
-        selected_blueprint_type: selectedTier,
-        projectName: projectName.trim(),
-      });
-      await completeOnboarding();
-      window.location.href = result.redirectTo ?? result.redirect_to ?? "/dashboard";
-    } catch (err) {
-      const backendMessage =
-        err instanceof ApiError && err.data
-          ? formatApiEnvelopeError(
-              { ok: false, status: err.status, error: err.data as { message?: string; fieldErrors?: Record<string, string[]> } },
-              err.message,
-            )
-          : err instanceof Error
-            ? err.message
-            : "Launch failed";
-      setLaunchError(backendMessage);
-    } finally {
-      setLaunching(false);
-    }
+  function handleProceedToTierSelection() {
+    if (!validation?.blueprintId || timeframeMissing) return;
+    saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, selectedPath));
+    void selectBlueprintPath(validation.blueprintId, selectedPath).catch(() => null);
+    setLocation(`/onboarding/select-blueprint?validationId=${validationId}`);
   }
 
   async function handleDownload() {
@@ -300,12 +246,12 @@ export default function ValidationResultsPage() {
       validationId={validationId}
       selectedPath={selectedPath}
       onSelectPath={(path) => void handleSelectPath(path)}
-      onLaunch={() => void handleLaunch()}
+      onLaunch={() => handleProceedToTierSelection()}
       onDownload={() => void handleDownload()}
       downloading={downloading}
       downloadError={downloadError}
-      launching={launching}
-      launchError={launchError}
+      launching={false}
+      launchError=""
       launchReady={hasPaths && Boolean(selectedPath) && !timeframeMissing}
       timeframeMissing={timeframeMissing}
       onEditContext={() => setLocation("/validate")}

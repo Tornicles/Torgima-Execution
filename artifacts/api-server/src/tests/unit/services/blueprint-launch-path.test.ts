@@ -43,6 +43,11 @@ vi.mock("../../../lib/verifySchema.js", () => ({
   verifyBlueprintLaunchSchema: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
+vi.mock("../../../lib/transitionBlueprintToPathSelection.js", () => ({
+  ensureBlueprintReadyForLaunch: vi.fn().mockResolvedValue(undefined),
+  transitionBlueprintToPathSelection: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@workspace/db", () => ({
   db: { update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) })) },
   blueprints: {},

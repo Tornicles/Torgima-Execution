@@ -22,6 +22,12 @@ export type BlueprintTierCardManifest = {
   bestFor: string[];
   includes: string[];
   structure: BlueprintTierStructurePreview;
+  /** User-facing execution level copy */
+  tagline: string;
+  tasksPerDay: string;
+  difficultyAccess: string;
+  structureDepth: string;
+  price: string;
 };
 
 function computeStructure(tier: BlueprintTier): BlueprintTierStructurePreview {
@@ -102,30 +108,45 @@ function includesWithLiveCounts(tier: BlueprintTier, template: string[]): string
 export const BLUEPRINT_TIER_CARDS: BlueprintTierCardManifest[] = [
   {
     id: "starter",
-    label: "Starter Blueprint",
-    subtitle: "Perfect to get started and build momentum.",
-    recommended: true,
+    label: "Starter",
+    subtitle: "Getting going with a clear simple system",
+    tagline: "Getting going with a clear simple system",
+    recommended: false,
     setupTime: "~5 min",
+    tasksPerDay: "3 tasks/day",
+    difficultyAccess: "Easy tasks",
+    structureDepth: "3 stages",
+    price: "Free / $9/mo",
     bestFor: ["New ideas", "Individuals", "Small projects", "Early-stage execution"],
     includes: includesWithLiveCounts("starter", STARTER_INCLUDES),
     structure: computeStructure("starter"),
   },
   {
     id: "growth",
-    label: "Growth Blueprint",
-    subtitle: "Advanced structure to accelerate consistent growth.",
-    recommended: false,
+    label: "Growth",
+    subtitle: "Serious about building this into something real",
+    tagline: "Serious about building this into something real",
+    recommended: true,
     setupTime: "~10 min",
+    tasksPerDay: "7 tasks/day",
+    difficultyAccess: "All task types",
+    structureDepth: "4 stages",
+    price: "$29/month",
     bestFor: ["Growing businesses", "Scaling projects", "Teams", "Revenue growth"],
     includes: includesWithLiveCounts("growth", GROWTH_INCLUDES),
     structure: computeStructure("growth"),
   },
   {
     id: "ultimate",
-    label: "Ultimate Blueprint",
-    subtitle: "Complete system for maximum impact, scale, and control.",
+    label: "Ultimate",
+    subtitle: "Maximum depth and control",
+    tagline: "Maximum depth and control",
     recommended: false,
     setupTime: "~15 min",
+    tasksPerDay: "8 tasks/day",
+    difficultyAccess: "Advanced",
+    structureDepth: "4 stages+",
+    price: "$79/month",
     bestFor: ["Large organizations", "Complex systems", "Multi-team execution", "Long-term growth"],
     includes: includesWithLiveCounts("ultimate", ULTIMATE_INCLUDES),
     structure: computeStructure("ultimate"),

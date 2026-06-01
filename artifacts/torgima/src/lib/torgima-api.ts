@@ -49,9 +49,11 @@ export {
 export type ValidationLaunchDirection = {
   path: "current" | "adjusted" | "alternative";
   tier?: "starter" | "growth" | "ultimate";
+  blueprintTier?: "starter" | "growth" | "ultimate";
   selected_blueprint_type?: "starter" | "growth" | "ultimate";
   mode?: "individual" | "team";
   projectName?: string;
+  blueprintId?: string;
 };
 
 export type ValidationLaunchResult = {
@@ -97,9 +99,15 @@ export async function launchValidationBlueprint(
   selectedDirection: ValidationLaunchDirection,
 ): Promise<ValidationLaunchResult> {
   const tier =
-    selectedDirection.selected_blueprint_type ?? selectedDirection.tier ?? "starter";
+    selectedDirection.blueprintTier ??
+    selectedDirection.selected_blueprint_type ??
+    selectedDirection.tier ??
+    "growth";
   return apiPost<ValidationLaunchResult>(`/api/v1/validations/${validationId}/launch`, {
     validation_id: validationId,
+    blueprintId: selectedDirection.blueprintId,
+    blueprintTier: tier,
+    selectedPath: selectedDirection.path,
     selected_blueprint_type: tier,
     projectName: selectedDirection.projectName,
     selected_direction: {
