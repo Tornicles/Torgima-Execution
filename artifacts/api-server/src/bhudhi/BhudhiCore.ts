@@ -710,12 +710,12 @@ export async function runBhudhiPipeline<T = unknown>(
       errorCode:     undefined,
     });
   } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : String(error) },
-      "[BhudhiCore] BhudhiLog write failed — aborting call (fail closed)",
+    const logMsg = error instanceof Error ? error.message : String(error);
+    logger.warn(
+      { error: logMsg, triggerType: request.triggerType, userId: request.userId },
+      "[BhudhiCore] Log write failed (non-fatal) — continuing Bhudhi call",
     );
-    const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);
-    return { ok: true, output: fallback as BhudhiOutputEnvelope<T>, fallbackUsed: true, logId: "" };
+    logId = "";
   }
 
   const timeout = getTimeout(request.triggerType);

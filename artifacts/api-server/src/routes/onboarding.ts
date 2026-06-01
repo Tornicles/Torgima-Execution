@@ -164,7 +164,7 @@ router.post("/onboarding/goal", async (req, res) => {
 });
 
 // POST /api/v1/onboarding/select-blueprint — tier selection → full launch transaction
-const selectBlueprintLaunchHandler = async (
+export const selectBlueprintLaunchHandler = async (
   req: import("express").Request,
   res: import("express").Response,
 ) => {

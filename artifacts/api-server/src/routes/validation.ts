@@ -27,6 +27,7 @@ import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
 import { ValidationKind } from "@workspace/state-machine";
 import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
+import { selectBlueprintLaunchHandler } from "./onboarding.js";
 
 const router = Router();
 
@@ -1196,6 +1197,10 @@ router.post("/v1/validations/:id/launch", validationLaunchHandler);
 
 // POST /api/v1/validation/:id/launch — singular alias (matches other v1 validation routes)
 router.post("/v1/validation/:id/launch", validationLaunchHandler);
+
+// POST /api/v1/onboarding/select-blueprint — tier selection launch (also on onboarding router)
+router.post("/v1/onboarding/select-blueprint", selectBlueprintLaunchHandler);
+router.post("/onboarding/select-blueprint", selectBlueprintLaunchHandler);
 
 // GET /api/validation/:id/industry-intelligence
 router.get("/validation/:id/industry-intelligence", async (req, res) => {

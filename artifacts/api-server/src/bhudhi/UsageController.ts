@@ -212,6 +212,8 @@ export async function updateBhudhiLog(params: {
   errorCode?: string;
   outputJson?: Record<string, unknown>;
 }): Promise<void> {
+  if (!params.logId) return;
+
   const cost = estimatedCostUsd(params.inputTokens ?? 0, params.outputTokens ?? 0);
   const patch: Record<string, unknown> = {
     validation_status: params.status,
