@@ -209,6 +209,8 @@ export class BlueprintEngine {
     }
 
     assertSelectionComplete({
+      blueprintId: existing.id,
+      status: existing.status,
       tier: existing.tier,
       mode: existing.mode,
       selectionConfirmedAt: existing.selection_confirmed_at,

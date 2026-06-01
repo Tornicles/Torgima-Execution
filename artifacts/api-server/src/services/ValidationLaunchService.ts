@@ -12,6 +12,7 @@ import { dispatchPendingEvents } from "./EventDispatcher.js";
 import { generateInitialTasks } from "../engines/tasks/generateInitialTasks.js";
 import { normalizeProjectName } from "../lib/projectName.js";
 import { ensureBlueprintReadyForLaunch } from "../lib/transitionBlueprintToPathSelection.js";
+import { ensureBlueprintSelectionBeforeActivate } from "../lib/ensureBlueprintSelectionBeforeActivate.js";
 import { intelligenceDepthForTier } from "../engines/blueprint/BlueprintRuleEngine.js";
 import { BlueprintStatus } from "@workspace/state-machine";
 
@@ -176,6 +177,11 @@ export const ValidationLaunchService = {
         intelligence_depth: depth,
       })
       .where(and(eq(blueprintsTable.id, row.blueprint_id), eq(blueprintsTable.user_id, input.userId)));
+
+    await ensureBlueprintSelectionBeforeActivate(row.blueprint_id, input.userId, {
+      tier,
+      mode: mode ?? "individual",
+    });
 
     await db
       .update(validations)

@@ -47,6 +47,8 @@ export async function createTestBlueprint(userId: string, overrides: Partial<typ
       commitment_level: "medium",
       tier: "starter",
       mode: "individual",
+      selected_blueprint_level: "starter",
+      selection_confirmed_at: new Date(),
       status: "active",
       active: true,
       state_version: 1,

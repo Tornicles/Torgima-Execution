@@ -54,6 +54,8 @@ export async function compileBlueprint(input: BlueprintCompileInput): Promise<Bl
 
   try {
     assertSelectionComplete({
+      blueprintId: bp.id,
+      status: bp.status,
       tier: bp.tier,
       mode: bp.mode,
       selectionConfirmedAt: bp.selection_confirmed_at,

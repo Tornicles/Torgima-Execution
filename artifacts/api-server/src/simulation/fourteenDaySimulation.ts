@@ -24,6 +24,7 @@ import {
   type SimCompletionStatus,
 } from "./synchronousLoopRunner.js";
 import { createTestUser } from "../tests/helpers/db.js";
+import { ensureBlueprintSelectionBeforeActivate } from "../lib/ensureBlueprintSelectionBeforeActivate.js";
 
 const SAAS_GOAL =
   "Build a SaaS platform that helps creators and solopreneurs manage business operations, track income, and know exactly what to execute daily to grow revenue from zero to $10,000/month.";
@@ -128,6 +129,11 @@ export async function bootstrapSimulationSubject(): Promise<{ userId: string; bl
     userId: user.id,
     selectedPath: "adjusted",
     validationContractId,
+  });
+
+  await ensureBlueprintSelectionBeforeActivate(blueprintId, user.id, {
+    tier: "growth",
+    mode: "individual",
   });
 
   await engine.activateBlueprint(blueprintId, user.id, validationContractId);

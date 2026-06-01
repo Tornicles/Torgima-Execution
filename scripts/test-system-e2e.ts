@@ -58,6 +58,7 @@ async function loadEnginesMerged() {
     valSvc,
     evt,
     bhudhi,
+    ensureSel,
   ] = await Promise.all([
     import(pathToFileURL(path.join(base, "engines/validation/ValidationEngine.js")).href),
     import(pathToFileURL(path.join(base, "engines/blueprint/BlueprintEngine.js")).href),
@@ -77,6 +78,7 @@ async function loadEnginesMerged() {
     import(pathToFileURL(path.join(base, "services/ValidationService.js")).href),
     import(pathToFileURL(path.join(base, "services/EventService.js")).href),
     import(pathToFileURL(path.join(base, "bhudhi/BhudhiCore.js")).href),
+    import(pathToFileURL(path.join(base, "lib/ensureBlueprintSelectionBeforeActivate.js")).href),
   ]);
   const BlueprintEngine = bp.BlueprintEngine;
   return {
@@ -101,6 +103,7 @@ async function loadEnginesMerged() {
     ValidationService: valSvc.ValidationService,
     EVENT_TYPES: evt.EVENT_TYPES,
     trigger: bhudhi.trigger,
+    ensureBlueprintSelectionBeforeActivate: ensureSel.ensureBlueprintSelectionBeforeActivate,
   };
 }
 
@@ -474,6 +477,10 @@ void (async () => {
       traceMissing.length ? `Missing:${traceMissing.join(",")}` : `Validation trace complete. selected_path pending row updated next`,
     );
 
+    await E.ensureBlueprintSelectionBeforeActivate(blueprintId, userId, {
+      tier: "starter",
+      mode: "individual",
+    });
     await engine.activateBlueprint(blueprintId, userId, validationContractId);
 
     const [{ pc }] = await db
@@ -1294,6 +1301,10 @@ void (async () => {
       const lawValidationContractId = lawValidation.validationContractId;
       if (!lawValidationContractId) throw new Error("law validation contract missing");
       await E.ValidationService.selectValidationPath({ blueprintId: lawBp, userId, selectedPath: "current", validationContractId: lawValidationContractId });
+      await E.ensureBlueprintSelectionBeforeActivate(lawBp, userId, {
+        tier: "starter",
+        mode: "individual",
+      });
       await engLaw.activateBlueprint(lawBp, userId, lawValidationContractId);
       for (let i = 0; i < 6; i++) {
         const adv = await engLaw.advanceBlueprintPosition(lawBp, userId);

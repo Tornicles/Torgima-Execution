@@ -221,14 +221,22 @@ export function isSystemAllowed(tier: BlueprintTier, systemKey: string): boolean
 }
 
 export function assertSelectionComplete(params: {
+  blueprintId?: string;
+  status?: string | null;
   tier: string | null | undefined;
   mode: string | null | undefined;
   selectionConfirmedAt: Date | null | undefined;
 }): void {
-  if (!params.tier || !params.mode || !params.selectionConfirmedAt) {
+  const missing: string[] = [];
+  if (!params.tier) missing.push("tier");
+  if (!params.mode) missing.push("mode");
+  if (!params.selectionConfirmedAt) missing.push("selection_confirmed_at");
+
+  if (missing.length > 0) {
     throw new TorgimaError(
       "BLUEPRINT_SELECTION_REQUIRED",
-      "Blueprint tier and mode must be selected before launch",
+      `Blueprint cannot be launched. Missing required fields: ${missing.join(", ")}. ` +
+        `Blueprint ID: ${params.blueprintId ?? "unknown"}, current status: ${params.status ?? "unknown"}`,
     );
   }
 }
