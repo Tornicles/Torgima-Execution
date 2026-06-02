@@ -2,8 +2,14 @@
  * DOC3 / DOC4 STEP 2 — register prompt contracts for triggers not yet in PromptRegistry.
  */
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
-import { getContract, PromptRegistry, type PromptContract } from "./PromptRegistry.js";
+import { getContract, type PromptContract } from "./PromptRegistry.js";
 import { getDoc3TriggerRegistry } from "./doc3TriggerRegistry.js";
+
+type PromptRegistryApi = {
+  register(contract: PromptContract): void;
+};
+
+let promptRegistryApi: PromptRegistryApi | null = null;
 
 const HEADER = `You are Bhudhi inside Torgima — a controlled execution intelligence system.
 You are NOT a chatbot. You are NOT the system authority.
@@ -17,8 +23,14 @@ function registerDoc3Contract(
     buildUserPrompt: PromptContract["buildUserPrompt"];
   },
 ): void {
+  const api = promptRegistryApi;
+  if (!api?.register) {
+    throw new Error(
+      "[registerDoc3Prompts] PromptRegistry not initialized — call ensureDoc3PromptsRegistered after export",
+    );
+  }
   const meta = getDoc3TriggerRegistry().get(triggerType);
-  PromptRegistry.register({
+  api.register({
     ...partial,
     triggerType,
     systemPrompt: partial.systemPrompt ?? HEADER,
@@ -31,8 +43,12 @@ function registerDoc3Contract(
 
 let registered = false;
 
-export function ensureDoc3PromptsRegistered(): void {
+export function ensureDoc3PromptsRegistered(api: PromptRegistryApi): void {
+  if (!api?.register) {
+    throw new Error("[registerDoc3Prompts] registry is undefined — check initialization order");
+  }
   if (registered) return;
+  promptRegistryApi = api;
   registered = true;
 
   registerDoc3Contract("POLICY_GENERATION", {
@@ -49,7 +65,7 @@ export function ensureDoc3PromptsRegistered(): void {
 
   const taskDraft = getContract("TASK_DRAFTING");
   if (taskDraft) {
-    PromptRegistry.register({
+    api.register({
       ...taskDraft,
       triggerType: "TASK_REGENERATION",
       name: "task.regenerate.v1",
@@ -204,7 +220,7 @@ export function ensureDoc3PromptsRegistered(): void {
 
   const behavioral = getContract("BEHAVIORAL_ANALYSIS");
   if (behavioral) {
-    PromptRegistry.register({ ...behavioral, triggerType: "BEHAVIOR_ANALYSIS", name: "behavior.analyze.v1" });
+    api.register({ ...behavioral, triggerType: "BEHAVIOR_ANALYSIS", name: "behavior.analyze.v1" });
   } else {
     registerDoc3Contract("BEHAVIOR_ANALYSIS", {
       name: "behavior.analyze.v1",
@@ -232,7 +248,7 @@ export function ensureDoc3PromptsRegistered(): void {
 
   const academy = getContract("ACADEMY_SUPPORT");
   if (academy) {
-    PromptRegistry.register({ ...academy, triggerType: "ACADEMY_CONTENT", name: "academy.content.v1" });
+    api.register({ ...academy, triggerType: "ACADEMY_CONTENT", name: "academy.content.v1" });
   }
 
   registerDoc3Contract("VALIDATION_RESEARCH_MARKET", {

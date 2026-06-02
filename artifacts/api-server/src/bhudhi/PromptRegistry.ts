@@ -1180,7 +1180,6 @@ Return ONLY JSON:
 
 bootstrapPromptRegistry({ registry, modeRegistry, byName });
 registerErectorEnrichedPrompts(registry);
-ensureDoc3PromptsRegistered();
 
 /** All Bhudhi intelligence routes through Anthropic Claude via TriggerRouter. */
 const CLAUDE_EXECUTION_TRIGGERS: BhudhiTriggerType[] = [
@@ -1248,3 +1247,5 @@ export const PromptRegistry = {
     return [...keys];
   },
 };
+
+ensureDoc3PromptsRegistered(PromptRegistry);
