@@ -2,20 +2,16 @@ import {
   acquireBlueprintLock,
   releaseBlueprintLock,
   blueprintLockKey,
+  acquireLock,
+  releaseLock,
 } from "./OrchestrationLock.js";
+import {
+  CONFLICT_PRECEDENCE,
+  resolveConflictFromPrecedence,
+  ENGINE_OWNERSHIP,
+} from "../../services/OrchestrationService.js";
 
-const ENGINE_PRECEDENCE: Record<string, number> = {
-  CONTROL_ENGINE:    1,
-  DEPENDENCY_ENGINE: 2,
-  CONDITION_ENGINE:  3,
-  OUTCOME_TRUTH:     4,
-  SIGNAL_ENGINE:     5,
-  PATTERN_ENGINE:    6,
-  TASK_GENERATION:   7,
-  REWARD_ENGINE:     8,
-  BHUDHI:            9,
-  IDENTITY_ENGINE:   10,
-};
+export { CONFLICT_PRECEDENCE, ENGINE_OWNERSHIP, resolveConflictFromPrecedence };
 
 export type ConflictType =
   | "TASK_CONFLICT"
@@ -37,13 +33,7 @@ export function resolveConflict(params: {
   context?:     string;
 }): OrchestrationDecision {
   void params.context;
-  const precA = ENGINE_PRECEDENCE[params.engineA] ?? 99;
-  const precB = ENGINE_PRECEDENCE[params.engineB] ?? 99;
-
-  const winner = precA <= precB ? params.engineA : params.engineB;
-  const loser = winner === params.engineA ? params.engineB : params.engineA;
-  const winnerPrec = precA <= precB ? precA : precB;
-  const loserPrec = precA <= precB ? precB : precA;
+  const decided = resolveConflictFromPrecedence(params.engineA, params.engineB);
 
   const resolutionMap: Record<ConflictType, string> = {
     TASK_CONFLICT:       "Winner's task rules apply. Loser's task is suppressed.",
@@ -53,9 +43,9 @@ export function resolveConflict(params: {
   };
 
   return {
-    winner,
-    loser,
-    reason:     `${winner} (precedence ${winnerPrec}) outranks ${loser} (precedence ${loserPrec})`,
+    winner: decided.winner,
+    loser: decided.loser,
+    reason: decided.reason,
     resolution: resolutionMap[params.conflictType],
   };
 }
@@ -75,4 +65,4 @@ export async function releaseOrchestrationLock(params: {
   return releaseBlueprintLock(params.blueprintId, params.scope);
 }
 
-export { blueprintLockKey };
+export { blueprintLockKey, acquireLock, releaseLock };

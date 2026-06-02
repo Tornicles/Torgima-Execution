@@ -1392,27 +1392,102 @@ export async function generate(params: {
     return { orders_generated: 0, order_ids: [], used_bhudhi: false, used_fallback: false };
   }
 
+  const {
+    loadTaskGenerationIntelligence,
+    applyPatternRulesToGeneration,
+    reduceDifficultyOneLevel,
+  } = await import("./taskGenerationIntelligence.js");
+  const { highFrictionTaskTypes } = await import("../friction/FrictionDetectionEngine.js");
+
+  const intelligence = await loadTaskGenerationIntelligence({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+  });
+
+  const taskTypeWeights = new Map<string, number>();
+  for (const tt of [
+    "execution",
+    "reflection",
+    "research",
+    "academy",
+    "blocker_resolution",
+    "recovery",
+    "habit",
+  ]) {
+    taskTypeWeights.set(tt, 1);
+  }
+
+  const patternApplied = applyPatternRulesToGeneration({
+    intelligence,
+    difficultyCap: enforcement.difficulty_cap,
+    taskTypeWeights,
+  });
+  enforcement = { ...enforcement, difficulty_cap: patternApplied.difficultyCap };
+  ctx.enforcement = enforcement;
+
   let taskType = selectTaskType(ctx);
   const priorityCandidates = buildPriorityCandidates(ctx, taskType);
-  if (priorityCandidates.length > 1) {
+
+  const frictionMap = intelligence.frictionMap;
+  const avoidFrictionTypes = highFrictionTaskTypes(frictionMap);
+  const filteredCandidates = priorityCandidates.filter(
+    (c) => !avoidFrictionTypes.has(c.task_type),
+  );
+  const candidatesForRank =
+    filteredCandidates.length > 0 ? filteredCandidates : priorityCandidates;
+
+  if (candidatesForRank.length > 0) {
     const { priorityEngine } = await import("../priority/PriorityEngine.js");
     const { tracePrioritySelection, getBlueprintStateVersion } = await import(
       "../decision-trace/DecisionTraceSystem.js"
     );
-    const scored = priorityEngine.scoreAll(priorityCandidates, {
+    const { traceTaskGenerationMode } = await import("../../services/DecisionTraceService.js");
+
+    const rankCtx = {
       condition: ctx.enforcement.condition_code ?? "stability",
       capability: { difficulty_recommendation: ctx.capability.difficulty_recommendation },
       falseProgressActive: Boolean(ctx.false_progress_flag),
-    });
-    const best = scored[0]!.candidate;
-    taskType = best.task_type;
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      allowedActions: ctx.enforcement.allowed_actions ?? ["task_execution"],
+      recentContentHashes: new Set(
+        (ctx.recent_task_hashes ?? []).filter(Boolean) as string[],
+      ),
+      causationEventId: params.causationEventId,
+    };
+
+    const ranked = priorityEngine.rankCandidates(candidatesForRank, rankCtx);
+    if (ranked.scored.length > 0) {
+      const weightedPick = [...ranked.scored].sort((a, b) => {
+        const wa = taskTypeWeights.get(a.candidate.task_type) ?? 1;
+        const wb = taskTypeWeights.get(b.candidate.task_type) ?? 1;
+        return b.score * wb - a.score * wa;
+      })[0];
+      if (weightedPick) taskType = weightedPick.candidate.task_type;
+    } else if (ranked.selected) {
+      taskType = ranked.selected.task_type;
+    }
+
     await tracePrioritySelection({
       blueprintId: params.blueprintId,
       userId: params.userId,
-      condition: ctx.enforcement.condition_code ?? "stability",
+      condition: rankCtx.condition,
       selectedTaskType: taskType,
-      candidates: scored.map((s) => ({ task_type: s.candidate.task_type, score: s.score })),
+      candidates: ranked.scored.map((s) => ({
+        task_type: s.candidate.task_type,
+        score: s.score,
+      })),
       stateVersion: await getBlueprintStateVersion(params.blueprintId),
+    });
+
+    await traceTaskGenerationMode({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      generationMode: params.generationMode,
+      generationTrigger: params.generationTrigger,
+      selectedTaskType: taskType,
+      candidatesConsidered: candidatesForRank.map((c) => c.task_type),
+      causationEventId: params.causationEventId,
     });
   }
 
@@ -1445,6 +1520,10 @@ export async function generate(params: {
     is_first_in_phase: isFirstInPhase,
     archetype_difficulty_adj: ctx.blueprint.archetype_difficulty_adj,
   });
+
+  if (patternApplied.deprioritizedTypes.has(`difficulty:${difficulty}`)) {
+    difficulty = reduceDifficultyOneLevel(difficulty);
+  }
 
   let content = buildTaskContent({
     task_type: taskType,
@@ -1779,6 +1858,15 @@ export async function generate(params: {
 
     return order.id;
   });
+
+  const { ensureResolvablePublication } = await import(
+    "../dependency/DependencyMappingEngine.js"
+  );
+  await ensureResolvablePublication({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    orderId,
+  }).catch(() => null);
 
   if (taskType === "execution" && ctx.action) {
     await db

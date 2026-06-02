@@ -7,6 +7,15 @@
 .env*.local
 *.env
 .env.production
+.env.production.local
+
+# Docx extraction artifacts (local reference only)
+_phase*.zip
+_phase*_docx/
+_phase*_extracted.txt
+_doc*.zip
+_doc*_docx/
+_doc*_extracted.txt
 .env.staging
 
 # Dependencies

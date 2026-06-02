@@ -463,6 +463,8 @@ export const blueprints = pgTable(
     economy_briefing_summary: text("economy_briefing_summary"),
     metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
     state_version: integer("state_version").notNull().default(0),
+    paused: boolean("paused").notNull().default(false),
+    system_locked: boolean("system_locked").notNull().default(false),
     paused_at: timestamp("paused_at", { withTimezone: true }),
     pause_reason: text("pause_reason"),
     completed_at: timestamp("completed_at", { withTimezone: true }),
@@ -936,7 +938,9 @@ export const feedback = pgTable(
     reflection: text("reflection"),
     friction_score: doublePrecision("friction_score"),
     confidence_score: doublePrecision("confidence_score"),
+    effort_score: integer("effort_score"),
     duration_minutes: integer("duration_minutes"),
+    idempotency_key: text("idempotency_key"),
     proof_json: jsonb("proof_json"),
     blocker_json: jsonb("blocker_json"),
     interrogation_json: jsonb("interrogation_json"),
@@ -955,6 +959,9 @@ export const feedback = pgTable(
     index("idx_feedback_blueprint_id").on(t.blueprint_id),
     index("idx_feedback_blueprint_created_at").on(t.blueprint_id, t.created_at),
     index("idx_feedback_user_id").on(t.user_id),
+    uniqueIndex("feedback_idempotency_key_idx")
+      .on(t.idempotency_key)
+      .where(sql`${t.idempotency_key} is not null`),
   ],
 );
 
@@ -3190,6 +3197,12 @@ export const idempotencyRecords = pgTable(
     index("idx_idempotency_records_key").on(t.key),
   ],
 );
+
+/** Phase 7 — tracks applied SQL scripts (engines_doc10_28_phase7.sql, etc.). */
+export const migrationLedger = pgTable("migration_ledger", {
+  script_name: text("script_name").primaryKey(),
+  applied_at: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const systemHealthRecords = pgTable(
   "system_health_records",

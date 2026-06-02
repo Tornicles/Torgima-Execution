@@ -37,9 +37,11 @@ describe("IL2 — FalseProgressDetectionEngine", () => {
     expect(fp.pattern).toBe("ACTIVITY_WITHOUT_OUTCOME");
   });
 
-  it("nine patterns include ACTIVITY_WITHOUT_OUTCOME", () => {
+  it("seven patterns include ACTIVITY_WITHOUT_OUTCOME and PROOF_WEAK", () => {
     expect(FALSE_PROGRESS_PATTERNS).toContain("ACTIVITY_WITHOUT_OUTCOME");
+    expect(FALSE_PROGRESS_PATTERNS).toContain("PROOF_WEAK");
     expect(FALSE_PROGRESS_PATTERNS).toContain("VANITY_PROGRESS");
+    expect(FALSE_PROGRESS_PATTERNS.length).toBe(7);
   });
 });
 

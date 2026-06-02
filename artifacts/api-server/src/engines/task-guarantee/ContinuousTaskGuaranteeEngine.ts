@@ -480,20 +480,49 @@ async function findActionableOrder(blueprintId: string, userId: string): Promise
     difficulty: o.difficulty,
   }));
 
-  const scored = priorityEngine.scoreAll(candidates, {
+  const { collectDependencyBlockedOrderIds } = await import(
+    "../dependency/DependencyMappingEngine.js"
+  );
+  const blockedIds = await collectDependencyBlockedOrderIds({
+    blueprintId,
+    userId,
+    orderIds: candidates.map((c) => c.id!).filter(Boolean),
+  });
+
+  const [pkg] = await db
+    .select({ allowed_actions: enforcementPackages.allowed_actions })
+    .from(enforcementPackages)
+    .where(
+      and(
+        eq(enforcementPackages.blueprint_id, blueprintId),
+        eq(enforcementPackages.is_current, true),
+      ),
+    )
+    .limit(1);
+
+  const ranked = priorityEngine.rankCandidates(candidates, {
     condition: cond?.condition ?? "stability",
     capability: { difficulty_recommendation: capability?.current_difficulty ?? "easy" },
     falseProgressActive: openFp.length > 0,
+    blueprintId,
+    userId,
+    allowedActions: (pkg?.allowed_actions as string[]) ?? ["task_execution", "academy_tasks"],
+    dependencyBlockedOrderIds: blockedIds,
   });
 
-  const best = scored[0]!.candidate;
+  if (!ranked.selected) return null;
+
+  const best = ranked.selected;
   await tracePrioritySelection({
     blueprintId,
     userId,
     condition: cond?.condition ?? "stability",
     selectedTaskType: best.task_type,
     selectedOrderId: best.id,
-    candidates: scored.map((s) => ({ task_type: s.candidate.task_type, score: s.score })),
+    candidates: ranked.scored.map((s) => ({
+      task_type: s.candidate.task_type,
+      score: s.score,
+    })),
     stateVersion: await getBlueprintStateVersion(blueprintId),
   });
 

@@ -129,22 +129,9 @@ describe("GAP G5 — schedulers", () => {
     vi.useFakeTimers();
   });
 
-  it("T5: hourly inactivity scan registers 60m interval", async () => {
-    const scanMod = await import("../../../engines/inactivity/InactivityDetectionEngine.js");
-    const scanSpy = vi.spyOn(scanMod, "scanForInactivity").mockResolvedValue({
-      scanned: 0,
-      detected: 0,
-      resolved: 0,
-      skipped: 0,
-    });
-
+  it("T5: continuity scheduler starts without inline hourly scan (Phase 1 InactivityWorker)", async () => {
     startExecutionContinuitySchedulers();
     await vi.runOnlyPendingTimersAsync();
-    expect(scanSpy).toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
-    expect(scanSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
-
     stopExecutionContinuitySchedulers();
     vi.useRealTimers();
   });
@@ -165,15 +152,7 @@ describe("GAP G5 — schedulers", () => {
     );
   });
 
-  it("hourly scan writes INACTIVITY_SCAN_REQUESTED", async () => {
-    const scanMod = await import("../../../engines/inactivity/InactivityDetectionEngine.js");
-    vi.spyOn(scanMod, "scanForInactivity").mockResolvedValue({
-      scanned: 1,
-      detected: 0,
-      resolved: 0,
-      skipped: 0,
-    });
-
+  it("legacy hourly hook enqueues INACTIVITY_SCAN_REQUESTED (scan via InactivityWorker)", async () => {
     const eventMod = await import("../../../services/EventService.js");
     const writeSpy = vi.spyOn(eventMod, "writeEvent").mockResolvedValue("evt-2");
 

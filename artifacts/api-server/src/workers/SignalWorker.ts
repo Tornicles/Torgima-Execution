@@ -59,11 +59,21 @@ workerRegistry.register({
         const executionLoop =
           loopPayload?.execution_loop === "daily" ? "daily" : "primary";
 
+        const loopPayloadReason =
+          typeof loopPayload === "object" && loopPayload !== null
+            ? String((loopPayload as { reason?: string }).reason ?? "")
+            : "";
+        const payloadReason =
+          data.payload && typeof data.payload === "object"
+            ? String((data.payload as { reason?: string }).reason ?? "")
+            : "";
+
         const result = await calculate({
           blueprintId,
           userId,
           causationEventId: data.eventId,
           executionLoop,
+          triggerReason: payloadReason || loopPayloadReason || undefined,
         });
 
         await calculateFrameworkSignals(blueprintId, userId, result.snapshotId).catch(

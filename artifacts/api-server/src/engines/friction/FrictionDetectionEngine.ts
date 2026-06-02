@@ -134,7 +134,29 @@ export async function detectFrictionForFeedback(params: {
     );
   }
 
+  const { buildFrictionMap, emitStrongFrictionAdaptations } = await import(
+    "./frictionWindowScoring.js"
+  );
+  const frictionMap = await buildFrictionMap({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+  });
+  await emitStrongFrictionAdaptations({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    frictionMap,
+  });
+
   return { frictions, adaptationRequested };
+}
+
+/** Phase 5 — friction map for TaskGenerationEngine (reduces, never eliminates). */
+export async function getFrictionMapForGeneration(params: {
+  userId: string;
+  blueprintId: string;
+}): Promise<import("./frictionWindowScoring.js").FrictionMap> {
+  const { buildFrictionMap } = await import("./frictionWindowScoring.js");
+  return buildFrictionMap(params);
 }
 
 /** Window-level friction (aggregate) — retained for dashboard scans. */
@@ -244,3 +266,5 @@ export class FrictionDetectionEngine {
 }
 
 export const frictionDetectionEngine = new FrictionDetectionEngine();
+
+export { buildFrictionMap, highFrictionTaskTypes, computeFrictionScore } from "./frictionWindowScoring.js";

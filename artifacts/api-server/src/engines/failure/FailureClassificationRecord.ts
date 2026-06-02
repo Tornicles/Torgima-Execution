@@ -10,6 +10,7 @@ import {
   FAILURE_CATEGORIES,
 } from "./FailureClassificationEngine.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { emitFailureCorrectionEvents } from "./failureCorrectionEvents.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { runDebate } from "../../bhudhi/DebateEngine.js";
 
@@ -87,6 +88,14 @@ export async function classifyFailureWithRecord(params: {
       correction_type: base.correctionType,
     },
     idempotencyKey: `failure_classified:${params.feedbackId}`,
+  });
+
+  await emitFailureCorrectionEvents({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    orderId: params.orderId,
+    feedbackId: params.feedbackId,
+    result: base,
   });
 
   const reflection = params.reflection ?? "";

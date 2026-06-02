@@ -7,6 +7,10 @@ import { incrementStateVersion } from "../services/StateMutationService.js";
 import { logger } from "../lib/logger.js";
 
 import { WorkerQueues } from "../types/eventContracts.js";
+import {
+  acquireBlueprintWorkflowLock,
+  releaseBlueprintWorkflowLock,
+} from "../services/OrchestrationService.js";
 
 export const TASK_GENERATION_QUEUE = WorkerQueues.TASK_GENERATION;
 
@@ -24,6 +28,16 @@ workerRegistry.register({
 
         const p = payload as Record<string, unknown> | undefined;
 
+        const workflowName = "task_generation";
+        const locked = await acquireBlueprintWorkflowLock(blueprintId, workflowName, {
+          causationEventId: data.eventId,
+          userId,
+        });
+        if (!locked) {
+          return { success: false, retryable: true, reason: "orchestration_lock_timeout" };
+        }
+
+        try {
         const guaranteeResult = await guaranteeTask({
           blueprintId,
           userId,
@@ -85,6 +99,9 @@ workerRegistry.register({
           },
         }).catch(() => null);
         return { success: true };
+        } finally {
+          await releaseBlueprintWorkflowLock(blueprintId, workflowName);
+        }
       });
     }
   },

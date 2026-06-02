@@ -4,12 +4,14 @@ import { blueprints, db, feedback, orders } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { isVerifiedFeedbackEvidence } from "../engines/intelligence/IdentityContinuityEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
-import { acquireBlueprintLock, releaseBlueprintLock } from "../engines/orchestration/OrchestrationLock.js";
-import { Workflows } from "../engines/orchestration/WorkflowDefinitions.js";
+import {
+  acquireBlueprintWorkflowLock,
+  releaseBlueprintWorkflowLock,
+  Workflows,
+} from "../services/OrchestrationService.js";
 import { WorkerQueues } from "../types/eventContracts.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { validateOutcome } from "../engines/outcome/OutcomeValidationEngine.js";
-import { classifyFailureWithRecord } from "../engines/failure/FailureClassificationRecord.js";
 import { runPsychologyPostFeedback } from "../engines/psychology/PsychologyPipeline.js";
 import {
   fireCompulsionLoop,
@@ -44,16 +46,33 @@ workerRegistry.register({
         }
 
         const workflowName = Workflows.FEEDBACK_COMPLETION.name;
-        const locked = await acquireBlueprintLock(blueprintId, workflowName);
+        const locked = await acquireBlueprintWorkflowLock(blueprintId, workflowName, {
+          causationEventId: data.eventId,
+          userId,
+        });
         if (!locked) {
-          logger.info(
+          logger.warn(
             { blueprintId, workflowName },
-            "[FeedbackWorker] Blueprint lock held — skipping concurrent feedback loop",
+            "[FeedbackWorker] Blueprint lock timeout — workflow deferred to DLQ",
+          );
+          return { success: false, retryable: true, reason: "orchestration_lock_timeout" };
+        }
+
+        try {
+        const eventType = data.eventType;
+
+        if (
+          eventType === EVENT_TYPES.FEEDBACK_REJECTED ||
+          eventType === EVENT_TYPES.FEEDBACK_HELD_FOR_REVIEW ||
+          eventType === EVENT_TYPES.FEEDBACK_NEEDS_CLARIFICATION
+        ) {
+          logger.info(
+            { eventType, feedbackId, blueprintId },
+            "[FeedbackWorker] No signal chain for verdict",
           );
           return { success: true };
         }
 
-        try {
         const requiresInterrogation = Boolean(
           (payload as Record<string, unknown> | undefined)?.["requires_interrogation"],
         );
@@ -172,21 +191,19 @@ workerRegistry.register({
         if (
           feedbackId &&
           orderId &&
-          (completionStatus === "failed" || completionStatus === "skipped")
+          (completionStatus === "failed" || completionStatus === "skipped") &&
+          data.eventType !== EVENT_TYPES.FAILURE_CLASSIFICATION_REQUESTED
         ) {
-          const [fbRow] = await db
-            .select({ reflection: feedback.reflection })
-            .from(feedback)
-            .where(eq(feedback.id, feedbackId))
-            .limit(1);
-
-          await classifyFailureWithRecord({
+          await writeEvent({
+            eventType: EVENT_TYPES.FAILURE_CLASSIFICATION_REQUESTED,
+            entityType: "feedback",
+            entityId: feedbackId,
             userId,
             blueprintId,
-            orderId,
-            feedbackId,
-            reflection: fbRow?.reflection ?? "",
-          });
+            payload: { order_id: orderId, feedback_id: feedbackId },
+            idempotencyKey: `failure_classification:${feedbackId}`,
+            causationEventId: data.eventId,
+          }).catch(() => null);
         }
 
         if (feedbackId) {
@@ -268,7 +285,7 @@ workerRegistry.register({
         );
         return { success: true };
         } finally {
-          await releaseBlueprintLock(blueprintId, workflowName);
+          await releaseBlueprintWorkflowLock(blueprintId, workflowName);
         }
       });
     }

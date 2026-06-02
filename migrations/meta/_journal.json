@@ -92,6 +92,13 @@
       "when": 1780421348947,
       "tag": "0013_bhudhi_upgrade",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0037_phase7_schema_verification",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,8 @@ import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs, 
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
+import { deadLetterQueue } from "../services/DeadLetterQueue.js";
+import { systemHealthMonitor } from "../engines/state/SystemHealthMonitor.js";
 import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
 import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
 import { success, failure, handleError } from "../lib/utils.js";
@@ -33,11 +35,11 @@ router.post("/internal/events/dispatch", async (req, res) => {
   }
 });
 
-// POST /api/internal/events/:id/replay
-router.post("/internal/events/:id/replay", async (req, res) => {
+// POST /api/internal/events/:id/replay — Phase 2: /api/v1/internal/events/:id/replay
+router.post(["/internal/events/:id/replay", "/v1/internal/events/:id/replay"], async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
-    const { id } = req.params;
+    const id = String(req.params.id);
 
     const [event] = await db
       .select()
@@ -75,11 +77,11 @@ router.post("/internal/events/:id/replay", async (req, res) => {
   }
 });
 
-// POST /api/internal/events/:id/cancel
-router.post("/internal/events/:id/cancel", async (req, res) => {
+// POST /api/internal/events/:id/cancel — Phase 2: /api/v1/internal/events/:id/cancel
+router.post(["/internal/events/:id/cancel", "/v1/internal/events/:id/cancel"], async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
-    const { id } = req.params;
+    const id = String(req.params.id);
     const schema = z.object({ reason: z.string().min(1) });
     const result = schema.safeParse(req.body);
     if (!result.success) {
@@ -109,17 +111,12 @@ router.post("/internal/events/:id/cancel", async (req, res) => {
   }
 });
 
-// GET /api/internal/dead-letter
-router.get("/internal/dead-letter", async (req, res) => {
+// GET /api/internal/dead-letter — Phase 2 alias: /api/v1/internal/events/dead-letter
+router.get(["/internal/dead-letter", "/v1/internal/events/dead-letter"], async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
-    const dlEvents = await db
-      .select()
-      .from(deadLetterEvents)
-      .where(eq(deadLetterEvents.resolved, false))
-      .orderBy(desc(deadLetterEvents.created_at))
-      .limit(100);
-    success(res, { events: dlEvents, count: dlEvents.length });
+    const events = await deadLetterQueue.listUnresolved(100);
+    success(res, { events, count: events.length });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -193,12 +190,23 @@ router.get("/internal/metrics", async (req, res) => {
   }
 });
 
-// GET /api/internal/events/health
-router.get("/internal/events/health", async (req, res) => {
+// GET /api/internal/events/health — Phase 2: /api/v1/internal/events/health
+router.get(["/internal/events/health", "/v1/internal/events/health"], async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
     const health = await getEventSystemHealth();
     success(res, health);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// GET /api/v1/internal/health/system — Phase 2 SystemHealthMonitor
+router.get(["/internal/health/system", "/v1/internal/health/system"], async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const snapshot = await systemHealthMonitor.getSnapshot();
+    success(res, snapshot);
   } catch (err) {
     handleError(req, res, err);
   }

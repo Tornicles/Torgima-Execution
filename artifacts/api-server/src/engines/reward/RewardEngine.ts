@@ -9,6 +9,7 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { notifyMilestoneAchieved } from "../../services/notification/LifecycleNotificationWiring.js";
+import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 
 export type RewardType =
   | "COMPLETION"
@@ -50,10 +51,14 @@ async function resolveRewardKind(params: {
     }
 
     if (fb.completion_status === "failed" || fb.completion_status === "skipped") {
+      const reflectionLen = (fb.reflection ?? "").trim().length;
+      if (reflectionLen < 30) return null;
       const hadBlocker =
         Boolean(fb.blocker_json) &&
         Object.keys((fb.blocker_json as Record<string, unknown>) ?? {}).length > 0;
-      if (hadBlocker) return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
+      if (hadBlocker || fb.completion_status === "failed") {
+        return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
+      }
       return { rewardType: "HONEST_FAILURE", intensity: "LOW" };
     }
     if (fb.completion_status === "completed") {
@@ -296,6 +301,32 @@ export async function evaluateReward(params: {
         }).catch(() => null);
       }
 
+      await writeEvent({
+        eventType: EVENT_TYPES.REWARD_CREATED,
+        entityType: "reward",
+        entityId: reward.id,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: {
+          reward_type: rewardType,
+          intensity: effectiveIntensity,
+          source_type: params.sourceType,
+          source_id: params.sourceId,
+        },
+        idempotencyKey: `reward_created:${reward.id}`,
+        causationEventId: params.causationEventId,
+      }).catch(() => null);
+
+      await writeEvent({
+        eventType: EVENT_TYPES.DASHBOARD_REFRESH_REQUESTED,
+        entityType: "blueprint",
+        entityId: params.blueprintId ?? params.userId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: { trigger: "reward_created", reward_id: reward.id },
+        idempotencyKey: `dashboard_reward:${reward.id}`,
+      }).catch(() => null);
+
       logger.info(
         {
           rewardId: reward.id,
@@ -369,6 +400,30 @@ export async function getLatestRewardForBlueprint(userId: string, blueprintId: s
     message: row.message ?? row.description,
     createdAt: row.created_at,
   };
+}
+
+/** Phase 3 GET /api/v1/rewards/recent */
+export async function getRecentRewards(userId: string, blueprintId?: string, limit = 10) {
+  const where = blueprintId
+    ? and(eq(rewardEvents.user_id, userId), eq(rewardEvents.blueprint_id, blueprintId))
+    : eq(rewardEvents.user_id, userId);
+
+  const rows = await db
+    .select()
+    .from(rewardEvents)
+    .where(where)
+    .orderBy(desc(rewardEvents.created_at))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    id: r.id,
+    rewardType: r.reward_type,
+    title: r.title,
+    message: r.message ?? r.description,
+    intensity: r.intensity,
+    delivered: r.delivered,
+    createdAt: r.created_at,
+  }));
 }
 
 export async function getPendingRewards(userId: string, blueprintId?: string) {

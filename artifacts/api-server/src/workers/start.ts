@@ -1,5 +1,4 @@
 import { workerRegistry } from "./WorkerRegistry.js";
-import { dispatchPendingEvents } from "../services/EventDispatcher.js";
 import { logger } from "../lib/logger.js";
 
 // Import all workers to register them
@@ -13,6 +12,8 @@ import "./IdentityWorker.js";
 import "./RewardWorker.js";
 import "./OutcomeValidationWorker.js";
 import "./InactivityWorker.js";
+import "./StateIntegrityWorker.js";
+import "./EventDispatcherWorker.js";
 import "./NotificationWorker.js";
 import "./ProjectionWorker.js";
 import "./BhudhiWorker.js";
@@ -20,6 +21,7 @@ import "./HealthWorker.js";
 import "./ValidationQueueWorker.js";
 import "./ValidationResearchWorker.js";
 import "./PatternScanWorker.js";
+import "./FailureWorker.js";
 import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";
 import "./ErectorEventWorkers.js";
@@ -46,6 +48,10 @@ import {
 import { createPivotReview } from "../engines/lifecycle/PivotEngine.js";
 import { processDeferredNotifications } from "../services/NotificationService.js";
 import { startExecutionContinuitySchedulers } from "../schedulers/ExecutionContinuityScheduler.js";
+import { startStateIntegritySchedule } from "./StateIntegrityWorker.js";
+import { startEventDispatcherPoll } from "./EventDispatcherWorker.js";
+import { startInactivitySchedule } from "./InactivityWorker.js";
+import { startPatternSchedule } from "./PatternScanWorker.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
@@ -53,6 +59,10 @@ export async function startWorkers(): Promise<void> {
 
   startScheduledHealthChecks();
   startExecutionContinuitySchedulers();
+  startStateIntegritySchedule();
+  startEventDispatcherPoll();
+  void startInactivitySchedule();
+  void startPatternSchedule();
   startProductionSchedulers();
   startBhudhiPhase1Schedulers();
   startCalendarNotificationPoller();
@@ -113,21 +123,7 @@ export async function startWorkers(): Promise<void> {
   }, 10 * 60 * 1000);
   logger.info("[Notifications] Deferred notification processor started (every 10 minutes)");
 
-  // Event dispatcher polling loop
-  logger.info("[EventDispatcher] Starting dispatcher loop...");
-  setInterval(async () => {
-    try {
-      const dispatched = await dispatchPendingEvents();
-      if (dispatched > 0) {
-        logger.debug(`[EventDispatcher] Dispatched ${dispatched} events`);
-      }
-    } catch (err) {
-      logger.error(
-        { error: err instanceof Error ? err.message : String(err) },
-        "[EventDispatcher] Dispatch cycle failed",
-      );
-    }
-  }, 1000);
+  // Event dispatch polling — EventDispatcherWorker (5s interval)
 
   logger.info("[Workers] All workers running.");
 }

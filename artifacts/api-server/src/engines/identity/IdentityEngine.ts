@@ -4,6 +4,8 @@ export {
   identityContinuityEngine,
   evaluateIdentity,
   getCurrentIdentityState,
+  getIdentityHistory,
+  getIdentityPanelData,
   isVerifiedFeedbackEvidence,
   toDashboardIdentity,
   DB_TO_IL1_STAGE,

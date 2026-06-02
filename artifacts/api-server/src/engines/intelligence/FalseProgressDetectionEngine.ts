@@ -5,6 +5,7 @@
 export const FALSE_PROGRESS_PATTERNS = [
   "ACTIVITY_WITHOUT_OUTCOME",
   "WRONG_WORK",
+  "PROOF_WEAK",
   "VANITY_PROGRESS",
   "REPEATED_COMPLETION_NO_RESULT",
   "CLAIM_CONTRADICTED",
@@ -17,11 +18,13 @@ export type FalseProgressDetectionInput = {
   completionCount: number;
   evidenceScore: number;
   outcomeMovementScore: number;
+  alignmentScore?: number;
   hasProof: boolean;
   avgScore: number;
   claimContradicted?: boolean;
   criticalBlockerOpen?: boolean;
   easyTaskOnly?: boolean;
+  wrongWork?: boolean;
 };
 
 export type FalseProgressDetectionResult = {
@@ -31,8 +34,9 @@ export type FalseProgressDetectionResult = {
 };
 
 export const CORRECTION_BY_PATTERN: Record<FalseProgressPattern, string> = {
-  ACTIVITY_WITHOUT_OUTCOME: "root_cause_review",
+  ACTIVITY_WITHOUT_OUTCOME: "root_cause",
   WRONG_WORK: "refocus_task",
+  PROOF_WEAK: "evidence_submission",
   VANITY_PROGRESS: "target_clarification",
   REPEATED_COMPLETION_NO_RESULT: "task_value_review",
   CLAIM_CONTRADICTED: "evidence_submission",
@@ -60,6 +64,14 @@ export function detectFalseProgress(
     };
   }
 
+  if (input.wrongWork || (input.alignmentScore != null && input.alignmentScore < 25)) {
+    return {
+      detected: true,
+      pattern: "WRONG_WORK",
+      correctionTaskType: CORRECTION_BY_PATTERN.WRONG_WORK,
+    };
+  }
+
   if (
     evidenceScore < 20 &&
     outcomeMovementScore < 20 &&
@@ -69,6 +81,14 @@ export function detectFalseProgress(
       detected: true,
       pattern: "ACTIVITY_WITHOUT_OUTCOME",
       correctionTaskType: CORRECTION_BY_PATTERN.ACTIVITY_WITHOUT_OUTCOME,
+    };
+  }
+
+  if (evidenceScore < 25 && !hasProof && completionCount >= 2 && completionCount < 5) {
+    return {
+      detected: true,
+      pattern: "PROOF_WEAK",
+      correctionTaskType: CORRECTION_BY_PATTERN.PROOF_WEAK,
     };
   }
 

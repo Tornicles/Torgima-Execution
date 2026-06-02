@@ -1,7 +1,12 @@
 /**
- * GAP G5 — execution-loop entry point for inactivity detection (re-exports implementation).
+ * Phase 1 execution-loop entry — inactivity detection.
  */
 export {
   InactivityDetectionEngine,
   scanForInactivity,
+  scanAll,
+  getLastInactivityScanAt,
+  getCurrentInactivityForBlueprint,
+  isBlueprintEligibleForInactivityScan,
+  type CurrentInactivitySnapshot,
 } from "../inactivity/InactivityDetectionEngine.js";

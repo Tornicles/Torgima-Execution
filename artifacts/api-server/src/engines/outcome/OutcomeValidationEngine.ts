@@ -14,6 +14,8 @@ import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { detectFalseProgress } from "../intelligence/FalseProgressDetectionEngine.js";
+import { scoreOutcomeDimensions } from "./outcomeScoring.js";
+import { emitOutcomeCorrectionEvents } from "./outcomeCorrectionEvents.js";
 
 export type ValidationStatus =
   | "VALIDATED"
@@ -43,9 +45,6 @@ export async function validateOutcome(params: {
   evidenceScore: number;
   outcomeMovementScore: number;
 }> {
-  let evidenceScore = 0;
-  let outcomeMovementScore = 0;
-
   const recentFeedback = await db
     .select()
     .from(feedback)
@@ -68,10 +67,8 @@ export async function validateOutcome(params: {
       ? recentFeedback.reduce((s, f) => s + (f.score ?? 0), 0) / recentFeedback.length
       : 0;
 
-  if (params.evidenceText && params.evidenceText.length > 50) evidenceScore += 30;
-  if (hasProof) evidenceScore += 40;
-  if (completionCount >= 3) evidenceScore += 20;
-  if (avgScore >= 7) evidenceScore += 10;
+  let targetProgressRatio = completionCount * 0.05;
+  let linkedToTarget = Boolean(params.targetId);
 
   if (params.targetId) {
     const [target] = await db
@@ -80,19 +77,34 @@ export async function validateOutcome(params: {
       .where(eq(targets.id, params.targetId))
       .limit(1);
     if (target?.target_value) {
-      const movement =
+      targetProgressRatio =
         (target.current_value ?? 0) / Math.max(1, target.target_value ?? 1);
-      outcomeMovementScore = Math.min(100, movement * 100);
-    } else {
-      outcomeMovementScore = Math.min(100, completionCount * 10);
     }
-  } else {
-    outcomeMovementScore = Math.min(100, completionCount * 10);
   }
 
-  let status: ValidationStatus;
+  const scores = scoreOutcomeDimensions({
+    evidenceTextLength: params.evidenceText?.length ?? 0,
+    hasProof,
+    completionCount,
+    avgScore,
+    targetProgressRatio,
+    linkedToTarget,
+    claimContradicted: false,
+  });
 
-  if (evidenceScore >= 70 && outcomeMovementScore >= 70) {
+  let evidenceScore = scores.evidenceScore;
+  let outcomeMovementScore = scores.outcomeMovementScore;
+  const alignmentScore = scores.alignmentScore;
+  const contradictionScore = scores.contradictionScore;
+
+  let status: ValidationStatus;
+  let detectedPattern: import("../intelligence/FalseProgressDetectionEngine.js").FalseProgressPattern | null =
+    null;
+
+  if (contradictionScore >= 70) {
+    status = "CONTRADICTED";
+    detectedPattern = "CLAIM_CONTRADICTED";
+  } else if (evidenceScore >= 70 && outcomeMovementScore >= 70) {
     status = "VALIDATED";
   } else if (evidenceScore >= 40 && outcomeMovementScore >= 40) {
     status = "PARTIALLY_VALIDATED";
@@ -101,11 +113,15 @@ export async function validateOutcome(params: {
       completionCount,
       evidenceScore,
       outcomeMovementScore,
+      alignmentScore,
       hasProof,
       avgScore,
+      claimContradicted: contradictionScore >= 70,
+      wrongWork: alignmentScore < 25 && completionCount >= 3,
     });
     if (fp.detected && fp.pattern) {
       status = "FALSE_PROGRESS";
+      detectedPattern = fp.pattern;
       await createFalseProgressFlag({
         userId: params.userId,
         blueprintId: params.blueprintId,
@@ -146,8 +162,36 @@ export async function validateOutcome(params: {
     }),
   });
 
+  if (status === "CONTRADICTED") {
+    await emitOutcomeCorrectionEvents({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      status: "CONTRADICTED",
+      pattern: detectedPattern ?? "CLAIM_CONTRADICTED",
+      targetId: params.targetId,
+      sourceId: params.sourceId,
+    }).catch(() => null);
+    status = "FALSE_PROGRESS";
+  }
+
+  await emitOutcomeCorrectionEvents({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    status,
+    pattern: status === "FALSE_PROGRESS" ? detectedPattern : null,
+    targetId: params.targetId,
+    sourceId: params.sourceId,
+  }).catch(() => null);
+
   logger.info(
-    { blueprintId: params.blueprintId, status, evidenceScore, outcomeMovementScore },
+    {
+      blueprintId: params.blueprintId,
+      status,
+      evidenceScore,
+      outcomeMovementScore,
+      alignmentScore,
+      contradictionScore,
+    },
     "[OutcomeEngine] Validation complete",
   );
 

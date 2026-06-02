@@ -1,4 +1,12 @@
-import { db, feedback, signalSnapshots, orders, targets, blueprints, activeFeedbackSessions } from "@workspace/db";
+import {
+  db,
+  feedback,
+  signalSnapshots,
+  orders,
+  targets,
+  blueprints,
+  activeFeedbackSessions,
+} from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import type { SignalMetrics as ExportedSignalMetrics } from "./SignalCalculationEngine.types.js";
@@ -72,6 +80,8 @@ export async function calculate(params: {
   causationEventId?: string;
   /** primary = feedback path; daily = midnight/daily loop signal refresh */
   executionLoop?: ExecutionLoopKind;
+  /** Phase 8 — e.g. `inactivity` from inactivity detection events */
+  triggerReason?: string;
 }): Promise<{
   snapshotId: string;
   condition: string;
@@ -162,6 +172,16 @@ export async function calculate(params: {
   if (structuredInWindow.length > 0) {
     metrics = mergeStructuredFeedbackMetrics(metrics, structuredInWindow, priorStructured);
   }
+
+  const { applyInactivityMomentumPenalty } = await import("./signalInactivityMomentum.js");
+  metrics = {
+    ...metrics,
+    momentum: await applyInactivityMomentumPenalty({
+      blueprintId: params.blueprintId,
+      momentum: metrics.momentum,
+      triggerReason: params.triggerReason,
+    }),
+  };
 
   const [prevSnapshot] = await db
     .select()

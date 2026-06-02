@@ -47,11 +47,21 @@ export async function checkPgBossWorkers(): Promise<void> {
 }
 
 export async function checkSignalEngineRecency(maxAgeHours = 48): Promise<number | null> {
+  const activeResult = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::int AS count FROM blueprints WHERE active = true AND status = 'active'`,
+  );
+  const activeBlueprints = Number(activeResult.rows[0]?.count ?? 0);
+  if (activeBlueprints === 0) {
+    return null;
+  }
+
   const result = await pool.query<{ latest: Date | null }>(
     "SELECT MAX(created_at) AS latest FROM signal_snapshots",
   );
   const latest = result.rows[0]?.latest;
-  if (!latest) return null;
+  if (!latest) {
+    throw new Error("no signal snapshots while active blueprints exist");
+  }
 
   const ageHours = (Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000);
   if (ageHours > maxAgeHours) {
@@ -91,7 +101,9 @@ export async function buildProductionHealthResponse(): Promise<ProductionHealthR
     workers: healthChecks[2]?.status === "fulfilled" ? "ok" : "error",
     signals: healthChecks[3]?.status === "fulfilled" ? "ok" : "error",
   };
-  const healthy = Object.values(checks).every((check) => check === "ok");
+  const coreOk =
+    checks.database === "ok" && checks.bhudhi === "ok" && checks.workers === "ok";
+  const healthy = coreOk && checks.signals === "ok";
 
   return {
     status: healthy ? "healthy" : "degraded",
@@ -111,7 +123,11 @@ router.get("/healthz", (_req, res) => {
 router.get("/health", async (req, res) => {
   try {
     const results = await buildProductionHealthResponse();
-    res.status(results.status === "healthy" ? 200 : 503).json(results);
+    const coreOk =
+      results.checks.database === "ok" &&
+      results.checks.bhudhi === "ok" &&
+      results.checks.workers === "ok";
+    res.status(coreOk ? 200 : 503).json(results);
   } catch (err) {
     handleError(req, res, err);
   }

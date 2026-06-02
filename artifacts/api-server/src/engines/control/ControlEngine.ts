@@ -7,6 +7,7 @@ import {
   enforcementPackages,
   cognitiveLoadScores,
   signalSnapshots,
+  conditions as conditionsTable,
 } from "@workspace/db";
 import {
   applyArchetypeTaskLimitsWithLog,
@@ -409,6 +410,26 @@ export async function generateEnforcementPackage(params: {
     rules.taskMax = Math.max(1, rules.taskMin);
   }
 
+  const [{ count: activeOrderCountForLoad } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.blueprint_id, params.blueprintId),
+        eq(orders.user_id, params.userId),
+        inArray(orders.status, ["pending", "active", "needs_feedback", "blocked"]),
+      ),
+    );
+
+  const { computeEnforcementCognitiveLoadScore } = await import(
+    "../../services/DecisionTraceService.js"
+  );
+  const enforcementCognitiveLoad = computeEnforcementCognitiveLoadScore({
+    activeOrderCount: activeOrderCountForLoad ?? 0,
+    taskMax: rules.taskMax,
+    difficultyCap: rules.difficultyCap,
+  });
+
   const packageId = await db.transaction(async (tx) => {
     await tx
       .update(enforcementPackages)
@@ -441,7 +462,7 @@ export async function generateEnforcementPackage(params: {
           scaling_allowed: rules.scalingAllowed,
           escalation_level: params.escalationLevel,
         },
-        cognitive_load_score: loadScore,
+        cognitive_load_score: enforcementCognitiveLoad,
         is_current: true,
       })
       .returning({ id: enforcementPackages.id });
@@ -496,6 +517,95 @@ export async function generateEnforcementPackage(params: {
   });
 
   return { packageId };
+}
+
+/** Phase 8 — immediate load reduction when adaptation_requested / reduce_load. */
+export async function applyLoadReduction(params: {
+  blueprintId: string;
+  userId: string;
+  causationEventId?: string;
+}): Promise<{ packageId: string }> {
+  const [pkg] = await db
+    .select()
+    .from(enforcementPackages)
+    .where(
+      and(
+        eq(enforcementPackages.blueprint_id, params.blueprintId),
+        eq(enforcementPackages.is_current, true),
+      ),
+    )
+    .limit(1);
+
+  if (!pkg) {
+    const [cond] = await db
+      .select({ id: conditionsTable.id, condition: conditionsTable.condition })
+      .from(conditionsTable)
+      .where(
+        and(
+          eq(conditionsTable.blueprint_id, params.blueprintId),
+          eq(conditionsTable.is_current, true),
+        ),
+      )
+      .limit(1);
+
+    const { packageId } = await generateEnforcementPackage({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      conditionId: cond?.id ?? params.blueprintId,
+      condition: cond?.condition ?? "urgency",
+      escalationLevel: 0,
+      recoveryRequired: true,
+      causationEventId: params.causationEventId,
+    });
+    return { packageId };
+  }
+
+  const limits = (pkg.task_limits ?? { min: 1, max: 1 }) as { min?: number; max?: number };
+  const taskMin = limits.min ?? 1;
+  const taskMax = Math.max(taskMin, (limits.max ?? taskMin) - 1);
+  const capIdx = DIFFICULTY_LEVELS.indexOf(pkg.difficulty_cap ?? "easy");
+  const difficultyCap =
+    capIdx > 0 ? DIFFICULTY_LEVELS[capIdx - 1]! : DIFFICULTY_LEVELS[0]!;
+
+  const overrideFlags =
+    pkg.override_flags && typeof pkg.override_flags === "object" && !Array.isArray(pkg.override_flags)
+      ? (pkg.override_flags as Record<string, unknown>)
+      : {};
+
+  await db
+    .update(enforcementPackages)
+    .set({
+      task_limits: { min: taskMin, max: taskMax },
+      difficulty_cap: difficultyCap as typeof enforcementPackages.$inferInsert["difficulty_cap"],
+      override_flags: {
+        ...overrideFlags,
+        load_reduction_applied: true,
+        load_reduction_at: new Date().toISOString(),
+      },
+      cognitive_load_score: Math.max(
+        0,
+        Number(pkg.cognitive_load_score ?? 0) - 0.15,
+      ),
+    })
+    .where(eq(enforcementPackages.id, pkg.id));
+
+  await incrementStateVersion(
+    params.blueprintId,
+    "load_reduction_applied",
+    params.causationEventId,
+  );
+
+  logger.info(
+    {
+      blueprintId: params.blueprintId,
+      packageId: pkg.id,
+      taskMax,
+      difficultyCap,
+    },
+    "[ControlEngine] applyLoadReduction",
+  );
+
+  return { packageId: pkg.id };
 }
 
 export function getBaseRules(condition: string): BaseConditionRules {

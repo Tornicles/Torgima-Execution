@@ -36,9 +36,13 @@ export interface StateMutationResponse<TData = unknown> {
   result: MutationResult;
   previousStateVersion: number;
   newStateVersion?: number;
+  mutationId?: string;
   data?: TData;
   errors?: string[];
 }
+
+/** Phase 2 DOC 15 alias */
+export type StateMutationResult<TData = unknown> = StateMutationResponse<TData>;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

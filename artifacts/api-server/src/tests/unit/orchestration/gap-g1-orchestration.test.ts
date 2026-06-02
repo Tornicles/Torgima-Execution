@@ -14,12 +14,6 @@ import {
 import { Workflows } from "../../../engines/orchestration/WorkflowDefinitions.js";
 import { blueprintLockKey } from "../../../engines/orchestration/OrchestrationLock.js";
 import { EVENT_TYPES } from "../../../services/EventService.js";
-import { FEEDBACK_QUEUE } from "../../../workers/FeedbackWorker.js";
-import { SIGNAL_QUEUE } from "../../../workers/SignalWorker.js";
-import { CONDITION_QUEUE } from "../../../workers/ConditionWorker.js";
-import { CONTROL_QUEUE } from "../../../workers/ControlWorker.js";
-import { TASK_GENERATION_QUEUE } from "../../../workers/TaskGenerationWorker.js";
-import { TASK_GUARANTEE_QUEUE } from "../../../workers/TaskGuaranteeWorker.js";
 
 describe("GAP G1 — event contracts", () => {
   it("T1: EventService re-exports match EventTypes (zero drift)", () => {
@@ -36,13 +30,13 @@ describe("GAP G1 — event contracts", () => {
   });
 
   it("worker queues align with EVENT_QUEUE_MAP targets", () => {
-    expect(FEEDBACK_QUEUE).toBe(WorkerQueues.FEEDBACK_PROCESSING);
-    expect(EVENT_QUEUE_MAP[EventTypes.FEEDBACK_SUBMITTED]).toBe(FEEDBACK_QUEUE);
-    expect(EVENT_QUEUE_MAP[EventTypes.SIGNAL_CALCULATED]).toBe(CONDITION_QUEUE);
-    expect(EVENT_QUEUE_MAP[EventTypes.CONDITION_EVALUATED]).toBe(CONTROL_QUEUE);
-    expect(EVENT_QUEUE_MAP[EventTypes.ENFORCEMENT_PACKAGE_CREATED]).toBe(TASK_GENERATION_QUEUE);
-    expect(EVENT_QUEUE_MAP[EventTypes.TASK_GENERATION_COMPLETED]).toBe(TASK_GUARANTEE_QUEUE);
-    expect(SIGNAL_QUEUE).toBe(WorkerQueues.SIGNAL_RECALCULATION);
+    expect(WorkerQueues.FEEDBACK_PROCESSING).toBe("feedback_processing_requested");
+    expect(EVENT_QUEUE_MAP[EventTypes.FEEDBACK_SUBMITTED]).toBe(WorkerQueues.FEEDBACK_PROCESSING);
+    expect(EVENT_QUEUE_MAP[EventTypes.SIGNAL_CALCULATED]).toBe(WorkerQueues.CONDITION_EVALUATION);
+    expect(EVENT_QUEUE_MAP[EventTypes.CONDITION_EVALUATED]).toBe(WorkerQueues.ENFORCEMENT_PACKAGE);
+    expect(EVENT_QUEUE_MAP[EventTypes.ENFORCEMENT_PACKAGE_CREATED]).toBe(WorkerQueues.TASK_GENERATION);
+    expect(EVENT_QUEUE_MAP[EventTypes.TASK_GENERATION_COMPLETED]).toBe(WorkerQueues.TASK_GUARANTEE);
+    expect(WorkerQueues.SIGNAL_RECALCULATION).toBe("signal_recalculation_requested");
   });
 
   it("order_available is terminal (optional reward/identity do not block)", () => {

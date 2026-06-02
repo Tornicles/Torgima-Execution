@@ -102,6 +102,18 @@ export async function evaluate(params: {
     finalCondition = "power_change";
   }
 
+  const { shouldHoldConditionForFatigue } = await import("./conditionFatigueHold.js");
+  if (
+    await shouldHoldConditionForFatigue({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      previousCondition: previousConditionName,
+      proposedCondition: finalCondition,
+    })
+  ) {
+    finalCondition = previousConditionName;
+  }
+
   const conditionChanged = previousConditionName !== finalCondition;
 
   const prevEscalation = currentCondition?.escalation_level ?? 0;
@@ -209,6 +221,21 @@ export async function evaluate(params: {
   }
 
   await incrementStateVersion(params.blueprintId, "condition_evaluated", params.causationEventId);
+
+  if (conditionChanged) {
+    const { traceConditionEvaluation } = await import(
+      "../../services/DecisionTraceService.js"
+    );
+    await traceConditionEvaluation({
+      blueprintId: params.blueprintId,
+      userId: params.userId,
+      previousCondition: previousConditionName,
+      newCondition: finalCondition,
+      escalationLevel,
+      recoveryRequired,
+      causationEventId: params.causationEventId,
+    }).catch(() => undefined);
+  }
 
   logger.info(
     {

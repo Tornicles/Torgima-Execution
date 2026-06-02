@@ -1,12 +1,12 @@
 /**
- * GAP G5 — hourly inactivity scan + daily midnight UTC execution cycle (DOC_11).
+ * GAP G5 — daily midnight UTC execution cycle (DOC_11).
+ * Inactivity scans: Phase 1 InactivityWorker (30-minute pg-boss schedule).
  */
 
 import { db, blueprints, phases } from "@workspace/db";
 import { and, asc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
-import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 import { runDailyLoopsForAllActiveBlueprints } from "../engines/execution-loop/DailyLoopEngine.js";
 import {
   revealAllDueTasksGlobal,
@@ -18,17 +18,15 @@ const HOUR_MS = 60 * 60 * 1000;
 const timers: ReturnType<typeof setInterval>[] = [];
 let midnightTimeout: ReturnType<typeof setTimeout> | null = null;
 
+/** @deprecated Use InactivityWorker 30-minute schedule. */
 export async function runHourlyInactivityScan(): Promise<void> {
   await writeEvent({
     eventType: EVENT_TYPES.INACTIVITY_SCAN_REQUESTED,
     entityType: "system",
     entityId: "inactivity_scan",
-    payload: { trigger: "hourly_schedule" },
+    payload: { trigger: "legacy_hourly_hook" },
     idempotencyKey: `inactivity_scan_hourly:${Math.floor(Date.now() / HOUR_MS)}`,
   }).catch(() => null);
-
-  const result = await scanForInactivity();
-  logger.info(result, "[ExecutionContinuity] Hourly inactivity scan complete");
 }
 
 export async function runDailyTaskCycle(): Promise<void> {
@@ -127,15 +125,9 @@ export function startExecutionContinuitySchedulers(): void {
   // Do not run inactivity scan on boot — incomplete schemas used to crash the process
   // (relation does not exist) before the HTTP server could serve traffic.
 
-  timers.push(
-    setInterval(() => {
-      void runHourlyInactivityScan();
-    }, HOUR_MS),
-  );
-
   scheduleMidnightUtcDailyCycle();
 
-  logger.info("[ExecutionContinuity] Hourly inactivity + midnight UTC daily cycle started");
+  logger.info("[ExecutionContinuity] Midnight UTC daily cycle started (inactivity via InactivityWorker)");
 }
 
 export function stopExecutionContinuitySchedulers(): void {

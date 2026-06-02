@@ -1,6 +1,9 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
-import { generateEnforcementPackage } from "../engines/control/ControlEngine.js";
+import {
+  applyLoadReduction,
+  generateEnforcementPackage,
+} from "../engines/control/ControlEngine.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { recordOperatingLoopStage } from "../services/OperatingLoopRecorder.js";
 import { logger } from "../lib/logger.js";
@@ -19,6 +22,23 @@ workerRegistry.register({
         const { blueprintId, userId, payload } = data;
         if (!blueprintId || !userId) {
           return { success: false, retryable: false, reason: "Missing blueprintId or userId" };
+        }
+
+        const adaptationType = String(
+          payload?.type ?? payload?.adaptationType ?? payload?.action ?? "",
+        ).toLowerCase();
+
+        if (adaptationType === "reduce_load") {
+          const reduced = await applyLoadReduction({
+            blueprintId,
+            userId,
+            causationEventId: data.eventId,
+          });
+          logger.info(
+            { blueprintId, packageId: reduced.packageId },
+            "[ControlWorker] Load reduction applied",
+          );
+          return { success: true };
         }
 
         const conditionId = payload?.condition_id as string | undefined;

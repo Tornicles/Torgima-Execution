@@ -38,6 +38,7 @@
     "postgres:up": "node scripts/start-local-postgres.mjs",
     "postgres:down": "node scripts/stop-local-postgres.mjs",
     "test:phase9:local": "node scripts/run-phase9-e2e.mjs",
+    "test:phase9:production": "node scripts/run-phase9-production-acceptance.mjs",
     "start:api": "node scripts/start-api.mjs",
     "db:migrate:prod": "pnpm -F @workspace/db migrate",
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen"

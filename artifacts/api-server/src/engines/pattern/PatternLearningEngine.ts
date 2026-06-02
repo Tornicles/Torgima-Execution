@@ -6,11 +6,19 @@ import {
   behaviorEvents,
   capabilityProfiles,
   inactivityRecords,
+  blueprints,
 } from "@workspace/db";
 import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
+import { BlueprintStatus } from "@workspace/state-machine";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { getOpenFlags } from "../outcome/OutcomeValidationEngine.js";
+import {
+  calculatePatternScores,
+  computeSpecFatigueRiskScore,
+  consecutiveCompletedDays,
+} from "./patternScoring.js";
+import { emitPatternResponseEvent } from "./patternResponseEvents.js";
 
 /** DOC_21 — full pattern spec labels (stored in evidence_json.spec_label). */
 export const PATTERN_SPEC_LABELS = [
@@ -260,18 +268,80 @@ export async function scanPatterns(params: {
         feedbackRows.length /
         5
       : 1;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+  const threeDaysAgo = new Date(Date.now() - 3 * 86400000);
+  const prev7 = feedbackRows.filter((f) => f.created_at >= sevenDaysAgo);
+  const curr3 = feedbackRows.filter((f) => f.created_at >= threeDaysAgo);
+  const prev7Rate =
+    prev7.length > 0
+      ? prev7.filter((f) => f.completion_status === "completed").length / prev7.length
+      : 0;
+  const curr3Rate =
+    curr3.length > 0
+      ? curr3.filter((f) => f.completion_status === "completed").length / curr3.length
+      : 0;
+
+  const hardLast3d = feedbackRows.filter(
+    (f) =>
+      f.created_at >= threeDaysAgo &&
+      ["hard", "very_hard"].includes((f.taskDifficulty as string) ?? "") &&
+      f.completion_status === "completed",
+  ).length;
+
+  const [{ openInactivity = 0 } = {}] = await db
+    .select({ openInactivity: count() })
+    .from(inactivityRecords)
+    .where(
+      and(
+        eq(inactivityRecords.user_id, params.userId),
+        eq(inactivityRecords.blueprint_id, params.blueprintId),
+        eq(inactivityRecords.resolved, false),
+      ),
+    );
+
+  const specRiskScore = computeSpecFatigueRiskScore({
+    prev7dCompletionRate: prev7Rate,
+    curr3dCompletionRate: curr3Rate,
+    recentTasks: feedbackRows.slice(-10).map((f) => ({
+      effortScore: f.confidence_score,
+      notesLength: (f.reflection ?? "").length,
+      durationMinutes: null,
+      timeEstimate: 30,
+    })),
+    hardTasksLast3d: hardLast3d,
+    inactivityAfterIntensity: Number(openInactivity) > 0,
+  });
+
   const fatigueScore =
     (avgFriction / 5) * 0.4 + failureRate * 0.4 + (1 - avgConfidence) * 0.2;
   const fatigueRisk =
-    fatigueScore >= 0.7
+    specRiskScore >= 0.6
       ? "CRITICAL"
-      : fatigueScore >= 0.5
+      : specRiskScore >= 0.45
         ? "HIGH"
-        : fatigueScore >= 0.3
-          ? "MEDIUM"
-          : "LOW";
+        : fatigueScore >= 0.7
+          ? "CRITICAL"
+          : fatigueScore >= 0.5
+            ? "HIGH"
+            : fatigueScore >= 0.3
+              ? "MEDIUM"
+              : "LOW";
 
-  if (["HIGH", "CRITICAL"].includes(fatigueRisk)) patterns.push("FATIGUE_RISK");
+  if (specRiskScore >= 0.6 || ["HIGH", "CRITICAL"].includes(fatigueRisk)) {
+    patterns.push("FATIGUE_RISK");
+  }
+
+  const dayBuckets = new Map<string, { completed: number; total: number }>();
+  for (const f of feedbackRows) {
+    const day = f.created_at.toISOString().slice(0, 10);
+    const b = dayBuckets.get(day) ?? { completed: 0, total: 0 };
+    b.total++;
+    if (f.completion_status === "completed") b.completed++;
+    dayBuckets.set(day, b);
+  }
+  if (consecutiveCompletedDays(dayBuckets) >= 7) {
+    patterns.push("CONSISTENT_EXECUTION");
+  }
 
   const [{ inactivityCount = 0 } = {}] = await db
     .select({ inactivityCount: count() })
@@ -304,9 +374,10 @@ export async function scanPatterns(params: {
     if (!patterns.includes("BURNOUT_RISK")) patterns.push("BURNOUT_RISK");
   }
 
+  const uniquePatterns = [...new Set(patterns)];
   let patternsDetected = 0;
 
-  for (const patternType of patterns) {
+  for (const patternType of uniquePatterns) {
     const dbType = mapSpecLabelToDbType(patternType);
 
     const specFilter = sql`(${behaviorPatterns.evidence_json})::jsonb->>'spec_label' = ${patternType}`;
@@ -356,12 +427,31 @@ export async function scanPatterns(params: {
       patternsDetected++;
 
       if (created) {
+        const scores = calculatePatternScores({
+          occurrenceCount: feedbackRows.length,
+          windowSize: Math.max(7, window),
+          impactOnCompletion: failureRate,
+          trendDelta: prev7Rate - curr3Rate,
+          crossTypeStability: 0.7,
+        });
         await db.insert(behaviorEvents).values({
           user_id: params.userId,
           blueprint_id: params.blueprintId,
           pattern_id: created.id,
           event_type: "pattern_detected",
-          data_json: { spec_label: patternType, fatigue_risk: fatigueRisk },
+          data_json: {
+            spec_label: patternType,
+            fatigue_risk: fatigueRisk,
+            scores,
+            spec_risk_score: specRiskScore,
+          },
+        });
+        await emitPatternResponseEvent({
+          pattern: patternType,
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+          patternId: created.id,
+          riskScore: specRiskScore,
         });
       }
     } else {
@@ -404,6 +494,11 @@ export async function scanPatterns(params: {
     });
   }
 
+  const resolved = await resolveEligiblePatterns(params.userId, params.blueprintId, {
+    specRiskScore,
+    dayBuckets,
+  });
+
   logger.info(
     {
       blueprintId: params.blueprintId,
@@ -411,11 +506,102 @@ export async function scanPatterns(params: {
       fatigueRisk,
       burnoutRisk,
       detected: patternsDetected,
+      resolved,
+      specRiskScore,
     },
     "[PatternEngine] Scan complete",
   );
 
   return { patternsDetected, fatigueRisk, burnoutRisk };
+}
+
+async function resolveEligiblePatterns(
+  userId: string,
+  blueprintId: string,
+  ctx: {
+    specRiskScore: number;
+    dayBuckets: Map<string, { completed: number; total: number }>;
+  },
+): Promise<number> {
+  const active = await getActivePatterns(userId, blueprintId);
+  let resolved = 0;
+
+  for (const p of active) {
+    const evidence =
+      p.evidence_json && typeof p.evidence_json === "object" && !Array.isArray(p.evidence_json)
+        ? (p.evidence_json as Record<string, unknown>)
+        : {};
+    const spec = String(evidence.spec_label ?? "");
+
+    let shouldResolve = false;
+    if (spec === "RECOVERY_SUCCESS") {
+      const abandonment = active.find(
+        (a) =>
+          (a.evidence_json as Record<string, unknown> | undefined)?.spec_label ===
+          "ABANDONMENT_RISK",
+      );
+      if (abandonment) {
+        await resolvePattern(abandonment.id, "recovery_success");
+        resolved++;
+      }
+    }
+    if (spec === "FATIGUE_RISK" && ctx.specRiskScore < 0.4) shouldResolve = true;
+    if (spec === "CONSISTENT_EXECUTION" && consecutiveCompletedDays(ctx.dayBuckets) < 5) {
+      shouldResolve = false;
+    }
+    if (spec === "VOLATILE_EXECUTION" && ctx.dayBuckets.size >= 5) {
+      const rates: number[] = [];
+      const days = [...ctx.dayBuckets.keys()].sort().slice(-5);
+      for (const d of days) {
+        const b = ctx.dayBuckets.get(d)!;
+        rates.push(b.completed / Math.max(1, b.total));
+      }
+      if (rates.length >= 5) {
+        const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+        const variance =
+          rates.reduce((s, r) => s + (r - mean) ** 2, 0) / Math.max(1, rates.length);
+        if (variance < 0.04) shouldResolve = true;
+      }
+    }
+
+    if (shouldResolve) {
+      await resolvePattern(p.id, "resolution_condition_met");
+      resolved++;
+    }
+  }
+
+  return resolved;
+}
+
+/** Phase 4 — scan all active blueprints (daily cron). */
+export async function scanAll(): Promise<{ scanned: number; patternsDetected: number }> {
+  const rows = await db
+    .select({ id: blueprints.id, user_id: blueprints.user_id })
+    .from(blueprints)
+    .where(and(eq(blueprints.active, true), eq(blueprints.status, BlueprintStatus.ACTIVE)));
+
+  let patternsDetected = 0;
+  for (const bp of rows) {
+    const result = await scanPatterns({
+      userId: bp.user_id,
+      blueprintId: bp.id,
+      windowDays: 14,
+    });
+    patternsDetected += result.patternsDetected;
+  }
+
+  logger.info({ scanned: rows.length, patternsDetected }, "[PatternEngine] scanAll complete");
+  return { scanned: rows.length, patternsDetected };
+}
+
+export class PatternLearningEngine {
+  scanForUser(userId: string, blueprintId: string, windowDays = 14) {
+    return scanPatterns({ userId, blueprintId, windowDays });
+  }
+
+  scanAll() {
+    return scanAll();
+  }
 }
 
 export async function resolvePattern(patternId: string, _reason?: string): Promise<void> {

@@ -4,11 +4,19 @@ import { eq, and, lte, inArray, or } from "drizzle-orm";
 import { getBoss } from "../lib/queue.js";
 import { logger } from "../lib/logger.js";
 import { EventStatus } from "@workspace/state-machine";
-import { EVENT_QUEUE_MAP, TERMINAL_EVENT_TYPES } from "../types/eventContracts.js";
+import { EVENT_QUEUE_MAP, TERMINAL_EVENT_TYPES, EventTypes } from "../types/eventContracts.js";
 import { claimDeadlineFromNow } from "../engines/events/StuckEventDetector.js";
 import { getNextRunAfter } from "../engines/events/RetryPolicy.js";
+import { deadLetterQueue } from "./DeadLetterQueue.js";
 
 const DISPATCH_BATCH_SIZE = 50;
+const MAX_DISPATCH_ATTEMPTS = 3;
+
+const PRIORITY_EVENT_TYPES = new Set<string>([
+  EventTypes.FEEDBACK_SUBMITTED,
+  EventTypes.TASK_GENERATION_REQUESTED,
+  EventTypes.CONDITION_EVALUATED,
+]);
 
 export async function dispatchPendingEvents(): Promise<number> {
   // Claim a batch of PENDING events atomically
@@ -30,6 +38,13 @@ export async function dispatchPendingEvents(): Promise<number> {
       .limit(DISPATCH_BATCH_SIZE);
 
     if (pending.length === 0) return [];
+
+    pending.sort((a, b) => {
+      const aPri = PRIORITY_EVENT_TYPES.has(a.event_type) ? 0 : 1;
+      const bPri = PRIORITY_EVENT_TYPES.has(b.event_type) ? 0 : 1;
+      if (aPri !== bPri) return aPri - bPri;
+      return a.created_at.getTime() - b.created_at.getTime();
+    });
 
     const ids = pending.map((e) => e.id);
     const claimDeadline = claimDeadlineFromNow();
@@ -87,26 +102,62 @@ export async function dispatchPendingEvents(): Promise<number> {
         payload: event.payload,
       });
 
+      await db
+        .insert(eventLogs)
+        .values({
+          event_id: event.id,
+          worker: "EventDispatcher",
+          result: "success",
+          processed_at: new Date(),
+        })
+        .catch(() => null);
+
       dispatched++;
       logger.debug(
         { eventId: event.id, queue: queueName },
         "[EventDispatcher] Event dispatched to queue",
       );
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       logger.error(
-        { eventId: event.id, error: err instanceof Error ? err.message : String(err) },
+        { eventId: event.id, error: errMsg },
         "[EventDispatcher] Failed to dispatch event",
       );
-      const nextRetry = event.retry_count + 1;
+
       await db
-        .update(events)
-        .set({
-          status: EventStatus.RETRY_PENDING,
-          retry_count: nextRetry,
-          process_after: getNextRunAfter(event.event_type, event.retry_count),
+        .insert(eventLogs)
+        .values({
+          event_id: event.id,
+          worker: "EventDispatcher",
+          result: "failed",
+          error_message: errMsg,
+          processed_at: new Date(),
         })
-        .where(eq(events.id, event.id))
         .catch(() => null);
+
+      const nextRetry = event.retry_count + 1;
+
+      if (nextRetry >= MAX_DISPATCH_ATTEMPTS) {
+        await deadLetterQueue
+          .createFromFailedEvent({
+            eventId: event.id,
+            reason: "MAX_RETRIES_EXCEEDED",
+            lastError: errMsg,
+            failureClass: "transient",
+            dispatchFailures: nextRetry,
+          })
+          .catch(() => null);
+      } else {
+        await db
+          .update(events)
+          .set({
+            status: EventStatus.RETRY_PENDING,
+            retry_count: nextRetry,
+            process_after: getNextRunAfter(event.event_type, event.retry_count),
+          })
+          .where(eq(events.id, event.id))
+          .catch(() => null);
+      }
     }
   }
 

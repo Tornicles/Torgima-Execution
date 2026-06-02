@@ -11,6 +11,8 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
+import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { calculateIdentityDimensions } from "../identity/identityDimensions.js";
 
 /** IL1 public stage names (DOC_18). */
 export type Il1IdentityStage =
@@ -176,10 +178,17 @@ export class IdentityContinuityEngine {
     }
 
     const dbStage = IL1_TO_DB_STAGE[il1Stage];
+    const dimensions = calculateIdentityDimensions({
+      evidence,
+      inactivityGapHours: 0,
+      avgOrderDifficulty: 3,
+    });
     const regressionRisk = this.calculateRegressionRisk(consistencyScore);
-    const stabilityScore = consistencyScore * 100;
-    const continuityScore = stabilityScore;
-    const transformationScore = (avgScore / 10) * 100;
+    const stabilityScore = dimensions.consistency;
+    const continuityScore = dimensions.focusContinuity;
+    const transformationScore = Math.round(
+      (dimensions.completionIntegrity + dimensions.difficultyTolerance) / 2,
+    );
     const previousDbStage = currentState?.stage ?? "starting";
     const changed = previousDbStage !== dbStage;
 
@@ -220,12 +229,42 @@ export class IdentityContinuityEngine {
             stability_score: stabilityScore,
             continuity_score: continuityScore,
             regression_risk: regressionRisk,
+            dimensions,
             evidence_summary: `${completedCount}/${totalCount} completed in 14d`,
             source_feedback_id: input.sourceFeedbackId,
           },
         });
       }
     });
+
+    if (changed) {
+      await writeEvent({
+        eventType: EVENT_TYPES.IDENTITY_UPDATED,
+        entityType: "identity",
+        entityId: input.blueprintId,
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        payload: {
+          stage: il1Stage,
+          db_stage: dbStage,
+          previous_stage: previousDbStage,
+          dimensions,
+        },
+        idempotencyKey: `identity_updated:${input.blueprintId}:${dbStage}`,
+      }).catch(() => null);
+    }
+
+    if (il1Stage === "REGRESSING" || regressionRisk === "HIGH" || regressionRisk === "CRITICAL") {
+      await writeEvent({
+        eventType: EVENT_TYPES.IDENTITY_REGRESSION_DETECTED,
+        entityType: "identity",
+        entityId: input.blueprintId,
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        payload: { stage: il1Stage, regression_risk: regressionRisk },
+        idempotencyKey: `identity_regression:${input.blueprintId}:${input.sourceFeedbackId}`,
+      }).catch(() => null);
+    }
 
     const [openFalseProgress] = await db
       .select({ id: falseProgressFlags.id })
@@ -238,7 +277,16 @@ export class IdentityContinuityEngine {
       )
       .limit(1);
 
-    if (openFalseProgress && il1Stage !== "REGRESSING") {
+    if (openFalseProgress) {
+      await writeEvent({
+        eventType: EVENT_TYPES.IDENTITY_REVIEW_REQUIRED,
+        entityType: "identity",
+        entityId: input.blueprintId,
+        userId: input.userId,
+        blueprintId: input.blueprintId,
+        payload: { reason: "false_progress_flag_open", stage: il1Stage },
+        idempotencyKey: `identity_review:${input.blueprintId}:${openFalseProgress.id}`,
+      }).catch(() => null);
       logger.info(
         { blueprintId: input.blueprintId },
         "[IdentityContinuityEngine] False progress open — stage held",
@@ -306,6 +354,21 @@ export async function evaluateIdentity(params: {
     sourceFeedbackId: latest.id,
   });
   return { stage: r.dbStage, changed: r.changed, regressionRisk: r.regressionRisk };
+}
+
+export async function getIdentityHistory(
+  userId: string,
+  blueprintId: string,
+  limit = 20,
+) {
+  return db
+    .select()
+    .from(identityHistory)
+    .where(
+      and(eq(identityHistory.user_id, userId), eq(identityHistory.blueprint_id, blueprintId)),
+    )
+    .orderBy(desc(identityHistory.created_at))
+    .limit(limit);
 }
 
 export async function getCurrentIdentityState(userId: string, blueprintId: string) {
