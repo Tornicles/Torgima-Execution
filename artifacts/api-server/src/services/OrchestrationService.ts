@@ -60,6 +60,35 @@ export interface OrchestrationConflictDecision {
   reason: string;
 }
 
+/** DOC 28 — numeric priority when no explicit precedence row matches (higher wins). */
+const ENGINE_PRIORITY: Record<string, number> = {
+  BHUDHI: 1,
+  REWARD_ENGINE: 2,
+  REWARD: 2,
+  DEPENDENCY_ENGINE: 3,
+  DEPENDENCY: 3,
+  TASK_GENERATION: 4,
+  CONDITION_ENGINE: 8,
+  CONDITION: 8,
+  SIGNAL_ENGINE: 9,
+  SIGNAL: 9,
+  OUTCOME_TRUTH: 9,
+  OUTCOME_VALIDATION: 9,
+  CONTROL_ENGINE: 10,
+  CONTROL: 10,
+};
+
+function enginePriority(engine: string): number {
+  const upper = engine.toUpperCase();
+  const bare = upper.replace(/_ENGINE$/, "");
+  return (
+    ENGINE_PRIORITY[upper] ??
+    ENGINE_PRIORITY[`${bare}_ENGINE`] ??
+    ENGINE_PRIORITY[bare] ??
+    5
+  );
+}
+
 /** Resolve which engine wins when both claim authority. */
 export function resolveConflictFromPrecedence(
   engineA: string,
@@ -77,6 +106,17 @@ export function resolveConflictFromPrecedence(
       const loser = winner === engineA ? engineB : engineA;
       return { winner, loser, reason: rule.reason };
     }
+  }
+
+  const priorityA = enginePriority(engineA);
+  const priorityB = enginePriority(engineB);
+  if (priorityA !== priorityB) {
+    const winner = priorityA > priorityB ? engineA : engineB;
+    return {
+      winner,
+      loser: winner === engineA ? engineB : engineA,
+      reason: "Engine priority table — higher precedence wins",
+    };
   }
 
   return {

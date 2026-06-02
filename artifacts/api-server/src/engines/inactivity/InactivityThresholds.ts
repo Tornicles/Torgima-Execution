@@ -111,7 +111,7 @@ export function classifyInactivity(hoursInactive: number): {
   if (hours >= t.missed_execution) {
     return { type: "MISSED_DUE_WINDOW", severity: "MEDIUM", thresholdBreached: "soft" };
   }
-  if (hours >= t.feedback_delay_warning) {
+  if (hours >= 2) {
     return { type: "NO_FEEDBACK", severity: "LOW", thresholdBreached: "warning" };
   }
   return null;

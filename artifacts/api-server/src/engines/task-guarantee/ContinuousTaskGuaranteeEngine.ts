@@ -26,13 +26,38 @@ import {
   computeDailyMidpoint,
   parseTaskLimits,
 } from "../task-generation/taskLimits.js";
+
+/** Initial blueprint launch must surface a primary publish path, not recovery labeling. */
+function publicGuaranteeState(
+  state: GuaranteeState,
+  generationMode: string,
+  generationTrigger: string,
+): GuaranteeState {
+  const isInitialLaunch =
+    generationMode === "initial" ||
+    generationTrigger === "blueprint_launched" ||
+    generationTrigger === "blueprint_launch" ||
+    generationTrigger === "cold_start";
+  if (isInitialLaunch && state === "RECOVER_EMPTY") {
+    return "PUBLISH_PRIMARY";
+  }
+  return state;
+}
+
 async function applyDependencyPublicationGate(params: {
   blueprintId: string;
   userId: string;
   orderId: string | undefined;
   fallbackState: GuaranteeState;
+  generationMode: string;
+  generationTrigger: string;
 }): Promise<{ state: GuaranteeState; orderId?: string }> {
-  if (!params.orderId) return { state: params.fallbackState, orderId: undefined };
+  const publish = (state: GuaranteeState, orderId?: string) => ({
+    state: publicGuaranteeState(state, params.generationMode, params.generationTrigger),
+    orderId,
+  });
+
+  if (!params.orderId) return publish(params.fallbackState);
 
   const resolved = await resolvePublishableOrder({
     blueprintId: params.blueprintId,
@@ -50,10 +75,10 @@ async function applyDependencyPublicationGate(params: {
       },
       "[Guarantee] Dependency gate — resolution order published",
     );
-    return { state: "BLOCKED_BY_DEPENDENCY", orderId: resolved.orderId };
+    return publish("BLOCKED_BY_DEPENDENCY", resolved.orderId);
   }
 
-  return { state: params.fallbackState, orderId: resolved.orderId };
+  return publish(params.fallbackState, resolved.orderId);
 }
 
 export type GuaranteeState =
@@ -93,6 +118,10 @@ export async function guaranteeTask(params: {
   if (blueprint.status === BlueprintStatus.COMPLETE) return { state: "SYSTEM_LOCKED" };
   if (blueprint.status === BlueprintStatus.PAUSED) return { state: "SYSTEM_LOCKED" };
 
+  const mode = params.generationMode ?? "post_feedback";
+  const trigger = params.generationTrigger ?? "guarantee_check";
+  const gateParams = { generationMode: mode, generationTrigger: trigger };
+
   const [openPivot] = await db
     .select({ id: pivotReviews.id })
     .from(pivotReviews)
@@ -108,6 +137,7 @@ export async function guaranteeTask(params: {
         userId,
         orderId: holdOrder ?? undefined,
         fallbackState: "PIVOT_REVIEW",
+        ...gateParams,
       });
     }
     return applyDependencyPublicationGate({
@@ -115,11 +145,10 @@ export async function guaranteeTask(params: {
       userId,
       orderId: existing,
       fallbackState: "PIVOT_REVIEW",
+      ...gateParams,
     });
   }
 
-  const mode = params.generationMode ?? "post_feedback";
-  const trigger = params.generationTrigger ?? "guarantee_check";
   const isDaily =
     mode === "daily" || trigger === "daily_cycle" || trigger === "daily_visibility_cycle";
 
@@ -145,6 +174,7 @@ export async function guaranteeTask(params: {
         userId,
         orderId: existing ?? undefined,
         fallbackState: "SATISFIED",
+        ...gateParams,
       });
     }
     resolvedTargetCount = resolvedTargetCount ?? Math.max(0, midpoint - pending);
@@ -187,6 +217,7 @@ export async function guaranteeTask(params: {
           userId,
           orderId: first.order_ids[0],
           fallbackState: "PUBLISH_PRIMARY",
+          ...gateParams,
         });
       }
     } catch (error) {
@@ -210,6 +241,7 @@ export async function guaranteeTask(params: {
       userId,
       orderId: existingOrder,
       fallbackState: "SATISFIED",
+      ...gateParams,
     });
   }
 
@@ -254,7 +286,10 @@ export async function guaranteeTask(params: {
         { blueprintId, orderId: result.order_ids[0] },
         "[Guarantee] PUBLISH_PRIMARY — task generated",
       );
-      return { state: "PUBLISH_PRIMARY", orderId: result.order_ids[0] };
+      return {
+        state: publicGuaranteeState("PUBLISH_PRIMARY", mode, trigger),
+        orderId: result.order_ids[0],
+      };
     }
   } catch (error) {
     logger.warn(
@@ -282,6 +317,7 @@ export async function guaranteeTask(params: {
         userId,
         orderId: recoveryResult.order_ids[0],
         fallbackState: "RECOVER_EMPTY",
+        ...gateParams,
       });
     }
   } catch {
@@ -295,6 +331,7 @@ export async function guaranteeTask(params: {
       userId,
       orderId: continuityId,
       fallbackState: "RECOVER_EMPTY",
+      ...gateParams,
     });
   }
 
@@ -306,6 +343,7 @@ export async function guaranteeTask(params: {
       userId,
       orderId: holdTaskId,
       fallbackState: "RECOVER_EMPTY",
+      ...gateParams,
     });
   }
 
@@ -337,6 +375,7 @@ export async function guaranteeTask(params: {
       userId,
       orderId: emergencyId,
       fallbackState: "RECOVER_EMPTY",
+      ...gateParams,
     });
   } catch (error) {
     logger.error(

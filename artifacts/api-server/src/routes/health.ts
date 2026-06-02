@@ -123,11 +123,7 @@ router.get("/healthz", (_req, res) => {
 router.get("/health", async (req, res) => {
   try {
     const results = await buildProductionHealthResponse();
-    const coreOk =
-      results.checks.database === "ok" &&
-      results.checks.bhudhi === "ok" &&
-      results.checks.workers === "ok";
-    res.status(coreOk ? 200 : 503).json(results);
+    res.status(results.status === "healthy" ? 200 : 503).json(results);
   } catch (err) {
     handleError(req, res, err);
   }
