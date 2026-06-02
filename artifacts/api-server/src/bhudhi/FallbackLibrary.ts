@@ -542,6 +542,67 @@ const ERECTOR_FALLBACKS: Array<{ key: string; outputType: BhudhiOutputEnvelope["
   { key: "fallback.erector_first_week", outputType: "erector_first_week" },
 ];
 
+const DOC3_FALLBACKS: Array<{ key: string; outputType: BhudhiOutputEnvelope["outputType"]; data: Record<string, unknown> }> = [
+  {
+    key: "fallback.policy_generation",
+    outputType: "blueprint_health",
+    data: { executionRules: ["Ship one proof-backed outcome daily", "Escalate blockers within 24h", "Protect focus windows"] },
+  },
+  {
+    key: "fallback.task_explanation",
+    outputType: "execution_help",
+    data: { steps: ["Read the task goal", "Execute the smallest verifiable step", "Submit proof in feedback"] },
+  },
+  {
+    key: "fallback.false_progress",
+    outputType: "behavioral_insight",
+    data: { pattern: "unknown", risk: "low", recommendation: "Continue with measurable proof", needsReview: true },
+  },
+  {
+    key: "fallback.capability_summary",
+    outputType: "academy_skill_assessment",
+    data: { tierLabel: "operator", encouragement: "Keep building consistent execution proof." },
+  },
+  {
+    key: "fallback.validation_market",
+    outputType: "erector_market",
+    data: { chart_data: [], trend_position: "Unknown", confidence: "low" },
+  },
+  {
+    key: "fallback.validation_competitors",
+    outputType: "erector_competitors",
+    data: { competitors: [], note: "research unavailable" },
+  },
+  {
+    key: "fallback.validation_demand",
+    outputType: "erector_market",
+    data: { demand: "unclear", confidence: "low" },
+  },
+  {
+    key: "fallback.validation_paths",
+    outputType: "erector_paths",
+    data: { paths: [{ name: "foundation", summary: "Basic path from goal and timeframe" }] },
+  },
+  {
+    key: "fallback.erector_simulation",
+    outputType: "restart_copy",
+    data: { message: "Take the next small action to keep momentum.", tone: "CALM" },
+  },
+];
+
+for (const item of DOC3_FALLBACKS) {
+  fallbacks.set(item.key, (ctx, sv) => ({
+    outputType: item.outputType,
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "LOW",
+    data: { ...item.data, goal: String(ctx["goal"] ?? ctx["rawGoal"] ?? "").slice(0, 120) },
+    missingFields: [],
+    warnings: ["DOC3 deterministic fallback"],
+    forbiddenActionRequested: false,
+  }));
+}
+
 for (const item of ERECTOR_FALLBACKS) {
   fallbacks.set(item.key, (ctx, sv) => ({
     outputType: item.outputType,

@@ -187,7 +187,8 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
     proofNormalized: order.proof_required ? proofScore.normalized : undefined,
   });
 
-  let { weight, confidence, flagged } = weightResult;
+  const { weight, confidence } = weightResult;
+  let { flagged } = weightResult;
   let gamingReason = weightResult.flag_reason;
 
   const hoursAfter = order.started_at

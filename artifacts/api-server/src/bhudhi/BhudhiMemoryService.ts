@@ -33,7 +33,7 @@ export interface BhudhiMemoryRecord {
 }
 
 const MAX_CONTENT = 800;
-const MAX_CONTEXT = 500;
+const MAX_CONTEXT = 800;
 const MAX_RETRIEVE = 5;
 
 /** Tier-based memory depth (session / 7d / 30d). */

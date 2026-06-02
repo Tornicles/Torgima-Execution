@@ -1,4 +1,4 @@
-import { db, bhudhiLogs, users } from "@workspace/db";
+import { db, bhudhiLogs, bhudhiUsageBudget, users } from "@workspace/db";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
@@ -26,15 +26,109 @@ const TRIGGER_MAX_TOKENS: Record<string, number> = {
 /** Minimum daily AI call cap (Erector validation uses many Bhudhi/web-search calls). Override on Railway: BHUDHI_DAILY_CAP=200 */
 const BHUDHI_DAILY_CAP = parseInt(process.env.BHUDHI_DAILY_CAP ?? "200", 10);
 
-const DAILY_CAPS: Record<string, number> = {
-  starter: 20,
-  growth: 50,
-  ultimate: 200,
+const DAILY_CAPS: Record<string, { maxCalls: number; maxCostCents: number }> = {
+  starter: { maxCalls: 20, maxCostCents: 5 },
+  growth: { maxCalls: 50, maxCostCents: 20 },
+  ultimate: { maxCalls: 150, maxCostCents: 75 },
 };
 
 function dailyCallCapForTier(tier: string): number {
-  const tierCap = DAILY_CAPS[tier] ?? DAILY_CAPS.starter;
+  const tierCap = DAILY_CAPS[tier]?.maxCalls ?? DAILY_CAPS.starter!.maxCalls;
   return Math.max(tierCap, BHUDHI_DAILY_CAP);
+}
+
+function todayUtc(): string {
+  return new Date().toISOString().split("T")[0]!;
+}
+
+async function checkUsageBudgetRow(
+  userId: string,
+  tier: string,
+): Promise<{ allowed: boolean; reason?: string }> {
+  const caps = DAILY_CAPS[tier] ?? DAILY_CAPS.starter!;
+  const today = todayUtc();
+  try {
+    const [budget] = await db
+      .select()
+      .from(bhudhiUsageBudget)
+      .where(and(eq(bhudhiUsageBudget.user_id, userId), eq(bhudhiUsageBudget.date_utc, today)))
+      .limit(1);
+
+    if (budget?.budget_exhausted) {
+      return { allowed: false, reason: "BUDGET_EXHAUSTED" };
+    }
+    if ((budget?.total_calls ?? 0) >= caps.maxCalls) {
+      return { allowed: false, reason: "CALL_CAP" };
+    }
+    if ((budget?.total_cost_cents ?? 0) >= caps.maxCostCents) {
+      return { allowed: false, reason: "COST_CAP" };
+    }
+    return { allowed: true };
+  } catch {
+    return { allowed: true };
+  }
+}
+
+export async function incrementUsageBudget(params: {
+  userId: string;
+  triggerType: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}): Promise<void> {
+  const [user] = await db
+    .select({ tier: users.tier })
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+  const tier = user?.tier ?? "starter";
+  const today = todayUtc();
+  const costCents = params.costUsd * 100;
+
+  const [existing] = await db
+    .select()
+    .from(bhudhiUsageBudget)
+    .where(and(eq(bhudhiUsageBudget.user_id, params.userId), eq(bhudhiUsageBudget.date_utc, today)))
+    .limit(1);
+
+  const caps = DAILY_CAPS[tier] ?? DAILY_CAPS.starter!;
+  const callsByTrigger =
+    existing?.calls_by_trigger && typeof existing.calls_by_trigger === "object"
+      ? { ...(existing.calls_by_trigger as Record<string, number>) }
+      : {};
+  callsByTrigger[params.triggerType] = (callsByTrigger[params.triggerType] ?? 0) + 1;
+
+  const totalCalls = (existing?.total_calls ?? 0) + 1;
+  const totalCostCents = (existing?.total_cost_cents ?? 0) + costCents;
+  const budgetExhausted =
+    totalCalls >= caps.maxCalls || totalCostCents >= caps.maxCostCents;
+
+  if (existing) {
+    await db
+      .update(bhudhiUsageBudget)
+      .set({
+        total_calls: totalCalls,
+        total_input_tokens: (existing.total_input_tokens ?? 0) + params.inputTokens,
+        total_output_tokens: (existing.total_output_tokens ?? 0) + params.outputTokens,
+        total_cost_cents: totalCostCents,
+        calls_by_trigger: callsByTrigger,
+        budget_exhausted: budgetExhausted,
+        updated_at: new Date(),
+      })
+      .where(eq(bhudhiUsageBudget.id, existing.id));
+  } else {
+    await db.insert(bhudhiUsageBudget).values({
+      user_id: params.userId,
+      date_utc: today,
+      tier,
+      total_calls: 1,
+      total_input_tokens: params.inputTokens,
+      total_output_tokens: params.outputTokens,
+      total_cost_cents: costCents,
+      calls_by_trigger: callsByTrigger,
+      budget_exhausted: budgetExhausted,
+    });
+  }
 }
 
 const TIMEOUT_MS = 30_000;
@@ -101,6 +195,11 @@ export async function checkUsageAllowed(params: {
     tier = user?.tier ?? "starter";
   } catch {
     return { allowed: true };
+  }
+
+  const budgetCheck = await checkUsageBudgetRow(params.userId, tier);
+  if (!budgetCheck.allowed) {
+    return budgetCheck;
   }
 
   const dailyCap = dailyCallCapForTier(tier);
@@ -229,6 +328,12 @@ export async function updateBhudhiLog(params: {
   }
   if (params.outputJson?.intelligence_grounded != null) {
     patch["intelligence_grounded"] = Boolean(params.outputJson.intelligence_grounded);
+  }
+  if (params.outputJson?.web_search_used != null) {
+    patch["web_search_used"] = Boolean(params.outputJson.web_search_used);
+  }
+  if (Array.isArray(params.outputJson?.search_queries)) {
+    patch["search_queries"] = params.outputJson.search_queries;
   }
 
   await db

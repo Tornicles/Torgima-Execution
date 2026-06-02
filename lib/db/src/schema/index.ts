@@ -7,3 +7,4 @@ export * from "./bhudhiTables";
 export * from "./sequenceTables";
 export * from "./growthTables";
 export * from "./ultimateTables";
+export * from "./validationUpgradeTables";

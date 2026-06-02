@@ -1,5 +1,20 @@
 # AUDIT CLOSURE — 2026-05-27
 
+## Erector validation upgrade (2026-06-01)
+
+Structured validation panels + launch bridge:
+
+- Migration: `scripts/migrations/manual-20260601-erector-validation-upgrade.sql` (9 tables: `validation_runs`, `validation_at_a_glance`, `validation_market_trends`, `validation_competitors`, `validation_pros_cons`, `validation_opportunities`, `validation_risks`, `validation_paths`, `validation_bhudhi_research_log`)
+- API: `POST/GET /api/erector/validation/*` (`artifacts/api-server/src/routes/erectorValidation.ts`)
+- Engine: `ValidationResearchEngine` runs full `runErectorValidation` (Bhudhi web-search Erector triggers) then syncs panels via `syncValidationRunPanels.ts`
+- Bridge: `ValidationBridgeService.launchBlueprint` → `ValidationLaunchService` / `BlueprintLaunchService`
+- Worker: `ValidationResearchWorker` on queue `validation_run_requested`
+- Frontend: `pollValidationRunStatus` + `ValidationRunningDashboard` pipeline status mapping
+
+Apply on production: `pnpm db:apply-manual` (includes new SQL when added to apply-all list) or run the SQL file directly on Supabase.
+
+# AUDIT CLOSURE — 2026-05-27
+
 ## System Status: BLOCKED — Supabase credentials required in this environment
 
 Production code is on `main` (`56324d7`). Local gate passed (typecheck, lint, test, build, `verify:lifecycle` on `torgima_test`).

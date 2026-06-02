@@ -1,3 +1,5 @@
+import Anthropic from "@anthropic-ai/sdk";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/index.mjs";
 import { db, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
@@ -18,9 +20,12 @@ import {
   checkUsageAllowed,
   getMaxTokensForTrigger,
   getTimeout,
+  incrementUsageBudget,
   logUsage,
   updateBhudhiLog,
 } from "./UsageController.js";
+import { getDoc3TriggerEntry } from "./doc3TriggerRegistry.js";
+import { lookupResearchCache, storeResearchCache } from "./bhudhiResearchCache.js";
 import { reviewOutput } from "./agents/CriticAgent.js";
 import { logFallbackUsage } from "./fallbackUsageLog.js";
 import {
@@ -54,6 +59,155 @@ import { deepSanitizeStrings } from "../lib/security/deepSanitizeStrings.js";
 import { buildCorrectionPrompt } from "./bhudhiSelfCorrection.js";
 import { TorgimaError } from "../lib/errors.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+const globalForAnthropic = globalThis as unknown as { bhudhiAnthropic: Anthropic | undefined };
+
+function getAnthropicClient(): Anthropic {
+  if (globalForAnthropic.bhudhiAnthropic) return globalForAnthropic.bhudhiAnthropic;
+
+  const baseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
+  const apiKey =
+    process.env["ANTHROPIC_API_KEY"]?.trim() ||
+    process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
+
+  if (!apiKey) {
+    logger.warn(
+      "ANTHROPIC_API_KEY (or legacy AI_INTEGRATIONS_ANTHROPIC_API_KEY) not set — Bhudhi will use fallbacks",
+    );
+  }
+
+  const client = new Anthropic({
+    apiKey: apiKey ?? "placeholder",
+    ...(baseURL ? { baseURL } : {}),
+  });
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForAnthropic.bhudhiAnthropic = client;
+  }
+
+  return client;
+}
+
+function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
+  return response.content
+    .filter((b): b is { type: "text"; text: string } => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("\n");
+}
+
+function countWebSearchUses(content: Array<{ type: string }>): number {
+  return content.filter((b) => b.type === "web_search_tool_result" || b.type === "server_tool_use").length;
+}
+
+/** Sole Anthropic Messages API entry (DOC4 STEP 6). */
+export async function invokeAnthropicModel(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  timeoutMs: number;
+  webSearchEnabled?: boolean;
+}): Promise<{
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  webSearchCalls: number;
+  intelligenceGrounded: boolean;
+  searchQueries: string[];
+}> {
+  const client = getAnthropicClient();
+  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
+  const body: MessageCreateParamsNonStreaming = {
+    model: BHUDHI_MODEL,
+    max_tokens: params.maxTokens,
+    temperature: params.temperature,
+    system: params.systemPrompt,
+    messages: [{ role: "user", content: params.userPrompt }],
+    ...(params.webSearchEnabled
+      ? {
+          tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 } as never],
+        }
+      : {}),
+  };
+
+  const response = await Promise.race([
+    client.messages.create(body),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), timeoutMs),
+    ),
+  ]);
+
+  const text = extractTextBlocks(response).trim();
+  if (!text) throw new Error("BHUDHI_MODEL_EMPTY");
+
+  const searchQueries: string[] = [];
+  for (const block of response.content) {
+    if (block.type === "web_search_tool_result" && "query" in block) {
+      searchQueries.push(String((block as { query?: string }).query ?? ""));
+    }
+  }
+
+  const webSearchCalls = countWebSearchUses(response.content);
+  return {
+    text,
+    inputTokens: response.usage?.input_tokens ?? 0,
+    outputTokens: response.usage?.output_tokens ?? 0,
+    webSearchCalls,
+    intelligenceGrounded: webSearchCalls > 0,
+    searchQueries: searchQueries.filter(Boolean),
+  };
+}
+
+export type BhudhiModelInvokeParams = {
+  provider: BhudhiProvider;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  timeoutMs: number;
+  webSearchEnabled?: boolean;
+};
+
+export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promise<{
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  webSearchCalls: number;
+  intelligenceGrounded: boolean;
+  provider: BhudhiProvider;
+  searchQueries: string[];
+}> {
+  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
+
+  const invokeOnce = () =>
+    invokeAnthropicModel({
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.userPrompt,
+      maxTokens: params.maxTokens,
+      temperature: params.temperature,
+      timeoutMs,
+      webSearchEnabled: params.webSearchEnabled,
+    });
+
+  try {
+    const result = await invokeOnce();
+    return { ...result, provider: "claude" };
+  } catch (firstErr) {
+    const isTimeout = firstErr instanceof Error && firstErr.message === "BHUDHI_TIMEOUT";
+    if (!isTimeout) throw firstErr;
+    const result = await invokeAnthropicModel({
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.userPrompt,
+      maxTokens: params.maxTokens,
+      temperature: params.temperature,
+      timeoutMs: Math.min(timeoutMs + 5_000, 75_000),
+      webSearchEnabled: params.webSearchEnabled,
+    });
+    return { ...result, provider: "claude" };
+  }
+}
 
 /** Triggers where a missing bhudhi_logs row must abort (execution loop integrity). */
 const CRITICAL_BHUDHI_LOG_TRIGGERS = new Set<BhudhiTriggerType>([
@@ -91,22 +245,8 @@ function handleBhudhiLogWriteFailure(
   return { logId: "", abort: false };
 }
 
-/** Sole LLM transport — implemented only in TriggerRouter (Bhudhi B1). */
-export type BhudhiModelInvoker = (params: {
-  provider: BhudhiProvider;
-  systemPrompt: string;
-  userPrompt: string;
-  maxTokens: number;
-  temperature: number;
-  timeoutMs: number;
-}) => Promise<{
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  webSearchCalls: number;
-  intelligenceGrounded: boolean;
-  provider?: BhudhiProvider;
-}>;
+/** LLM transport — default implementation is {@link invokeBhudhiModel} in this file. */
+export type BhudhiModelInvoker = typeof invokeBhudhiModel;
 
 export type BhudhiPipelineDeps = {
   invokeModel: BhudhiModelInvoker;
@@ -206,6 +346,14 @@ export async function runBhudhiPipeline<T = unknown>(
     exitAgentChain(chainId);
     logger.warn({ triggerType: request.triggerType }, "[BhudhiCore] Unregistered trigger type");
     return { ok: false, fallbackUsed: true, logId: "", failureReason: "Unregistered trigger type" };
+  }
+
+  const doc3Entry = getDoc3TriggerEntry(request.triggerType);
+  const webSearchEligible =
+    doc3Entry?.webSearchEligible ?? contract.webSearchEligible ?? false;
+  if (request.webSearchEnabled && !webSearchEligible) {
+    exitAgentChain(chainId);
+    throw new TorgimaError("VALIDATION_ERROR", "This trigger is not eligible for web search");
   }
 
   if (FORBIDDEN_MODES.includes(contract.mode)) {
@@ -766,13 +914,33 @@ export async function runBhudhiPipeline<T = unknown>(
   let outputTokens = 0;
   let webSearchCalls = 0;
   let intelligenceGrounded = false;
+  let searchQueries: string[] = [];
+  const useWebSearch =
+    Boolean(request.webSearchEnabled && webSearchEligible) ||
+    ERECTOR_SEARCH_TRIGGERS.has(request.triggerType);
 
+  let usedResearchCache = false;
   try {
     let userPrompt = contract.buildUserPrompt(facts);
-    if (ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)) {
+    if (ERECTOR_SEARCH_TRIGGERS.has(request.triggerType) || useWebSearch) {
       userPrompt = appendErectorSearchUserPrompt(request.triggerType, facts, userPrompt);
     }
 
+    if (useWebSearch) {
+      const cached = await lookupResearchCache({
+        triggerType: request.triggerType,
+        queryText: userPrompt.slice(0, 2000),
+      });
+      if (cached) {
+        rawOutput = cached.resultJson;
+        webSearchCalls = 0;
+        intelligenceGrounded = true;
+        inputTokens = cached.tokensUsed ?? 0;
+        usedResearchCache = true;
+      }
+    }
+
+    if (!usedResearchCache) {
     const apiKey =
       process.env["ANTHROPIC_API_KEY"]?.trim() ||
       process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
@@ -785,9 +953,10 @@ export async function runBhudhiPipeline<T = unknown>(
       contract.maxTokens,
       getMaxTokensForTrigger(request.triggerType),
     );
-    const baseSystemPrompt = ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)
-      ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
-      : contract.systemPrompt;
+    const baseSystemPrompt =
+      useWebSearch || ERECTOR_SEARCH_TRIGGERS.has(request.triggerType)
+        ? appendWebSearchInstruction(request.triggerType, contract.systemPrompt)
+        : contract.systemPrompt;
     const systemPrompt = appendBhudhiSecurityPrompt(baseSystemPrompt);
 
     const parseModelText = (text: string): unknown => {
@@ -812,6 +981,7 @@ export async function runBhudhiPipeline<T = unknown>(
         maxTokens,
         temperature: contract.temperature,
         timeoutMs: timeout,
+        webSearchEnabled: useWebSearch,
       });
       if (!modelResult?.text) {
         throw new Error("BHUDHI_MODEL_EMPTY");
@@ -821,6 +991,9 @@ export async function runBhudhiPipeline<T = unknown>(
       outputTokens += modelResult.outputTokens;
       webSearchCalls += modelResult.webSearchCalls;
       intelligenceGrounded = intelligenceGrounded || modelResult.intelligenceGrounded;
+      if (modelResult.searchQueries?.length) {
+        searchQueries = [...searchQueries, ...modelResult.searchQueries];
+      }
 
       let parsed: unknown;
       try {
@@ -851,8 +1024,9 @@ export async function runBhudhiPipeline<T = unknown>(
       }
       break;
     }
+    }
   } catch (error) {
-    const errMsg  = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.message : String(error);
     const latency = Date.now() - startTime;
 
     await updateBhudhiLog({
@@ -875,9 +1049,9 @@ export async function runBhudhiPipeline<T = unknown>(
     }).catch(() => null);
     exitAgentChain(chainId);
     return {
-      ok:            true,
-      output:        fallback as BhudhiOutputEnvelope<T>,
-      fallbackUsed:  true,
+      ok: true,
+      output: fallback as BhudhiOutputEnvelope<T>,
+      fallbackUsed: true,
       logId,
       failureReason: errMsg,
     };
@@ -952,6 +1126,15 @@ export async function runBhudhiPipeline<T = unknown>(
 
   const estimatedCostUsd = inputTokens * 0.000003 + outputTokens * 0.000015;
 
+  if (useWebSearch && rawOutput && webSearchCalls > 0) {
+    await storeResearchCache({
+      triggerType: request.triggerType,
+      queryText: contract.buildUserPrompt(facts).slice(0, 2000),
+      resultJson: rawOutput,
+      tokensUsed: inputTokens + outputTokens,
+    }).catch(() => null);
+  }
+
   await updateBhudhiLog({
     logId,
     inputTokens,
@@ -962,10 +1145,22 @@ export async function runBhudhiPipeline<T = unknown>(
       confidenceTier: critic.confidenceTier,
       criticFlag: critic.flagReason,
       web_search_calls: webSearchCalls,
+      web_search_used: webSearchCalls > 0,
+      search_queries: searchQueries,
       intelligence_grounded: intelligenceGrounded,
       estimated_cost_usd: estimatedCostUsd,
     },
   }).catch(() => null);
+
+  await incrementUsageBudget({
+    userId: request.userId,
+    triggerType: request.triggerType,
+    inputTokens,
+    outputTokens,
+    costUsd: estimatedCostUsd,
+  }).catch((err) => {
+    logger.error({ err }, "[BhudhiCore] Usage budget increment failed (non-blocking)");
+  });
 
   if (economicsSessionId) {
     await economicsEngine

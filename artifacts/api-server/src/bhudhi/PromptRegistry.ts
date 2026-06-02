@@ -6,6 +6,7 @@ import { buildErectorFactsContext, ERECTOR_JSON_PREFIX } from "./erectorWebSearc
 import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
 import { registerErectorEnrichedPrompts } from "./erectorEnrichedPrompts.js";
+import { ensureDoc3PromptsRegistered } from "./registerDoc3Prompts.js";
 
 export interface PromptContract {
   name:            string;
@@ -23,6 +24,8 @@ export interface PromptContract {
   fallbackKey:     string;
   memoryAllowed:   boolean;
   outputSchema?:   z.ZodTypeAny;
+  webSearchEligible?: boolean;
+  sourceEngines?:  string[];
 }
 
 const STANDARD_SYSTEM_HEADER = `You are Bhudhi inside Torgima — a controlled execution intelligence system.
@@ -1177,6 +1180,7 @@ Return ONLY JSON:
 
 bootstrapPromptRegistry({ registry, modeRegistry, byName });
 registerErectorEnrichedPrompts(registry);
+ensureDoc3PromptsRegistered();
 
 /** All Bhudhi intelligence routes through Anthropic Claude via TriggerRouter. */
 const CLAUDE_EXECUTION_TRIGGERS: BhudhiTriggerType[] = [

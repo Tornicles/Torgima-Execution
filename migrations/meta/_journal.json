@@ -85,6 +85,13 @@
       "when": 1780100000000,
       "tag": "0036_launch_chain_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780421348947,
+      "tag": "0013_bhudhi_upgrade",
+      "breakpoints": true
     }
   ]
 }

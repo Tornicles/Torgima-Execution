@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { getFallback } from "../../bhudhi/FallbackLibrary.js";
 import { getContract } from "../../bhudhi/PromptRegistry.js";
+import { ERECTOR_SEARCH_TRIGGERS } from "../../bhudhi/bhudhiProviders.js";
 import type { BhudhiTriggerType } from "../../types/bhudhi.js";
 import type { ArchetypeResolutionOutput, ErectorValidationInput } from "../../types/erector.js";
 import { buildDeterministicErectorPayload } from "./ErectorDeterministicPayload.js";
@@ -78,6 +79,7 @@ export async function callErectorTrigger(
       stateVersion: 0,
       idempotencyKey: `erector:${triggerType}:${params.validationId}`,
       facts,
+      webSearchEnabled: ERECTOR_SEARCH_TRIGGERS.has(triggerType),
     });
     if (result.ok && result.output?.data && typeof result.output.data === "object") {
       const out = { data: result.output.data as Record<string, unknown>, fallbackUsed: result.fallbackUsed };

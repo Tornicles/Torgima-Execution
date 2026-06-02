@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/index.mjs";
-import { BhudhiCore } from "./BhudhiCore.js";
-import { runBhudhiPipeline } from "./BhudhiCore.js";
+import { BhudhiCore, invokeBhudhiModel, runBhudhiPipeline } from "./BhudhiCore.js";
+import { getDoc3TriggerEntry } from "./doc3TriggerRegistry.js";
 import { buildContextPacket } from "./ContextBuilder.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
 import { getContract } from "./PromptRegistry.js";
@@ -12,8 +10,7 @@ import { getWorldModel } from "../engines/world-model/WorldModelEngine.js";
 import { checkTriggerAllowed } from "../engines/stability/StabilityEngine.js";
 import { shouldTriggerDebate, runDebate } from "./DebateEngine.js";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
-import { logger } from "../lib/logger.js";
-import type { BhudhiProvider } from "./bhudhiProviders.js";
+import { TorgimaError } from "../lib/errors.js";
 import {
   FORBIDDEN_MODES,
   type BhudhiMode,
@@ -25,130 +22,8 @@ import {
   type BhudhiOutputEnvelope,
 } from "../types/bhudhi.js";
 
-const DEFAULT_TIMEOUT_MS = 30_000;
-
-// ── Anthropic SDK — sole allowed site (Bhudhi B1) ─────────────────────────────
-
-const globalForAnthropic = globalThis as unknown as { bhudhiAnthropic: Anthropic | undefined };
-
-function getAnthropicClient(): Anthropic {
-  if (globalForAnthropic.bhudhiAnthropic) return globalForAnthropic.bhudhiAnthropic;
-
-  const baseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
-  const apiKey =
-    process.env["ANTHROPIC_API_KEY"]?.trim() ||
-    process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"]?.trim();
-
-  if (!apiKey) {
-    logger.warn(
-      "ANTHROPIC_API_KEY (or legacy AI_INTEGRATIONS_ANTHROPIC_API_KEY) not set — Bhudhi will use fallbacks",
-    );
-  }
-
-  const client = new Anthropic({
-    apiKey: apiKey ?? "placeholder",
-    ...(baseURL ? { baseURL } : {}),
-  });
-
-  if (process.env.NODE_ENV !== "production") {
-    globalForAnthropic.bhudhiAnthropic = client;
-  }
-
-  return client;
-}
-
-function extractTextBlocks(response: { content: Array<{ type: string; text?: string }> }): string {
-  return response.content
-    .filter((b): b is { type: "text"; text: string } => b.type === "text" && typeof b.text === "string")
-    .map((b) => b.text)
-    .join("\n");
-}
-
-/** Only TriggerRouter invokes the Anthropic Messages API. */
-export async function invokeAnthropicModel(params: {
-  systemPrompt: string;
-  userPrompt: string;
-  maxTokens: number;
-  temperature: number;
-  timeoutMs: number;
-}): Promise<{
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  webSearchCalls: number;
-  intelligenceGrounded: boolean;
-}> {
-  const client = getAnthropicClient();
-  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
-  const body: MessageCreateParamsNonStreaming = {
-    model: BHUDHI_MODEL,
-    max_tokens: params.maxTokens,
-    temperature: params.temperature,
-    system: params.systemPrompt,
-    messages: [{ role: "user", content: params.userPrompt }],
-  };
-
-  const response = await Promise.race([
-    client.messages.create(body),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("BHUDHI_TIMEOUT")), timeoutMs),
-    ),
-  ]);
-
-  const text = extractTextBlocks(response).trim();
-  if (!text) throw new Error("BHUDHI_MODEL_EMPTY");
-
-  return {
-    text,
-    inputTokens: response.usage?.input_tokens ?? 0,
-    outputTokens: response.usage?.output_tokens ?? 0,
-    webSearchCalls: 0,
-    intelligenceGrounded: false,
-  };
-}
-
-export type BhudhiModelInvokeParams = {
-  provider: BhudhiProvider;
-  systemPrompt: string;
-  userPrompt: string;
-  maxTokens: number;
-  temperature: number;
-  timeoutMs: number;
-};
-
-/** All Bhudhi model calls route through Anthropic Claude. */
-export async function invokeBhudhiModel(params: BhudhiModelInvokeParams): Promise<{
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  webSearchCalls: number;
-  intelligenceGrounded: boolean;
-  provider: BhudhiProvider;
-}> {
-  const timeoutMs = params.timeoutMs > 0 ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
-
-  const invokeOnce = () =>
-    invokeAnthropicModel({
-      systemPrompt: params.systemPrompt,
-      userPrompt: params.userPrompt,
-      maxTokens: params.maxTokens,
-      temperature: params.temperature,
-      timeoutMs,
-    });
-
-  try {
-    const result = await invokeOnce();
-    return { ...result, provider: "claude" };
-  } catch (firstErr) {
-    const isTimeout = firstErr instanceof Error && firstErr.message === "BHUDHI_TIMEOUT";
-    if (!isTimeout) throw firstErr;
-    const result = await invokeAnthropicModel({
-      ...params,
-      timeoutMs: Math.min(timeoutMs + 5_000, 75_000),
-    });
-    return { ...result, provider: "claude" };
-  }
-}
+export { invokeAnthropicModel, invokeBhudhiModel } from "./BhudhiCore.js";
+export type { BhudhiModelInvokeParams } from "./BhudhiCore.js";
 
 // ── Governed entry points ─────────────────────────────────────────────────────
 
@@ -244,6 +119,17 @@ export async function routeBhudhiRequest<T = unknown>(
   const contract = getContract(request.triggerType);
   if (!contract) {
     return { ok: false, fallbackUsed: true, logId: "", failureReason: "Unregistered trigger type" };
+  }
+
+  if (request.webSearchEnabled) {
+    const doc3 = getDoc3TriggerEntry(request.triggerType);
+    const eligible = doc3?.webSearchEligible ?? contract.webSearchEligible ?? false;
+    if (!eligible) {
+      throw new TorgimaError(
+        "VALIDATION_ERROR",
+        "This trigger is not eligible for web search",
+      );
+    }
   }
 
   const modeReject = rejectBannedMode(request.requestedMode, contract.mode);

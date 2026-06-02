@@ -124,7 +124,30 @@ export type BhudhiTriggerType =
   | "VALIDATE_STAGE_17_REVENUE"
   | "VALIDATE_STAGE_18_90DAYS"
   | "VALIDATE_STAGE_19_PATHS"
-  | "VALIDATE_STAGE_20_DECISION";
+  | "VALIDATE_STAGE_20_DECISION"
+  | "POLICY_GENERATION"
+  | "TASK_REGENERATION"
+  | "TASK_EXPLANATION"
+  | "FEEDBACK_INTERROGATION"
+  | "WEAK_FEEDBACK_DETECTED"
+  | "CONDITION_EXPLANATION"
+  | "STATE_SUMMARY"
+  | "SIGNAL_INTERPRETATION"
+  | "RECOVERY_SUGGESTION"
+  | "BLOCKER_CLASSIFICATION"
+  | "INACTIVITY_MESSAGE"
+  | "EVIDENCE_SUMMARY"
+  | "FALSE_PROGRESS_REVIEW"
+  | "OUTCOME_INTERPRETATION"
+  | "BEHAVIOR_ANALYSIS"
+  | "CAPABILITY_SUMMARY"
+  | "ACADEMY_CONTENT"
+  | "VALIDATION_RESEARCH_MARKET"
+  | "VALIDATION_RESEARCH_COMPETITORS"
+  | "VALIDATION_ANALYZE_DEMAND"
+  | "VALIDATION_BUILD_PATHS"
+  | "ERECTOR_ACADEMY_CONTENT"
+  | "ERECTOR_SIMULATION_EVENT";
 
 export type BhudhiOutputType =
   | "structured_goal"
@@ -203,14 +226,19 @@ export interface BhudhiOutputEnvelope<T = unknown> {
 }
 
 export interface BhudhiTriggerRequest {
-  sourceEngine:    string;
-  triggerType:     BhudhiTriggerType;
-  userId:          string;
-  blueprintId?:    string;
-  stateVersion:    number;
-  userInput?:      string;
-  facts?:          Record<string, unknown>;
-  idempotencyKey:  string;
+  sourceEngine:       string;
+  triggerType:        BhudhiTriggerType;
+  userId:             string;
+  blueprintId?:       string;
+  orderId?:           string;
+  causationEventId?:  string;
+  stateVersion:       number;
+  requestedMode?:     BhudhiMode;
+  userInput?:         string;
+  facts?:             Record<string, unknown>;
+  idempotencyKey:     string;
+  /** Category I validation triggers only — requires registry web_search_eligible. */
+  webSearchEnabled?:  boolean;
 }
 
 export interface BhudhiTriggerResult<T = unknown> {

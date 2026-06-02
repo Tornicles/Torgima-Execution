@@ -18,6 +18,7 @@ import "./ProjectionWorker.js";
 import "./BhudhiWorker.js";
 import "./HealthWorker.js";
 import "./ValidationQueueWorker.js";
+import "./ValidationResearchWorker.js";
 import "./PatternScanWorker.js";
 import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";

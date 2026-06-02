@@ -375,6 +375,8 @@ export const bhudhiLogs = pgTable(
     world_state_version: integer("world_state_version"),
     validation_fail_reason: text("validation_fail_reason"),
     web_search_calls: integer("web_search_calls"),
+    web_search_used: boolean("web_search_used").notNull().default(false),
+    search_queries: jsonb("search_queries").notNull().default(sql`'[]'::jsonb`),
     intelligence_grounded: boolean("intelligence_grounded"),
     provider: text("provider").default("claude"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2152,6 +2154,40 @@ export const bhudhiMemory = pgTable(
     index("idx_bhudhi_memory_user_id").on(t.user_id),
     index("idx_bhudhi_memory_user_type").on(t.user_id, t.memory_type),
   ],
+);
+
+export const bhudhiResearchCache = pgTable("bhudhi_research_cache", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  query_hash: text("query_hash").notNull().unique(),
+  query_text: text("query_text").notNull(),
+  research_type: text("research_type").notNull(),
+  result_json: jsonb("result_json").notNull(),
+  sources: jsonb("sources").notNull().default(sql`'[]'::jsonb`),
+  confidence: text("confidence").notNull(),
+  tokens_used: integer("tokens_used"),
+  expires_at: timestamp("expires_at", { withTimezone: false }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: false }).defaultNow(),
+});
+
+export const bhudhiUsageBudget = pgTable(
+  "bhudhi_usage_budget",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date_utc: text("date_utc").notNull(),
+    tier: text("tier").notNull(),
+    total_calls: integer("total_calls").notNull().default(0),
+    total_input_tokens: integer("total_input_tokens").notNull().default(0),
+    total_output_tokens: integer("total_output_tokens").notNull().default(0),
+    total_cost_cents: doublePrecision("total_cost_cents").notNull().default(0),
+    calls_by_trigger: jsonb("calls_by_trigger").notNull().default(sql`'{}'::jsonb`),
+    budget_exhausted: boolean("budget_exhausted").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: false }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: false }).defaultNow(),
+  },
+  (t) => [uniqueIndex("idx_bhudhi_budget_user_date").on(t.user_id, t.date_utc)],
 );
 
 export const worldModels = pgTable(

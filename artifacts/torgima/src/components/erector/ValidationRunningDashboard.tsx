@@ -21,20 +21,45 @@ export type ValidationRunningContext = {
   currentContext?: string;
 };
 
+const PIPELINE_STAGES = [
+  "Receiving goal and purpose",
+  "Researching market trends",
+  "Analyzing competitors",
+  "Reality check and demand signals",
+  "Building execution paths",
+  "Preparing validation results",
+] as const;
+
 export function ValidationRunningDashboard({
   context,
   error,
   onRetry,
+  pipelineStatus,
 }: {
   context: ValidationRunningContext;
   error?: string;
   onRetry?: () => void;
+  /** When set, maps API validation_run status to progress (from polling). */
+  pipelineStatus?: string;
 }) {
+  const statusStep =
+    pipelineStatus === "running_analysis"
+      ? 1
+      : pipelineStatus === "running_reality_check"
+        ? 3
+        : pipelineStatus === "running_path_analysis"
+          ? 4
+          : pipelineStatus === "complete"
+            ? 5
+            : pipelineStatus === "failed"
+              ? -1
+              : 0;
+
   const [stageIndex, setStageIndex] = useState(0);
   const [progress, setProgress] = useState(8);
 
   useEffect(() => {
-    if (error) return;
+    if (error || pipelineStatus) return;
     const stageTimer = window.setInterval(() => {
       setStageIndex((i) => (i + 1) % VALIDATION_RUNNING_STAGES.length);
     }, 1000);
@@ -45,7 +70,14 @@ export function ValidationRunningDashboard({
       window.clearInterval(stageTimer);
       window.clearInterval(progressTimer);
     };
-  }, [error]);
+  }, [error, pipelineStatus]);
+
+  useEffect(() => {
+    if (!pipelineStatus || pipelineStatus === "failed") return;
+    const step = Math.max(0, statusStep);
+    setStageIndex(Math.min(step, PIPELINE_STAGES.length - 1));
+    setProgress(Math.min(95, 12 + step * 16));
+  }, [pipelineStatus, statusStep]);
 
   return (
     <ErectorFlowShell
@@ -75,7 +107,9 @@ export function ValidationRunningDashboard({
               style={{ width: `${error ? 0 : progress}%` }}
             />
           </div>
-          <p className="text-sm text-slate-300">{VALIDATION_RUNNING_STAGES[stageIndex]}…</p>
+          <p className="text-sm text-slate-300">
+            {(pipelineStatus ? PIPELINE_STAGES : VALIDATION_RUNNING_STAGES)[stageIndex]}…
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4 text-sm">

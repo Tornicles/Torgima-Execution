@@ -75,6 +75,7 @@ import v1FeaturesRouter from "./v1-features.js";
 import erectorRefinementRouter from "./erector-refinement.js";
 import erectorGoalRouter from "./erector-goal.js";
 import erectorDashboardRouter from "./erector-dashboard.js";
+import erectorValidationRouter from "./erectorValidation.js";
 import upgradeRouter from "./upgrade.js";
 import debugRouter from "./debug.js";
 
@@ -156,6 +157,7 @@ router.use(v1FeaturesRouter);
 router.use(erectorRefinementRouter);
 router.use(erectorGoalRouter);
 router.use(erectorDashboardRouter);
+router.use("/api/erector/validation", erectorValidationRouter);
 router.use(upgradeRouter);
 router.use(debugRouter);
 
