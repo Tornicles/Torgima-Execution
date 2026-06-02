@@ -6,6 +6,7 @@ import type { PathKey } from "@/components/validation/PathPanels";
 import {
   apiFetchEnvelope,
   apiFetchResponseWithRetry,
+  downloadValidationReport,
   selectBlueprintPath,
 } from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
@@ -190,15 +191,7 @@ export default function ValidationResultsPage() {
     setDownloading(true);
     setDownloadError("");
     try {
-      const response = await fetch(`/api/v1/validations/${validationId}/report`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Report generation failed");
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? `torgima-validation-report-${validationId}.pdf`;
+      const { blob, filename } = await downloadValidationReport(validationId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

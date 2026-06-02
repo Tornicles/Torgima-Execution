@@ -8,7 +8,7 @@ import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuarantee
 import { processFeedback, type FeedbackInput } from "../engines/feedback/FeedbackProcessingEngine.js";
 import { answerInterrogation } from "../engines/feedback/InterrogationService.js";
 import { runDailyLoopForBlueprint } from "../engines/execution-loop/DailyLoopEngine.js";
-import { dispatchPendingEvents } from "../services/EventDispatcher.js";
+import { settleSimulationEvents } from "./settleSimulationEvents.js";
 
 export type SimCompletionStatus = FeedbackInput["completionStatus"];
 
@@ -76,7 +76,7 @@ export async function waitForLoopCompletion(
   userId: string,
   _ms = 0,
 ): Promise<void> {
-  await dispatchPendingEvents().catch(() => null);
+  await settleSimulationEvents(blueprintId);
   await runSynchronousExecutionChain(blueprintId, userId);
 }
 
@@ -102,6 +102,10 @@ export async function submitSimFeedback(input: SimFeedbackInput): Promise<{
     reflection: input.reflection,
     difficultyFelt: input.difficultyFelt,
     blockerJson,
+    proofJson: {
+      simulation: true,
+      evidence: input.reflection,
+    },
     idempotencyKey: `sim:${input.orderId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
   });
 
@@ -133,7 +137,7 @@ export async function submitInterrogationAnswer(
 
 export async function triggerDailyCycle(blueprintId: string, userId: string) {
   await runDailyLoopForBlueprint(blueprintId, userId);
-  await dispatchPendingEvents().catch(() => null);
+  await settleSimulationEvents(blueprintId);
   return runSynchronousExecutionChain(blueprintId, userId, {
     executionLoop: "daily",
     generationMode: "daily",

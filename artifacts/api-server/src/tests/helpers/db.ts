@@ -163,5 +163,6 @@ export async function createTestOrder(
 }
 
 export async function cleanupTestUser(userId: string): Promise<void> {
-  await db.delete(users).where(eq(users.id, userId));
+  const { cleanupPhase9User } = await import("./phase9-fixtures.js");
+  await cleanupPhase9User(userId);
 }

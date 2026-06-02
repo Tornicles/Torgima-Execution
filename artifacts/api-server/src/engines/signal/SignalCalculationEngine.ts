@@ -89,7 +89,6 @@ export async function calculate(params: {
   operationalMathematics: OperationalMathematicsDocument;
 }> {
   const now = new Date();
-  const windowEnd = now;
 
   const bpArchetype = await loadBlueprintArchetypeContext(params.blueprintId);
   const loopKind = params.executionLoop ?? "primary";
@@ -115,6 +114,7 @@ export async function calculate(params: {
   const windowStart = new Date(now.getTime() - windowMs);
   const priorEnd = windowStart;
   const priorStart = new Date(priorEnd.getTime() - windowMs);
+  const windowEnd = new Date();
 
   const feedbackInWindow = await db
     .select()
@@ -168,9 +168,31 @@ export async function calculate(params: {
       ),
     );
 
+  const [orderList, targetList] = await Promise.all([
+    db.select().from(orders).where(and(eq(orders.blueprint_id, params.blueprintId), eq(orders.user_id, params.userId))),
+    db.select().from(targets).where(eq(targets.blueprint_id, params.blueprintId)),
+  ]);
+
   let metrics = calculateMetrics(feedbackInWindow, priorFeedback);
   if (structuredInWindow.length > 0) {
     metrics = mergeStructuredFeedbackMetrics(metrics, structuredInWindow, priorStructured);
+  }
+
+  if (metrics.tasks_in_window === 0) {
+    const ordersInWindow = orderList.filter((o) => {
+      const anchor = o.started_at ?? o.created_at;
+      return anchor && anchor >= windowStart && anchor <= windowEnd;
+    });
+    if (ordersInWindow.length > 0) {
+      metrics = { ...metrics, tasks_in_window: ordersInWindow.length };
+    }
+  }
+  if (metrics.completion_rate === 0 && feedbackInWindow.length > 0) {
+    metrics = {
+      ...metrics,
+      completion_rate: calcCompletionRate(feedbackInWindow),
+      weighted_score: calcWeightedScore(feedbackInWindow),
+    };
   }
 
   const { applyInactivityMomentumPenalty } = await import("./signalInactivityMomentum.js");
@@ -196,11 +218,6 @@ export async function calculate(params: {
     .from(blueprints)
     .where(eq(blueprints.id, params.blueprintId))
     .limit(1);
-
-  const [orderList, targetList] = await Promise.all([
-    db.select().from(orders).where(and(eq(orders.blueprint_id, params.blueprintId), eq(orders.user_id, params.userId))),
-    db.select().from(targets).where(eq(targets.blueprint_id, params.blueprintId)),
-  ]);
 
   const operationalMathematics = computeOperationalMathematics({
     blueprintId: params.blueprintId,

@@ -401,6 +401,7 @@ function normalizeGenerationTrigger(raw: string): (typeof taskGenerationLog.$inf
     task_generation_requested: "manual_regeneration",
     guarantee_check: "daily_cycle",
     guarantee_fallback: "recovery_triggered",
+    feedback_failed: "recovery_triggered",
     enforcement_package_created: "feedback_submitted",
     inactivity_detected: "user_inactive",
     blueprint_launch: "blueprint_launched",
@@ -1369,7 +1370,13 @@ export async function generate(params: {
     "[TaskGen] Queue check",
   );
 
-  if (countActive >= enforcement.task_limits.max) {
+  const recoveryGeneration =
+    genModeNorm === "recovery" ||
+    params.generationTrigger === "feedback_failed" ||
+    genTrigNorm === "recovery_triggered" ||
+    Boolean(enforcement.recovery_required);
+
+  if (countActive >= enforcement.task_limits.max && !recoveryGeneration) {
     logger.info(
       { blueprintId: params.blueprintId, existingCount: countActive },
       "[TaskGen] Task queue is full — skipping generation",
@@ -1489,6 +1496,10 @@ export async function generate(params: {
       candidatesConsidered: candidatesForRank.map((c) => c.task_type),
       causationEventId: params.causationEventId,
     });
+  }
+
+  if (recoveryGeneration) {
+    taskType = "recovery";
   }
 
   const requiredSkill = inferSkillFromActionType(
@@ -1680,10 +1691,10 @@ export async function generate(params: {
   if (ctx.recent_task_hashes.includes(hash)) {
     logger.info({ blueprintId: params.blueprintId, hash }, "[TaskEngine] Duplicate hash — clarification fallback");
     usedFallback = true;
-    taskType = "clarification";
-    difficulty = "easy";
+    taskType = recoveryGeneration ? "recovery" : "clarification";
+    difficulty = recoveryGeneration ? "very_easy" : "easy";
     content = buildTaskContent({
-      task_type: "clarification",
+      task_type: taskType,
       goal: ctx.blueprint.goal,
       action: null,
       target: ctx.target ? { name: ctx.target.name } : null,

@@ -123,6 +123,21 @@ export async function launchFromTierSelection(input: {
   });
 }
 
+/** GET /api/v1/validations/:id/report — PDF validation report (binary). */
+export async function downloadValidationReport(
+  validationId: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiFetch(`/api/v1/validations/${validationId}/report`, {
+    method: "GET",
+  });
+  if (!response.ok) throw new Error("Report generation failed");
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match?.[1] ?? `torgima-validation-report-${validationId}.pdf`;
+  return { blob, filename };
+}
+
 /** POST /api/v1/validations/:id/launch — activate blueprint from completed validation. */
 export async function launchValidationBlueprint(
   validationId: string,
