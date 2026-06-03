@@ -11,9 +11,7 @@
     "backfill:25-sequences": "tsx ./backfill-25-sequence-system.ts",
     "test:system:e2e": "tsx ./test-system-e2e.ts",
     "test:phase9": "tsx ./run-phase9-e2e.ts",
-    "sim:14day": "tsx ./run-14-day-simulation.ts",
     "heal:db": "tsx ./run-supabase-healing.ts",
-    "audit:presim": "tsx ./pre-simulation-audit.ts",
     "seed:test-fixtures": "tsx ../seedTestFixtures.ts",
     "wait:url": "tsx ./src/wait-for-url.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
