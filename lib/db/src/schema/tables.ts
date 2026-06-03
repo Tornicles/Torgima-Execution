@@ -1103,7 +1103,9 @@ export const signalSnapshots = pgTable(
     assigned_condition: conditionEnum("assigned_condition"),
     condition: text("condition"),
     is_current: boolean("is_current").notNull().default(true),
-    causation_event_id: uuid("causation_event_id").references(() => events.id),
+    causation_event_id: uuid("causation_event_id").references(() => events.id, {
+      onDelete: "set null",
+    }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1229,7 +1231,9 @@ export const domainHistory = pgTable(
     domain: domainEnum("domain").notNull(),
     previous_domain: domainEnum("previous_domain"),
     transition_trigger: domainTransitionTriggerEnum("transition_trigger").notNull(),
-    trigger_event_id: uuid("trigger_event_id").references(() => events.id),
+    trigger_event_id: uuid("trigger_event_id").references(() => events.id, {
+      onDelete: "set null",
+    }),
     transition_notes: text("transition_notes"),
     is_current: boolean("is_current").notNull().default(true),
     entered_at: timestamp("entered_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1441,7 +1445,9 @@ export const inactivityRecords = pgTable(
     last_feedback_at: timestamp("last_feedback_at", { withTimezone: true }),
     threshold_breached: inactivityThresholdEnum("threshold_breached").notNull(),
     response_triggered: text("response_triggered"),
-    response_event_id: uuid("response_event_id").references(() => events.id),
+    response_event_id: uuid("response_event_id").references(() => events.id, {
+      onDelete: "set null",
+    }),
     recovery_task_id: uuid("recovery_task_id").references(() => orders.id),
     resolved: boolean("resolved").notNull().default(false),
     resolved_at: timestamp("resolved_at", { withTimezone: true }),

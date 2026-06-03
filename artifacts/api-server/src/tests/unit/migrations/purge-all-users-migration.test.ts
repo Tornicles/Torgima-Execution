@@ -15,6 +15,7 @@ describe("Purge all user accounts migration 0035", () => {
   it("hard-deletes all users and clears active blueprint pointers", () => {
     expect(migrationSql).toMatch(/DELETE FROM users/i);
     expect(migrationSql).toMatch(/active_blueprint_id = NULL/i);
+    expect(migrationSql).toMatch(/signal_snapshots SET causation_event_id = NULL/i);
     expect(migrationSql).toMatch(/DELETE FROM events/i);
     expect(migrationSql).toMatch(/purge_all_users_v1_20260527/);
   });

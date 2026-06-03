@@ -15,7 +15,10 @@ BEGIN
 
   UPDATE users SET active_blueprint_id = NULL WHERE active_blueprint_id IS NOT NULL;
   DELETE FROM platform_upgrade_archive;
-  DELETE FROM events WHERE blueprint_id IS NOT NULL;
+  UPDATE signal_snapshots SET causation_event_id = NULL WHERE causation_event_id IS NOT NULL;
+  UPDATE domain_history SET trigger_event_id = NULL WHERE trigger_event_id IS NOT NULL;
+  UPDATE inactivity_records SET response_event_id = NULL WHERE response_event_id IS NOT NULL;
+  DELETE FROM events;
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;
 
