@@ -35,6 +35,20 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS last_feedback_at TIMESTAMPTZ;
 ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS execution_score DOUBLE PRECISION;
 ALTER TABLE signal_snapshots ADD COLUMN IF NOT EXISTS feedback_confidence DOUBLE PRECISION;
 
+-- Required before ALTERs: sorted apply runs this file before manual-20260601-missing-tables-repair (TORGIMA_SYSTEM_INTEGRITY_AUDIT C3).
+CREATE TABLE IF NOT EXISTS bhudhi_signals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  blueprint_id uuid NOT NULL REFERENCES blueprints(id) ON DELETE CASCADE,
+  global_signal text NOT NULL DEFAULT 'stable',
+  global_signal_confidence double precision NOT NULL DEFAULT 0.5,
+  framework_signals jsonb NOT NULL DEFAULT '{}'::jsonb,
+  metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bhudhi_signals_blueprint_id ON bhudhi_signals(blueprint_id);
+
 ALTER TABLE bhudhi_signals ADD COLUMN IF NOT EXISTS execution_score DOUBLE PRECISION;
 ALTER TABLE bhudhi_signals ADD COLUMN IF NOT EXISTS momentum DOUBLE PRECISION;
 ALTER TABLE bhudhi_signals ADD COLUMN IF NOT EXISTS feedback_confidence DOUBLE PRECISION;
