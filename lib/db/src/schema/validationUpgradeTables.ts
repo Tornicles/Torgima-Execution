@@ -50,6 +50,7 @@ export const validationRuns = pgTable(
     }),
     launched_at: timestamp("launched_at", { withTimezone: true }),
     is_direction_anchor: boolean("is_direction_anchor").notNull().default(false),
+    explanation_paragraphs: jsonb("explanation_paragraphs").default(sql`'{}'::jsonb`),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -121,6 +122,12 @@ export const validationCompetitors = pgTable(
     weaknesses: jsonb("weaknesses").default(sql`'[]'::jsonb`),
     relevance_summary: text("relevance_summary"),
     differentiation_hint: text("differentiation_hint"),
+    competitor_archetype: text("competitor_archetype"),
+    revenue_lifecycle: jsonb("revenue_lifecycle").default(sql`'{}'::jsonb`),
+    marketing_strategy: jsonb("marketing_strategy").default(sql`'{}'::jsonb`),
+    growth_catalyst: jsonb("growth_catalyst").default(sql`'{}'::jsonb`),
+    first_product_origin: jsonb("first_product_origin").default(sql`'{}'::jsonb`),
+    digital_footprint: jsonb("digital_footprint").default(sql`'{}'::jsonb`),
     source_url: text("source_url"),
     researched_at: timestamp("researched_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

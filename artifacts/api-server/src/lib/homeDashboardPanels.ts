@@ -75,6 +75,8 @@ function executionModeLabel(
 }
 
 export interface HomeDashboardPanels {
+  blueprintTier?: string | null;
+  signalMode?: string | null;
   executionHealth: {
     mode: string;
     modeKey: string;
@@ -101,6 +103,7 @@ export interface HomeDashboardPanels {
   condition: {
     condition: string;
     conditionLabel: string;
+    conditionExplanation?: string | null;
     urgency: boolean;
     allowed: string[];
     restricted: string[];
@@ -173,6 +176,10 @@ export async function buildHomeDashboardPanels(params: {
   blueprintId: string;
   blueprintHref: string;
   dashboardUiState: DashboardUiState;
+  blueprintTier?: string | null;
+  signalMode?: string | null;
+  signalDisplayName?: string | null;
+  conditionExplanation?: string | null;
   conditionDetail: {
     condition: string;
     durationDays: number;
@@ -513,11 +520,17 @@ export async function buildHomeDashboardPanels(params: {
         ? "Recovery mode reducing daily capacity."
         : null;
 
+  const signalName =
+    params.signalDisplayName ??
+    (params.signalProjection ? "Current signal window" : null);
+
   return {
+    blueprintTier: params.blueprintTier ?? null,
+    signalMode: params.signalMode ?? null,
     executionHealth: {
       ...mode,
       condition,
-      signalName: params.signalProjection ? "Current signal window" : null,
+      signalName,
       daysInState: params.conditionDetail.durationDays,
       driftDays,
       driftLabel: driftDays != null ? `(-${driftDays} Day Drift)` : null,
@@ -538,6 +551,7 @@ export async function buildHomeDashboardPanels(params: {
     condition: {
       condition,
       conditionLabel: condition.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      conditionExplanation: params.conditionExplanation ?? null,
       urgency: condition === "urgency" || condition === "danger",
       allowed: [...new Set(allowed)],
       restricted: [...new Set(restricted)],

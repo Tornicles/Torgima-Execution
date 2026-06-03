@@ -16,9 +16,9 @@ describe("Validation results page wiring", () => {
 
   it("select-blueprint page completes launch with tier", () => {
     const page = readRepo("artifacts/torgima/src/pages/onboarding/select-blueprint.tsx");
-    expect(page).toContain("launchFromTierSelection");
-    const onboarding = readRepo("artifacts/api-server/src/routes/onboarding.ts");
-    expect(onboarding).toContain("ValidationLaunchService.launch");
+    expect(page).toContain("selectTierAndLaunch");
+    const transition = readRepo("artifacts/api-server/src/lib/transitionBlueprintToPathSelection.ts");
+    expect(transition).toContain("ensureTierPreviewsPresent");
   });
 
   it("dashboard renders launch button via language layer", () => {

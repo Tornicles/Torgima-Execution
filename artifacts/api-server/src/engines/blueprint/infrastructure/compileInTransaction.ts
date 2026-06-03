@@ -1,17 +1,75 @@
-import { buildTierAwareBlueprintChain, type ChainBuildParams, type ChainBuildResult } from "../BlueprintChainGenerator.js";
+import {
+  buildTierAwareBlueprintChain,
+  type ChainBuildParams,
+  type ChainBuildResult,
+} from "../BlueprintChainGenerator.js";
 import { assertValidHierarchy, type HierarchyNode } from "./HierarchyValidator.js";
 import { getBlueprintTypeConfig } from "./BlueprintTypeRegistry.js";
 import { gateGenerationCapabilities } from "./FeatureGatingEngine.js";
-import { db, blueprints, plans, targets, phases, projects, actions } from "@workspace/db";
-import { eq } from "drizzle-orm";
-
+import { db, blueprints, plans, targets, phases, projects, actions, seasons } from "@workspace/db";
+import { asc, eq } from "drizzle-orm";
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Resolve chain pointers when BlueprintGenerationEngine already materialized the hierarchy. */
+export async function resolvePrebuiltChainInTransaction(
+  tx: Tx,
+  blueprintId: string,
+): Promise<ChainBuildResult> {
+  const planRows = await tx
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.blueprint_id, blueprintId))
+    .orderBy(asc(plans.order_index));
+  if (!planRows.length) {
+    throw new Error("resolvePrebuiltChainInTransaction: no plans on blueprint");
+  }
+  const phaseRows = await tx
+    .select({ id: phases.id, name: phases.name, status: phases.status })
+    .from(phases)
+    .where(eq(phases.blueprint_id, blueprintId))
+    .orderBy(asc(phases.order_index));
+  const initiation =
+    phaseRows.find((p) => p.status === "active" && p.name === "initiation") ??
+    phaseRows[0];
+  if (!initiation) {
+    throw new Error("resolvePrebuiltChainInTransaction: no phases on blueprint");
+  }
+  const targetRows = await tx
+    .select({ id: targets.id })
+    .from(targets)
+    .where(eq(targets.blueprint_id, blueprintId));
+  const actionRows = await tx
+    .select({ id: actions.id })
+    .from(actions)
+    .where(eq(actions.blueprint_id, blueprintId));
+  const seasonRows = await tx
+    .select({ id: seasons.id })
+    .from(seasons)
+    .where(eq(seasons.blueprint_id, blueprintId));
+  return {
+    planId: planRows[0]!.id,
+    phaseId: initiation.id,
+    planCount: planRows.length,
+    phaseCount: phaseRows.length,
+    targetCount: targetRows.length,
+    actionCount: actionRows.length,
+    seasonCount: seasonRows.length,
+  };
+}
 
 /** Compile chain inside an existing transaction (used by BlueprintEngine.activate). */
 export async function compileChainInTransaction(
   tx: Tx,
   input: ChainBuildParams,
 ): Promise<ChainBuildResult> {
+  const [existingPlan] = await tx
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.blueprint_id, input.blueprintId))
+    .limit(1);
+  if (existingPlan) {
+    return resolvePrebuiltChainInTransaction(tx, input.blueprintId);
+  }
   return buildTierAwareBlueprintChain(tx, input);
 }
 

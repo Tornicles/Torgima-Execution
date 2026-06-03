@@ -64,10 +64,6 @@ export const OrderFeedbackInputCompletionStatus = {
   skipped: "skipped",
 } as const;
 
-export type OrderFeedbackInputProofJson = { [key: string]: unknown };
-
-export type OrderFeedbackInputBlockerJson = { [key: string]: unknown };
-
 export type OrderFeedbackInputDifficultyFelt =
   (typeof OrderFeedbackInputDifficultyFelt)[keyof typeof OrderFeedbackInputDifficultyFelt];
 
@@ -78,6 +74,10 @@ export const OrderFeedbackInputDifficultyFelt = {
   hard: "hard",
   very_hard: "very_hard",
 } as const;
+
+export type OrderFeedbackInputProofJson = { [key: string]: unknown };
+
+export type OrderFeedbackInputBlockerJson = { [key: string]: unknown };
 
 export interface OrderFeedbackInput {
   completionStatus: OrderFeedbackInputCompletionStatus;
@@ -122,10 +122,10 @@ export interface OrderFeedbackResult {
   weightedScore: number;
   confidence: OrderFeedbackResultConfidence;
   requiresInterrogation: boolean;
-  interrogationQuestion?: string | null;
+  interrogationQuestion?: string;
   nextStep?: OrderFeedbackResultNextStep;
   message?: string;
-  eventId?: string;
+  eventId: string;
 }
 
 export interface HealthStatus {
@@ -571,6 +571,97 @@ export interface ActivateBlueprintInput {
   validation_contract_id?: string | null;
 }
 
+export type SelectTierInputSelectedTier =
+  (typeof SelectTierInputSelectedTier)[keyof typeof SelectTierInputSelectedTier];
+
+export const SelectTierInputSelectedTier = {
+  starter: "starter",
+  growth: "growth",
+  ultimate: "ultimate",
+} as const;
+
+export type SelectTierInputSelectedPath =
+  (typeof SelectTierInputSelectedPath)[keyof typeof SelectTierInputSelectedPath];
+
+export const SelectTierInputSelectedPath = {
+  current: "current",
+  adjusted: "adjusted",
+  alternative: "alternative",
+} as const;
+
+export interface SelectTierInput {
+  blueprintId: string;
+  validationId: string;
+  selectedTier: SelectTierInputSelectedTier;
+  selected_tier?: SelectTierInputSelectedTier;
+  selectedPath?: SelectTierInputSelectedPath;
+  selected_path?: SelectTierInputSelectedPath;
+}
+
+export type SelectTierLaunchResultTier =
+  (typeof SelectTierLaunchResultTier)[keyof typeof SelectTierLaunchResultTier];
+
+export const SelectTierLaunchResultTier = {
+  starter: "starter",
+  growth: "growth",
+  ultimate: "ultimate",
+} as const;
+
+/**
+ * @nullable
+ */
+export type SelectTierLaunchResultGenerationSummary = {
+  [key: string]: unknown;
+} | null;
+
+export interface SelectTierLaunchResult {
+  blueprintId: string;
+  tier: SelectTierLaunchResultTier;
+  redirectTo: string;
+  launched: boolean;
+  /** @nullable */
+  generationSummary?: SelectTierLaunchResultGenerationSummary;
+}
+
+export type TierPreviewCardTier =
+  (typeof TierPreviewCardTier)[keyof typeof TierPreviewCardTier];
+
+export const TierPreviewCardTier = {
+  starter: "starter",
+  growth: "growth",
+  ultimate: "ultimate",
+} as const;
+
+export interface TierPreviewCard {
+  tier?: TierPreviewCardTier;
+  headline?: string;
+  description?: string;
+  planCount?: number;
+  recommended?: boolean;
+  highlights?: string[];
+}
+
+export interface TierPreviewListResponse {
+  previews?: TierPreviewCard[];
+}
+
+export type ValidationCompleteResultValidation = { [key: string]: unknown };
+
+export type ValidationCompleteResultRecommendedTier =
+  (typeof ValidationCompleteResultRecommendedTier)[keyof typeof ValidationCompleteResultRecommendedTier];
+
+export const ValidationCompleteResultRecommendedTier = {
+  starter: "starter",
+  growth: "growth",
+  ultimate: "ultimate",
+} as const;
+
+export interface ValidationCompleteResult {
+  validation?: ValidationCompleteResultValidation;
+  tierPreviews?: TierPreviewCard[];
+  recommendedTier?: ValidationCompleteResultRecommendedTier;
+}
+
 export interface BlockInput {
   reason: string;
 }
@@ -719,6 +810,12 @@ export type DashboardStateAlertsItem = {
   actionLabel?: string;
 };
 
+/**
+ * Pre-computed home dashboard panel payloads (execution health, orders, timeline, plans, phases)
+ * @nullable
+ */
+export type DashboardStateHomePanels = { [key: string]: unknown } | null;
+
 export interface DashboardState {
   user: User;
   signals: SignalState;
@@ -755,6 +852,11 @@ export interface DashboardState {
   dashboardUiState?: DashboardStateDashboardUiState;
   pendingSync?: boolean;
   alerts?: DashboardStateAlertsItem[];
+  /**
+   * Pre-computed home dashboard panel payloads (execution health, orders, timeline, plans, phases)
+   * @nullable
+   */
+  homePanels?: DashboardStateHomePanels;
 }
 
 export interface GoalInput {
@@ -833,6 +935,10 @@ export type GetBlueprintExecutionFeed200 = {
   ok?: boolean;
   data?: GetBlueprintExecutionFeed200Data;
   meta?: GetBlueprintExecutionFeed200Meta;
+};
+
+export type PostValidationCompleteBody = {
+  validationId?: string;
 };
 
 export type GetValidationResultParams = {

@@ -139,6 +139,8 @@ export function HomeDashboardView({ state }: { state: DashboardProjection }) {
           alertCount={state.alerts?.length ?? 0}
           blueprintPosition={state.blueprintPosition ?? null}
           activeBlueprint={state.activeBlueprint}
+          simplifiedSignalLabel={state.simplifiedSignalLabel}
+          signalMode={state.signalMode ?? panels.signalMode}
         />
       )}
     </div>
@@ -155,6 +157,8 @@ function HomeDashboardContent({
   alertCount,
   blueprintPosition,
   activeBlueprint,
+  simplifiedSignalLabel,
+  signalMode,
 }: {
   panels: HomeDashboardPanels;
   displayName: string;
@@ -165,11 +169,24 @@ function HomeDashboardContent({
   alertCount: number;
   blueprintPosition: BlueprintPositionProjection | null;
   activeBlueprint?: DashboardProjection["activeBlueprint"];
+  simplifiedSignalLabel?: string | null;
+  signalMode?: string | null;
 }) {
+  const useSimplifiedSignal = signalMode === "simplified" || Boolean(simplifiedSignalLabel);
   const conditionDisplay = getConditionLabel(p.condition.condition);
   const visibleOrders = ordersExpanded ? p.todayOrders : p.todayOrders.slice(0, 4);
   const eh = p.executionHealth;
   const accentOrange = eh.accent === "orange";
+  const tierBadge =
+    p.blueprintTier ??
+    (activeBlueprint as { blueprintTier?: string | null } | undefined)?.blueprintTier ??
+    null;
+  const signalLine =
+    useSimplifiedSignal && (eh.signalName || simplifiedSignalLabel)
+      ? `Signal: ${eh.signalName ?? simplifiedSignalLabel}`
+      : eh.signalName
+        ? `Signal window: ${eh.signalName}`
+        : null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5 pb-24 lg:pb-8">
@@ -180,6 +197,7 @@ function HomeDashboardContent({
           activeBlueprint?.title
         }
         goal={activeBlueprint?.rawGoal ?? activeBlueprint?.title}
+        tierBadge={tierBadge}
       />
       {blueprintPosition ? <BlueprintPositionPanel position={blueprintPosition} /> : null}
       {/* Header */}
@@ -248,6 +266,9 @@ function HomeDashboardContent({
                 {eh.driftLabel ? ` ${eh.driftLabel}` : ""}
               </p>
               <p className="text-sm text-[#64748B] mt-2 leading-relaxed">{eh.summary}</p>
+              {signalLine ? (
+                <p className="text-xs font-semibold text-[#5B21FF] mt-2">{signalLine}</p>
+              ) : null}
               {eh.reasoning.slice(0, 2).map((line, i) => (
                 <p key={i} className="text-xs text-[#64748B] mt-1">
                   {line}
@@ -329,7 +350,9 @@ function HomeDashboardContent({
             <p className="mt-2 text-lg font-bold text-[#0F172A]">
               {conditionDisplay.emoji} {conditionDisplay.label}
             </p>
-            <p className="text-xs text-[#64748B] mt-1 leading-relaxed">{conditionDisplay.description}</p>
+            <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
+              {p.condition.conditionExplanation ?? conditionDisplay.description}
+            </p>
             <p className="text-xs font-semibold text-[#5B21FF] mt-2">Next: {conditionDisplay.nextStep}</p>
             <div className="flex gap-4 mt-3">
               <Crosshair className="w-10 h-10 text-violet-400 shrink-0" />

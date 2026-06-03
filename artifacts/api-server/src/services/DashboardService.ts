@@ -42,6 +42,11 @@ import { getLatestRewardForBlueprint } from "../engines/reward/RewardEngine.js";
 import { checkOutcomeIntegrity, getOpenFlags } from "../engines/outcome/OutcomeValidationEngine.js";
 import { evaluatePhaseReadiness } from "../engines/blueprint/PhaseProgressionEngine.js";
 import { mapStarterSignalLabel } from "./TierDifferentiationService.js";
+import {
+  conditionExplanationForTier,
+  signalDisplayLabel,
+} from "../engines/blueprint/tierEngineAwareness.js";
+import { normalizeBlueprintTier, getTierConfig } from "../engines/blueprint/TierConfig.js";
 import { buildHomeDashboardPanels } from "../lib/homeDashboardPanels.js";
 import { buildLaunchDashboardProjection } from "../lib/buildLaunchDashboardProjection.js";
 import { buildBlueprintPositionProjection } from "../lib/buildBlueprintPositionProjection.js";
@@ -484,6 +489,8 @@ export const DashboardService = {
 
     let assumptionDrift: Awaited<ReturnType<typeof checkAssumptionDrift>> = [];
     let openFalseProgressCount = 0;
+    let blueprintSignalMode: string | null = null;
+    let blueprintTierLabel: string | null = null;
     if (blueprintId) {
       const [fpCount] = await db
         .select({ c: sql<number>`count(*)::int` })
@@ -502,6 +509,8 @@ export const DashboardService = {
             primary_archetype_id: blueprints.primary_archetype_id,
             reality_score: blueprints.reality_score,
             blueprint_tier: blueprints.blueprint_tier,
+            tier: blueprints.tier,
+            signal_mode: blueprints.signal_mode,
             industry_state: blueprints.industry_state,
             economy_briefing_summary: blueprints.economy_briefing_summary,
             archetype_name: economicArchetypes.name,
@@ -555,6 +564,9 @@ export const DashboardService = {
             .slice(0, 2)
             .join(" ")
         : null;
+
+      blueprintSignalMode = bpIntelRow?.signal_mode ?? null;
+      blueprintTierLabel = bpIntelRow?.tier ?? bpIntelRow?.blueprint_tier ?? null;
 
       const archetypeName = bpIntelRow?.archetype_name ?? resolution?.primaryArchetype?.name ?? null;
       const realityScore = bpIntelRow?.reality_score ?? valRow?.reality_score ?? null;
@@ -736,7 +748,7 @@ export const DashboardService = {
     }
 
     const starterLabel =
-      user?.tier === "starter" && condEffective?.condition
+      (blueprintSignalMode === "simplified" || user?.tier === "starter") && condEffective?.condition
         ? mapStarterSignalLabel(condEffective.condition)
         : null;
 
@@ -772,11 +784,24 @@ export const DashboardService = {
     let homePanels: Awaited<ReturnType<typeof buildHomeDashboardPanels>> | null = null;
     if (blueprintId && activeBlueprint) {
       try {
+        const tierKey = normalizeBlueprintTier(blueprintTierLabel);
+        const tierCfg = getTierConfig(tierKey);
         homePanels = await buildHomeDashboardPanels({
           userId,
           blueprintId,
           blueprintHref: `/blueprint/${blueprintId}`,
           dashboardUiState,
+          blueprintTier: tierKey,
+          signalMode: blueprintSignalMode ?? tierCfg.signal_mode,
+          signalDisplayName: signalDisplayLabel({
+            signalMode: (blueprintSignalMode as "simplified" | "full" | "predictive") ?? tierCfg.signal_mode,
+            condition: condEffective.condition,
+            simplifiedLabel: starterLabel,
+          }),
+          conditionExplanation: conditionExplanationForTier(
+            tierCfg.condition_mode,
+            condEffective.condition,
+          ),
           conditionDetail: condEffective,
           signalProjection,
           signals,
@@ -862,8 +887,16 @@ export const DashboardService = {
       simplifiedSignalLabel: starterLabel,
       signals,
       activeBlueprint: activeBlueprint
-        ? { ...activeBlueprint, economyIntelligence, executionContext }
+        ? {
+            ...activeBlueprint,
+            economyIntelligence,
+            executionContext,
+            blueprintTier: blueprintTierLabel ?? executionContext?.blueprintTier ?? null,
+            signalMode: blueprintSignalMode,
+          }
         : activeBlueprint,
+      blueprintTier: blueprintTierLabel,
+      signalMode: blueprintSignalMode,
       recentCompletionBlueprint,
       activeOrders,
       recentFeedback,

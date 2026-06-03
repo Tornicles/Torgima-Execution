@@ -59,6 +59,7 @@ import { deepSanitizeStrings } from "../lib/security/deepSanitizeStrings.js";
 import { buildCorrectionPrompt } from "./bhudhiSelfCorrection.js";
 import { TorgimaError } from "../lib/errors.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { loadBlueprintTierContext } from "../engines/blueprint/tierEngineAwareness.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -274,6 +275,24 @@ export async function runBhudhiPipeline<T = unknown>(
   const startTime = Date.now();
   let logId = "";
   const blueprintId = request.blueprintId ?? request.userId;
+
+  if (request.blueprintId) {
+    const tierCtx = await loadBlueprintTierContext(request.blueprintId).catch(() => null);
+    if (tierCtx) {
+      request = {
+        ...request,
+        facts: {
+          ...(request.facts ?? {}),
+          intelligence_depth: tierCtx.intelligenceDepth ?? tierCtx.tierConfig.intelligence_depth,
+          blueprint_tier: tierCtx.tier,
+          signal_mode: tierCtx.signalMode,
+          condition_mode: tierCtx.conditionMode,
+          task_style: tierCtx.taskStyle,
+          bhudhi_mode: tierCtx.tierConfig.bhudhi_mode,
+        },
+      };
+    }
+  }
 
   const chainId = `${request.userId}:${request.triggerType}`;
   const chain = enterAgentChain(chainId);

@@ -15,6 +15,7 @@ import {
   saveValidationLaunchContext,
 } from "@/lib/validation-launch-context";
 import { loadPreValidationDraft } from "@/lib/pre-validation-draft";
+import { apiFetch } from "@/config/api";
 
 type ValidationPayload = ValidationScreenData & {
   status?: string;
@@ -39,6 +40,30 @@ function mergeResultsEnrichment(
         competitors: results.competitors ?? erector.competitors,
         opportunities: results.opportunities ?? erector.opportunities,
         economicContext: results.economicContext ?? erector.economicContext,
+      },
+    },
+  });
+}
+
+function mergeStructuredValidationRun(
+  payload: ValidationPayload | null,
+  structured: Record<string, unknown>,
+): ValidationPayload {
+  const run = (structured.run ?? {}) as Record<string, unknown>;
+  const competitors = Array.isArray(structured.competitors) ? structured.competitors : [];
+  const erector = (payload?.intelligence?.erector ?? {}) as Record<string, unknown>;
+  return normalizePayload({
+    ...(payload ?? {}),
+    verdict: String(run.verdict ?? payload?.verdict ?? "adjust"),
+    intelligence: {
+      ...(payload?.intelligence ?? {}),
+      erector: {
+        ...erector,
+        competitors,
+        explanation_paragraphs: run.explanation_paragraphs ?? erector.explanation_paragraphs,
+        realityScore: run.reality_score ?? erector.realityScore,
+        verdict: run.verdict ?? erector.verdict,
+        validationRunStatus: run.status,
       },
     },
   });
@@ -118,6 +143,7 @@ export default function ValidationResultsPage() {
   const [selectedPath, setSelectedPath] = useState<PathKey>("adjusted");
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [explanationsLoading, setExplanationsLoading] = useState(false);
 
   const loadResults = useCallback(async () => {
     if (!validationId) return;
@@ -138,6 +164,24 @@ export default function ValidationResultsPage() {
       );
       if (resultsEnvelope.ok && resultsEnvelope.data) {
         payload = mergeResultsEnrichment(payload, resultsEnvelope.data);
+      }
+
+      try {
+        const erectorRes = await apiFetch(`/api/erector/validation/${validationId}`);
+        if (erectorRes.ok) {
+          const erectorJson = (await erectorRes.json()) as { data?: Record<string, unknown> };
+          if (erectorJson.data) {
+            payload = mergeStructuredValidationRun(payload, erectorJson.data);
+            const runStatus = String(
+              ((erectorJson.data.run as Record<string, unknown>) ?? {}).status ?? "",
+            );
+            setExplanationsLoading(
+              Boolean(runStatus) && runStatus !== "complete" && runStatus !== "failed",
+            );
+          }
+        }
+      } catch {
+        /* legacy validation id may not map to structured run */
       }
 
       if (!payload?.blueprintId) {
@@ -254,6 +298,7 @@ export default function ValidationResultsPage() {
       onProjectNameChange={setProjectName}
       onProjectNameEditDone={() => setEditingProjectName(false)}
       goalSummary={validation.goal}
+      explanationsLoading={explanationsLoading}
     />
   );
 }

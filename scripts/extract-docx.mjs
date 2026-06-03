@@ -1,26 +1,47 @@
 import fs from "fs";
-import { execSync } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const src = process.argv[2];
-const out = process.argv[3];
-if (!src || !out) {
-  console.error("Usage: node extract-docx.mjs <input.docx> <output.txt>");
-  process.exit(1);
+const files = process.argv.slice(2);
+const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function extractDocx(docxPath) {
+  const { execSync } = require("child_process");
+  const tmp = path.join(outDir, "_docx_tmp_" + Date.now());
+  fs.mkdirSync(tmp, { recursive: true });
+  try {
+    execSync(
+      `powershell -NoProfile -Command "Expand-Archive -Path '${docxPath.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force"`,
+      { stdio: "pipe" },
+    );
+  } catch {
+    // docx may need copy to .zip
+    const zipPath = tmp + ".zip";
+    fs.copyFileSync(docxPath, zipPath);
+    execSync(
+      `powershell -NoProfile -Command "Expand-Archive -Path '${zipPath.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force"`,
+      { stdio: "pipe" },
+    );
+  }
+  const xmlPath = path.join(tmp, "word", "document.xml");
+  if (!fs.existsSync(xmlPath)) throw new Error("no document.xml");
+  let x = fs.readFileSync(xmlPath, "utf8");
+  x = x.replace(/<w:tab[^/]*\/>/g, "\t");
+  x = x.replace(/<\/w:p>/g, "\n");
+  x = x.replace(/<[^>]+>/g, "");
+  x = x
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+  return x.replace(/\n{3,}/g, "\n\n").trim();
 }
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
-const zip = path.join(root, "_tmp_doc.zip");
-const dir = path.join(root, "_tmp_docx");
-
-fs.copyFileSync(src, zip);
-fs.rmSync(dir, { recursive: true, force: true });
-execSync(
-  `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${zip.replace(/'/g, "''")}' -DestinationPath '${dir.replace(/'/g, "''")}' -Force"`,
-  { stdio: "inherit" },
-);
-
-const xml = fs.readFileSync(path.join(dir, "word", "document.xml"), "utf8");
-const texts = [...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]);
-fs.writeFileSync(out, texts.join(""), "utf8");
-console.log("Wrote", out, "chars:", texts.join("").length);
+for (const f of files) {
+  const base = path.basename(f, ".docx");
+  const text = extractDocx(f);
+  const out = path.join(outDir, `_tier_${base}.txt`);
+  fs.writeFileSync(out, text);
+  console.log("Wrote", out, text.length);
+}

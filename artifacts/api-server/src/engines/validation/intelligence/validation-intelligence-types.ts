@@ -213,4 +213,6 @@ export interface FullValidationResult {
   launchBlocked: boolean;
   readiness: ReadinessState;
   createdAt: Date;
+  tierPreviews?: import("../../blueprint/TierPreviewEngine.js").TierPreviewCard[];
+  recommendedTier?: BlueprintTier;
 }

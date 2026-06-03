@@ -10,6 +10,11 @@ import {
   patchValidationRunFromLegacyRow,
   syncValidationRunPanelsFromLegacyRow,
 } from "./syncValidationRunPanels.js";
+import {
+  generateValidationExplanations,
+  loadExplanationContext,
+  researchCompetitorsDeep,
+} from "./validationCompetitorIntelligence.js";
 
 export type ValidationRunInput = {
   user_id: string;
@@ -138,7 +143,9 @@ export class ValidationResearchEngine {
         idempotencyKey: `validation_phase:${runId}:reality`,
       }).catch(() => null);
 
-      await syncValidationRunPanelsFromLegacyRow(runId, legacyRow);
+      await syncValidationRunPanelsFromLegacyRow(runId, legacyRow, { skipCompetitors: true });
+
+      await researchCompetitorsDeep(runId, input, (status) => updateRunStatus(runId, status));
 
       await updateRunStatus(runId, "running_path_analysis");
       await writeEvent({
@@ -152,6 +159,10 @@ export class ValidationResearchEngine {
       }).catch(() => null);
 
       await patchValidationRunFromLegacyRow(runId, legacyRow);
+
+      const explanationCtx = await loadExplanationContext(runId, input);
+      await updateRunStatus(runId, "generating_explanations");
+      await generateValidationExplanations(runId, input, explanationCtx);
 
       await writeEvent({
         eventType: EVENT_TYPES.VALIDATION_COMPLETED,

@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { TorgimaError } from "../../lib/errors.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { ValidationLaunchService } from "../../services/ValidationLaunchService.js";
-import { BlueprintLaunchService } from "../../services/BlueprintLaunchService.js";
 
 export const ValidationBridgeService = {
   async launchBlueprint(input: {
@@ -52,53 +51,48 @@ export const ValidationBridgeService = {
 
     let launchedBlueprintId = blueprintId;
 
-    if (run.legacy_validation_id) {
-      const [legacy] = await db
-        .select()
-        .from(validations)
-        .where(eq(validations.id, run.legacy_validation_id))
-        .limit(1);
+    const validationId =
+      run.legacy_validation_id ??
+      (
+        await db
+          .select({ id: validations.id })
+          .from(validations)
+          .where(eq(validations.blueprint_id, blueprintId))
+          .limit(1)
+      )[0]?.id;
 
-      if (!legacy?.contract_id) {
-        throw new TorgimaError("VALIDATION_ERROR", "Legacy validation contract missing", false);
-      }
-
-      await db
-        .update(validations)
-        .set({
-          selected_path: run.selected_path as typeof validations.$inferInsert["selected_path"],
-          selected_path_type: run.selected_path,
-          selected_at: new Date(),
-        })
-        .where(eq(validations.id, run.legacy_validation_id));
-
-      const launch = await ValidationLaunchService.launch({
-        validationId: run.legacy_validation_id,
-        userId: input.user_id,
-        selectedPath: run.selected_path as "current" | "adjusted" | "alternative",
-        tier: input.tier,
-        mode: input.mode,
-        blueprintId,
-      });
-      launchedBlueprintId = launch.blueprintId;
-    } else {
-      const [legacy] = await db
-        .select({ contract_id: validations.contract_id })
-        .from(validations)
-        .where(eq(validations.blueprint_id, blueprintId))
-        .limit(1);
-
-      if (legacy?.contract_id) {
-        const launch = await BlueprintLaunchService.launch({
-          blueprintId,
-          userId: input.user_id,
-          validationContractId: legacy.contract_id,
-          selectedPathType: run.selected_path as "current" | "adjusted" | "alternative",
-          selectedBlueprintLevel: input.tier ?? "starter",
-        });
-        launchedBlueprintId = launch.blueprintId;
-      }
+    if (!validationId) {
+      throw new TorgimaError("VALIDATION_ERROR", "No validation record linked to blueprint", false);
     }
+
+    const [legacy] = await db
+      .select({ contract_id: validations.contract_id })
+      .from(validations)
+      .where(eq(validations.id, validationId))
+      .limit(1);
+
+    if (!legacy?.contract_id) {
+      throw new TorgimaError("VALIDATION_ERROR", "Validation contract missing", false);
+    }
+
+    await db
+      .update(validations)
+      .set({
+        selected_path: run.selected_path as typeof validations.$inferInsert["selected_path"],
+        selected_path_type: run.selected_path,
+        selected_at: new Date(),
+      })
+      .where(eq(validations.id, validationId));
+
+    const launch = await ValidationLaunchService.launch({
+      validationId,
+      userId: input.user_id,
+      selectedPath: run.selected_path as "current" | "adjusted" | "alternative",
+      tier: input.tier ?? "starter",
+      mode: input.mode,
+      blueprintId,
+    });
+    launchedBlueprintId = launch.blueprintId;
 
     const [selectedPathRow] = await db
       .select()

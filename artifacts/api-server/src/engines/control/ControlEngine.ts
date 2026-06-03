@@ -24,6 +24,11 @@ import { getConditionContract } from "../blueprint/infrastructure/ConditionEnfor
 import { getActivePatterns } from "../pattern/PatternLearningEngine.js";
 import { applyTierToConditionRules } from "../../services/TierDifferentiationService.js";
 import { getTierRules, parseTier } from "../blueprint/BlueprintRuleEngine.js";
+import {
+  applyConditionModeToRules,
+  applyEnforcementTierOverrides,
+  loadBlueprintTierContext,
+} from "../blueprint/tierEngineAwareness.js";
 
 // Task limit resolution order:
 // 1. Base condition matrix (CONDITION_BASE_RULES)
@@ -346,6 +351,7 @@ export async function generateEnforcementPackage(params: {
   recoveryRequired: boolean;
   causationEventId?: string;
 }): Promise<{ packageId: string }> {
+  const tierCtx = await loadBlueprintTierContext(params.blueprintId);
   const [user] = await db
     .select({ tier: users.tier })
     .from(users)
@@ -358,7 +364,7 @@ export async function generateEnforcementPackage(params: {
     .where(eq(capabilityProfiles.user_id, params.userId))
     .limit(1);
 
-  const tier = user?.tier ?? "starter";
+  const tier = tierCtx?.tier ?? user?.tier ?? "starter";
   const capabilityLevel = capability?.level ?? "beginner";
 
   let rules = CONDITION_BASE_RULES[params.condition] ?? CONDITION_BASE_RULES.urgency;
@@ -368,6 +374,30 @@ export async function generateEnforcementPackage(params: {
   }
 
   rules = applyTierOverrides(rules, tier, params.condition);
+  let forecastCondition: string | undefined;
+  if (tierCtx) {
+    const modeRules = applyConditionModeToRules(tierCtx.conditionMode, rules);
+    forecastCondition = modeRules.forecast_condition;
+    rules = {
+      ...rules,
+      taskMin: modeRules.taskMin,
+      taskMax: modeRules.taskMax,
+      difficultyCap: modeRules.difficultyCap,
+      phasePermission: modeRules.phasePermission,
+    };
+    const tierAdjusted = applyEnforcementTierOverrides(
+      tierCtx.tierConfig,
+      tierCtx.tier,
+      rules,
+      capabilityLevel,
+    );
+    rules = {
+      ...rules,
+      taskMin: tierAdjusted.taskMin,
+      taskMax: tierAdjusted.taskMax,
+      difficultyCap: tierAdjusted.difficultyCap,
+    };
+  }
   rules = applyCapabilityModifier(rules, capabilityLevel);
 
   const { rules: rulesLoaded, loadScore } = await applyCognitiveLoadModifier(
@@ -403,7 +433,13 @@ export async function generateEnforcementPackage(params: {
     taskMin: Math.min(rules.taskMin, rules.taskMax),
   };
 
-  const featurePermissions = buildFeaturePermissions(params.condition, tier, rules.allowedActions);
+  const frameworkCap = tierCtx?.tierConfig.framework_activations_max;
+  const featurePermissions = {
+    ...buildFeaturePermissions(params.condition, tier, rules.allowedActions),
+    ...(frameworkCap != null ? { framework_activations_max: frameworkCap } : {}),
+    ...(tierCtx?.conditionMode === "light" ? { phase_locks_enforced: false } : {}),
+    ...(forecastCondition ? { forecast_condition: forecastCondition } : {}),
+  };
 
   if (rules.taskMin > rules.taskMax) {
     rules.taskMin = 1;
@@ -461,6 +497,9 @@ export async function generateEnforcementPackage(params: {
           recovery_required: params.recoveryRequired,
           scaling_allowed: rules.scalingAllowed,
           escalation_level: params.escalationLevel,
+          condition_mode: tierCtx?.conditionMode ?? "full",
+          framework_activations_max: frameworkCap ?? null,
+          forecast_condition: forecastCondition ?? null,
         },
         cognitive_load_score: enforcementCognitiveLoad,
         is_current: true,

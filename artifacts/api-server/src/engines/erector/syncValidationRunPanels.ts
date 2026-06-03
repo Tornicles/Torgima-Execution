@@ -68,6 +68,7 @@ function feasibilityFromScore(score: number | null | undefined): string {
 export async function syncValidationRunPanelsFromLegacyRow(
   validationRunId: string,
   row: ValidationRow,
+  opts?: { skipCompetitors?: boolean },
 ): Promise<void> {
   const enriched = enrichedFromValidationRow(row);
   const paths = pathsFromValidationRow(row);
@@ -77,7 +78,9 @@ export async function syncValidationRunPanelsFromLegacyRow(
 
   await db.delete(validationAtAGlance).where(eq(validationAtAGlance.validation_run_id, validationRunId));
   await db.delete(validationMarketTrends).where(eq(validationMarketTrends.validation_run_id, validationRunId));
-  await db.delete(validationCompetitors).where(eq(validationCompetitors.validation_run_id, validationRunId));
+  if (!opts?.skipCompetitors) {
+    await db.delete(validationCompetitors).where(eq(validationCompetitors.validation_run_id, validationRunId));
+  }
   await db.delete(validationProsCons).where(eq(validationProsCons.validation_run_id, validationRunId));
   await db.delete(validationOpportunities).where(eq(validationOpportunities.validation_run_id, validationRunId));
   await db.delete(validationRisks).where(eq(validationRisks.validation_run_id, validationRunId));
@@ -149,24 +152,26 @@ export async function syncValidationRunPanelsFromLegacyRow(
     researched_at: new Date(),
   });
 
-  const competitors = enriched.competitors.slice(0, 3);
-  for (let i = 0; i < competitors.length; i++) {
-    const c = competitors[i]!;
-    const shareNum = parseFloat(String(c.marketShare).replace(/[^0-9.]/g, "")) || 10 + i * 5;
-    await db.insert(validationCompetitors).values({
-      validation_run_id: validationRunId,
-      rank: i + 1,
-      name: c.name,
-      description: c.description || c.tagline,
-      website: "",
-      market_share_pct: shareNum,
-      market_share_label: c.marketShare || `${shareNum}%`,
-      strengths: c.strengths,
-      weaknesses: c.weaknesses,
-      relevance_summary: c.whereYourIdeaFits,
-      differentiation_hint: c.whereYourIdeaFits,
-      researched_at: new Date(),
-    });
+  if (!opts?.skipCompetitors) {
+    const competitors = enriched.competitors.slice(0, 3);
+    for (let i = 0; i < competitors.length; i++) {
+      const c = competitors[i]!;
+      const shareNum = parseFloat(String(c.marketShare).replace(/[^0-9.]/g, "")) || 10 + i * 5;
+      await db.insert(validationCompetitors).values({
+        validation_run_id: validationRunId,
+        rank: i + 1,
+        name: c.name,
+        description: c.description || c.tagline,
+        website: "",
+        market_share_pct: shareNum,
+        market_share_label: c.marketShare || `${shareNum}%`,
+        strengths: c.strengths,
+        weaknesses: c.weaknesses,
+        relevance_summary: c.whereYourIdeaFits,
+        differentiation_hint: c.whereYourIdeaFits,
+        researched_at: new Date(),
+      });
+    }
   }
 
   let sort = 0;
@@ -269,7 +274,7 @@ export async function syncValidationRunPanelsFromLegacyRow(
     validation_run_id: validationRunId,
     research_phase: "erector_sync",
     search_query: "Erector validation pipeline (market, competitors, economy)",
-    search_results_count: competitors.length,
+    search_results_count: opts?.skipCompetitors ? 0 : enriched.competitors.length,
     extracted_insights: { reality_score: reality, verdict: row.verdict },
     sources: [],
     status: "success",

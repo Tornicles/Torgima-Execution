@@ -1,6 +1,7 @@
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
-import { BlueprintLaunchService, type LaunchPathType } from "./BlueprintLaunchService.js";
+import { type LaunchPathType } from "./BlueprintLaunchService.js";
+import { BlueprintTierLaunchService } from "./BlueprintTierLaunchService.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { ValidationService } from "./ValidationService.js";
 import { ValidationFinalizationService } from "./ValidationFinalizationService.js";
@@ -44,6 +45,15 @@ export interface ValidationLaunchResult {
   redirect_to: "/dashboard";
   launched: true;
   idempotent?: boolean;
+  tier?: "starter" | "growth" | "ultimate";
+  generationSummary?: {
+    plansCreated: number;
+    seasonsCreated: number;
+    targetsCreated: number;
+    phasesCreated: number;
+    actionsCreated: number;
+    durationMs: number;
+  };
 }
 
 function resolvePath(
@@ -193,17 +203,19 @@ export const ValidationLaunchService = {
       .where(eq(validations.id, row.id));
 
     let idempotent = false;
+    let generationSummary: ValidationLaunchResult["generationSummary"];
     try {
-      const launchResult = await BlueprintLaunchService.launch({
+      const launchResult = await BlueprintTierLaunchService.selectTierAndLaunch({
         blueprintId: row.blueprint_id,
+        validationId: row.id,
         userId: input.userId,
-        validationContractId: row.contract_id,
-        selectedPathType,
-        selectedBlueprintLevel: tier,
+        selectedTier: tier,
+        selectedPath: selectedPathType,
       });
+      generationSummary = launchResult.generationSummary;
       logger.info(
-        { blueprintId: launchResult.blueprintId, validationId: row.id },
-        "Validation launch — BlueprintEngine.activateBlueprint completed",
+        { blueprintId: launchResult.blueprintId, validationId: row.id, tier },
+        "Validation launch — tier chain generated and blueprint activated",
       );
     } catch (err) {
       if (err instanceof TorgimaError && err.code === "BLUEPRINT_ALREADY_ACTIVE") {
@@ -316,6 +328,8 @@ export const ValidationLaunchService = {
       redirectTo: "/dashboard",
       redirect_to: "/dashboard",
       launched: true,
+      tier,
+      ...(generationSummary ? { generationSummary } : {}),
       ...(idempotent ? { idempotent: true } : {}),
     };
   },

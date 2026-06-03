@@ -12,7 +12,7 @@ import {
 import { Link } from "wouter";
 import { useGetMe } from "@workspace/api-client-react";
 import type { TierId } from "@/components/blueprint/BlueprintSelectionPanel";
-import { apiGet } from "@/lib/torgima-api";
+import { apiGet, type TierPreviewCardDto } from "@/lib/torgima-api";
 import type {
   BlueprintSelectionCatalogResponse,
   BlueprintTierCard,
@@ -82,19 +82,27 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
 export function BlueprintLaunchInputScreen({
   context,
   selectedTier,
+  tierPreviews = [],
+  selectingTier = null,
   onTierChange,
+  onSelectTier,
   onBack,
   onLaunch,
   launching,
   launchError,
+  cardsLocked = false,
 }: {
   context: ValidationLaunchContext;
   selectedTier: TierId | null;
+  tierPreviews?: TierPreviewCardDto[];
+  selectingTier?: TierId | null;
   onTierChange: (tier: TierId) => void;
+  onSelectTier?: (tier: TierId) => void;
   onBack: () => void;
-  onLaunch: () => void;
+  onLaunch?: () => void;
   launching?: boolean;
   launchError?: string;
+  cardsLocked?: boolean;
 }) {
   const { data: me } = useGetMe();
   const [tierCards, setTierCards] = useState<BlueprintTierCard[]>(FALLBACK_CARDS);
@@ -136,25 +144,25 @@ export function BlueprintLaunchInputScreen({
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {tierCards.map((tier) => {
             const Icon = TIER_ICONS[tier.id];
+            const preview = tierPreviews.find((p) => p.tier === tier.id);
             const selected = selectedTier === tier.id;
-            const selectable = isTierSelectable(subscriptionTier, tier.id);
+            const selectable = isTierSelectable(subscriptionTier, tier.id) && !cardsLocked;
+            const isBuilding = selectingTier === tier.id;
+            const recommended = preview?.recommended ?? tier.recommended;
             return (
-              <button
+              <div
                 key={tier.id}
-                type="button"
-                disabled={!selectable}
-                onClick={() => selectable && onTierChange(tier.id)}
                 className={`relative flex flex-col text-left transition-all ${CARD} p-5 ${
-                  !selectable
-                    ? "cursor-not-allowed opacity-60"
+                  !selectable && !cardsLocked
+                    ? "opacity-60"
                     : selected
                       ? "border-[#5B21FF] bg-[#F5F3FF] ring-2 ring-[#5B21FF]/20"
-                      : "hover:border-[#C7D2FE]"
-                }`}
+                      : ""
+                } ${cardsLocked && !isBuilding ? "pointer-events-none opacity-50" : ""}`}
               >
-                {tier.recommended && selectable ? (
+                {recommended && selectable ? (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[#5B21FF] px-3 py-0.5 text-[10px] font-bold text-white">
-                    ⭐ Recommended
+                    Recommended
                   </span>
                 ) : null}
                 {!selectable ? (
@@ -171,31 +179,56 @@ export function BlueprintLaunchInputScreen({
                 <span className="mt-2 flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE9FE] text-[#5B21FF]">
                   <Icon className="h-5 w-5" strokeWidth={1.75} />
                 </span>
-                <h3 className="mt-4 text-lg font-bold uppercase tracking-wide text-[#0B1220]">
+                <h3 className="mt-4 text-xl font-bold uppercase tracking-wide text-[#0B1220]">
                   {tier.label}
                 </h3>
-                <p className="mt-2 min-h-[40px] text-sm leading-snug text-[#64748B]">
-                  {tier.tagline ?? tier.subtitle}
+                {preview?.headline ? (
+                  <p className="mt-1 text-sm font-semibold text-[#5B21FF]">{preview.headline}</p>
+                ) : null}
+                <p className="mt-2 min-h-[48px] text-sm leading-relaxed text-[#64748B]">
+                  {preview?.description ?? tier.tagline ?? tier.subtitle}
                 </p>
                 <ul className="mt-4 flex-1 space-y-1.5 text-xs text-[#475569]">
-                  <li>{tier.tasksPerDay ?? EXECUTION_UNIT.dailyFallback}</li>
-                  <li>{tier.difficultyAccess ?? EXECUTION_UNIT.difficultyFallback}</li>
-                  <li>{tier.structureDepth ?? tier.setupTime}</li>
-                  <li>{tier.includes[0] ?? "Signals included"}</li>
+                  {(preview?.highlights?.length ? preview.highlights.slice(0, 5) : [
+                    tier.tasksPerDay ?? EXECUTION_UNIT.dailyFallback,
+                    tier.difficultyAccess ?? EXECUTION_UNIT.difficultyFallback,
+                    tier.structureDepth ?? tier.setupTime,
+                  ]).map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
                 </ul>
-                <p className="mt-4 text-sm font-bold text-[#0B1220]">{tier.price ?? "—"}</p>
-                <span
-                  className={`mt-4 inline-flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-bold ${
-                    selectable
-                      ? selected
-                        ? "bg-[#5B21FF] text-white"
-                        : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]"
-                      : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8]"
+                {preview?.growthProjection ? (
+                  <p className="mt-3 text-xs text-[#64748B]">
+                    In 30 days: {preview.growthProjection.days30} · 60 days:{" "}
+                    {preview.growthProjection.days60} · 90 days: {preview.growthProjection.days90}
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm font-bold text-[#0B1220]">{tier.price ?? "—"}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={!selectable || (cardsLocked && !isBuilding)}
+                  onClick={() => {
+                    if (!selectable) return;
+                    onTierChange(tier.id);
+                    if (onSelectTier) onSelectTier(tier.id);
+                    else if (onLaunch) onLaunch();
+                  }}
+                  className={`mt-4 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold ${
+                    !selectable
+                      ? "border border-[#E2E8F0] bg-[#F8FAFC] text-[#94A3B8] cursor-not-allowed"
+                      : isBuilding
+                        ? "bg-[#5B21FF]/80 text-white"
+                        : "bg-[#5B21FF] text-white hover:opacity-95"
                   }`}
                 >
-                  {selectable ? (selected ? "Selected" : "Select") : "Locked"}
-                </span>
-              </button>
+                  {isBuilding
+                    ? "Building your execution system…"
+                    : !isTierSelectable(subscriptionTier, tier.id)
+                      ? "Locked"
+                      : "Select"}
+                </button>
+              </div>
             );
           })}
         </div>
@@ -216,30 +249,44 @@ export function BlueprintLaunchInputScreen({
 
       {launchError ? (
         <div className="mx-auto max-w-5xl px-6 pb-4">
-          <p className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{launchError}</p>
+          <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+            <p>{launchError}</p>
+            {selectedTier && onSelectTier && !cardsLocked ? (
+              <button
+                type="button"
+                className="mt-3 rounded-lg bg-[#5B21FF] px-4 py-2 text-xs font-bold text-white"
+                onClick={() => onSelectTier(selectedTier)}
+              >
+                Retry
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       <footer className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#ECECF4] bg-white safe-area-pb">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-10">
+        <div className="mx-auto flex max-w-5xl px-6 py-4 lg:px-10">
           <button
             type="button"
+            disabled={cardsLocked}
             onClick={onBack}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#5B21FF]/30 px-6 py-2.5 text-sm font-semibold text-[#5B21FF] hover:bg-[#F5F3FF]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#5B21FF]/30 px-6 py-2.5 text-sm font-semibold text-[#5B21FF] hover:bg-[#F5F3FF] disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to results
           </button>
-          <button
-            type="button"
-            disabled={launching || !selectedTier}
-            onClick={onLaunch}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-200/60 hover:opacity-95 disabled:opacity-50 sm:w-auto"
-          >
-            <Rocket className="h-4 w-4" />
-            {launching ? "Launching your project…" : "Continue to Launch →"}
-            {!launching ? <ArrowRight className="h-4 w-4" /> : null}
-          </button>
+          {onLaunch && !onSelectTier ? (
+            <button
+              type="button"
+              disabled={launching || !selectedTier || cardsLocked}
+              onClick={onLaunch}
+              className="ml-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-200/60 hover:opacity-95 disabled:opacity-50"
+            >
+              <Rocket className="h-4 w-4" />
+              {launching ? "Launching your project…" : "Continue to Launch →"}
+              {!launching ? <ArrowRight className="h-4 w-4" /> : null}
+            </button>
+          ) : null}
         </div>
       </footer>
     </div>

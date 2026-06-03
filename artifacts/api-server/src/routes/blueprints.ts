@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
-import { BlueprintLaunchService } from "../services/BlueprintLaunchService.js";
 import { getExecutionCommandCenter } from "../services/ExecutionCommandCenterService.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import {
@@ -31,6 +30,12 @@ import {
   dismissPivotReview,
 } from "../engines/lifecycle/PivotEngine.js";
 import { BlueprintRouteService } from "../services/BlueprintRouteService.js";
+import { db, validations } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { TorgimaError } from "../lib/errors.js";
+import { BlueprintLaunchService } from "../services/BlueprintLaunchService.js";
+import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
+import { ensureTierPreviewsPresent } from "../lib/ensureTierPreviews.js";
 
 const router = Router();
 
@@ -653,6 +658,89 @@ router.post("/blueprints/:id/strategy-review/request", async (req, res) => {
     }).catch(() => null);
 
     success(res, { reviewId, created: true });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const selectTierBodySchema = z
+  .object({
+    blueprintId: z.string().uuid(),
+    validationId: z.string().uuid(),
+    selectedTier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    selected_tier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    selectedPath: pathTypeSchema.optional(),
+    selected_path: pathTypeSchema.optional(),
+  })
+  .transform((data) => ({
+    blueprintId: data.blueprintId,
+    validationId: data.validationId,
+    selectedTier: data.selectedTier ?? data.selected_tier ?? "starter",
+    selectedPath: data.selectedPath ?? data.selected_path ?? "adjusted",
+  }));
+
+// GET /api/blueprints/:id/tier-preview — saved tier cards for selection screen
+router.get("/blueprints/:id/tier-preview", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const blueprintId = req.params.id ?? "";
+    if (!validateUUID(blueprintId)) {
+      failure(res, "VALIDATION_ERROR", "Invalid blueprint id", 400);
+      return;
+    }
+    await BlueprintService.get(blueprintId, auth.userId);
+
+    const [validation] = await db
+      .select({ id: validations.id, contract_id: validations.contract_id })
+      .from(validations)
+      .where(
+        and(eq(validations.blueprint_id, blueprintId), eq(validations.user_id, auth.userId)),
+      )
+      .limit(1);
+
+    if (!validation) {
+      failure(res, "NOT_FOUND", "Validation not found for blueprint", 404);
+      return;
+    }
+
+    const { TierPreviewEngine } = await import("../engines/blueprint/TierPreviewEngine.js");
+    let previews = await TierPreviewEngine.listPreviews(validation.id, auth.userId);
+    if (previews.length === 0) {
+      previews = await ensureTierPreviewsPresent(validation.id, auth.userId);
+    }
+    success(res, { previews });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/blueprints/select-tier — tier selection → chain generation → launch
+router.post("/blueprints/select-tier", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const parsed = selectTierBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      failure(res, "VALIDATION_ERROR", detail || "Invalid select-tier body", 400);
+      return;
+    }
+
+    const { blueprintId, validationId, selectedTier, selectedPath } = parsed.data;
+    const result = await ValidationLaunchService.launch({
+      validationId,
+      userId: auth.userId,
+      blueprintId,
+      tier: selectedTier,
+      selectedPath,
+    });
+
+    success(res, {
+      blueprintId: result.blueprintId,
+      tier: result.tier ?? selectedTier,
+      redirectTo: result.redirectTo,
+      generationSummary: result.generationSummary,
+      launched: result.launched,
+    });
   } catch (err) {
     handleError(req, res, err);
   }

@@ -6,6 +6,7 @@ export const BlueprintStatus = {
   VALIDATING: "validating",
   AWAITING_SELECTION: "awaiting_selection",
   PATH_SELECTION: "path_selection",
+  GENERATING: "generating",
   ACTIVE: "active",
   PAUSED: "paused",
   COMPLETE: "complete",

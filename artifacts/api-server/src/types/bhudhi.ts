@@ -144,6 +144,9 @@ export type BhudhiTriggerType =
   | "ACADEMY_CONTENT"
   | "VALIDATION_RESEARCH_MARKET"
   | "VALIDATION_RESEARCH_COMPETITORS"
+  | "VALIDATION_COMPETITOR_DEEP_ANALYSIS"
+  | "VALIDATION_GENERATE_EXPLANATIONS"
+  | "BLUEPRINT_TIER_PREVIEW"
   | "VALIDATION_ANALYZE_DEMAND"
   | "VALIDATION_BUILD_PATHS"
   | "ERECTOR_ACADEMY_CONTENT"
@@ -187,7 +190,10 @@ export type BhudhiOutputType =
   | "external_intelligence"
   | "predictive_analysis"
   | "goal_refinement"
-  | "purpose_refinement";
+  | "purpose_refinement"
+  | "validation_competitor_deep"
+  | "validation_explanations"
+  | "blueprint_tier_preview";
 
 export interface BhudhiContextPacket {
   userId:                 string;

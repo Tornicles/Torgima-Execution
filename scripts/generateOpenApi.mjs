@@ -28,6 +28,9 @@ const CRITICAL_PATHS = [
   "/auth/send-magic-link",
   "/condition/current",
   "/signals/current",
+  "/blueprints/select-tier",
+  "/blueprints/{id}/tier-preview",
+  "/validation/complete",
 ];
 
 function scanRoutes() {
@@ -70,9 +73,10 @@ function toOperationId(method, expressPath) {
 }
 
 function stubPathBlock(method, expressPath) {
-  const opId = toOperationId(method, expressPath);
-  const tag = expressPath.split("/").filter(Boolean)[0] ?? "api";
-  return `  ${expressPath}:
+  const openApiPath = normalizeExpressPath(expressPath);
+  const opId = toOperationId(method, openApiPath);
+  const tag = openApiPath.split("/").filter(Boolean)[0] ?? "api";
+  return `  ${openApiPath}:
     ${method.toLowerCase()}:
       operationId: ${opId}
       tags: [${tag}]
@@ -106,7 +110,12 @@ function main() {
 
   const undocumented = liveRoutes
     .map((r) => ({ method: r.method, path: normalizeExpressPath(r.path) }))
-    .filter((r) => !openApiPaths.has(r.path) && !yaml.includes(`\n  ${r.path}:\n`));
+    .filter(
+      (r) =>
+        !openApiPaths.has(r.path) &&
+        !yaml.includes(`\n  ${r.path}:\n`) &&
+        !yaml.includes(`\n  ${r.path.replace(/\{([^}]+)\}/g, ":$1")}:\n`),
+    );
 
   if (undocumented.length > 0) {
     yaml = mergeUndocumentedRoutes(yaml, undocumented);

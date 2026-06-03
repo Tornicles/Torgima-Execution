@@ -274,6 +274,65 @@ export function ensureDoc3PromptsRegistered(api: PromptRegistryApi): void {
     buildUserPrompt: (ctx) => `Competitor research. Context: ${JSON.stringify(ctx)}`,
   });
 
+  const COMPETITOR_DEEP_SYSTEM = `You are Bhudhi, the execution intelligence layer for the Torgima system.
+You are performing deep competitor reverse-engineering for a founder's validation session. You are researching ONE specific competitor archetype.
+HARD RULES:
+1. Only include information you found via web search or that is public record.
+2. For any field you cannot verify: set the value to null and set data_confidence to "unavailable". NEVER fabricate revenue figures, timelines, or founding stories.
+3. Strip marketing language. Report what actually happened, not their PR.
+4. The first_product_origin section must describe their awkward, minimal beginning — not their current polished product.
+5. Respond ONLY with the JSON object specified in the user message. No preamble. No markdown.`;
+
+  registerDoc3Contract("VALIDATION_COMPETITOR_DEEP_ANALYSIS", {
+    name: "validation.competitor_deep.v1",
+    version: "1.0",
+    mode: "INTERPRET",
+    outputType: "validation_competitor_deep",
+    maxTokens: 2000,
+    temperature: 0.25,
+    fallbackKey: "fallback.validation_competitor_deep",
+    systemPrompt: COMPETITOR_DEEP_SYSTEM,
+    webSearchEligible: true,
+    buildUserPrompt: (ctx) =>
+      `Archetype: ${String(ctx["archetype_label"] ?? "")}. Idea: ${String(ctx["idea_title"] ?? "")}. Goal: ${String(ctx["goal"] ?? "")}. Domain: ${String(ctx["domain"] ?? "")}. Market context: ${String(ctx["market_context"] ?? "")}. Return JSON with name, archetype, description, website, twitter, linkedin, community_hub, market_share_pct, market_share_label, relevance_summary, differentiation_hint, strengths[], weaknesses[], revenue_lifecycle, marketing_strategy, growth_catalyst, first_product_origin, source_urls[].`,
+  });
+
+  const EXPLANATIONS_SYSTEM = `You are Bhudhi generating explanation paragraphs for a completed validation report.
+Write one SHORT paragraph (2-3 sentences, max 60 words) per panel key in the JSON schema.
+Be specific to the founder's data. No generic encouragement. Never use: amazing, incredible, exciting, fantastic, great.
+Respond ONLY with JSON. No markdown.`;
+
+  registerDoc3Contract("VALIDATION_GENERATE_EXPLANATIONS", {
+    name: "validation.explanations.v1",
+    version: "1.0",
+    mode: "EXPLAIN",
+    outputType: "validation_explanations",
+    maxTokens: 1500,
+    temperature: 0.3,
+    fallbackKey: "fallback.validation_explanations",
+    systemPrompt: EXPLANATIONS_SYSTEM,
+    webSearchEligible: false,
+    buildUserPrompt: (ctx) => `Validation data: ${JSON.stringify(ctx)}`,
+  });
+
+  const TIER_PREVIEW_SYSTEM = `You are Bhudhi structuring blueprint tier preview cards for a founder after validation.
+Write goal-specific 2-3 sentence descriptions for each tier (starter, growth, ultimate).
+Respond ONLY with JSON: { "tierDescriptions": { "starter": "...", "growth": "...", "ultimate": "..." }, "planNames": string[], "targetNames": string[] }.
+No markdown. Max 60 words per tier description.`;
+
+  registerDoc3Contract("BLUEPRINT_TIER_PREVIEW", {
+    name: "blueprint.tier_preview.v1",
+    version: "1.0",
+    mode: "STRUCTURE",
+    outputType: "blueprint_tier_preview",
+    maxTokens: 1200,
+    temperature: 0.35,
+    fallbackKey: "fallback.blueprint_tier_preview",
+    systemPrompt: TIER_PREVIEW_SYSTEM,
+    webSearchEligible: false,
+    buildUserPrompt: (ctx) => `Tier preview context: ${JSON.stringify(ctx)}`,
+  });
+
   registerDoc3Contract("VALIDATION_ANALYZE_DEMAND", {
     name: "validation.demand.v1",
     version: "1.0",

@@ -37,9 +37,12 @@ export async function storeResearchCache(params: {
   queryText: string;
   resultJson: unknown;
   tokensUsed?: number;
+  /** Default 24h; competitor deep analysis uses 48h per spec. */
+  ttlHours?: number;
 }): Promise<void> {
   const queryHash = hashQuery(params.triggerType, params.queryText);
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const hours = params.ttlHours ?? 24;
+  const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
   try {
     await db
       .insert(bhudhiResearchCache)

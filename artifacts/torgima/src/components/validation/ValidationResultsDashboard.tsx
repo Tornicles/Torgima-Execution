@@ -20,8 +20,10 @@ import {
 import { useGetMe } from "@workspace/api-client-react";
 import type { PathKey } from "./PathPanels";
 import type { ValidationScreenData } from "./ValidationScreen";
+import { ExplanationPanel } from "@/components/erector/ExplanationPanel";
 import {
   buildResultsDashboardModel,
+  glanceExplanation,
   type GlanceRow,
   type StatusTone,
 } from "./validation-results-dashboard-model";
@@ -152,6 +154,7 @@ export function ValidationResultsDashboard({
   onProjectNameChange,
   onProjectNameEditDone,
   goalSummary,
+  explanationsLoading,
 }: {
   data: ValidationScreenData;
   validationId?: string;
@@ -172,10 +175,16 @@ export function ValidationResultsDashboard({
   onProjectNameChange?: (name: string) => void;
   onProjectNameEditDone?: () => void;
   goalSummary?: string;
+  explanationsLoading?: boolean;
 }) {
   const { data: me } = useGetMe();
   const [scoreHelpOpen, setScoreHelpOpen] = useState(false);
-  const model = useMemo(() => buildResultsDashboardModel(data, selectedPath), [data, selectedPath]);
+  const model = useMemo(
+    () => buildResultsDashboardModel(data, selectedPath, { explanationsLoading }),
+    [data, selectedPath, explanationsLoading],
+  );
+  const exp = model.explanations;
+  const expLoading = model.explanationsLoading;
 
   const displayName = me?.displayName ?? me?.email?.split("@")[0] ?? "Visionary";
   const today = new Date();
@@ -443,6 +452,7 @@ export function ValidationResultsDashboard({
         <div className="mt-8 grid gap-6 lg:grid-cols-12">
           <section className={`${CARD} lg:col-span-3 p-6`}>
             <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Reality Score</p>
+            <ExplanationPanel text={exp.reality_score} isLoading={expLoading} />
             <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
               <RealityRing pct={model.ringPct} />
               <div className="text-center sm:text-left">
@@ -468,6 +478,9 @@ export function ValidationResultsDashboard({
           <section className={`${CARD} lg:col-span-3 flex flex-col items-center justify-center p-6 text-center`}>
             <Shield className="h-10 w-10 text-emerald-500" strokeWidth={1.5} />
             <p className="mt-4 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Final Verdict</p>
+            <div className="w-full text-left">
+              <ExplanationPanel text={exp.final_verdict} isLoading={expLoading} />
+            </div>
             <p
               className="mt-2 text-3xl font-black tracking-tight"
               style={{ color: verdictDisplay.color }}
@@ -484,13 +497,21 @@ export function ValidationResultsDashboard({
             <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">At a Glance</p>
             <div className="mt-3">
               {model.atAGlance.map((row) => (
-                <GlanceBadge key={row.label} row={row} />
+                <div key={row.label}>
+                  <GlanceBadge row={row} />
+                  <ExplanationPanel
+                    text={glanceExplanation(exp, row.label)}
+                    isLoading={expLoading}
+                    defaultExpanded={false}
+                  />
+                </div>
               ))}
             </div>
           </section>
 
           <section className={`${CARD} lg:col-span-3 p-6`}>
             <p className="text-xs font-bold uppercase tracking-wide text-[#94A3B8]">Current Trends</p>
+            <ExplanationPanel text={exp.market_trends} isLoading={expLoading} />
             <div className="mt-4">
               <TrendChart years={model.chartYears} values={model.chartValues} />
             </div>
@@ -511,12 +532,19 @@ export function ValidationResultsDashboard({
 
         {/* Row 2: Competitors, Pros/Cons, Opportunities */}
         <div className="mt-8 grid gap-6 lg:grid-cols-12">
-          <CompetitorsSection competitors={model.enrichedCompetitors} />
+          <CompetitorsSection
+            competitors={model.enrichedCompetitors}
+            overviewExplanation={exp.competitors_overview}
+            explanationsLoading={expLoading}
+          />
 
           <section className={`${CARD} lg:col-span-4 overflow-hidden p-0`}>
             <p className="border-b border-[#F1F5F9] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#0B1220]">
               Pros &amp; Cons
             </p>
+            <div className="px-5 pb-2">
+              <ExplanationPanel text={exp.pros_cons} isLoading={expLoading} />
+            </div>
             <div className="grid sm:grid-cols-2">
               <div className="border-[#F1F5F9] p-5 sm:border-r">
                 <p className="text-xs font-bold uppercase text-emerald-600">Pros</p>
@@ -543,7 +571,11 @@ export function ValidationResultsDashboard({
             </div>
           </section>
 
-          <OpportunitiesSection opportunities={model.enrichedOpportunities} />
+          <OpportunitiesSection
+            opportunities={model.enrichedOpportunities}
+            overviewExplanation={exp.opportunities}
+            explanationsLoading={expLoading}
+          />
         </div>
 
         {/* Row 3: Paths, Risks, Success Plan */}
@@ -553,6 +585,12 @@ export function ValidationResultsDashboard({
             <div className="grid gap-4 md:grid-cols-3">
               {model.pathCards.map((path) => {
                 const selected = selectedPath === path.key;
+                const pathExplanation =
+                  path.key === "current"
+                    ? exp.path_current
+                    : path.key === "adjusted"
+                      ? exp.path_adjusted
+                      : exp.path_alternative;
                 return (
                   <button
                     key={path.key}
@@ -562,6 +600,7 @@ export function ValidationResultsDashboard({
                       selected ? "border-[#5B21FF] ring-2 ring-[#5B21FF]/20" : "hover:border-[#C7D2FE]"
                     }`}
                   >
+                    <ExplanationPanel text={pathExplanation} isLoading={expLoading} defaultExpanded={false} />
                     {path.badge ? (
                       <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-3 py-0.5 text-[10px] font-bold text-amber-950">
                         {path.badge}
@@ -585,6 +624,7 @@ export function ValidationResultsDashboard({
 
           <section className={`${CARD} lg:col-span-3 p-5`}>
             <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Risk Summary</p>
+            <ExplanationPanel text={exp.risks} isLoading={expLoading} />
             <ul className="mt-4 space-y-4">
               {model.risks.map((risk) => (
                 <li key={risk.title}>
@@ -610,6 +650,7 @@ export function ValidationResultsDashboard({
 
           <section className={`${CARD} lg:col-span-4 p-5`}>
             <p className="text-xs font-bold uppercase tracking-wide text-[#0B1220]">Success Plan</p>
+            <ExplanationPanel text={exp.success_plan} isLoading={expLoading} />
             <p className="mt-0.5 text-xs text-[#94A3B8]">Key milestones</p>
             <ol className="mt-5 space-y-4">
               {model.milestones.map((m) => (

@@ -47,13 +47,15 @@ describe("validation launch route", () => {
     expect(results).not.toContain("launchValidationBlueprint");
   });
 
-  it("select-blueprint page uses onboarding select-blueprint launch route", () => {
+  it("select-blueprint page uses tier launch API after validation", () => {
     const page = readRepo("artifacts/torgima/src/pages/onboarding/select-blueprint.tsx");
-    expect(page).toContain("launchFromTierSelection");
+    expect(page).toContain("selectTierAndLaunch");
     expect(page).not.toContain("launchValidationBlueprint");
-    const onboarding = readRepo("artifacts/api-server/src/routes/onboarding.ts");
-    expect(onboarding).toContain("/v1/onboarding/select-blueprint");
-    expect(onboarding).toContain("ValidationLaunchService.launch");
+    expect(page).not.toContain("launchFromTierSelection");
+    const blueprintsRoute = readRepo("artifacts/api-server/src/routes/blueprints.ts");
+    expect(blueprintsRoute).toContain("ValidationLaunchService.launch");
+    const tierLaunch = readRepo("artifacts/api-server/src/services/BlueprintTierLaunchService.ts");
+    expect(tierLaunch).toContain("BlueprintGenerationEngine.generate");
   });
 
   it("torgima-api exposes launchValidationBlueprint helper", () => {

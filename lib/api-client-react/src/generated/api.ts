@@ -44,17 +44,22 @@ import type {
   Order,
   OrderFeedbackInput,
   PauseInput,
+  PostValidationCompleteBody,
   RequestExecutionHelpBody,
+  SelectTierInput,
+  SelectTierLaunchResult,
   SendMagicLinkBody,
   SignalSnapshot,
   SignalState,
   StateExplanation,
   StructuredGoal,
   TaskFeedbackInput,
+  TierPreviewListResponse,
   User,
   UserSettings,
   UserSettingsUpdate,
   UserUpdate,
+  ValidationCompleteResult,
   ValidationInput,
   ValidationResultP5,
   WeeklyReviewInput,
@@ -1026,6 +1031,184 @@ export const useActivateBlueprint = <
 };
 
 /**
+ * @summary Select execution tier, generate blueprint chain, and activate
+ */
+export const getPostBlueprintsSelectTierUrl = () => {
+  return `/api/blueprints/select-tier`;
+};
+
+export const postBlueprintsSelectTier = async (
+  selectTierInput: SelectTierInput,
+  options?: RequestInit,
+): Promise<SelectTierLaunchResult> => {
+  return customFetch<SelectTierLaunchResult>(getPostBlueprintsSelectTierUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(selectTierInput),
+  });
+};
+
+export const getPostBlueprintsSelectTierMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postBlueprintsSelectTier>>,
+    TError,
+    { data: BodyType<SelectTierInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postBlueprintsSelectTier>>,
+  TError,
+  { data: BodyType<SelectTierInput> },
+  TContext
+> => {
+  const mutationKey = ["postBlueprintsSelectTier"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postBlueprintsSelectTier>>,
+    { data: BodyType<SelectTierInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postBlueprintsSelectTier(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostBlueprintsSelectTierMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postBlueprintsSelectTier>>
+>;
+export type PostBlueprintsSelectTierMutationBody = BodyType<SelectTierInput>;
+export type PostBlueprintsSelectTierMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Select execution tier, generate blueprint chain, and activate
+ */
+export const usePostBlueprintsSelectTier = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postBlueprintsSelectTier>>,
+    TError,
+    { data: BodyType<SelectTierInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postBlueprintsSelectTier>>,
+  TError,
+  { data: BodyType<SelectTierInput> },
+  TContext
+> => {
+  return useMutation(getPostBlueprintsSelectTierMutationOptions(options));
+};
+
+/**
+ * @summary List tier preview cards for a blueprint validation
+ */
+export const getGetBlueprintTierPreviewUrl = (id: string) => {
+  return `/api/blueprints/${id}/tier-preview`;
+};
+
+export const getBlueprintTierPreview = async (
+  id: string,
+  options?: RequestInit,
+): Promise<TierPreviewListResponse> => {
+  return customFetch<TierPreviewListResponse>(
+    getGetBlueprintTierPreviewUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetBlueprintTierPreviewQueryKey = (id: string) => {
+  return [`/api/blueprints/${id}/tier-preview`] as const;
+};
+
+export const getGetBlueprintTierPreviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBlueprintTierPreview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintTierPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBlueprintTierPreviewQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBlueprintTierPreview>>
+  > = ({ signal }) =>
+    getBlueprintTierPreview(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBlueprintTierPreview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBlueprintTierPreviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBlueprintTierPreview>>
+>;
+export type GetBlueprintTierPreviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List tier preview cards for a blueprint validation
+ */
+
+export function useGetBlueprintTierPreview<
+  TData = Awaited<ReturnType<typeof getBlueprintTierPreview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBlueprintTierPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBlueprintTierPreviewQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get the full runtime state of an active blueprint
  */
 export const getGetBlueprintStateUrl = (id: string) => {
@@ -1493,6 +1676,93 @@ export const useResumeBlueprint = <
   TContext
 > => {
   return useMutation(getResumeBlueprintMutationOptions(options));
+};
+
+/**
+ * @summary Ensure tier preview cards exist after validation completes
+ */
+export const getPostValidationCompleteUrl = () => {
+  return `/api/validation/complete`;
+};
+
+export const postValidationComplete = async (
+  postValidationCompleteBody: PostValidationCompleteBody,
+  options?: RequestInit,
+): Promise<ValidationCompleteResult> => {
+  return customFetch<ValidationCompleteResult>(getPostValidationCompleteUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postValidationCompleteBody),
+  });
+};
+
+export const getPostValidationCompleteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postValidationComplete>>,
+    TError,
+    { data: BodyType<PostValidationCompleteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postValidationComplete>>,
+  TError,
+  { data: BodyType<PostValidationCompleteBody> },
+  TContext
+> => {
+  const mutationKey = ["postValidationComplete"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postValidationComplete>>,
+    { data: BodyType<PostValidationCompleteBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postValidationComplete(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostValidationCompleteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postValidationComplete>>
+>;
+export type PostValidationCompleteMutationBody =
+  BodyType<PostValidationCompleteBody>;
+export type PostValidationCompleteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ensure tier preview cards exist after validation completes
+ */
+export const usePostValidationComplete = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postValidationComplete>>,
+    TError,
+    { data: BodyType<PostValidationCompleteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postValidationComplete>>,
+  TError,
+  { data: BodyType<PostValidationCompleteBody> },
+  TContext
+> => {
+  return useMutation(getPostValidationCompleteMutationOptions(options));
 };
 
 /**

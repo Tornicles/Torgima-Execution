@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { DataConfidenceBadge, ExplanationPanel } from "@/components/erector/ExplanationPanel";
 import type {
+  CompetitorArchetype,
   EconomicContextModel,
   EnrichedCompetitorCard,
   EnrichedOpportunityCard,
@@ -102,6 +104,67 @@ export function EconomicEnvironmentSection({ economic }: { economic: EconomicCon
   );
 }
 
+const ARCHETYPE_META: Record<
+  CompetitorArchetype,
+  { label: string; color: string; icon: string }
+> = {
+  pioneer: { label: "The Pioneer", color: "#1A2E4A", icon: "🏛" },
+  fast_mover: { label: "The Fast-Mover", color: "#0D7377", icon: "⚡" },
+  indie_survivor: { label: "The Indie-Survivor", color: "#5B2C8D", icon: "🔧" },
+};
+
+function PillarBlock({
+  title,
+  children,
+  confidence,
+  highlight,
+}: {
+  title: string;
+  children: ReactNode;
+  confidence?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`mt-4 rounded-xl border p-4 ${
+        highlight ? "border-[#C7D2FE] bg-[#F5F3FF]/40" : "border-[#F1F5F9] bg-[#FAFBFC]"
+      }`}
+    >
+      <p className="text-[10px] font-bold uppercase text-[#94A3B8]">{title}</p>
+      <DataConfidenceBadge confidence={confidence} />
+      <div className="mt-2 space-y-2 text-sm leading-relaxed text-[#475569]">{children}</div>
+    </div>
+  );
+}
+
+function FootprintLinks({ footprint }: { footprint: EnrichedCompetitorCard["digitalFootprint"] }) {
+  if (!footprint) return null;
+  const links = [
+    { label: "Website", url: footprint.website },
+    { label: "Twitter", url: footprint.twitter },
+    { label: "LinkedIn", url: footprint.linkedin },
+    { label: "Community", url: footprint.community_hub },
+    { label: "YouTube", url: footprint.youtube },
+  ].filter((l) => l.url);
+  if (links.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {links.map((l) => (
+        <a
+          key={l.label}
+          href={String(l.url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-xs font-semibold text-[#5B21FF] hover:bg-[#F8FAFC]"
+        >
+          {l.label}
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function CompetitorModal({
   competitors,
   index,
@@ -116,6 +179,7 @@ function CompetitorModal({
   onNext: () => void;
 }) {
   const c = competitors[index];
+  const meta = c?.archetype ? ARCHETYPE_META[c.archetype] : null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -127,32 +191,78 @@ function CompetitorModal({
 
   if (!c) return null;
 
+  const rl = c.revenueLifecycle;
+  const ms = c.marketingStrategy;
+  const gc = c.growthCatalyst;
+  const fpo = c.firstProductOrigin;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-xl font-bold text-[#0B1220]">{c.name}</h3>
+          <div>
+            {meta ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                style={{ backgroundColor: meta.color }}
+              >
+                {meta.icon} {meta.label}
+              </span>
+            ) : null}
+            <h3 className="mt-2 text-xl font-bold text-[#0B1220]">{c.name}</h3>
+          </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-[#F8FAFC]" aria-label="Close">
             <X className="h-5 w-5 text-[#64748B]" />
           </button>
         </div>
-        <p className="mt-1 text-sm text-[#64748B]">{c.tagline}</p>
-        <hr className="my-4 border-[#F1F5F9]" />
-        <p className="text-[10px] font-bold uppercase text-[#94A3B8]">About This Company</p>
-        <p className="mt-2 text-sm leading-relaxed text-[#475569]">{c.description}</p>
-        <p className="mt-4 text-[10px] font-bold uppercase text-[#94A3B8]">Scale &amp; Reach</p>
-        <p className="mt-2 text-sm text-[#475569]">
-          Founded: {c.founded} | Revenue: {c.estimatedRevenue} | Users: {c.userBase}
-        </p>
-        <p className="mt-1 text-sm text-[#475569]">Geography: {c.geography}</p>
+        <p className="mt-1 text-sm text-[#64748B]">{c.description || c.tagline}</p>
+
+        <ExplanationPanel text={c.drawerExplanation} />
+
+        <PillarBlock title="Revenue Growth Lifecycle" confidence={rl?.data_confidence}>
+          {rl?.year1_reality ? <p>Year 1: {rl.year1_reality}</p> : null}
+          {rl?.inflection_point ? <p>Inflection: {rl.inflection_point}</p> : null}
+          {rl?.current_scale ? <p>Current scale: {rl.current_scale}</p> : null}
+          {!rl?.year1_reality && !rl?.inflection_point && !rl?.current_scale ? (
+            <p>{c.estimatedRevenue}</p>
+          ) : null}
+        </PillarBlock>
+
+        <PillarBlock title="Marketing & Distribution" confidence={ms?.data_confidence}>
+          {ms?.primary_channel ? <p>Primary channel: {ms.primary_channel}</p> : null}
+          {ms?.positioning_angle ? <p>Positioning: {ms.positioning_angle}</p> : null}
+          {ms?.conversion_mechanism ? <p>Conversion: {ms.conversion_mechanism}</p> : null}
+        </PillarBlock>
+
+        <PillarBlock title="Core Growth Catalyst" confidence={gc?.data_confidence}>
+          {gc?.distribution_hook ? <p>Distribution hook: {gc.distribution_hook}</p> : null}
+          {gc?.retention_mechanics ? <p>Retention: {gc.retention_mechanics}</p> : null}
+          {gc?.scale_trigger ? <p>Scale trigger: {gc.scale_trigger}</p> : null}
+        </PillarBlock>
+
+        <PillarBlock title="First Product Origin" confidence={fpo?.data_confidence} highlight>
+          {fpo?.mvp_description ? <p>{fpo.mvp_description}</p> : null}
+          {fpo?.day1_validation_method ? <p>Day 1 validation: {fpo.day1_validation_method}</p> : null}
+          {fpo?.adjustment_history?.length ? (
+            <ul className="list-disc pl-4">
+              {fpo.adjustment_history.map((h) => (
+                <li key={h}>{h}</li>
+              ))}
+            </ul>
+          ) : null}
+          {fpo?.time_to_first_revenue ? <p>Time to first revenue: {fpo.time_to_first_revenue}</p> : null}
+        </PillarBlock>
+
+        <FootprintLinks footprint={c.digitalFootprint} />
+
         <p className="mt-4 text-[10px] font-bold uppercase text-emerald-600">Strengths</p>
         <ul className="mt-2 space-y-1">
           {c.strengths.map((s) => (
@@ -169,8 +279,12 @@ function CompetitorModal({
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-[10px] font-bold uppercase text-[#5B21FF]">Where Your Idea Fits</p>
-        <p className="mt-2 text-sm leading-relaxed text-[#475569]">{c.whereYourIdeaFits}</p>
+        {c.differentiationHint ? (
+          <div className="mt-4 rounded-xl border border-[#C7D2FE] bg-[#F5F3FF]/50 p-4">
+            <p className="text-[10px] font-bold uppercase text-[#5B21FF]">Differentiation hint</p>
+            <p className="mt-2 text-sm text-[#475569]">{c.differentiationHint}</p>
+          </div>
+        ) : null}
         <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
@@ -196,12 +310,21 @@ function CompetitorModal({
   );
 }
 
-export function CompetitorsSection({ competitors }: { competitors: EnrichedCompetitorCard[] }) {
+export function CompetitorsSection({
+  competitors,
+  overviewExplanation,
+  explanationsLoading,
+}: {
+  competitors: EnrichedCompetitorCard[];
+  overviewExplanation?: string;
+  explanationsLoading?: boolean;
+}) {
   const [modalIndex, setModalIndex] = useState<number | null>(null);
 
   return (
     <section className="lg:col-span-5">
-      <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top 3 Competitors</p>
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top 3 Competitors</p>
+      <ExplanationPanel text={overviewExplanation} isLoading={explanationsLoading} />
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
         {competitors.map((c, i) => (
           <article key={`${c.name}-${i}`} className={`${CARD} p-4`}>
@@ -309,10 +432,19 @@ function OpportunityCard({ opportunity }: { opportunity: EnrichedOpportunityCard
   );
 }
 
-export function OpportunitiesSection({ opportunities }: { opportunities: EnrichedOpportunityCard[] }) {
+export function OpportunitiesSection({
+  opportunities,
+  overviewExplanation,
+  explanationsLoading,
+}: {
+  opportunities: EnrichedOpportunityCard[];
+  overviewExplanation?: string;
+  explanationsLoading?: boolean;
+}) {
   return (
     <section className="lg:col-span-3">
-      <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top Opportunities</p>
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top Opportunities</p>
+      <ExplanationPanel text={overviewExplanation} isLoading={explanationsLoading} />
       <div className="space-y-3">
         {opportunities.map((o) => (
           <OpportunityCard key={o.title} opportunity={o} />

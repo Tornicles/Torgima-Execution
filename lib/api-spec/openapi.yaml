@@ -231,6 +231,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/BlueprintActivateResult"
 
+  /blueprints/select-tier:
+    post:
+      operationId: postBlueprintsSelectTier
+      tags: [blueprints]
+      summary: Select execution tier, generate blueprint chain, and activate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectTierInput"
+      responses:
+        "200":
+          description: Blueprint launched after tier selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectTierLaunchResult"
+
+  /blueprints/{id}/tier-preview:
+    get:
+      operationId: getBlueprintTierPreview
+      tags: [blueprints]
+      summary: List tier preview cards for a blueprint validation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Tier preview cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TierPreviewListResponse"
+
   /blueprints/{id}/state:
     get:
       operationId: getBlueprintState
@@ -363,6 +402,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Blueprint"
+
+  /validation/complete:
+    post:
+      operationId: postValidationComplete
+      tags: [validation]
+      summary: Ensure tier preview cards exist after validation completes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                validationId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Validation row and tier previews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationCompleteResult"
 
   /validation/run:
     post:
@@ -1410,6 +1471,88 @@ components:
           type: ["string", "null"]
         validation_contract_id:
           type: ["string", "null"]
+
+    SelectTierInput:
+      type: object
+      required: [blueprintId, validationId, selectedTier]
+      properties:
+        blueprintId:
+          type: string
+          format: uuid
+        validationId:
+          type: string
+          format: uuid
+        selectedTier:
+          type: string
+          enum: [starter, growth, ultimate]
+        selected_tier:
+          type: string
+          enum: [starter, growth, ultimate]
+        selectedPath:
+          type: string
+          enum: [current, adjusted, alternative]
+        selected_path:
+          type: string
+          enum: [current, adjusted, alternative]
+
+    SelectTierLaunchResult:
+      type: object
+      required: [blueprintId, tier, redirectTo, launched]
+      properties:
+        blueprintId:
+          type: string
+          format: uuid
+        tier:
+          type: string
+          enum: [starter, growth, ultimate]
+        redirectTo:
+          type: string
+        launched:
+          type: boolean
+        generationSummary:
+          type: ["object", "null"]
+          additionalProperties: true
+
+    TierPreviewCard:
+      type: object
+      properties:
+        tier:
+          type: string
+          enum: [starter, growth, ultimate]
+        headline:
+          type: string
+        description:
+          type: string
+        planCount:
+          type: integer
+        recommended:
+          type: boolean
+        highlights:
+          type: array
+          items:
+            type: string
+
+    TierPreviewListResponse:
+      type: object
+      properties:
+        previews:
+          type: array
+          items:
+            $ref: "#/components/schemas/TierPreviewCard"
+
+    ValidationCompleteResult:
+      type: object
+      properties:
+        validation:
+          type: object
+          additionalProperties: true
+        tierPreviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/TierPreviewCard"
+        recommendedTier:
+          type: string
+          enum: [starter, growth, ultimate]
 
     Order:
       type: object

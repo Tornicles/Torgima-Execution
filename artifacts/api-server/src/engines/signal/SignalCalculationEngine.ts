@@ -23,6 +23,10 @@ import {
   loadBlueprintArchetypeContext,
 } from "../erector/ArchetypeExecutionContext.js";
 import type { ExecutionLoopKind } from "../erector/ArchetypeExecutionContext.js";
+import {
+  buildSignalTierExtensions,
+  loadBlueprintTierContext,
+} from "../blueprint/tierEngineAwareness.js";
 
 export type SignalMetrics = ExportedSignalMetrics;
 
@@ -91,6 +95,7 @@ export async function calculate(params: {
   const now = new Date();
 
   const bpArchetype = await loadBlueprintArchetypeContext(params.blueprintId);
+  const tierCtx = await loadBlueprintTierContext(params.blueprintId);
   const loopKind = params.executionLoop ?? "primary";
   await emitArchetypeContextMissingIfNeeded({
     blueprintId: params.blueprintId,
@@ -99,7 +104,8 @@ export async function calculate(params: {
     loop: loopKind === "daily" ? "daily" : "primary",
   });
   const timeMult = bpArchetype?.archetypeTimeframeMult ?? 1.0;
-  const windowDays = archetypeSignalWindowDays(timeMult);
+  const historyDays = tierCtx?.tierConfig.signal_history_days ?? archetypeSignalWindowDays(timeMult);
+  const windowDays = Math.max(archetypeSignalWindowDays(timeMult), historyDays);
   const windowMs = windowDays * 24 * 60 * 60 * 1000;
   logger.info(
     {
@@ -276,6 +282,17 @@ export async function calculate(params: {
     structuredSignals,
   });
 
+  const tierExtensionsAfterAssign =
+    tierCtx ?
+      buildSignalTierExtensions({
+        signalMode: tierCtx.signalMode,
+        assignedCondition,
+        momentum: metrics.momentum,
+        completionRate: metrics.completion_rate,
+        trend: metrics.trend,
+      })
+    : {};
+
   const sanitized = sanitizeNumericSignalMetrics(metrics);
 
   const snapshotId = await db.transaction(async (tx) => {
@@ -302,7 +319,10 @@ export async function calculate(params: {
         skip_ratio: sanitized.skip_ratio,
         execution_score: structuredInWindow.at(-1)?.execution_score ?? metrics.completion_rate,
         feedback_confidence: structuredInWindow.at(-1)?.confidence ?? null,
-        operational_mathematics_json: omWithFramework as unknown as Record<string, unknown>,
+        operational_mathematics_json: {
+          ...(omWithFramework as unknown as Record<string, unknown>),
+          tierAware: tierExtensionsAfterAssign,
+        },
         assigned_condition: assignedCondition as typeof signalSnapshots.$inferInsert["assigned_condition"],
         is_current: true,
         ...(params.causationEventId ? { causation_event_id: params.causationEventId } : {}),

@@ -7,12 +7,14 @@
  */
 import type { OrderFeedbackInputBlockerJson } from "./orderFeedbackInputBlockerJson";
 import type { OrderFeedbackInputCompletionStatus } from "./orderFeedbackInputCompletionStatus";
+import type { OrderFeedbackInputDifficultyFelt } from "./orderFeedbackInputDifficultyFelt";
 import type { OrderFeedbackInputProofJson } from "./orderFeedbackInputProofJson";
 
 export interface OrderFeedbackInput {
   completionStatus: OrderFeedbackInputCompletionStatus;
   score: number;
   reflection: string;
+  difficultyFelt?: OrderFeedbackInputDifficultyFelt;
   proofJson?: OrderFeedbackInputProofJson;
   blockerJson?: OrderFeedbackInputBlockerJson;
   idempotencyKey: string;

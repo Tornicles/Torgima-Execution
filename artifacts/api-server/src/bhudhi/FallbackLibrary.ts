@@ -1,5 +1,6 @@
 import type { BhudhiOutputEnvelope } from "../types/bhudhi.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
+import { buildDeterministicExplanations } from "../engines/erector/validationExplanations.js";
 import { getContract } from "./PromptRegistry.js";
 
 type FallbackFn = (ctx: Record<string, unknown>, stateVersion: number) => BhudhiOutputEnvelope;
@@ -612,6 +613,54 @@ const DOC3_FALLBACKS: Array<{ key: string; outputType: BhudhiOutputEnvelope["out
     },
   },
   {
+    key: "fallback.validation_competitor_deep",
+    outputType: "validation_competitor_deep",
+    data: {
+      name: "Representative market player",
+      archetype: "pioneer",
+      description: "Surface-level competitor placeholder — deep research unavailable.",
+      website: null,
+      market_share_pct: null,
+      market_share_label: null,
+      relevance_summary: "Use as a directional benchmark only until live research completes.",
+      differentiation_hint: "Differentiate with proof, speed, and a narrower wedge.",
+      strengths: ["Established presence"],
+      weaknesses: ["Less agile than a focused new entrant"],
+      revenue_lifecycle: {
+        year1_reality: null,
+        inflection_point: null,
+        current_scale: null,
+        data_confidence: "unavailable",
+        sources: [],
+      },
+      marketing_strategy: {
+        primary_channel: "Unknown",
+        positioning_angle: "Unknown",
+        conversion_mechanism: "Unknown",
+        data_confidence: "unavailable",
+      },
+      growth_catalyst: {
+        distribution_hook: "Unknown",
+        retention_mechanics: "Unknown",
+        scale_trigger: "Unknown",
+        data_confidence: "unavailable",
+      },
+      first_product_origin: {
+        mvp_description: "Early offer details not available from public sources.",
+        day1_validation_method: "Unknown",
+        adjustment_history: [],
+        time_to_first_revenue: null,
+        data_confidence: "unavailable",
+      },
+      source_urls: [],
+    },
+  },
+  {
+    key: "fallback.validation_explanations",
+    outputType: "validation_explanations",
+    data: {},
+  },
+  {
     key: "fallback.validation_demand",
     outputType: "erector_market",
     data: {
@@ -644,6 +693,13 @@ const DOC3_FALLBACKS: Array<{ key: string; outputType: BhudhiOutputEnvelope["out
 ];
 
 for (const item of DOC3_FALLBACKS) {
+  if (
+    item.key === "fallback.validation_explanations" ||
+    item.key === "fallback.validation_competitor_deep" ||
+    item.key === "fallback.blueprint_tier_preview"
+  ) {
+    continue;
+  }
   fallbacks.set(item.key, (ctx, sv) => ({
     outputType: item.outputType,
     contractVersion: "1.0",
@@ -655,6 +711,113 @@ for (const item of DOC3_FALLBACKS) {
     forbiddenActionRequested: false,
   }));
 }
+
+fallbacks.set("fallback.validation_explanations", (ctx, sv) => ({
+  outputType: "validation_explanations",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: buildDeterministicExplanations({
+    idea_title: String(ctx.idea_title ?? ""),
+    goal: String(ctx.goal ?? ctx.rawGoal ?? ""),
+    verdict: String(ctx.verdict ?? "adjust"),
+    reality_score: Number(ctx.reality_score ?? 0),
+    at_a_glance_json: String(ctx.at_a_glance_json ?? "{}"),
+    trend_position: String(ctx.trend_position ?? ""),
+    growth_rate: String(ctx.growth_rate ?? ""),
+    competitor_names_and_archetypes: String(ctx.competitor_names_and_archetypes ?? ""),
+    pros_list: String(ctx.pros_list ?? ""),
+    cons_list: String(ctx.cons_list ?? ""),
+    opportunities_list: String(ctx.opportunities_list ?? ""),
+    risks_list: String(ctx.risks_list ?? ""),
+    selected_path_type: String(ctx.selected_path_type ?? "adjusted"),
+    path_description: String(ctx.path_description ?? ""),
+    time_to_traction: String(ctx.time_to_traction ?? ""),
+  }),
+  missingFields: [],
+  warnings: ["DOC3 deterministic fallback — panel explanations"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.blueprint_tier_preview", (ctx, sv) => {
+  const goal = String(ctx.goal ?? "").trim();
+  const snippet = goal ? ` for your goal` : "";
+  return {
+    outputType: "blueprint_tier_preview",
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "LOW",
+    data: {
+      tierDescriptions: {
+        starter: `Clarity and guided execution${snippet} — three plans, simple signals, and daily proof without heavy enforcement.`,
+        growth: `Structured execution with adaptation${snippet} — full signals, gated phases, and condition-controlled tasks.`,
+        ultimate: `Predictive strategic control${snippet} — adaptive targets, impact-ranked actions, and enforced policy.`,
+      },
+      planNames: ["Foundation", "Validation/Proof", "Growth", "Scale"],
+      targetNames: ["major", "primary", "production"],
+    },
+    missingFields: [],
+    warnings: ["DOC3 deterministic fallback — tier preview descriptions"],
+    forbiddenActionRequested: false,
+  };
+});
+
+fallbacks.set("fallback.validation_competitor_deep", (ctx, sv) => {
+  const archetype = String(ctx.archetype_label ?? "pioneer");
+  const labels: Record<string, string> = {
+    pioneer: "The Pioneer",
+    fast_mover: "The Fast-Mover",
+    indie_survivor: "The Indie-Survivor",
+  };
+  return {
+    outputType: "validation_competitor_deep",
+    contractVersion: "1.0",
+    stateVersion: sv,
+    confidence: "LOW",
+    data: {
+      name: labels[archetype] ?? "Representative market player",
+      archetype,
+      description: "Surface-level competitor placeholder — deep research unavailable.",
+      website: null,
+      market_share_pct: null,
+      market_share_label: null,
+      relevance_summary: "Use as a directional benchmark only until live research completes.",
+      differentiation_hint: "Differentiate with proof, speed, and a narrower wedge.",
+      strengths: ["Established presence"],
+      weaknesses: ["Less agile than a focused new entrant"],
+      revenue_lifecycle: {
+        year1_reality: null,
+        inflection_point: null,
+        current_scale: null,
+        data_confidence: "unavailable",
+        sources: [],
+      },
+      marketing_strategy: {
+        primary_channel: "Unknown",
+        positioning_angle: "Unknown",
+        conversion_mechanism: "Unknown",
+        data_confidence: "unavailable",
+      },
+      growth_catalyst: {
+        distribution_hook: "Unknown",
+        retention_mechanics: "Unknown",
+        scale_trigger: "Unknown",
+        data_confidence: "unavailable",
+      },
+      first_product_origin: {
+        mvp_description: "Early offer details not available from public sources.",
+        day1_validation_method: "Unknown",
+        adjustment_history: [],
+        time_to_first_revenue: null,
+        data_confidence: "unavailable",
+      },
+      source_urls: [],
+    },
+    missingFields: [],
+    warnings: ["DOC3 deterministic fallback — competitor deep research"],
+    forbiddenActionRequested: false,
+  };
+});
 
 for (const item of ERECTOR_FALLBACKS) {
   fallbacks.set(item.key, (ctx, sv) => ({

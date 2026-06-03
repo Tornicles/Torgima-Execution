@@ -61,6 +61,8 @@ import {
   computeAdditionalTasksToGenerate,
   parseTaskLimits,
 } from "./taskLimits.js";
+import { loadBlueprintTierContext } from "../blueprint/tierEngineAwareness.js";
+import type { TierConfig } from "../blueprint/TierConfig.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -321,6 +323,8 @@ async function loadContext(params: {
   const openFalseProgress = await getOpenFlags(blueprintId);
   const falseProgressFlag = openFalseProgress[0] ?? null;
 
+  const tierCtx = await loadBlueprintTierContext(blueprintId);
+
   return {
     blueprint: {
       id: blueprint.id,
@@ -367,6 +371,8 @@ async function loadContext(params: {
     habit_checkin_due: habitCheckinDue,
     has_active_habits: activeHabitRows.length > 0,
     false_progress_flag: falseProgressFlag,
+    tier_config: tierCtx?.tierConfig ?? null,
+    task_style: tierCtx?.taskStyle ?? ("simple" as TierConfig["task_style"]),
     latest_feedback: latestFeedback ?? null,
   };
 }
@@ -1376,7 +1382,8 @@ export async function generate(params: {
     genTrigNorm === "recovery_triggered" ||
     Boolean(enforcement.recovery_required);
 
-  if (countActive >= enforcement.task_limits.max && !recoveryGeneration) {
+  const taskStyle = ctx.task_style ?? "simple";
+  if (taskStyle !== "simple" && countActive >= enforcement.task_limits.max && !recoveryGeneration) {
     logger.info(
       { blueprintId: params.blueprintId, existingCount: countActive },
       "[TaskGen] Task queue is full — skipping generation",
@@ -1788,6 +1795,33 @@ export async function generate(params: {
   const orderStatus =
     dayOffset > 0 ? ("pre_generated" as const) : ("pending" as const);
 
+  if (taskStyle === "condition_controlled" || taskStyle === "predictive") {
+    if (!content.why_it_matters?.trim()) {
+      content.why_it_matters = `This step moves your goal forward: ${ctx.blueprint.goal.slice(0, 140)}`;
+    }
+  }
+
+  const sequencePosition = countActive + (params.generatedThisInvocation ?? 0) + 1;
+  const traceBase = buildTraceMetadata({
+    layer: "order",
+    parentId: ctx.action?.id ?? ctx.project?.id ?? null,
+    parentLayer: ctx.action ? "action" : "project",
+    tier: parseTier(ctx.blueprint.tier),
+    mode: parseMode(ctx.blueprint.mode),
+    generationReason: `${params.generationTrigger}:${params.generationMode}`,
+  });
+  const traceWithTier =
+    taskStyle === "predictive" ?
+      {
+        ...traceBase,
+        task_style: taskStyle,
+        effort_score: Math.min(100, Math.round(valueScore * 12)),
+        sequence_position: sequencePosition,
+      }
+    : taskStyle === "condition_controlled" ?
+      { ...traceBase, task_style: taskStyle }
+    : traceBase;
+
   const orderId = await db.transaction(async (tx: Tx) => {
     const [order] = await tx
       .insert(orders)
@@ -1820,14 +1854,7 @@ export async function generate(params: {
         domain_at_generation: domainGen,
         generation_reason: `${params.generationTrigger} — ${params.generationMode} — ${taskType}`,
         assigned_member_id: params.userId,
-        trace_metadata: buildTraceMetadata({
-          layer: "order",
-          parentId: ctx.action?.id ?? ctx.project?.id ?? null,
-          parentLayer: ctx.action ? "action" : "project",
-          tier: parseTier(ctx.blueprint.tier),
-          mode: parseMode(ctx.blueprint.mode),
-          generationReason: `${params.generationTrigger}:${params.generationMode}`,
-        }),
+        trace_metadata: traceWithTier,
         status: orderStatus,
         is_visible: isVisible,
         visibility_date: visibilityDate,

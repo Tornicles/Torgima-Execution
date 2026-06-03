@@ -396,6 +396,48 @@ export const ActivateBlueprintResponse = zod.object({
 });
 
 /**
+ * @summary Select execution tier, generate blueprint chain, and activate
+ */
+export const PostBlueprintsSelectTierBody = zod.object({
+  blueprintId: zod.string().uuid(),
+  validationId: zod.string().uuid(),
+  selectedTier: zod.enum(["starter", "growth", "ultimate"]),
+  selected_tier: zod.enum(["starter", "growth", "ultimate"]).optional(),
+  selectedPath: zod.enum(["current", "adjusted", "alternative"]).optional(),
+  selected_path: zod.enum(["current", "adjusted", "alternative"]).optional(),
+});
+
+export const PostBlueprintsSelectTierResponse = zod.object({
+  blueprintId: zod.string().uuid(),
+  tier: zod.enum(["starter", "growth", "ultimate"]),
+  redirectTo: zod.string(),
+  launched: zod.boolean(),
+  generationSummary: zod.record(zod.string(), zod.unknown()).nullish(),
+});
+
+/**
+ * @summary List tier preview cards for a blueprint validation
+ */
+export const GetBlueprintTierPreviewParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetBlueprintTierPreviewResponse = zod.object({
+  previews: zod
+    .array(
+      zod.object({
+        tier: zod.enum(["starter", "growth", "ultimate"]).optional(),
+        headline: zod.string().optional(),
+        description: zod.string().optional(),
+        planCount: zod.number().optional(),
+        recommended: zod.boolean().optional(),
+        highlights: zod.array(zod.string()).optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
  * @summary Get the full runtime state of an active blueprint
  */
 export const GetBlueprintStateParams = zod.object({
@@ -588,6 +630,30 @@ export const ResumeBlueprintResponse = zod.object({
   activatedAt: zod.string().nullish(),
   completedAt: zod.string().nullish(),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Ensure tier preview cards exist after validation completes
+ */
+export const PostValidationCompleteBody = zod.object({
+  validationId: zod.string().uuid().optional(),
+});
+
+export const PostValidationCompleteResponse = zod.object({
+  validation: zod.record(zod.string(), zod.unknown()).optional(),
+  tierPreviews: zod
+    .array(
+      zod.object({
+        tier: zod.enum(["starter", "growth", "ultimate"]).optional(),
+        headline: zod.string().optional(),
+        description: zod.string().optional(),
+        planCount: zod.number().optional(),
+        recommended: zod.boolean().optional(),
+        highlights: zod.array(zod.string()).optional(),
+      }),
+    )
+    .optional(),
+  recommendedTier: zod.enum(["starter", "growth", "ultimate"]).optional(),
 });
 
 /**
@@ -1360,6 +1426,12 @@ export const GetDashboardStateResponse = zod.object({
       }),
     )
     .optional(),
+  homePanels: zod
+    .record(zod.string(), zod.unknown())
+    .nullish()
+    .describe(
+      "Pre-computed home dashboard panel payloads (execution health, orders, timeline, plans, phases)",
+    ),
 });
 
 /**
@@ -1485,6 +1557,9 @@ export const SubmitOrderFeedbackBody = zod.object({
   completionStatus: zod.enum(["completed", "partial", "failed", "skipped"]),
   score: zod.number(),
   reflection: zod.string(),
+  difficultyFelt: zod
+    .enum(["very_easy", "easy", "moderate", "hard", "very_hard"])
+    .optional(),
   proofJson: zod.record(zod.string(), zod.unknown()).optional(),
   blockerJson: zod.record(zod.string(), zod.unknown()).optional(),
   idempotencyKey: zod.string(),

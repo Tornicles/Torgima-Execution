@@ -103,23 +103,56 @@ export type SelectBlueprintLaunchResult = {
   selectedPath: string;
 };
 
-/** POST /api/v1/onboarding/select-blueprint — tier selection + full launch in one transaction. */
-export async function launchFromTierSelection(input: {
-  validationId: string;
+export type TierPreviewCardDto = {
+  tier: "starter" | "growth" | "ultimate";
+  headline: string;
+  description: string;
+  planCount: number;
+  targetTypes: string[];
+  signalSystem: string;
+  taskStyle: string;
+  aiDepth: string;
+  highlights: string[];
+  growthProjection: { days30: string; days60: string; days90: string };
+  recommended: boolean;
+  recommendationReason: string | null;
+};
+
+export type SelectTierLaunchResult = {
   blueprintId: string;
+  tier: string;
+  redirectTo: string;
+  launched: boolean;
+  generationSummary?: {
+    plansCreated: number;
+    seasonsCreated: number;
+    targetsCreated: number;
+    phasesCreated: number;
+    actionsCreated: number;
+    durationMs: number;
+  };
+};
+
+/** GET /api/blueprints/:id/tier-preview — saved tier cards after validation. */
+export async function fetchTierPreviews(blueprintId: string): Promise<TierPreviewCardDto[]> {
+  const res = await apiGet<{ previews?: TierPreviewCardDto[] }>(
+    `/api/blueprints/${blueprintId}/tier-preview`,
+  );
+  return res.previews ?? [];
+}
+
+/** POST /api/blueprints/select-tier — tier selection, chain generation, and launch. */
+export async function selectTierAndLaunch(input: {
+  blueprintId: string;
+  validationId: string;
   selectedTier: "starter" | "growth" | "ultimate";
   selectedPath?: "current" | "adjusted" | "alternative";
-  mode?: "individual" | "team";
-  projectName?: string;
-}): Promise<SelectBlueprintLaunchResult> {
-  return apiPost<SelectBlueprintLaunchResult>("/api/v1/onboarding/select-blueprint", {
-    validationId: input.validationId,
+}): Promise<SelectTierLaunchResult> {
+  return apiPost<SelectTierLaunchResult>("/api/blueprints/select-tier", {
     blueprintId: input.blueprintId,
+    validationId: input.validationId,
     selectedTier: input.selectedTier,
-    blueprintTier: input.selectedTier,
     selectedPath: input.selectedPath ?? "adjusted",
-    mode: input.mode ?? "individual",
-    projectName: input.projectName,
   });
 }
 

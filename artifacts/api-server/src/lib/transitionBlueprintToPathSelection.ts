@@ -7,6 +7,7 @@ import {
   resolveDefaultSelectedPath,
   type ValidationPathType,
 } from "./validationPathSelection.js";
+import { ensureTierPreviewsPresent } from "./ensureTierPreviews.js";
 
 export type TransitionToPathSelectionParams = {
   blueprintId: string;
@@ -94,6 +95,10 @@ export async function transitionBlueprintToPathSelection(
     { blueprintId: params.blueprintId, validationId: params.validationId, selectedPath },
     "[Validation] Blueprint moved to path_selection",
   );
+
+  if (params.verdict !== "pivot") {
+    await ensureTierPreviewsPresent(params.validationId, params.userId);
+  }
 }
 
 export async function ensureBlueprintReadyForLaunch(

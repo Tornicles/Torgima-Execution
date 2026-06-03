@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderFeedbackResultConfidence } from "./orderFeedbackResultConfidence";
+import type { OrderFeedbackResultNextStep } from "./orderFeedbackResultNextStep";
 import type { OrderFeedbackResultVerdictStatus } from "./orderFeedbackResultVerdictStatus";
 
 export interface OrderFeedbackResult {
@@ -15,5 +16,7 @@ export interface OrderFeedbackResult {
   confidence: OrderFeedbackResultConfidence;
   requiresInterrogation: boolean;
   interrogationQuestion?: string;
+  nextStep?: OrderFeedbackResultNextStep;
+  message?: string;
   eventId: string;
 }

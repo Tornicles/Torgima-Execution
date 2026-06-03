@@ -4,14 +4,19 @@ import { useGetMe } from "@workspace/api-client-react";
 import { ApiError } from "@workspace/api-client-react";
 import type { TierId } from "@/components/blueprint/BlueprintSelectionPanel";
 import { BlueprintLaunchInputScreen } from "@/components/pre-validation/BlueprintLaunchInputScreen";
-import { formatApiEnvelopeError, launchFromTierSelection } from "@/lib/torgima-api";
+import { TierLaunchProgress } from "@/components/pre-validation/TierLaunchProgress";
+import {
+  fetchTierPreviews,
+  formatApiEnvelopeError,
+  selectTierAndLaunch,
+  type TierPreviewCardDto,
+} from "@/lib/torgima-api";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 import {
   loadValidationLaunchContext,
   saveValidationLaunchContext,
   type ValidationLaunchContext,
 } from "@/lib/validation-launch-context";
-import { loadPreValidationDraft } from "@/lib/pre-validation-draft";
 
 const TIER_RANK: Record<TierId, number> = { starter: 0, growth: 1, ultimate: 2 };
 
@@ -33,10 +38,10 @@ export default function SelectBlueprintPage() {
   const { data: me } = useGetMe();
 
   const [context, setContext] = useState<ValidationLaunchContext | null>(null);
+  const [tierPreviews, setTierPreviews] = useState<TierPreviewCardDto[]>([]);
   const [selectedTier, setSelectedTier] = useState<TierId | null>(null);
-  const [launching, setLaunching] = useState(false);
+  const [selectingTier, setSelectingTier] = useState<TierId | null>(null);
   const [launchError, setLaunchError] = useState("");
-  const [projectName] = useState(() => loadPreValidationDraft().projectName);
 
   useEffect(() => {
     if (checking) return;
@@ -46,18 +51,29 @@ export default function SelectBlueprintPage() {
       setLocation(validationId ? `/validation/${validationId}/results` : "/onboarding");
       return;
     }
-    setContext({ ...ctx, validationId });
+    setContext({ ...ctx, validationId: validationIdFromQuery || ctx.validationId });
     if (ctx.selectedTier) setSelectedTier(ctx.selectedTier);
+
+    void fetchTierPreviews(ctx.blueprintId)
+      .then((previews) => {
+        if (previews.length) setTierPreviews(previews);
+        const recommended = previews.find((p) => p.recommended);
+        if (recommended && !ctx.selectedTier) {
+          setSelectedTier(recommended.tier);
+        }
+      })
+      .catch(() => null);
   }, [checking, validationIdFromQuery, setLocation]);
 
   useEffect(() => {
-    if (selectedTier || !me) return;
+    if (selectedTier || !me || tierPreviews.length) return;
     setSelectedTier(defaultTierForSubscription(normalizeSubscriptionTier(me.tier)));
-  }, [me, selectedTier]);
+  }, [me, selectedTier, tierPreviews.length]);
 
   const validationId = context?.validationId ?? validationIdFromQuery;
 
   function handleTierChange(tier: TierId) {
+    if (selectingTier) return;
     setSelectedTier(tier);
     if (context) {
       saveValidationLaunchContext({ ...context, selectedTier: tier });
@@ -65,26 +81,22 @@ export default function SelectBlueprintPage() {
     }
   }
 
-  async function handleLaunch() {
-    if (!context?.blueprintId || !selectedTier || launching) {
-      setLaunchError("Please select an execution level to continue.");
-      return;
-    }
+  async function handleSelectTier(tier: TierId) {
+    if (!context?.blueprintId || selectingTier) return;
 
-    setLaunching(true);
+    setSelectingTier(tier);
+    setSelectedTier(tier);
     setLaunchError("");
 
     try {
       const selectedPath = context.selectedPath ?? "adjusted";
-
-      const result = await launchFromTierSelection({
+      const result = await selectTierAndLaunch({
         validationId,
         blueprintId: context.blueprintId,
-        selectedTier,
+        selectedTier: tier,
         selectedPath,
-        projectName: projectName.trim() || undefined,
       });
-      window.location.href = result.redirectTo ?? result.redirect_to ?? "/dashboard";
+      window.location.href = result.redirectTo ?? "/dashboard";
     } catch (err) {
       const backendMessage =
         err instanceof ApiError && err.data
@@ -98,14 +110,14 @@ export default function SelectBlueprintPage() {
             )
           : err instanceof Error
             ? err.message
-            : "Launch failed";
+            : "Could not build your execution system. Please try again.";
       setLaunchError(backendMessage);
-    } finally {
-      setLaunching(false);
+      setSelectingTier(null);
     }
   }
 
   function handleBack() {
+    if (selectingTier) return;
     if (validationId) setLocation(`/validation/${validationId}/results`);
     else setLocation("/onboarding");
   }
@@ -119,15 +131,20 @@ export default function SelectBlueprintPage() {
   }
 
   return (
-    <BlueprintLaunchInputScreen
-      context={context}
-      selectedTier={selectedTier}
-      onTierChange={handleTierChange}
-      onBack={handleBack}
-      onLaunch={() => void handleLaunch()}
-      launching={launching}
-      launchError={launchError}
-    />
+    <>
+      <TierLaunchProgress active={Boolean(selectingTier)} />
+      <BlueprintLaunchInputScreen
+        context={context}
+        selectedTier={selectedTier}
+        tierPreviews={tierPreviews}
+        selectingTier={selectingTier}
+        onTierChange={handleTierChange}
+        onSelectTier={(tier) => void handleSelectTier(tier)}
+        onBack={handleBack}
+        launchError={launchError}
+        cardsLocked={Boolean(selectingTier)}
+      />
+    </>
   );
 }
 

@@ -3,7 +3,7 @@ import {
   runAntiGamingChecks,
   classifyVerdict,
   type FeedbackSubmissionPayload,
-} from "../../../engines/execution-loop/FeedbackProcessingEngine.js";
+} from "../../../engines/feedback/submitFeedbackPhase1.js";
 
 const basePayload = (overrides: Partial<FeedbackSubmissionPayload> = {}): FeedbackSubmissionPayload => ({
   orderId: "00000000-0000-4000-8000-000000000001",

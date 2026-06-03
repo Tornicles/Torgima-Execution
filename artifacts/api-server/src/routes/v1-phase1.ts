@@ -7,7 +7,7 @@ import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import {
   processFeedbackSubmission,
   type FeedbackSubmissionPayload,
-} from "../engines/execution-loop/FeedbackProcessingEngine.js";
+} from "../engines/feedback/FeedbackProcessingEngine.js";
 import { getCurrentInactivityForBlueprint } from "../engines/execution-loop/InactivityDetectionEngine.js";
 
 const router = Router();

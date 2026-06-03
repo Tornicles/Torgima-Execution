@@ -1,5 +1,7 @@
 /** Mirrors api-server `homeDashboardPanels` payload (GET /api/state/dashboard). */
 export interface HomeDashboardPanels {
+  blueprintTier?: string | null;
+  signalMode?: string | null;
   executionHealth: {
     mode: string;
     modeKey: string;
@@ -26,6 +28,7 @@ export interface HomeDashboardPanels {
   condition: {
     condition: string;
     conditionLabel: string;
+    conditionExplanation?: string | null;
     urgency: boolean;
     allowed: string[];
     restricted: string[];

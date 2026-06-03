@@ -357,7 +357,8 @@ export async function runCompleteSystemDiagnostic(
   for (const eng of [
     "artifacts/api-server/src/engines/signal/SignalCalculationEngine.ts",
     "artifacts/api-server/src/engines/condition/ConditionEvaluationEngine.ts",
-    "artifacts/api-server/src/engines/feedback/FeedbackProcessingEngine.ts",
+    "artifacts/api-server/src/engines/feedback/submitFeedbackPhase1.ts",
+    "artifacts/api-server/src/engines/feedback/processFeedbackLegacy.ts",
     "artifacts/api-server/src/engines/task-generation/TaskGenerationEngine.ts",
     "artifacts/api-server/src/engines/blueprint/BlueprintEngine.ts",
   ]) {
@@ -463,9 +464,10 @@ export async function runCompleteSystemDiagnostic(
     add("5", `SignalCalculationEngine: ${token}`, signalEngine.includes(token), signalEngine ? "found" : "missing");
   }
 
-  const feedbackEngine = readText("artifacts/api-server/src/engines/feedback/FeedbackProcessingEngine.ts") ?? "";
+  const feedbackEngine =
+    readText("artifacts/api-server/src/engines/feedback/processFeedbackLegacy.ts") ?? "";
   add("6", "FeedbackProcessingEngine", classifyImplementation(
-    "artifacts/api-server/src/engines/feedback/FeedbackProcessingEngine.ts",
+    "artifacts/api-server/src/engines/feedback/processFeedbackLegacy.ts",
   ) === "WORKING", "feedback pipeline");
   add("6", "Gaming detection", /gaming_flag/i.test(feedbackEngine), "gaming_flag handling");
 

@@ -1,7 +1,27 @@
 {
-  "generatedAt": "2026-05-21T17:55:38.246Z",
-  "routeCount": 335,
+  "generatedAt": "2026-06-03T13:28:26.096Z",
+  "routeCount": 664,
   "routes": [
+    {
+      "method": "GET",
+      "path": "/:run_id",
+      "file": "erectorValidation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/:run_id/launch-blueprint",
+      "file": "erectorValidation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/:run_id/select-path",
+      "file": "erectorValidation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/:run_id/status",
+      "file": "erectorValidation.ts"
+    },
     {
       "method": "POST",
       "path": "/:source",
@@ -10,6 +30,16 @@
     {
       "method": "GET",
       "path": "/academy",
+      "file": "academy.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/academy/:blueprintId",
+      "file": "academy.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/academy/:taskId/proof",
       "file": "academy.ts"
     },
     {
@@ -193,6 +223,11 @@
       "file": "academy.ts"
     },
     {
+      "method": "GET",
+      "path": "/academy/task/:taskId",
+      "file": "academy.ts"
+    },
+    {
       "method": "POST",
       "path": "/academy/tutor-chat/ask",
       "file": "academy.ts"
@@ -299,13 +334,993 @@
     },
     {
       "method": "POST",
+      "path": "/bhudhi/analyze/behavior",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/analyze/patterns",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/create",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/evidence",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/evolve",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/history",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/resolve",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/belief/validate",
+      "file": "bhudhiBelief.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/certification",
+      "file": "bhudhiCertification.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/create",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/evolve",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/forecast",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/history",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/inflection-points",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/resilience",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/simulate",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/civilization/simulate-years",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/civilizations",
+      "file": "bhudhiCivilization.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/consolidation/status",
+      "file": "bhudhiConsolidation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/approve",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/create",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/evaluate",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/forecast",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/history",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/decision/replay",
+      "file": "bhudhiDecision.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/domains",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/domains/current",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/domains/initialize",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/domains/transition",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/economics/confidence",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/economics/forecast",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/economics/initialize",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/economics/memory",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/economics/models",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/economics/overview",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/economics/roi",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/economics/route",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/economics/simulation",
+      "file": "bhudhiEconomics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/compare",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/create",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/history",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/replay",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/run",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/erector/score",
+      "file": "bhudhiErector.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/execute",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/execution/stats",
+      "file": "bhudhiExecutionRuntime.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/approve",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/benchmark",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/discover",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/evaluate",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/history",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/promote",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/reject",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/expansion/rollback",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/expansion/status",
+      "file": "bhudhiExpansion.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/compare",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/create",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/history",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/measure",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/promote",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/experiment/run",
+      "file": "bhudhiExperiment.ts"
+    },
+    {
+      "method": "POST",
       "path": "/bhudhi/explain-state",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/external/connect",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/external/connections",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/external/disconnect",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/external/push",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/external/sync",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/frameworks",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/frameworks",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/frameworks/:frameworkId/accuracy",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/frameworks/evaluate",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/frameworks/evaluate-all",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/frameworks/initialize",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/approve",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/audit",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/check",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/emergency",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/explain",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/governance/health",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/risk",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governance/rollback",
+      "file": "bhudhiGovernance.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/allocate",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/health",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/history",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/observe",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/prioritize",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/governor/recover",
+      "file": "bhudhiGovernor.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/health",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/hub",
+      "file": "bhudhi-hub.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/hub/explain",
+      "file": "bhudhi-hub.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/adapt",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/drift",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/growth",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/history",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/profile",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/identity/values",
+      "file": "bhudhiIdentity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/deploy",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/history",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/observe",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/recover",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/runtime",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/infra/scale",
+      "file": "bhudhiInfrastructure.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/insights",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/intelligence",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/interpret/context",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/interpret/feedback",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/interpret/goal",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/interpret/purpose",
+      "file": "bhudhi-interpret.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/investigate",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/investigate/:engineId",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/investigation/:id",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/investigations/:blueprintId",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/kernel/context",
+      "file": "bhudhiKernel.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/kernel/cycle",
+      "file": "bhudhiKernel.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/kernel/events",
+      "file": "bhudhiKernel.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/kernel/registry",
+      "file": "bhudhiKernel.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/launch/config",
+      "file": "bhudhiLaunch.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/launch/limits",
+      "file": "bhudhiLaunch.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/launch/onboard",
+      "file": "bhudhiLaunch.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/launch/status",
+      "file": "bhudhiLaunch.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/memory/consolidate",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/memory/migrate",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/memory/node",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/memory/query",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/memory/related",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/memory/stats",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/memory/timeline",
+      "file": "bhudhiMemory.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/modules",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/modules/complete-cycle",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/monitoring/health",
+      "file": "bhudhiMonitoring.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/monitoring/metrics",
+      "file": "bhudhiMonitoring.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/operating/execute",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/operating/status",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/align",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/coordinate",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/create",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/health",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/history",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/organization/sync",
+      "file": "bhudhiOrganization.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/preservation/consolidate",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/preservation/improve-frameworks",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/preservation/learnings",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/preservation/track-outcome",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/protocol/contracts",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/protocol/history",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/protocol/route",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/protocol/routes",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/protocol/send",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/protocol/validate",
+      "file": "bhudhiProtocol.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/recommend",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/recommendation/:id",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/recommendations/:blueprintId",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/recommendations/:id/approve",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/check",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/health",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/history",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/incident",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/recover",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/reliability/rollback",
+      "file": "bhudhiReliability.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/routes",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/runtime/context",
+      "file": "bhudhiExecutionRuntime.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/runtime/execute",
+      "file": "bhudhiExecutionRuntime.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/runtime/history",
+      "file": "bhudhiExecutionRuntime.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/authorize",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/history",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/respond",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/threat",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/security/threats",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/trust",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/validate",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/security/verify",
+      "file": "bhudhiSecurity.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/signals",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/signals",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/signals/calculate",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/signals/latest",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/bhudhi/status",
       "file": "bhudhi.ts"
     },
     {
       "method": "POST",
       "path": "/bhudhi/structure-goal",
       "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/align",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/consensus",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/create",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/health",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/history",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/teams/memory",
+      "file": "bhudhiTeams.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/analyze",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/branch",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/forecast",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/history",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/schedule",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/temporal/window",
+      "file": "bhudhiTemporal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/torgima/domain-transition",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/torgima/next-task",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/torgima/validate-goal",
+      "file": "bhudhi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/branch",
+      "file": "bhudhiWorld.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/entity",
+      "file": "bhudhiWorld.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/predict",
+      "file": "bhudhiWorld.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/relationship",
+      "file": "bhudhiWorld.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/state",
+      "file": "bhudhiWorld.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/bhudhi/world/sync",
+      "file": "bhudhiWorld.ts"
     },
     {
       "method": "GET",
@@ -341,6 +1356,21 @@
       "method": "POST",
       "path": "/blueprints",
       "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:blueprintId/sequence",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/:blueprintId/sequence/context",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:blueprintId/sequence/scene",
+      "file": "sequence.ts"
     },
     {
       "method": "GET",
@@ -418,6 +1448,11 @@
       "file": "blueprints.ts"
     },
     {
+      "method": "GET",
+      "path": "/blueprints/:id/phase-readiness",
+      "file": "blueprints.ts"
+    },
+    {
       "method": "POST",
       "path": "/blueprints/:id/pivot-review/:reviewId/dismiss",
       "file": "blueprints.ts"
@@ -433,8 +1468,18 @@
       "file": "blueprints.ts"
     },
     {
+      "method": "PATCH",
+      "path": "/blueprints/:id/project-name",
+      "file": "blueprints.ts"
+    },
+    {
       "method": "POST",
       "path": "/blueprints/:id/resume",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/blueprints/:id/select-path",
       "file": "blueprints.ts"
     },
     {
@@ -449,12 +1494,22 @@
     },
     {
       "method": "GET",
+      "path": "/blueprints/:id/tier-preview",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
       "path": "/blueprints/features",
       "file": "blueprints.ts"
     },
     {
       "method": "GET",
       "path": "/blueprints/history",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/blueprints/select-tier",
       "file": "blueprints.ts"
     },
     {
@@ -624,6 +1679,11 @@
     },
     {
       "method": "GET",
+      "path": "/condition/history",
+      "file": "condition.ts"
+    },
+    {
+      "method": "GET",
       "path": "/conditions/current",
       "file": "condition.ts"
     },
@@ -631,6 +1691,16 @@
       "method": "GET",
       "path": "/content-guidance/today",
       "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/intelligence/:blueprintId",
+      "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/erector/dashboard",
+      "file": "erector-dashboard.ts"
     },
     {
       "method": "GET",
@@ -678,6 +1748,11 @@
       "file": "feedback.ts"
     },
     {
+      "method": "GET",
+      "path": "/feedback/entry-check",
+      "file": "structured-feedback.ts"
+    },
+    {
       "method": "POST",
       "path": "/feedback/habit-checkin",
       "file": "feedback.ts"
@@ -689,8 +1764,43 @@
     },
     {
       "method": "POST",
-      "path": "/feedback/task",
-      "file": "feedback.ts"
+      "path": "/feedback/section-a",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/section-b",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/section-c",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/section-d",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/section-e",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/section-f",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/start",
+      "file": "structured-feedback.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/submit",
+      "file": "structured-feedback.ts"
     },
     {
       "method": "POST",
@@ -816,6 +1926,11 @@
       "method": "GET",
       "path": "/healthz",
       "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/identity/:blueprintId",
+      "file": "identity.ts"
     },
     {
       "method": "GET",
@@ -1008,33 +2123,13 @@
       "file": "internal.ts"
     },
     {
-      "method": "GET",
-      "path": "/internal/dead-letter",
-      "file": "internal.ts"
-    },
-    {
       "method": "POST",
       "path": "/internal/dead-letter/:id/resolve",
       "file": "internal.ts"
     },
     {
       "method": "POST",
-      "path": "/internal/events/:id/cancel",
-      "file": "internal.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/internal/events/:id/replay",
-      "file": "internal.ts"
-    },
-    {
-      "method": "POST",
       "path": "/internal/events/dispatch",
-      "file": "internal.ts"
-    },
-    {
-      "method": "GET",
-      "path": "/internal/events/health",
       "file": "internal.ts"
     },
     {
@@ -1141,6 +2236,21 @@
       "method": "PATCH",
       "path": "/me/settings",
       "file": "me.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/metrics",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/mini-plans/allocation",
+      "file": "mini-plans.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/mini-plans/queue-preview",
+      "file": "mini-plans.ts"
     },
     {
       "method": "POST",
@@ -1266,6 +2376,16 @@
       "method": "POST",
       "path": "/onboarding/goal",
       "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/onboarding/select-blueprint",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/onboarding/select-blueprint",
+      "file": "validation.ts"
     },
     {
       "method": "GET",
@@ -1534,13 +2654,73 @@
     },
     {
       "method": "GET",
+      "path": "/rewards/current/:blueprintId",
+      "file": "rewards.ts"
+    },
+    {
+      "method": "GET",
       "path": "/rewards/history",
       "file": "rewards.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/rewards/history/:blueprintId",
+      "file": "rewards.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/run",
+      "file": "erectorValidation.ts"
     },
     {
       "method": "POST",
       "path": "/send-magic-link",
       "file": "auth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/complete-blueprint",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/context",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/feedback-regenerate",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/goal",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/launch-stack",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/purpose",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/sync-tasks",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/tier",
+      "file": "sequence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/sequences/validation-result",
+      "file": "sequence.ts"
     },
     {
       "method": "GET",
@@ -1554,8 +2734,18 @@
     },
     {
       "method": "GET",
+      "path": "/signals/framework",
+      "file": "signals.ts"
+    },
+    {
+      "method": "GET",
       "path": "/signals/history",
       "file": "signals.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/signals/today",
+      "file": "structured-feedback.ts"
     },
     {
       "method": "GET",
@@ -1584,7 +2774,347 @@
     },
     {
       "method": "GET",
+      "path": "/tasks/queue",
+      "file": "tasks.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks/queue/fill",
+      "file": "tasks.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/telemetry",
+      "file": "bhudhiLaunch.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/torgima/bhudhi/execute",
+      "file": "torgimaBhudhiConvergence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/torgima/bhudhi/feedback",
+      "file": "torgimaBhudhiConvergence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/torgima/bhudhi/state",
+      "file": "torgimaBhudhiConvergence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/upgrade/acknowledge",
+      "file": "upgrade.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/upgrade/archived",
+      "file": "upgrade.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/upgrade/status",
+      "file": "upgrade.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/blueprints/:id/launch",
+      "file": "blueprints.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/blueprints/goal/confirm-goal",
+      "file": "erector-goal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/blueprints/goal/confirm-purpose",
+      "file": "erector-goal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/blueprints/goal/economic-type",
+      "file": "erector-goal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/blueprints/goal/refine-goal",
+      "file": "erector-goal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/blueprints/goal/refine-purpose",
+      "file": "erector-goal.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/debug/complete-diagnostic",
+      "file": "debug.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/debug/force-generate",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/debug/loop-state",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/debug/system-state",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/erector/business-types",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/erector/refinement/:blueprintId",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/feed",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/goal/finalize",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/goal/select",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/goal/understand",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/lock",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/purpose/finalize",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/purpose/select",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/erector/refinement/purpose/understand",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/features/status",
+      "file": "v1-features.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/feedback/submit",
+      "file": "v1-phase1.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/growth/adaptation",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/growth/adaptation/apply",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/growth/interrogation",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/growth/interrogation",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/growth/knowledge",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/growth/knowledge/:cardId/:action",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/growth/patterns",
+      "file": "v1-growth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/health/routes",
+      "file": "health.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/identity/current",
+      "file": "v1-phase3.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/identity/history",
+      "file": "v1-phase3.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/inactivity/current/:blueprintId",
+      "file": "v1-phase1.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/intelligence/decisions/:blueprintId",
+      "file": "v1-intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/intelligence/identity/:userId",
+      "file": "v1-intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/intelligence/outcomes/:blueprintId",
+      "file": "v1-intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/intelligence/patterns/:blueprintId",
+      "file": "v1-intelligence.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/intelligence/rewards/:userId",
+      "file": "v1-intelligence.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/onboarding/select-blueprint",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/onboarding/select-blueprint",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/outcomes/:id/evidence",
+      "file": "v1-phase3.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/outcomes/define",
+      "file": "v1-phase3.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/rewards/recent",
+      "file": "v1-phase3.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sequences/advance",
+      "file": "v1-sequences.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/sequences/audit",
+      "file": "v1-sequences.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/sequences/status",
+      "file": "v1-sequences.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ultimate/emergency",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ultimate/emergency/complete",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ultimate/predictions",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ultimate/predictions",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ultimate/scene",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ultimate/scene",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ultimate/summary",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ultimate/validation",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ultimate/validation",
+      "file": "v1-ultimate.ts"
+    },
+    {
+      "method": "GET",
       "path": "/v1/validation/:id",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:id/competitors",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:id/complete",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:id/finalize",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:id/first-week",
       "file": "validation.ts"
     },
     {
@@ -1594,7 +3124,72 @@
     },
     {
       "method": "POST",
+      "path": "/v1/validation/:id/launch",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:id/scores",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
       "path": "/v1/validation/:id/select-path",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:id/simulation",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:validationId/compare",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/edit-stage",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/refresh-stage",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/select-path",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:validationId/stage/:stageName",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/:validationId/workspace",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/workspace/edit",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/workspace/finalize",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/:validationId/workspace/update",
+      "file": "erector-refinement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validation/active-draft",
       "file": "validation.ts"
     },
     {
@@ -1604,7 +3199,52 @@
     },
     {
       "method": "POST",
+      "path": "/v1/validation/complete",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validation/resolve-archetype",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
       "path": "/v1/validation/run",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validations/:id/complete",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validations/:id/finalize",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validations/:id/launch",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validations/:id/report",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validations/:id/results",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/validations/:id/select-path",
+      "file": "validation.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/validations/:id/status",
       "file": "validation.ts"
     },
     {
@@ -1635,6 +3275,11 @@
     {
       "method": "GET",
       "path": "/validation/:id/timeline",
+      "file": "validation.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/validation/complete",
       "file": "validation.ts"
     },
     {
@@ -1678,5 +3323,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 323
+  "openApiPathCount": 644
 }

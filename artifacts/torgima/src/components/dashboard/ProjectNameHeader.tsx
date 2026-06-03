@@ -6,15 +6,26 @@ import { updateBlueprintProjectName } from "@/lib/torgima-api";
 import { TOASTS } from "@/lib/toasts";
 import { toast } from "sonner";
 
+function formatTierBadge(tier?: string | null): string | null {
+  if (!tier) return null;
+  const t = tier.toLowerCase();
+  if (t === "starter" || t === "growth" || t === "ultimate") {
+    return t.toUpperCase();
+  }
+  return null;
+}
+
 export function ProjectNameHeader({
   blueprintId,
   projectName,
   goal,
+  tierBadge,
   onUpdated,
 }: {
   blueprintId?: string | null;
   projectName?: string | null;
   goal?: string | null;
+  tierBadge?: string | null;
   onUpdated?: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -23,6 +34,7 @@ export function ProjectNameHeader({
   const [error, setError] = useState("");
 
   const display = getProjectDisplayName(projectName, goal);
+  const tierLabel = formatTierBadge(tierBadge);
 
   async function save() {
     const err = validateProjectNameInput(draft);
@@ -94,7 +106,14 @@ export function ProjectNameHeader({
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Project</p>
-        <h1 className="text-2xl sm:text-[28px] font-bold text-[#0F172A] mt-1">{display}</h1>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl sm:text-[28px] font-bold text-[#0F172A]">{display}</h1>
+          {tierLabel ? (
+            <span className="rounded-full border border-[#C7D2FE] bg-[#EDE9FE] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#5B21FF]">
+              {tierLabel}
+            </span>
+          ) : null}
+        </div>
       </div>
       <button
         type="button"

@@ -51,6 +51,15 @@ export const validationReadinessEnum = pgEnum("validation_readiness", [
   "blocked_reality",
 ]);
 export const validationKindEnum = pgEnum("validation_kind", ValidationKindValues);
+
+/** Tier-selection lifecycle on validations (Blueprint Tier System). */
+export const validationTierFlowStatusEnum = pgEnum("validation_tier_flow_status", [
+  "pending",
+  "scored",
+  "tier_presented",
+  "tier_selected",
+  "launched",
+]);
 export const domainEnum = pgEnum("domain", [
   "genesis", "market", "delivery", "operations", "people", "growth", "continuity",
 ]);

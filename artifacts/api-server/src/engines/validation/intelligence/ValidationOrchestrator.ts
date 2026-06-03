@@ -25,6 +25,7 @@ import type { FullValidationResult, ReadinessState, ValidationIntelligencePayloa
 import { ValidationKind, ValidationStatus } from "@workspace/state-machine";
 import { resolveDefaultSelectedPath } from "../../../lib/validationPathSelection.js";
 import { transitionBlueprintToPathSelection } from "../../../lib/transitionBlueprintToPathSelection.js";
+import { TierPreviewEngine } from "../../blueprint/TierPreviewEngine.js";
 
 export async function runFullValidation(params: {
   blueprintId: string;
@@ -310,6 +311,19 @@ export async function runFullValidation(params: {
 
   logger.info({ blueprintId: params.blueprintId, verdict, launchBlocked, tier }, "[ValidationOrchestrator] complete");
 
+  let tierPreviews: import("../../blueprint/TierPreviewEngine.js").TierPreviewCard[] = [];
+  let recommendedTier: BlueprintTier | undefined;
+  if (verdict !== "pivot") {
+    tierPreviews = await TierPreviewEngine.listPreviews(validationId, params.userId);
+    recommendedTier =
+      tierPreviews.find((c) => c.recommended)?.tier ??
+      TierPreviewEngine.recommendTier({
+        feasibility_score: feasibility.score,
+        clarity_score: scores.clarity.score,
+        realism_score: scores.realism.score,
+      });
+  }
+
   const rowsAfter = await db
     .select({ created_at: validations.created_at })
     .from(validations)
@@ -330,6 +344,8 @@ export async function runFullValidation(params: {
     launchBlocked,
     readiness,
     createdAt: rowsAfter[0]?.created_at ?? new Date(),
+    tierPreviews: tierPreviews.length > 0 ? tierPreviews : undefined,
+    recommendedTier,
   };
 
   return applyTierDepthToResult(full, tier);

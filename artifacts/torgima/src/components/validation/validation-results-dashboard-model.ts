@@ -20,6 +20,32 @@ export type CompetitorCard = {
   marketShare: number;
 };
 
+export type DataConfidence = "verified" | "estimated" | "unavailable";
+
+export type CompetitorArchetype = "pioneer" | "fast_mover" | "indie_survivor";
+
+export type ValidationExplanationsModel = {
+  reality_score?: string;
+  final_verdict?: string;
+  at_a_glance?: {
+    problem_exists?: string;
+    market_demand?: string;
+    competition_level?: string;
+    execution_fit?: string;
+    feasibility?: string;
+    timing?: string;
+  };
+  market_trends?: string;
+  competitors_overview?: string;
+  pros_cons?: string;
+  opportunities?: string;
+  risks?: string;
+  path_current?: string;
+  path_adjusted?: string;
+  path_alternative?: string;
+  success_plan?: string;
+};
+
 export type EnrichedCompetitorCard = {
   name: string;
   tagline: string;
@@ -32,6 +58,42 @@ export type EnrichedCompetitorCard = {
   weaknesses: string[];
   marketShare: string;
   whereYourIdeaFits: string;
+  archetype?: CompetitorArchetype;
+  drawerExplanation?: string;
+  differentiationHint?: string;
+  revenueLifecycle?: {
+    year1_reality?: string | null;
+    inflection_point?: string | null;
+    current_scale?: string | null;
+    data_confidence?: DataConfidence;
+    sources?: string[];
+  };
+  marketingStrategy?: {
+    primary_channel?: string;
+    positioning_angle?: string;
+    conversion_mechanism?: string;
+    data_confidence?: DataConfidence;
+  };
+  growthCatalyst?: {
+    distribution_hook?: string;
+    retention_mechanics?: string;
+    scale_trigger?: string;
+    data_confidence?: DataConfidence;
+  };
+  firstProductOrigin?: {
+    mvp_description?: string;
+    day1_validation_method?: string;
+    adjustment_history?: string[];
+    time_to_first_revenue?: string | null;
+    data_confidence?: DataConfidence;
+  };
+  digitalFootprint?: {
+    website?: string | null;
+    twitter?: string | null;
+    linkedin?: string | null;
+    community_hub?: string | null;
+    youtube?: string | null;
+  };
 };
 
 export type EnrichedOpportunityCard = {
@@ -99,7 +161,98 @@ export type ResultsDashboardModel = ValidationViewModel & {
   pathCards: PathCardModel[];
   risks: RiskRow[];
   milestones: MilestoneRow[];
+  explanations: ValidationExplanationsModel;
+  explanationsLoading: boolean;
 };
+
+const GLANCE_EXPLANATION_KEYS: Record<string, keyof NonNullable<ValidationExplanationsModel["at_a_glance"]>> = {
+  "Problem Exists": "problem_exists",
+  "Market Demand": "market_demand",
+  "Competition Level": "competition_level",
+  "Execution Fit": "execution_fit",
+  Feasibility: "feasibility",
+  Timing: "timing",
+};
+
+export function glanceExplanation(
+  explanations: ValidationExplanationsModel,
+  label: string,
+): string | undefined {
+  const key = GLANCE_EXPLANATION_KEYS[label];
+  return key ? explanations.at_a_glance?.[key] : undefined;
+}
+
+function parseJsonField<T>(value: unknown): T | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  return value as T;
+}
+
+function unavailableLabel(confidence?: string): string {
+  return confidence === "unavailable" ? "Historical data not publicly available" : "—";
+}
+
+function parseExplanations(erector: Record<string, unknown>): ValidationExplanationsModel {
+  const raw =
+    erector.explanation_paragraphs ??
+    erector.explanationParagraphs ??
+    erector.explanations;
+  if (!raw || typeof raw !== "object") return {};
+  return raw as ValidationExplanationsModel;
+}
+
+function parseEnrichedCompetitor(c: Record<string, unknown>): EnrichedCompetitorCard {
+  const desc = String(c.description ?? c.summary ?? "");
+  const revenueLifecycle = parseJsonField<EnrichedCompetitorCard["revenueLifecycle"]>(
+    c.revenue_lifecycle ?? c.revenueLifecycle,
+  );
+  const firstOrigin = parseJsonField<EnrichedCompetitorCard["firstProductOrigin"]>(
+    c.first_product_origin ?? c.firstProductOrigin,
+  );
+  const revenueDisplay =
+    revenueLifecycle?.current_scale?.trim() ||
+    (revenueLifecycle?.data_confidence === "unavailable"
+      ? unavailableLabel("unavailable")
+      : String(c.estimatedRevenue ?? c.revenue ?? unavailableLabel("unavailable")));
+
+  const archetypeRaw = String(
+    c.competitor_archetype ?? c.archetype ?? "",
+  ).toLowerCase();
+  const archetype = (["pioneer", "fast_mover", "indie_survivor"] as const).includes(
+    archetypeRaw as CompetitorArchetype,
+  )
+    ? (archetypeRaw as CompetitorArchetype)
+    : undefined;
+
+  return {
+    name: String(c.name ?? "Unknown"),
+    tagline: String(c.tagline ?? (desc ? desc.split(".")[0] : "")),
+    description: desc || String(c.tagline ?? ""),
+    founded: String(
+      firstOrigin?.time_to_first_revenue ??
+        c.founded ??
+        unavailableLabel(firstOrigin?.data_confidence),
+    ),
+    estimatedRevenue: revenueDisplay,
+    userBase: String(c.userBase ?? c.users ?? "—"),
+    geography: String(c.geography ?? c.location ?? "Global"),
+    strengths: stringList(c.strengths, 5),
+    weaknesses: stringList(c.weaknesses, 5),
+    marketShare: String(
+      c.market_share_label ?? c.marketShare ?? c.market_share ?? "Not available",
+    ),
+    whereYourIdeaFits: String(
+      c.whereYourIdeaFits ?? c.relevance_summary ?? c.positioning ?? "",
+    ),
+    archetype,
+    drawerExplanation: String(c.relevance_summary ?? c.whereYourIdeaFits ?? ""),
+    differentiationHint: String(c.differentiation_hint ?? c.differentiationHint ?? ""),
+    revenueLifecycle,
+    marketingStrategy: parseJsonField(c.marketing_strategy ?? c.marketingStrategy),
+    growthCatalyst: parseJsonField(c.growth_catalyst ?? c.growthCatalyst),
+    firstProductOrigin: firstOrigin,
+    digitalFootprint: parseJsonField(c.digital_footprint ?? c.digitalFootprint),
+  };
+}
 
 function scoreStatus(score: number, invert = false): { value: string; tone: StatusTone } {
   const good = invert ? score <= 4 : score >= 7;
@@ -191,23 +344,6 @@ function impactNorm(value: unknown): EnrichedOpportunityCard["impact"] {
   if (v.startsWith("h")) return "High";
   if (v.startsWith("l")) return "Low";
   return "Medium";
-}
-
-function parseEnrichedCompetitor(c: Record<string, unknown>): EnrichedCompetitorCard {
-  const desc = String(c.description ?? c.summary ?? "");
-  return {
-    name: String(c.name ?? "Unknown"),
-    tagline: String(c.tagline ?? (desc ? desc.split(".")[0] : "")),
-    description: desc || String(c.tagline ?? ""),
-    founded: String(c.founded ?? "Not available"),
-    estimatedRevenue: String(c.estimatedRevenue ?? c.revenue ?? "Not available"),
-    userBase: String(c.userBase ?? c.users ?? "Not available"),
-    geography: String(c.geography ?? c.location ?? "Global"),
-    strengths: stringList(c.strengths, 5),
-    weaknesses: stringList(c.weaknesses, 5),
-    marketShare: String(c.marketShare ?? c.market_share ?? "Not available"),
-    whereYourIdeaFits: String(c.whereYourIdeaFits ?? c.positioning ?? ""),
-  };
 }
 
 function parseEnrichedOpportunity(o: Record<string, unknown>): EnrichedOpportunityCard {
@@ -405,9 +541,12 @@ function formatTimeframe(erector: Record<string, unknown>): string {
 export function buildResultsDashboardModel(
   data: ValidationScreenData,
   selectedPath: PathKey,
+  options?: { explanationsLoading?: boolean },
 ): ResultsDashboardModel {
   const vm = buildViewModel(data);
   const erector = vm.erector;
+  const explanations = parseExplanations(erector);
+  const explanationsLoading = options?.explanationsLoading ?? false;
   const executionScore = scoreOn10(vm.scores.executionScore ?? erector.execution_score);
   const feasibilityScore = scoreOn10(vm.scores.feasibilityScore ?? vm.scores.blueprintDifficultyScore);
 
@@ -590,6 +729,8 @@ export function buildResultsDashboardModel(
     pathCards,
     risks,
     milestones: extractMilestones(erector),
+    explanations,
+    explanationsLoading,
   };
 }
 

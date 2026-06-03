@@ -21,7 +21,8 @@
 ## Phase 1 — Feedback & inactivity
 
 ### Created
-- `engines/execution-loop/FeedbackProcessingEngine.ts` — verdicts, anti-gaming, idempotency
+- `engines/feedback/submitFeedbackPhase1.ts` — Phase 1 verdicts, anti-gaming, idempotency
+- `engines/feedback/processFeedbackLegacy.ts` — production orders feedback (Bhudhi enrichment)
 - `engines/inactivity/InactivityDetectionEngine.ts` — thresholds, ABANDONED_LOOP, recovery events
 - `routes/v1-phase1.ts` — `POST /api/v1/feedback/submit`, `GET /api/v1/inactivity/current/:blueprintId`
 - `workers/FeedbackWorker.ts`, `workers/InactivityWorker.ts`

@@ -196,6 +196,15 @@ export class BlueprintEngine {
 
   // ── ACTIVATE (COLD START) ─────────────────────────────────────────────────
 
+  /** DOC_04 launch entry — delegates to activateBlueprint after tier chain generation. */
+  async launch(
+    blueprintId: string,
+    userId: string,
+    validationContractId: string,
+  ): Promise<{ launched: true; blueprintId: string }> {
+    return this.activateBlueprint(blueprintId, userId, validationContractId);
+  }
+
   async activateBlueprint(
     blueprintId: string,
     userId: string,

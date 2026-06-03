@@ -37,6 +37,7 @@ export const EventTypes = {
   INACTIVITY_RESOLVED:              "inactivity_resolved",
   // Blueprint lifecycle
   BLUEPRINT_LAUNCHED:               "blueprint_launched",
+  BLUEPRINT_CHAIN_GENERATED:        "blueprint_chain_generated",
   BLUEPRINT_STRUCTURE_CREATED:      "blueprint_structure_created",
   PHASE_CHECKPOINT_REQUIRED:        "phase_checkpoint_required",
   TARGET_COMPLETED:                 "target_completed",
@@ -194,6 +195,7 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.BHUDHI_TRIGGER_REQUESTED]:       WorkerQueues.BHUDHI_TRIGGER,
   [EventTypes.SYSTEM_HEALTH_DEGRADED]:         WorkerQueues.SYSTEM_HEALTH,
   [EventTypes.BLUEPRINT_LAUNCHED]:             WorkerQueues.TASK_GENERATION,
+  [EventTypes.BLUEPRINT_CHAIN_GENERATED]:      WorkerQueues.TASK_GENERATION,
   [EventTypes.BLUEPRINT_STRUCTURE_CREATED]:    WorkerQueues.TASK_GENERATION,
   [EventTypes.PHASE_CHECKPOINT_REQUIRED]:      WorkerQueues.TASK_GENERATION,
   [EventTypes.TARGET_COMPLETED]:               WorkerQueues.PROJECTION_REFRESH,

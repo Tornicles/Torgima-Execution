@@ -296,6 +296,21 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
     case "erector_purpose":
     case "erector_industry":
     case "erector_market":
+    case "validation_competitor_deep":
+      if (!d["name"]) errors.push("validation_competitor_deep: missing name");
+      if (!d["archetype"]) errors.push("validation_competitor_deep: missing archetype");
+      break;
+    case "validation_explanations":
+      if (!d["reality_score"]) errors.push("validation_explanations: missing reality_score");
+      if (!d["final_verdict"]) errors.push("validation_explanations: missing final_verdict");
+      break;
+    case "blueprint_tier_preview": {
+      const td = d["tierDescriptions"];
+      if (!td || typeof td !== "object") {
+        errors.push("blueprint_tier_preview: missing tierDescriptions");
+      }
+      break;
+    }
     case "erector_competitors":
     case "erector_economy":
     case "erector_pain":

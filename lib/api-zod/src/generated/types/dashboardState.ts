@@ -13,6 +13,7 @@ import type { DashboardStateDashboardUiState } from "./dashboardStateDashboardUi
 import type { DashboardStateEnforcement } from "./dashboardStateEnforcement";
 import type { DashboardStateFeatureFlags } from "./dashboardStateFeatureFlags";
 import type { DashboardStateHealth } from "./dashboardStateHealth";
+import type { DashboardStateHomePanels } from "./dashboardStateHomePanels";
 import type { DashboardStatePivotReview } from "./dashboardStatePivotReview";
 import type { DashboardStateSignalBlueprintBridgeItem } from "./dashboardStateSignalBlueprintBridgeItem";
 import type { DashboardStateSignalProjection } from "./dashboardStateSignalProjection";
@@ -57,4 +58,9 @@ export interface DashboardState {
   dashboardUiState?: DashboardStateDashboardUiState;
   pendingSync?: boolean;
   alerts?: DashboardStateAlertsItem[];
+  /**
+   * Pre-computed home dashboard panel payloads (execution health, orders, timeline, plans, phases)
+   * @nullable
+   */
+  homePanels?: DashboardStateHomePanels;
 }

@@ -155,6 +155,9 @@ export type DashboardSignalBreakdown = {
 
 export type DashboardProjection = DashboardState & {
   dashboardUiState?: DashboardUiState;
+  blueprintTier?: string | null;
+  signalMode?: string | null;
+  simplifiedSignalLabel?: string | null;
   pendingSync?: boolean;
   alerts?: DashboardAlert[];
   homePanels?: HomeDashboardPanels | null;

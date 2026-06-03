@@ -27,7 +27,6 @@ import type { ValidationFeedInput } from "../types/erector-complete.js";
 import type { ErectorValidationInput } from "../types/erector.js";
 import { ValidationKind } from "@workspace/state-machine";
 import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
-import { selectBlueprintLaunchHandler } from "./onboarding.js";
 
 const router = Router();
 
@@ -1163,6 +1162,58 @@ router.post("/validation/:id/edit-inputs", async (req, res) => {
   }
 });
 
+const validationCompleteBodySchema = z.object({
+  validationId: z.string().uuid().optional(),
+});
+
+const validationCompleteHandler = async (req: import("express").Request, res: import("express").Response) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const validationId = String(req.params.id ?? (req.body as { validationId?: string })?.validationId ?? "").trim();
+    if (!validationId) {
+      failure(res, "VALIDATION_ERROR", "validationId is required", 400);
+      return;
+    }
+    const parsed = validationCompleteBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success && req.body && Object.keys(req.body as object).length > 0) {
+      failure(res, "VALIDATION_ERROR", "Invalid body", 400);
+      return;
+    }
+
+    const { TierPreviewEngine } = await import("../engines/blueprint/TierPreviewEngine.js");
+    const { ensureTierPreviewsPresent } = await import("../lib/ensureTierPreviews.js");
+    const { db, validations } = await import("@workspace/db");
+    const { eq, and } = await import("drizzle-orm");
+
+    const tierPreviews = await ensureTierPreviewsPresent(validationId, auth.userId);
+    const [validation] = await db
+      .select()
+      .from(validations)
+      .where(and(eq(validations.id, validationId), eq(validations.user_id, auth.userId)))
+      .limit(1);
+
+    const recommendedTier =
+      tierPreviews.find((c) => c.recommended)?.tier ??
+      (validation
+        ? TierPreviewEngine.recommendTier(validation)
+        : "growth");
+
+    success(res, {
+      validation: validation ?? { id: validationId },
+      tierPreviews,
+      recommendedTier,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+};
+
+// POST /api/validation/complete — score handoff + tier preview cards
+router.post("/validation/complete", validationCompleteHandler);
+router.post("/v1/validation/complete", validationCompleteHandler);
+router.post("/v1/validation/:id/complete", validationCompleteHandler);
+router.post("/v1/validations/:id/complete", validationCompleteHandler);
+
 const validationFinalizeHandler = async (req: import("express").Request, res: import("express").Response) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
@@ -1203,10 +1254,6 @@ router.post("/v1/validations/:id/launch", validationLaunchHandler);
 
 // POST /api/v1/validation/:id/launch — singular alias (matches other v1 validation routes)
 router.post("/v1/validation/:id/launch", validationLaunchHandler);
-
-// POST /api/v1/onboarding/select-blueprint — tier selection launch (also on onboarding router)
-router.post("/v1/onboarding/select-blueprint", selectBlueprintLaunchHandler);
-router.post("/onboarding/select-blueprint", selectBlueprintLaunchHandler);
 
 // GET /api/validation/:id/industry-intelligence
 router.get("/validation/:id/industry-intelligence", async (req, res) => {

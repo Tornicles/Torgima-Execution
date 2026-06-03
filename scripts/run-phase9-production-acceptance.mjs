@@ -251,7 +251,7 @@ async function main() {
   if (integrationOk) {
     const fx = await ensureFixture();
     const { processFeedbackSubmission, runAntiGamingChecks } = await importApi(
-      "engines/execution-loop/FeedbackProcessingEngine.js",
+      "engines/feedback/submitFeedbackPhase1.js",
     );
     const { dispatchPendingEvents } = await importApi("services/EventDispatcher.js");
     const { applyMutation, getCurrentStateVersion } = await importApi(
