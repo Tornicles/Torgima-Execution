@@ -19,6 +19,9 @@ BEGIN
   -- Remove upgrade archive rows (references users)
   DELETE FROM platform_upgrade_archive;
 
+  -- Remove signal snapshots that reference events (FK is not ON DELETE CASCADE)
+  DELETE FROM signal_snapshots;
+
   -- events.blueprint_id had no ON DELETE rule — blocked blueprint/user cascade deletes
   DELETE FROM events WHERE blueprint_id IS NOT NULL;
 
