@@ -17,7 +17,8 @@ export type CompetitorCard = {
   description: string;
   strengths: string[];
   weaknesses: string[];
-  marketShare: number;
+  /** Set only when market share is verified; omit bar when undefined. */
+  marketShare?: number;
 };
 
 export type DataConfidence = "verified" | "estimated" | "unavailable";
@@ -57,6 +58,7 @@ export type EnrichedCompetitorCard = {
   strengths: string[];
   weaknesses: string[];
   marketShare: string;
+  marketSharePct?: number | null;
   whereYourIdeaFits: string;
   archetype?: CompetitorArchetype;
   drawerExplanation?: string;
@@ -187,8 +189,47 @@ function parseJsonField<T>(value: unknown): T | undefined {
   return value as T;
 }
 
-function unavailableLabel(confidence?: string): string {
-  return confidence === "unavailable" ? "Historical data not publicly available" : "—";
+function displayField(value: unknown): string {
+  if (value == null) return "—";
+  const s = String(value).trim();
+  if (!s || /^not available$/i.test(s)) return "—";
+  return s;
+}
+
+function isFakeCompetitorName(name: string): boolean {
+  return /^market leader [a-c]$/i.test(name) || /^competitor \d+$/i.test(name);
+}
+
+function parseMarketSharePct(c: Record<string, unknown>): number | null {
+  const raw = c.market_share_pct ?? c.marketSharePct;
+  if (raw != null && Number.isFinite(Number(raw))) {
+    return Math.min(100, Math.max(0, Number(raw)));
+  }
+  const label = String(c.market_share_label ?? c.marketShare ?? c.market_share ?? "");
+  if (!label || /^not available$/i.test(label)) return null;
+  const m = label.match(/(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  return Math.min(100, Math.max(0, Number(m[1])));
+}
+
+export function economicPanelHasData(e: EconomicContextModel): boolean {
+  const empty = (s: string) =>
+    !s ||
+    s === "—" ||
+    /not available/i.test(s) ||
+    /economic data not available/i.test(s);
+  const fields = [
+    e.region,
+    e.economicZone,
+    e.marketMaturity,
+    e.digitalPenetration,
+    e.politicalClimate,
+    e.regulatoryEnvironment,
+    e.localMarketDynamics,
+    e.globalMarketAccess,
+    e.economicSummary,
+  ];
+  return fields.some((f) => !empty(f));
 }
 
 function parseExplanations(erector: Record<string, unknown>): ValidationExplanationsModel {
@@ -208,11 +249,10 @@ function parseEnrichedCompetitor(c: Record<string, unknown>): EnrichedCompetitor
   const firstOrigin = parseJsonField<EnrichedCompetitorCard["firstProductOrigin"]>(
     c.first_product_origin ?? c.firstProductOrigin,
   );
-  const revenueDisplay =
-    revenueLifecycle?.current_scale?.trim() ||
-    (revenueLifecycle?.data_confidence === "unavailable"
-      ? unavailableLabel("unavailable")
-      : String(c.estimatedRevenue ?? c.revenue ?? unavailableLabel("unavailable")));
+  const sharePct = parseMarketSharePct(c);
+  const revenueDisplay = displayField(
+    revenueLifecycle?.current_scale ?? c.estimatedRevenue ?? c.revenue,
+  );
 
   const archetypeRaw = String(
     c.competitor_archetype ?? c.archetype ?? "",
@@ -227,19 +267,14 @@ function parseEnrichedCompetitor(c: Record<string, unknown>): EnrichedCompetitor
     name: String(c.name ?? "Unknown"),
     tagline: String(c.tagline ?? (desc ? desc.split(".")[0] : "")),
     description: desc || String(c.tagline ?? ""),
-    founded: String(
-      firstOrigin?.time_to_first_revenue ??
-        c.founded ??
-        unavailableLabel(firstOrigin?.data_confidence),
-    ),
+    founded: displayField(firstOrigin?.time_to_first_revenue ?? c.founded),
     estimatedRevenue: revenueDisplay,
-    userBase: String(c.userBase ?? c.users ?? "—"),
-    geography: String(c.geography ?? c.location ?? "Global"),
+    userBase: displayField(c.userBase ?? c.users),
+    geography: displayField(c.geography ?? c.location) || "Global",
     strengths: stringList(c.strengths, 5),
     weaknesses: stringList(c.weaknesses, 5),
-    marketShare: String(
-      c.market_share_label ?? c.marketShare ?? c.market_share ?? "Not available",
-    ),
+    marketShare: sharePct != null ? `${Math.round(sharePct)}%` : "",
+    marketSharePct: sharePct,
     whereYourIdeaFits: String(
       c.whereYourIdeaFits ?? c.relevance_summary ?? c.positioning ?? "",
     ),
@@ -317,10 +352,7 @@ function competitorCard(c: Record<string, unknown>, index: number): CompetitorCa
     c.strategicGapForUser ?? c.strategic_gap_for_user ?? c.weaknesses,
     4,
   );
-  const shareRaw = Number(c.marketShare ?? c.market_share);
-  const marketShare = Number.isFinite(shareRaw)
-    ? Math.min(100, Math.max(5, shareRaw <= 1 ? shareRaw * 100 : shareRaw))
-    : [38, 27, 18][index] ?? 15;
+  const marketShare = parseMarketSharePct(c) ?? undefined;
 
   return {
     name,
@@ -335,7 +367,7 @@ function competitorCard(c: Record<string, unknown>, index: number): CompetitorCa
       weaknesses.length > 0
         ? weaknesses.map((w) => (w.length > 80 ? `${w.slice(0, 77)}…` : w))
         : ["Premium pricing", "Broad positioning"],
-    marketShare: Math.round(marketShare),
+    marketShare: marketShare != null ? Math.round(marketShare) : undefined,
   };
 }
 
@@ -351,87 +383,28 @@ function parseEnrichedOpportunity(o: Record<string, unknown>): EnrichedOpportuni
     title: String(o.title ?? o.name ?? "Opportunity"),
     impact: impactNorm(o.impact),
     summary: String(o.summary ?? o.description ?? ""),
-    timeWindow: String(o.timeWindow ?? o.time_window ?? "Not available"),
+    timeWindow: displayField(o.timeWindow ?? o.time_window),
     marketSignal: String(o.marketSignal ?? o.signal ?? ""),
   };
 }
 
-function defaultEconomic(country: string): EconomicContextModel {
-  return {
-    country: country || "Your market",
-    region: "Not available",
-    economicZone: "Not available",
-    gdpContext: "Not available",
-    marketMaturity: "Not available",
-    digitalPenetration: "Not available",
-    politicalClimate: "Not available",
-    regulatoryEnvironment: "Not available",
-    localMarketDynamics: "Economic data not available for this validation.",
-    globalMarketAccess: "Not available",
-    economicOpportunityRating: "Medium",
-    economicSummary: "Economic data not available for this validation.",
-  };
-}
-
 function parseEconomic(raw: Record<string, unknown> | undefined, country: string): EconomicContextModel {
-  if (!raw) return defaultEconomic(country);
-  const rating = String(raw.economicOpportunityRating ?? raw.economic_opportunity_rating ?? "Medium");
+  const r = raw ?? {};
+  const rating = String(raw?.economicOpportunityRating ?? raw?.economic_opportunity_rating ?? "Medium");
   return {
-    country: String(raw.country ?? country),
-    region: String(raw.region ?? "Not available"),
-    economicZone: String(raw.economicZone ?? raw.economic_zone ?? "Not available"),
-    gdpContext: String(raw.gdpContext ?? raw.gdp_context ?? "Not available"),
-    marketMaturity: String(raw.marketMaturity ?? raw.market_maturity ?? "Not available"),
-    digitalPenetration: String(raw.digitalPenetration ?? raw.digital_penetration ?? "Not available"),
-    politicalClimate: String(raw.politicalClimate ?? raw.political_climate ?? "Not available"),
-    regulatoryEnvironment: String(raw.regulatoryEnvironment ?? raw.regulatory_environment ?? "Not available"),
-    localMarketDynamics: String(raw.localMarketDynamics ?? raw.local_market_dynamics ?? "Not available"),
-    globalMarketAccess: String(raw.globalMarketAccess ?? raw.global_market_access ?? "Not available"),
+    country: displayField(r.country) || country || "Your market",
+    region: displayField(r.region),
+    economicZone: displayField(r.economicZone ?? r.economic_zone),
+    gdpContext: displayField(r.gdpContext ?? r.gdp_context),
+    marketMaturity: displayField(r.marketMaturity ?? r.market_maturity),
+    digitalPenetration: displayField(r.digitalPenetration ?? r.digital_penetration),
+    politicalClimate: displayField(r.politicalClimate ?? r.political_climate),
+    regulatoryEnvironment: displayField(r.regulatoryEnvironment ?? r.regulatory_environment),
+    localMarketDynamics: displayField(r.localMarketDynamics ?? r.local_market_dynamics),
+    globalMarketAccess: displayField(r.globalMarketAccess ?? r.global_market_access),
     economicOpportunityRating: impactNorm(rating) as EconomicContextModel["economicOpportunityRating"],
-    economicSummary: String(raw.economicSummary ?? raw.economic_summary ?? raw.briefingNarrative ?? "Not available"),
+    economicSummary: displayField(r.economicSummary ?? r.economic_summary ?? r.briefingNarrative),
   };
-}
-
-function defaultEnrichedCompetitors(): EnrichedCompetitorCard[] {
-  return defaultCompetitors().map((c) => ({
-    name: c.name,
-    tagline: c.description,
-    description: c.description,
-    founded: "Not available",
-    estimatedRevenue: "Not available",
-    userBase: "Not available",
-    geography: "Global",
-    strengths: c.strengths,
-    weaknesses: c.weaknesses,
-    marketShare: `${c.marketShare}%`,
-    whereYourIdeaFits: "Your idea can differentiate through a narrower wedge and faster proof for a specific segment.",
-  }));
-}
-
-function defaultCompetitors(): CompetitorCard[] {
-  return [
-    {
-      name: "Market Leader A",
-      description: "Established player in your space.",
-      strengths: ["Strong brand", "Large user base"],
-      weaknesses: ["Expensive", "Slow to innovate"],
-      marketShare: 34,
-    },
-    {
-      name: "Market Leader B",
-      description: "Fast-growing alternative.",
-      strengths: ["Modern UX", "Aggressive marketing"],
-      weaknesses: ["Limited support", "Narrow features"],
-      marketShare: 24,
-    },
-    {
-      name: "Market Leader C",
-      description: "Niche-focused competitor.",
-      strengths: ["Specialized offer", "Loyal community"],
-      weaknesses: ["Small scale", "Regional focus"],
-      marketShare: 16,
-    },
-  ];
 }
 
 function impactFromIndex(i: number): OpportunityRow["impact"] {
@@ -440,16 +413,28 @@ function impactFromIndex(i: number): OpportunityRow["impact"] {
   return "Low Impact";
 }
 
-function pathPotential(path: Record<string, unknown>, key: PathKey): PathCardModel {
+function pathSuccessLabel(path: Record<string, unknown>): string {
+  const sp = String(path.successPotential ?? path.success_potential ?? "").toLowerCase();
+  if (sp === "high") return "High success potential";
+  if (sp === "low") return "Low success potential";
+  if (sp === "medium" || sp === "moderate") return "Moderate success potential";
   const growth = path.growthPotential ?? path.growth_potential;
-  const traction = String(path.timeToTraction ?? path.time_to_traction ?? path.timeline ?? "—");
-  const risk = String(path.riskLevel ?? path.risk_level ?? "Medium");
-  const success =
-    Number(growth) >= 70 || risk.toLowerCase() === "low"
-      ? "High"
-      : Number(growth) >= 45
-        ? "Medium"
-        : "Moderate";
+  if (Number(growth) >= 70) return "High success potential";
+  if (Number(growth) >= 45) return "Moderate success potential";
+  return "Moderate success potential";
+}
+
+function pathPotential(path: Record<string, unknown>, key: PathKey): PathCardModel {
+  const tractionRaw = path.timeToTraction ?? path.time_to_traction ?? path.timeline;
+  const traction = displayField(tractionRaw);
+  const outcome = displayField(
+    path.estimatedOutcome ??
+      path.estimated_outcome ??
+      path.outcomeProjection ??
+      path.expectedOutcome ??
+      path.expected_outcome ??
+      path.summary,
+  );
 
   const titles: Record<PathKey, string> = {
     adjusted: "Adjusted Path",
@@ -461,12 +446,10 @@ function pathPotential(path: Record<string, unknown>, key: PathKey): PathCardMod
     key,
     title: titles[key],
     badge: key === "adjusted" ? "Recommended" : undefined,
-    successPotential: `${success} success potential`,
-    growthPotential: growth != null ? `${growth}% growth` : "Strong growth potential",
+    successPotential: pathSuccessLabel(path),
+    growthPotential: outcome !== "—" ? outcome : displayField(path.growthPotential ?? path.growth_potential),
     timeToTraction: traction,
-    estimatedOutcome: String(
-      path.outcomeProjection ?? path.expectedOutcome ?? path.expected_outcome ?? path.summary ?? "—",
-    ),
+    estimatedOutcome: outcome,
   };
 }
 
@@ -570,13 +553,11 @@ export function buildResultsDashboardModel(
     5,
   );
 
-  const erectorCompetitors = Array.isArray(erector.competitors)
-    ? (erector.competitors as Record<string, unknown>[])
-    : [];
+  const erectorCompetitors = (
+    Array.isArray(erector.competitors) ? (erector.competitors as Record<string, unknown>[]) : []
+  ).filter((c) => !isFakeCompetitorName(String(c.name ?? "")));
   const enrichedCompetitors =
-    erectorCompetitors.length > 0
-      ? erectorCompetitors.slice(0, 3).map(parseEnrichedCompetitor)
-      : defaultEnrichedCompetitors();
+    erectorCompetitors.length > 0 ? erectorCompetitors.slice(0, 3).map(parseEnrichedCompetitor) : [];
 
   const erectorOpportunities = Array.isArray(erector.opportunities)
     ? (erector.opportunities as Record<string, unknown>[])
@@ -593,8 +574,22 @@ export function buildResultsDashboardModel(
 
   const competitors =
     vm.competitors.length > 0
-      ? vm.competitors.slice(0, 3).map((c, i) => competitorCard(c, i))
-      : defaultCompetitors();
+      ? vm.competitors
+          .filter((c) => !isFakeCompetitorName(String((c as Record<string, unknown>).name ?? "")))
+          .slice(0, 3)
+          .map((c, i) => competitorCard(c as Record<string, unknown>, i))
+      : enrichedCompetitors.map((c, i) =>
+          competitorCard(
+            {
+              name: c.name,
+              strengths: c.strengths,
+              weaknesses: c.weaknesses,
+              market_share_pct: c.marketSharePct,
+              description: c.description,
+            },
+            i,
+          ),
+        );
 
   const timingGrowth = vm.timingScore >= 7 ? "+27% YoY" : vm.timingScore >= 4 ? "+14% YoY" : "+6% YoY";
   const trendPosition =
@@ -669,7 +664,8 @@ export function buildResultsDashboardModel(
     contextLabel: `${vm.locationCountry} · ${vm.commitmentLevel} commitment`,
     selectedDirectionLabel: directionLabel(selectedPath),
     realityLabel: realityLabel(vm.ringPct),
-    realityDescription: realityDescription(vm.ringPct),
+    realityDescription:
+      explanations.reality_score?.trim() || realityDescription(vm.ringPct),
     verdictUpper: verdictUpper(vm.verdict),
     verdictDescription: verdictDescription(vm.verdict),
     confidenceBadge: confidenceBadge(vm.verdict, vm.ringPct),
@@ -680,11 +676,6 @@ export function buildResultsDashboardModel(
       { label: "Execution Fit", ...scoreStatus(executionScore) },
       { label: "Feasibility", ...scoreStatus(feasibilityScore) },
       { label: "Timing", value: vm.timingScore >= 6 ? "Favorable" : "Moderate", tone: vm.timingScore >= 6 ? "green" : "orange" },
-      {
-        label: "Execution Readiness",
-        value: vm.ringPct >= 70 ? "Good" : vm.ringPct >= 50 ? "Moderate" : "Weak",
-        tone: vm.ringPct >= 70 ? "green" : vm.ringPct >= 50 ? "orange" : "red",
-      },
     ],
     trendPosition,
     growthRate: timingGrowth,

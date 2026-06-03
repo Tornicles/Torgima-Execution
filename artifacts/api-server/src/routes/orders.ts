@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod/v4";
 import { OrderService } from "../services/OrderService.js";
 import { processFeedback } from "../engines/feedback/FeedbackProcessingEngine.js";
+import { assertFeedbackPayloadWithinLimit } from "../lib/feedback-payload-limit.js";
 import { requireAuth } from "../lib/auth.js";
 import { success, failure } from "../lib/utils.js";
 import {
@@ -9,6 +10,9 @@ import {
   requireExplicitIdempotencyKey,
 } from "../lib/route-helpers.js";
 import { dispatchPendingEvents } from "../services/EventDispatcher.js";
+import { buildTaskExecutionView } from "../lib/taskExecutionView.js";
+import { db, blueprints } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -166,9 +170,26 @@ router.get("/orders/:id", async (req, res) => {
         ? { ...commandContextBase, ...storedCtx }
         : commandContextBase;
 
+    const [bpRow] = await db
+      .select({ state_version: blueprints.state_version })
+      .from(blueprints)
+      .where(eq(blueprints.id, order.blueprint_id))
+      .limit(1);
+    const stateVersion = bpRow?.state_version ?? 0;
+    const taskExecution = buildTaskExecutionView({
+      order,
+      stateVersion,
+      commandContextProof:
+        typeof commandContext === "object" && commandContext && "proof" in commandContext
+          ? String((commandContext as { proof?: string }).proof ?? "")
+          : null,
+    });
+
     success(res, {
       id: order.id,
       blueprintId: order.blueprint_id,
+      stateVersion,
+      taskExecution,
       title: order.title,
       instruction: order.instruction,
       expectedOutput: order.expected_output,
@@ -217,6 +238,7 @@ router.post("/orders/:id/feedback", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
+    assertFeedbackPayloadWithinLimit(req);
     const parsed = feedbackBodySchema.safeParse(req.body);
     if (!parsed.success) {
       const fieldErrors = Object.fromEntries(
@@ -254,18 +276,23 @@ router.post("/orders/:id/feedback", async (req, res) => {
       await dispatchPendingEvents().catch(() => null);
     }
 
-    success(res, {
-      feedbackId: result.feedbackId,
-      requiresInterrogation: result.requiresInterrogation,
-      interrogationQuestion: result.interrogationQuestion ?? null,
-      nextStep: result.requiresInterrogation ? "answer_question" : "loop_running",
-      message: result.requiresInterrogation
-        ? "Please answer the question to continue."
-        : "Feedback received. Next task is being prepared.",
-      verdictStatus: result.verdictStatus,
-      weightedScore: result.weightedScore,
-      confidence: result.confidence,
-    });
+    success(
+      res,
+      {
+        feedbackId: result.feedbackId,
+        requiresInterrogation: result.requiresInterrogation,
+        interrogationQuestion: result.interrogationQuestion ?? null,
+        nextStep: result.requiresInterrogation ? "answer_question" : "loop_running",
+        message: result.requiresInterrogation
+          ? "Please answer the question to continue."
+          : "Feedback received. Next task is being prepared.",
+        verdictStatus: result.verdictStatus,
+        weightedScore: result.weightedScore,
+        confidence: result.confidence,
+      },
+      200,
+      { stateChanged: true },
+    );
   } catch (e) {
     handleRouteError(req, res, e);
   }

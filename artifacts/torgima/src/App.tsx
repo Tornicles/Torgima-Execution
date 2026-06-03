@@ -10,8 +10,9 @@ import { OnboardingLayout } from "@/components/OnboardingLayout";
 import { TierFeatureGate } from "@/components/sequence/TierFeatureGate";
 import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
-import { getAuthSession } from "@/lib/torgima-api";
 import { UpgradeGate } from "@/components/UpgradeGate";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -27,6 +28,7 @@ import UnsubscribePage from "@/pages/unsubscribe";
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const OnboardingGoalPage = lazy(() => import("@/pages/onboarding/index"));
 const OnboardingContextPage = lazy(() => import("@/pages/onboarding/context"));
+const OnboardingStructurePage = lazy(() => import("@/pages/onboarding/structure"));
 const OnboardingReviewPage = lazy(() => import("@/pages/onboarding/review"));
 const OnboardingValidatingPage = lazy(() => import("@/pages/onboarding/validating"));
 const OnboardingResultsRedirectPage = lazy(() => import("@/pages/onboarding/results"));
@@ -87,6 +89,7 @@ const TorgimaBhudhiPage = lazy(() => import("@/pages/torgima-bhudhi"));
 const PublicProfilePage = lazy(() => import("@/pages/public-profile"));
 const PrincipleEntryPage = lazy(() => import("@/pages/principle-entry"));
 const ProfileSettingsPage = lazy(() => import("@/pages/profile-settings"));
+const AdminApp = lazy(() => import("@/admin/AdminApp"));
 const ProfileWidgetPage = lazy(() => import("@/pages/profile-widget"));
 const ProfileDayPage = lazy(() => import("@/pages/profile-day"));
 
@@ -103,24 +106,9 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [checking, setChecking] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [, setLocation] = useLocation();
+  const { loaded, authenticated } = useSessionGuard();
 
-  useEffect(() => {
-    void getAuthSession()
-      .then((data) => {
-        if ((data as { authenticated?: boolean })?.authenticated) {
-          setAuthenticated(true);
-        } else {
-          setLocation("/login");
-        }
-      })
-      .catch(() => setLocation("/login"))
-      .finally(() => setChecking(false));
-  }, [setLocation]);
-
-  if (checking) {
+  if (!loaded) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -132,7 +120,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!authenticated) return null;
-  return <>{children}</>;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 
 type RoutePage = ComponentType | LazyExoticComponent<ComponentType>;
@@ -175,6 +163,7 @@ function withTierFeatureGate(required: "growth" | "ultimate", Page: RoutePage): 
 
 const ProtectedOnboardingGoal = protect(OnboardingGoalPage);
 const ProtectedOnboardingContext = protect(OnboardingContextPage);
+const ProtectedOnboardingStructure = protect(OnboardingStructurePage);
 const ProtectedOnboardingReview = protect(OnboardingReviewPage);
 const ProtectedOnboardingValidating = protect(OnboardingValidatingPage);
 const ProtectedOnboardingResults = protect(OnboardingResultsRedirectPage);
@@ -243,6 +232,7 @@ function withOnboardingLayout(Page: ComponentType) {
 /** Pre-launch flows — no app sidebar. */
 const OnboardingRoute = withOnboardingLayout(ProtectedOnboardingGoal);
 const OnboardingContextRoute = withOnboardingLayout(ProtectedOnboardingContext);
+const OnboardingStructureRoute = withOnboardingLayout(ProtectedOnboardingStructure);
 const OnboardingReviewRoute = withOnboardingLayout(ProtectedOnboardingReview);
 const OnboardingValidatingRoute = withOnboardingLayout(ProtectedOnboardingValidating);
 const OnboardingResultsRoute = withOnboardingLayout(ProtectedOnboardingResults);
@@ -306,6 +296,17 @@ function AppRoutes() {
   return (
     <Suspense fallback={<RouteLoading />}>
       <Switch>
+        <Route path="/admin/login" component={AdminApp} />
+        <Route path="/admin/dashboard" component={AdminApp} />
+        <Route path="/admin/users/:userId" component={AdminApp} />
+        <Route path="/admin/users" component={AdminApp} />
+        <Route path="/admin/health" component={AdminApp} />
+        <Route path="/admin/analytics" component={AdminApp} />
+        <Route path="/admin/bhudhi" component={AdminApp} />
+        <Route path="/admin/dead-letter" component={AdminApp} />
+        <Route path="/admin/audit" component={AdminApp} />
+        <Route path="/admin" component={AdminApp} />
+
         <Route path="/" component={LandingPage} />
         <Route path="/how-it-works" component={HowItWorksPage} />
         <Route path="/pricing" component={PricingPage} />
@@ -322,6 +323,7 @@ function AppRoutes() {
         <Route path="/validation/:id/blueprint" component={ValidationBlueprintRoute} />
         <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/onboarding/context" component={OnboardingContextRoute} />
+        <Route path="/onboarding/structure" component={OnboardingStructureRoute} />
         <Route path="/onboarding/review" component={OnboardingReviewRoute} />
         <Route path="/onboarding/validating" component={OnboardingValidatingRoute} />
         <Route path="/onboarding/results" component={OnboardingResultsRoute} />

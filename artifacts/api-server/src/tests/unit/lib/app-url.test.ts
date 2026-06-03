@@ -10,16 +10,23 @@ describe("resolveAppUrl", () => {
     for (const k of keys) delete process.env[k];
   });
 
-  it("returns hardwired Vercel URL in production", () => {
+  it("prefers APP_URL in production when set (DOC 30)", () => {
     process.env.NODE_ENV = "production";
+    process.env.APP_URL = "https://my-app.vercel.app/";
+    expect(resolveAppUrl()).toBe("https://my-app.vercel.app");
+  });
+
+  it("falls back to hardwired Vercel URL in production without APP_URL", () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.APP_URL;
     expect(resolveAppUrl()).toBe("https://torgima-execution.vercel.app");
   });
 
-  it("prefers FRONTEND_URL over APP_URL in development", () => {
+  it("prefers APP_URL when set in development (DOC 30)", () => {
     process.env.NODE_ENV = "development";
     process.env.FRONTEND_URL = "https://torgima-execution.vercel.app";
     process.env.APP_URL = "https://torgima.com";
-    expect(resolveAppUrl()).toBe("https://torgima-execution.vercel.app");
+    expect(resolveAppUrl()).toBe("https://torgima.com");
   });
 
   it("uses first comma-separated FRONTEND_URL entry in development", () => {

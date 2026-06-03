@@ -217,7 +217,7 @@ export default function ValidationResultsPage() {
     if (!validation?.blueprintId) return;
     saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, path));
     try {
-      await selectBlueprintPath(validation.blueprintId, path);
+      await selectBlueprintPath(validation.blueprintId, path, validationId);
     } catch (err) {
       console.error("[PathSelect]", err);
     }
@@ -226,7 +226,7 @@ export default function ValidationResultsPage() {
   function handleProceedToTierSelection() {
     if (!validation?.blueprintId || timeframeMissing) return;
     saveValidationLaunchContext(buildLaunchContextFromPayload(validationId, validation, selectedPath));
-    void selectBlueprintPath(validation.blueprintId, selectedPath).catch(() => null);
+    void selectBlueprintPath(validation.blueprintId, selectedPath, validationId).catch(() => null);
     setLocation(`/onboarding/select-blueprint?validationId=${validationId}`);
   }
 

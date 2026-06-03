@@ -29,6 +29,8 @@ export interface ErectorValidationInput {
   domainHint?: string | null;
   tier?: BlueprintLevel;
   mode?: string;
+  /** When true, Bhudhi panel enrichment runs in ValidationResearchEngine instead. */
+  skipBhudhiPanelEnrichment?: boolean;
 }
 
 export interface RiskFactor {

@@ -19,6 +19,8 @@ export type ErrorCode =
   | "AI_CONTRACT_ERROR"
   | "FEATURE_DISABLED"
   | "BLUEPRINT_SELECTION_REQUIRED"
+  | "ACTIVATION_FAILED"
+  | "PAYLOAD_TOO_LARGE"
   | "SCHEMA_OUT_OF_DATE"
   | "CONTRACT_NOT_FOUND"
   | "VALIDATION_PAYLOAD_CORRUPT"
@@ -55,13 +57,15 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
       return 404;
     case "VALIDATION_ERROR":
     case "VALIDATION_PAYLOAD_CORRUPT":
+    case "ACTIVATION_FAILED":
+    case "BLUEPRINT_SELECTION_REQUIRED":
       return 422;
+    case "PAYLOAD_TOO_LARGE":
+      return 413;
     case "STALE_STATE":
       return 409;
     case "FEATURE_DISABLED":
       return 403;
-    case "BLUEPRINT_SELECTION_REQUIRED":
-      return 422;
     case "RATE_LIMITED":
       return 429;
     case "SCHEMA_OUT_OF_DATE":

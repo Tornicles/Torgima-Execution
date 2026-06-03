@@ -3,6 +3,7 @@ import { type Request, type Response } from "express";
 import { db, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { TorgimaError, torgimaErrorToStatus, isTorgimaError } from "./errors.js";
+import { classifyFailureCode, type FailureClass } from "./failure-taxonomy.js";
 import { logger } from "./logger.js";
 
 export function generateId(): string {
@@ -15,21 +16,30 @@ export interface ApiResponse<T = unknown> {
   error?: {
     code: string;
     message: string;
+    class?: FailureClass;
     detail?: string;
     fieldErrors?: Record<string, string[]>;
     retryable?: boolean;
+    sessionExpired?: boolean;
   };
   meta?: {
     requestId?: string;
     timestamp?: string;
   };
+  stateChanged?: boolean;
 }
 
-export function success<T>(res: Response, data: T, status = 200): void {
+export function success<T>(
+  res: Response,
+  data: T,
+  status = 200,
+  opts?: { stateChanged?: boolean },
+): void {
   const body: ApiResponse<T> = {
     ok: true,
     data,
     meta: { timestamp: new Date().toISOString() },
+    ...(opts?.stateChanged ? { stateChanged: true } : {}),
   };
   res.status(status).json(body);
 }
@@ -39,11 +49,21 @@ export function failure(
   code: string,
   message: string,
   status = 500,
-  opts?: { fieldErrors?: Record<string, string[]>; retryable?: boolean; detail?: string },
+  opts?: {
+    fieldErrors?: Record<string, string[]>;
+    retryable?: boolean;
+    detail?: string;
+    sessionExpired?: boolean;
+  },
 ): void {
   const body: ApiResponse = {
     ok: false,
-    error: { code, message, ...opts },
+    error: {
+      code,
+      message,
+      class: classifyFailureCode(code),
+      ...opts,
+    },
     meta: { timestamp: new Date().toISOString() },
   };
   res.status(status).json(body);
@@ -150,9 +170,15 @@ function mapInfrastructureFailure(err: unknown): {
 export function handleError(req: Request, res: Response, err: unknown): void {
   if (isTorgimaError(err)) {
     const status = torgimaErrorToStatus(err.code);
+    const sessionExpired =
+      err.code === "UNAUTHENTICATED" && /expired|inactivity/i.test(err.message);
+    if (sessionExpired && req.method !== "GET") {
+      req.log.info({ path: req.path }, "[Auth] Session expired on mutation");
+    }
     failure(res, err.code, err.message, status, {
       fieldErrors: err.fieldErrors,
       retryable: err.retryable,
+      sessionExpired: sessionExpired || undefined,
     });
     return;
   }

@@ -3,6 +3,7 @@
  */
 import { apiFetch } from "@/config/api";
 import {
+  ApiError,
   customFetch,
   getOrder,
   getExecutionActiveOrder,
@@ -89,8 +90,20 @@ export async function finalizeValidationBlueprint(
 export async function selectBlueprintPath(
   blueprintId: string,
   selectedPath: "current" | "adjusted" | "alternative",
+  validationId?: string,
 ): Promise<{ blueprintId: string; selectedPath: string }> {
-  return apiPatch(`/api/blueprints/${blueprintId}/select-path`, { selectedPath });
+  try {
+    return await apiPatch(`/api/blueprints/${blueprintId}/select-path`, { selectedPath });
+  } catch (err) {
+    if (validationId && err instanceof ApiError && err.status === 404) {
+      return apiPost(`/api/v1/validation/${validationId}/select-path`, {
+        selectedPath,
+        path: selectedPath,
+        selected_path: selectedPath,
+      });
+    }
+    throw err;
+  }
 }
 
 export type SelectBlueprintLaunchResult = {
@@ -141,19 +154,100 @@ export async function fetchTierPreviews(blueprintId: string): Promise<TierPrevie
   return res.previews ?? [];
 }
 
-/** POST /api/blueprints/select-tier — tier selection, chain generation, and launch. */
+function isRouteNotFound(err: unknown): boolean {
+  if (err instanceof ApiError && err.status === 404) return true;
+  if (err instanceof Error && /cannot (post|patch|get)\s+\/api\//i.test(err.message)) return true;
+  return false;
+}
+
+/** DOC 32 — persist tier/mode before launch (no activation). */
+export async function configureOnboardingTier(input: {
+  blueprintId: string;
+  tier: "starter" | "growth" | "ultimate";
+  mode?: "individual" | "team";
+}): Promise<void> {
+  const body = {
+    blueprintId: input.blueprintId,
+    tier: input.tier,
+    selectedTier: input.tier,
+    mode: input.mode ?? "individual",
+  };
+  const attempts = [
+    () => apiPost("/api/onboarding/configure-tier", body),
+    () =>
+      apiPost(`/api/blueprints/${input.blueprintId}/configure-selection`, {
+        tier: input.tier,
+        mode: body.mode,
+      }),
+  ];
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      await attempt();
+      return;
+    } catch (err) {
+      lastError = err;
+      if (!isRouteNotFound(err)) throw err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Could not save tier selection");
+}
+
+/** POST launch — tries select-tier, onboarding select-blueprint, then v1 validation launch. */
 export async function selectTierAndLaunch(input: {
   blueprintId: string;
   validationId: string;
   selectedTier: "starter" | "growth" | "ultimate";
   selectedPath?: "current" | "adjusted" | "alternative";
 }): Promise<SelectTierLaunchResult> {
-  return apiPost<SelectTierLaunchResult>("/api/blueprints/select-tier", {
+  const selectedPath = input.selectedPath ?? "adjusted";
+  const tierBody = {
     blueprintId: input.blueprintId,
     validationId: input.validationId,
     selectedTier: input.selectedTier,
-    selectedPath: input.selectedPath ?? "adjusted",
-  });
+    selectedPath,
+  };
+  const onboardingBody = {
+    validationId: input.validationId,
+    blueprintId: input.blueprintId,
+    selectedTier: input.selectedTier,
+    blueprintTier: input.selectedTier,
+    selectedPath,
+  };
+
+  const attempts: Array<() => Promise<SelectTierLaunchResult>> = [
+    () => apiPost<SelectTierLaunchResult>("/api/blueprints/select-tier", tierBody),
+    () => apiPost<SelectTierLaunchResult>("/api/onboarding/select-blueprint", onboardingBody),
+    () => apiPost<SelectTierLaunchResult>("/api/v1/onboarding/select-blueprint", onboardingBody),
+    () => apiPost<SelectTierLaunchResult>("/api/onboarding/select-tier", onboardingBody),
+    async () => {
+      const launched = await launchValidationBlueprint(input.validationId, {
+        blueprintId: input.blueprintId,
+        path: selectedPath,
+        blueprintTier: input.selectedTier,
+        tier: input.selectedTier,
+      });
+      return {
+        blueprintId: launched.blueprintId,
+        tier: input.selectedTier,
+        redirectTo: launched.redirectTo ?? launched.redirect_to ?? "/dashboard",
+        launched: launched.launched ?? true,
+      };
+    },
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (err) {
+      lastError = err;
+      if (!isRouteNotFound(err)) throw err;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Blueprint launch failed — API routes unavailable. Redeploy the API server.");
 }
 
 /** GET /api/v1/validations/:id/report — PDF validation report (binary). */

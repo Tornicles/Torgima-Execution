@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { ContextTimeframeInputScreen } from "@/components/pre-validation/ContextTimeframeInputScreen";
+import { useOnboardingActiveBlueprintGuard } from "@/hooks/useOnboardingActiveBlueprintGuard";
 import { useOnboardingRouteGuard } from "@/hooks/useOnboardingRouteGuard";
 import { useOnboardingFlowStore } from "@/store/onboardingFlowStore";
 
 export default function OnboardingContextPage() {
   const [, setLocation] = useLocation();
+  useOnboardingActiveBlueprintGuard();
   useOnboardingRouteGuard(2);
   const draft = useOnboardingFlowStore((s) => s.draft);
   const patchDraft = useOnboardingFlowStore((s) => s.patchDraft);
@@ -20,7 +22,7 @@ export default function OnboardingContextPage() {
       draft={draft}
       onDraftChange={patchDraft}
       onBack={() => setLocation("/onboarding")}
-      onContinue={() => setLocation("/onboarding/review")}
+      onContinue={() => setLocation("/onboarding/structure")}
     />
   );
 }

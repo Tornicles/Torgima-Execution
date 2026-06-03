@@ -244,8 +244,6 @@ export function buildOnboardingValidationResultsPayload(row: ValidationRow) {
 
       executionFit: intel.executionFit ?? "Moderate",
 
-      executionReadiness: intel.executionReadiness ?? "Moderate",
-
     },
 
     trendPosition: intel.trendPosition ?? "Stable Growth",

@@ -11,6 +11,7 @@
     "backfill:25-sequences": "tsx ./backfill-25-sequence-system.ts",
     "test:system:e2e": "tsx ./test-system-e2e.ts",
     "test:phase9": "tsx ./run-phase9-e2e.ts",
+    "test:doc36:reset": "tsx ./doc36-reset-test-user.ts",
     "heal:db": "tsx ./run-supabase-healing.ts",
     "seed:test-fixtures": "tsx ../seedTestFixtures.ts",
     "wait:url": "tsx ./src/wait-for-url.ts",

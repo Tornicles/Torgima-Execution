@@ -28,6 +28,7 @@ import {
   type StatusTone,
 } from "./validation-results-dashboard-model";
 import { LANGUAGE, getProjectDisplayName, getVerdictDisplay } from "@/lib/language";
+import { economicPanelHasData } from "./validation-results-dashboard-model";
 import { validateProjectNameInput } from "@/lib/project-name";
 import {
   CompetitorsSection,
@@ -528,7 +529,9 @@ export function ValidationResultsDashboard({
           </section>
         </div>
 
-        <EconomicEnvironmentSection economic={model.economicContext} />
+        {economicPanelHasData(model.economicContext) ? (
+          <EconomicEnvironmentSection economic={model.economicContext} />
+        ) : null}
 
         {/* Row 2: Competitors, Pros/Cons, Opportunities */}
         <div className="mt-8 grid gap-6 lg:grid-cols-12">

@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { PreValidationReviewStep } from "@/components/pre-validation/PreValidationReviewStep";
+import { useOnboardingActiveBlueprintGuard } from "@/hooks/useOnboardingActiveBlueprintGuard";
 import { useOnboardingRouteGuard } from "@/hooks/useOnboardingRouteGuard";
 import { postOnboardingGoal, runOnboardingValidation } from "@/lib/onboarding-api";
 import { useOnboardingFlowStore } from "@/store/onboardingFlowStore";
 
 export default function OnboardingReviewPage() {
   const [, setLocation] = useLocation();
+  useOnboardingActiveBlueprintGuard();
   useOnboardingRouteGuard(3);
   const draft = useOnboardingFlowStore((s) => s.draft);
+  const structuredGoal = useOnboardingFlowStore((s) => s.structuredGoal);
   const submitError = useOnboardingFlowStore((s) => s.submitError);
   const patchDraft = useOnboardingFlowStore((s) => s.patchDraft);
   const setBlueprintId = useOnboardingFlowStore((s) => s.setBlueprintId);
@@ -22,6 +25,12 @@ export default function OnboardingReviewPage() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!structuredGoal) {
+      setLocation("/onboarding/structure");
+    }
+  }, [structuredGoal, setLocation]);
 
   const startValidation = useCallback(async () => {
     clearSubmitError();
@@ -74,7 +83,8 @@ export default function OnboardingReviewPage() {
         onContinue={() => void startValidation()}
         onEditStep={(step) => {
           if (step === 1) setLocation("/onboarding");
-          else setLocation("/onboarding/context");
+          else if (step === 2) setLocation("/onboarding/context");
+          else setLocation("/onboarding/structure");
         }}
         continueDisabled={submitting}
         continueLabel={submitting ? "Starting validation…" : undefined}

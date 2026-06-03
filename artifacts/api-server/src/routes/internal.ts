@@ -584,4 +584,18 @@ router.post("/internal/inactivity/scan", async (req, res) => {
   }
 });
 
+// POST /api/internal/auth/validate — DOC 30 internal auth probe (workers only)
+router.post("/internal/auth/validate", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "INTERNAL_SERVICE");
+    success(res, {
+      valid: true,
+      isInternal: auth.isInternal,
+      checkedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 export default router;

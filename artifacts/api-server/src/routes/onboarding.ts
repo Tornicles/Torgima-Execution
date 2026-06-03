@@ -44,11 +44,21 @@ router.get("/onboarding/status", async (req, res) => {
     const onboardingComplete = userRows[0]?.onboarding_complete ?? false;
 
     const activeBlueprint = await BlueprintService.findActive(auth.userId);
+    const hasActiveBlueprint = Boolean(activeBlueprint);
+
+    let onboardingStep: string = "welcome";
+    if (hasActiveBlueprint) onboardingStep = "active";
+    else if (onboardingComplete) onboardingStep = "done";
+    else onboardingStep = "goal";
 
     success(res, {
-      completed:   onboardingComplete,
-      step:        onboardingComplete ? "done" : "goal",
+      completed: onboardingComplete,
+      onboardingComplete,
+      hasActiveBlueprint,
+      step: onboardingStep,
+      onboardingStep,
       blueprintId: activeBlueprint?.id ?? null,
+      activeBlueprintId: activeBlueprint?.id ?? null,
     });
   } catch (err) {
     handleError(req, res, err);
@@ -251,5 +261,52 @@ export const selectBlueprintLaunchHandler = async (
 
 router.post("/v1/onboarding/select-blueprint", selectBlueprintLaunchHandler);
 router.post("/onboarding/select-blueprint", selectBlueprintLaunchHandler);
+
+// Alias for tier launch UI (same payload as select-tier on blueprints router)
+router.post("/v1/onboarding/select-tier", selectBlueprintLaunchHandler);
+router.post("/onboarding/select-tier", selectBlueprintLaunchHandler);
+
+const configureTierBodySchema = z.object({
+  blueprintId: z.string().uuid(),
+  tier: tierSchema,
+  selectedTier: tierSchema.optional(),
+  mode: modeSchema.optional().default("individual"),
+});
+
+/** DOC 32 — persist tier/mode before activate (no launch). */
+async function configureTierHandler(
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const parsed = configureTierBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "blueprintId and tier are required", 400);
+      return;
+    }
+    const tier = parsed.data.selectedTier ?? parsed.data.tier;
+    const mode = parsed.data.mode ?? "individual";
+    const result = await BlueprintService.configureSelection(
+      parsed.data.blueprintId,
+      auth.userId,
+      { tier, mode },
+    );
+    success(res, {
+      blueprintId: parsed.data.blueprintId,
+      tier,
+      mode,
+      configured: true,
+      selection: result,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+}
+
+router.post("/onboarding/configure-tier", configureTierHandler);
+router.post("/v1/onboarding/configure-tier", configureTierHandler);
+/** DOC 32 alias — tier selection only (use activate/launch separately). */
+router.post("/onboarding/select-blueprint-tier", configureTierHandler);
 
 export default router;

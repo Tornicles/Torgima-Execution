@@ -5,6 +5,10 @@ import {
   savePreValidationDraft,
   type PreValidationDraft,
 } from "@/lib/pre-validation-draft";
+import type {
+  OnboardingWizardStatus,
+  StructuredGoalDraft,
+} from "@/lib/onboarding-doc32";
 
 const IDS_KEY = "torgima_onboarding_flow_ids_v1";
 
@@ -35,9 +39,22 @@ type OnboardingFlowState = {
   blueprintId: string | null;
   validationId: string | null;
   submitError: string | null;
+  /** DOC 32 — 0 = welcome, 1–8 mapped in flow pages */
+  welcomeSeen: boolean;
+  wizardStatus: OnboardingWizardStatus;
+  structuredGoal: StructuredGoalDraft | null;
+  clarificationIndex: number;
+  clarificationAnswers: Record<string, string>;
+  tierConfigured: boolean;
   hydrate: () => void;
   patchDraft: (patch: Partial<PreValidationDraft>) => void;
   saveDraftToStorage: () => void;
+  setWelcomeSeen: (seen: boolean) => void;
+  setWizardStatus: (status: OnboardingWizardStatus) => void;
+  setStructuredGoal: (goal: StructuredGoalDraft | null) => void;
+  setClarificationIndex: (index: number) => void;
+  setClarificationAnswer: (field: string, value: string) => void;
+  setTierConfigured: (configured: boolean) => void;
   setBlueprintId: (id: string) => void;
   setValidationId: (id: string) => void;
   setSubmitError: (error: string | null) => void;
@@ -49,9 +66,45 @@ export const useOnboardingFlowStore = create<OnboardingFlowState>((set, get) => 
   draft: loadPreValidationDraft(),
   ...loadIds(),
   submitError: null,
+  welcomeSeen: false,
+  wizardStatus: "EMPTY",
+  structuredGoal: null,
+  clarificationIndex: 0,
+  clarificationAnswers: {},
+  tierConfigured: false,
 
   hydrate() {
-    set({ draft: loadPreValidationDraft(), ...loadIds(), submitError: null });
+    set({
+      draft: loadPreValidationDraft(),
+      ...loadIds(),
+      submitError: null,
+    });
+  },
+
+  setWelcomeSeen(welcomeSeen) {
+    set({ welcomeSeen });
+  },
+
+  setWizardStatus(wizardStatus) {
+    set({ wizardStatus });
+  },
+
+  setStructuredGoal(structuredGoal) {
+    set({ structuredGoal });
+  },
+
+  setClarificationIndex(clarificationIndex) {
+    set({ clarificationIndex });
+  },
+
+  setClarificationAnswer(field, value) {
+    set((s) => ({
+      clarificationAnswers: { ...s.clarificationAnswers, [field]: value },
+    }));
+  },
+
+  setTierConfigured(tierConfigured) {
+    set({ tierConfigured });
   },
 
   patchDraft(patch) {
@@ -93,6 +146,17 @@ export const useOnboardingFlowStore = create<OnboardingFlowState>((set, get) => 
     const draft = { ...DEFAULT_PRE_VALIDATION_DRAFT };
     savePreValidationDraft(draft);
     saveIds({ blueprintId: null, validationId: null });
-    set({ draft, blueprintId: null, validationId: null, submitError: null });
+    set({
+      draft,
+      blueprintId: null,
+      validationId: null,
+      submitError: null,
+      welcomeSeen: false,
+      wizardStatus: "EMPTY",
+      structuredGoal: null,
+      clarificationIndex: 0,
+      clarificationAnswers: {},
+      tierConfigured: false,
+    });
   },
 }));

@@ -1,16 +1,19 @@
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { users, sessions, blueprints } from "@workspace/db";
+import { users, sessions, blueprints, magicLinkTokens } from "@workspace/db";
 import { eq, and, gt, like, not } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { sendEmail, EMAIL_FROM_HEADER } from "../lib/resend.js";
 import { resolveAppUrl } from "../lib/app-url.js";
+import { logAuthSecurityEvent } from "../lib/auth-security-log.js";
 import type { AuthContext, SafeUser } from "../types/auth.js";
 
 const SESSION_MAX_HOURS = 24 * 30;
+const SESSION_IDLE_DAYS = 7;
+const SESSION_IDLE_MS = SESSION_IDLE_DAYS * 24 * 60 * 60 * 1000;
 const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
-const MAGIC_LINK_EXPIRY_MINUTES = 10;
+const MAGIC_LINK_EXPIRY_MINUTES = 15;
 const MAGIC_PREFIX = "magic:";
 
 export type SendMagicLinkResult = {
@@ -40,16 +43,18 @@ export async function sendMagicLink(email: string): Promise<SendMagicLinkResult>
     userId = newUser.id;
   }
 
-  // Delete only pending magic-link rows (prefix `magic:`), not long-lived user sessions
+  // Clear prior magic links for this user (DOC 30 magic_link_tokens table)
+  await db.delete(magicLinkTokens).where(eq(magicLinkTokens.user_id, userId)).catch(() => null);
   await db
     .delete(sessions)
     .where(and(eq(sessions.user_id, userId), like(sessions.token_hash, `${MAGIC_PREFIX}%`)))
     .catch(() => null);
 
-  // Store magic link as a short-lived session row
-  await db.insert(sessions).values({
+  await db.insert(magicLinkTokens).values({
     user_id: userId,
-    token_hash: MAGIC_PREFIX + tokenHash,
+    email: normalizedEmail,
+    token: tokenHash,
+    used: false,
     expires_at: expiresAt,
   });
 
@@ -107,42 +112,77 @@ export async function verifyMagicLink(
 ): Promise<{ sessionToken: string; user: SafeUser }> {
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const normalizedEmail = email.toLowerCase().trim();
+  const now = new Date();
 
-  // Find the magic link session
-  const [magicSession] = await db
-    .select({ sessionId: sessions.id, userId: sessions.user_id, expiresAt: sessions.expires_at })
-    .from(sessions)
-    .innerJoin(users, eq(sessions.user_id, users.id))
+  const [tokenRow] = await db
+    .select({
+      id: magicLinkTokens.id,
+      userId: magicLinkTokens.user_id,
+      used: magicLinkTokens.used,
+      expiresAt: magicLinkTokens.expires_at,
+    })
+    .from(magicLinkTokens)
     .where(
-      and(
-        eq(sessions.token_hash, MAGIC_PREFIX + tokenHash),
-        gt(sessions.expires_at, new Date()),
-        eq(users.email, normalizedEmail),
-      ),
+      and(eq(magicLinkTokens.token, tokenHash), eq(magicLinkTokens.email, normalizedEmail)),
     )
     .limit(1);
 
-  if (!magicSession) {
-    throw new TorgimaError("UNAUTHENTICATED", "Invalid or expired magic link");
+  let resolvedUserId: string | null = tokenRow?.userId ?? null;
+
+  if (tokenRow?.used) {
+    await logAuthSecurityEvent(
+      "MAGIC_LINK_REUSE_ATTEMPT",
+      { email: normalizedEmail, tokenId: tokenRow.id },
+      "ERROR",
+    );
+    throw new TorgimaError("UNAUTHENTICATED", "Invalid or expired magic link", false);
   }
 
-  // Delete the magic link session (single use)
-  await db.delete(sessions).where(eq(sessions.id, magicSession.sessionId));
+  if (tokenRow && tokenRow.expiresAt >= now) {
+    await db
+      .update(magicLinkTokens)
+      .set({ used: true })
+      .where(eq(magicLinkTokens.id, tokenRow.id));
+  } else {
+    const [legacyMagic] = await db
+      .select({ sessionId: sessions.id, userId: sessions.user_id })
+      .from(sessions)
+      .innerJoin(users, eq(sessions.user_id, users.id))
+      .where(
+        and(
+          eq(sessions.token_hash, MAGIC_PREFIX + tokenHash),
+          gt(sessions.expires_at, now),
+          eq(users.email, normalizedEmail),
+        ),
+      )
+      .limit(1);
 
-  // Create a real session
+    if (!legacyMagic) {
+      await logAuthSecurityEvent("MAGIC_LINK_INVALID", { email: normalizedEmail }, "WARN");
+      throw new TorgimaError("UNAUTHENTICATED", "Invalid or expired magic link", false);
+    }
+
+    resolvedUserId = legacyMagic.userId;
+    await db.delete(sessions).where(eq(sessions.id, legacyMagic.sessionId));
+  }
+
+  if (!resolvedUserId) {
+    throw new TorgimaError("UNAUTHENTICATED", "Invalid or expired magic link", false);
+  }
+
   const sessionRawToken = crypto.randomBytes(32).toString("hex");
   const sessionTokenHash = crypto.createHash("sha256").update(sessionRawToken).digest("hex");
   const expiresAt = new Date(Date.now() + SESSION_MAX_HOURS * 60 * 60 * 1000);
 
   await db.insert(sessions).values({
-    user_id: magicSession.userId,
+    user_id: resolvedUserId,
     token_hash: sessionTokenHash,
     expires_at: expiresAt,
   });
 
-  const user = await getUser(magicSession.userId);
+  const user = await getUser(resolvedUserId);
 
-  logger.info({ userId: magicSession.userId }, "[AuthService] Magic link verified, session created");
+  logger.info({ userId: resolvedUserId }, "[AuthService] Magic link verified, session created");
 
   return { sessionToken: sessionRawToken, user };
 }
@@ -176,9 +216,21 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
     throw new TorgimaError("UNAUTHENTICATED", "Session not found");
   }
 
-  if (row.expiresAt < new Date()) {
+  const now = new Date();
+
+  if (row.expiresAt < now) {
     await db.delete(sessions).where(eq(sessions.id, row.sessionId)).catch(() => null);
-    throw new TorgimaError("UNAUTHENTICATED", "Session expired");
+    throw new TorgimaError("UNAUTHENTICATED", "Session expired", false);
+  }
+
+  if (now.getTime() - row.lastUsedAt.getTime() > SESSION_IDLE_MS) {
+    await db.delete(sessions).where(eq(sessions.id, row.sessionId)).catch(() => null);
+    await logAuthSecurityEvent(
+      "SESSION_IDLE_EXPIRED",
+      { sessionId: row.sessionId, userId: row.userId },
+      "INFO",
+    );
+    throw new TorgimaError("UNAUTHENTICATED", "Session expired due to inactivity", false);
   }
 
   if (!row.userActive) {

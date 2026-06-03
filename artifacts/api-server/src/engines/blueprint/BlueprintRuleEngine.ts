@@ -234,7 +234,7 @@ export function assertSelectionComplete(params: {
 
   if (missing.length > 0) {
     throw new TorgimaError(
-      "BLUEPRINT_SELECTION_REQUIRED",
+      "ACTIVATION_FAILED",
       `Blueprint cannot be launched. Missing required fields: ${missing.join(", ")}. ` +
         `Blueprint ID: ${params.blueprintId ?? "unknown"}, current status: ${params.status ?? "unknown"}`,
     );

@@ -4,6 +4,7 @@ import helmet from "helmet";
 import pinoHttp from "pino-http";
 import router from "./routes/index.js";
 import authRouter from "./routes/auth.js";
+import adminRouter from "./routes/admin.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
 import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
@@ -64,6 +65,7 @@ app.use("/api", apiRateLimitMiddleware);
 app.use("/api", bhudhiRateLimitMiddleware);
 
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api", router);
 
 export default app;

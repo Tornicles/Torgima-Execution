@@ -26,6 +26,7 @@ import "./AssumptionCheckWorker.js";
 import "./DeadLetterReviewWorker.js";
 import "./ErectorEventWorkers.js";
 import "./MemoryExpiryWorker.js";
+import "./SessionCleanupWorker.js";
 import "./EISWorker.js";
 import "./PredictionWorker.js";
 import "./FalseProgressWorker.js";
@@ -52,6 +53,7 @@ import { startStateIntegritySchedule } from "./StateIntegrityWorker.js";
 import { startEventDispatcherPoll } from "./EventDispatcherWorker.js";
 import { startInactivitySchedule } from "./InactivityWorker.js";
 import { startPatternSchedule } from "./PatternScanWorker.js";
+import { startSessionCleanupSchedule } from "./SessionCleanupWorker.js";
 
 export async function startWorkers(): Promise<void> {
   logger.info("[Workers] Starting all workers...");
@@ -63,6 +65,7 @@ export async function startWorkers(): Promise<void> {
   startEventDispatcherPoll();
   void startInactivitySchedule();
   void startPatternSchedule();
+  void startSessionCleanupSchedule();
   startProductionSchedulers();
   startBhudhiPhase1Schedulers();
   startCalendarNotificationPoller();

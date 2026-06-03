@@ -18,7 +18,8 @@ import type {
   BlueprintTierCard,
   ValidationLaunchContext,
 } from "@/lib/validation-launch-context";
-import { EXECUTION_UNIT } from "@/lib/language";
+import { EXECUTION_UNIT, LANGUAGE } from "@/lib/language";
+import { TIER_CARD_TAGLINES } from "@/lib/onboarding-doc32";
 import { TorgimaPreLaunchLogo } from "./TorgimaPreLaunchLogo";
 
 const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
@@ -38,8 +39,8 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
   {
     id: "starter",
     label: "Starter",
-    subtitle: "Getting going with a clear simple system",
-    tagline: "Getting going with a clear simple system",
+    subtitle: TIER_CARD_TAGLINES.starter,
+    tagline: TIER_CARD_TAGLINES.starter,
     recommended: false,
     setupTime: "~5 min",
     tasksPerDay: EXECUTION_UNIT.perDay(3),
@@ -66,8 +67,8 @@ const FALLBACK_CARDS: BlueprintTierCard[] = [
   {
     id: "ultimate",
     label: "Ultimate",
-    subtitle: "Maximum depth and control",
-    tagline: "Maximum depth and control",
+    subtitle: TIER_CARD_TAGLINES.ultimate,
+    tagline: TIER_CARD_TAGLINES.ultimate,
     recommended: false,
     setupTime: "~15 min",
     tasksPerDay: EXECUTION_UNIT.perDay(8),
@@ -89,6 +90,7 @@ export function BlueprintLaunchInputScreen({
   onBack,
   onLaunch,
   launching,
+  launchEnabled = true,
   launchError,
   cardsLocked = false,
 }: {
@@ -101,6 +103,8 @@ export function BlueprintLaunchInputScreen({
   onBack: () => void;
   onLaunch?: () => void;
   launching?: boolean;
+  /** DOC 32 — activate only after tier configure succeeds */
+  launchEnabled?: boolean;
   launchError?: string;
   cardsLocked?: boolean;
 }) {
@@ -211,8 +215,8 @@ export function BlueprintLaunchInputScreen({
                   onClick={() => {
                     if (!selectable) return;
                     onTierChange(tier.id);
-                    if (onSelectTier) onSelectTier(tier.id);
-                    else if (onLaunch) onLaunch();
+                    if (onSelectTier) void onSelectTier(tier.id);
+                    else if (onLaunch && !onSelectTier) onLaunch();
                   }}
                   className={`mt-4 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold ${
                     !selectable
@@ -223,10 +227,12 @@ export function BlueprintLaunchInputScreen({
                   }`}
                 >
                   {isBuilding
-                    ? "Building your execution system…"
+                    ? LANGUAGE.onboarding.structuringLabel
                     : !isTierSelectable(subscriptionTier, tier.id)
                       ? "Locked"
-                      : "Select"}
+                      : onSelectTier
+                        ? "Select level"
+                        : "Select"}
                 </button>
               </div>
             );
@@ -275,15 +281,15 @@ export function BlueprintLaunchInputScreen({
             <ChevronLeft className="h-4 w-4" />
             Back to results
           </button>
-          {onLaunch && !onSelectTier ? (
+          {onLaunch ? (
             <button
               type="button"
-              disabled={launching || !selectedTier || cardsLocked}
+              disabled={launching || !selectedTier || cardsLocked || !launchEnabled}
               onClick={onLaunch}
               className="ml-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5B21FF] to-[#6D28D9] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-200/60 hover:opacity-95 disabled:opacity-50"
             >
               <Rocket className="h-4 w-4" />
-              {launching ? "Launching your project…" : "Continue to Launch →"}
+              {launching ? LANGUAGE.onboarding.activatingLabel : LANGUAGE.onboarding.activateButton}
               {!launching ? <ArrowRight className="h-4 w-4" /> : null}
             </button>
           ) : null}

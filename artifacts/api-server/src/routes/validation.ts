@@ -1037,7 +1037,25 @@ router.get("/validation/:id/result", async (req, res) => {
       const { competitorsFromValidationRow, userGoalFromRow, userPurposeFromRow } = await import(
         "../lib/mapValidationIntel.js"
       );
+      const {
+        loadPanelCompetitorsForLegacyValidation,
+        loadPanelPathsForLegacyValidation,
+        loadExplanationParagraphsForLegacyValidation,
+      } = await import("../lib/loadValidationPanels.js");
       const shaped = buildOnboardingValidationResultsPayload(row);
+      const panelCompetitors = await loadPanelCompetitorsForLegacyValidation(row.id);
+      const panelPaths = await loadPanelPathsForLegacyValidation(row.id);
+      const panelExplanations = await loadExplanationParagraphsForLegacyValidation(row.id);
+      if (panelCompetitors.length > 0) {
+        shaped.competitors = panelCompetitors as typeof shaped.competitors;
+      }
+      if (panelPaths) {
+        shaped.paths = {
+          adjusted: { ...shaped.paths.adjusted, ...panelPaths.adjusted, recommended: true },
+          current: { ...shaped.paths.current, ...panelPaths.current, recommended: false },
+          alternative: { ...shaped.paths.alternative, ...panelPaths.alternative, recommended: false },
+        };
+      }
       const erector = rowToErectorResult(row);
       const competitors = shaped.competitors;
       const userPurpose = userPurposeFromRow(row);
@@ -1053,7 +1071,13 @@ router.get("/validation/:id/result", async (req, res) => {
         verdict: row.verdict ?? shaped.verdict ?? "adjust",
         launchBlocked: row.launch_blocked ?? false,
         isFinalized: row.is_finalized ?? false,
-        paths: erector.paths ?? shaped.paths,
+        paths: panelPaths
+          ? {
+              current: panelPaths.current,
+              adjusted: panelPaths.adjusted,
+              alternative: panelPaths.alternative,
+            }
+          : (erector.paths ?? shaped.paths),
         intelligence: {
           erector: {
             ...erector,
@@ -1063,6 +1087,8 @@ router.get("/validation/:id/result", async (req, res) => {
             competitors,
             opportunities: shaped.opportunities,
             economicContext: shaped.economicContext,
+            explanation_paragraphs: panelExplanations ?? undefined,
+            explanationParagraphs: panelExplanations ?? undefined,
             competitor_analysis: competitorAnalysis,
             competitorAnalysis,
             timeframe: row.timeframe,

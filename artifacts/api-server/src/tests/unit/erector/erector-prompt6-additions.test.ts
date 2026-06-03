@@ -23,11 +23,16 @@ describe("Prompt 6 — Erector frontend additions", () => {
   });
 
   it("smoke test indicator on task card", () => {
-    const action = readRepo("artifacts/torgima/src/components/dashboard/CurrentActionPanel.tsx");
-    expect(action).toContain("erector_first_week_seed");
-    expect(action).toContain("Smoke Test — Week 1");
+    const dash = readRepo("artifacts/api-server/src/services/DashboardService.ts");
+    expect(dash).toContain("currentActionTaskType");
+    const firstWeek = readRepo("artifacts/torgima/src/components/validation/FirstWeekPlanPanel.tsx");
+    expect(firstWeek).toMatch(/smoke[- ]test/i);
+    const guarantee = readRepo(
+      "artifacts/api-server/src/engines/task-guarantee/ContinuousTaskGuaranteeEngine.ts",
+    );
+    expect(guarantee).toContain("smoke_test");
     const orders = readRepo("artifacts/api-server/src/services/OrderService.ts");
-    expect(orders).toContain("generationReason");
+    expect(orders).toContain("generation_reason");
   });
 
   it("post-validation redirect to results page", () => {

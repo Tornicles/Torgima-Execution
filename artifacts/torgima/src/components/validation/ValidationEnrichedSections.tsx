@@ -10,11 +10,21 @@ import type {
 
 const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
 
-function parseSharePercent(share: string): number {
-  const m = share.match(/(\d+(?:\.\d+)?)/);
-  if (!m) return 20;
+function displayValue(value: unknown): string {
+  if (value == null) return "—";
+  const s = String(value).trim();
+  if (!s || /^not available$/i.test(s)) return "—";
+  return s;
+}
+
+function sharePercentFromCard(c: EnrichedCompetitorCard): number | null {
+  if (c.marketSharePct != null && Number.isFinite(c.marketSharePct)) {
+    return Math.min(100, Math.max(0, c.marketSharePct));
+  }
+  const m = c.marketShare.match(/(\d+(?:\.\d+)?)/);
+  if (!m) return null;
   const n = Number(m[1]);
-  return Number.isFinite(n) ? Math.min(100, Math.max(5, n <= 1 ? n * 100 : n)) : 20;
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n <= 1 ? n * 100 : n)) : null;
 }
 
 function impactBadgeClass(impact: string): string {
@@ -62,36 +72,40 @@ export function EconomicEnvironmentSection({ economic }: { economic: EconomicCon
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Region</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.region}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.region)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Economic Zone</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.economicZone}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.economicZone)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Market Maturity</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.marketMaturity}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.marketMaturity)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Digital Access</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.digitalPenetration}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.digitalPenetration)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Political Climate</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.politicalClimate}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.politicalClimate)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase text-[#94A3B8]">Business Environment</p>
-          <p className="text-sm font-semibold text-[#0B1220]">{economic.regulatoryEnvironment}</p>
+          <p className="text-sm font-semibold text-[#0B1220]">{displayValue(economic.regulatoryEnvironment)}</p>
         </div>
       </div>
       <div className="mt-6">
         <p className="text-[10px] font-bold uppercase text-[#94A3B8]">Local Market Dynamics</p>
-        <p className="mt-2 text-sm leading-relaxed text-[#475569]">{economic.localMarketDynamics}</p>
+        <p className="mt-2 text-sm leading-relaxed text-[#475569]">
+          {displayValue(economic.localMarketDynamics)}
+        </p>
       </div>
       <div className="mt-4">
         <p className="text-[10px] font-bold uppercase text-[#94A3B8]">Global Market Access</p>
-        <p className="mt-2 text-sm leading-relaxed text-[#475569]">{economic.globalMarketAccess}</p>
+        <p className="mt-2 text-sm leading-relaxed text-[#475569]">
+          {displayValue(economic.globalMarketAccess)}
+        </p>
       </div>
       <p className={`mt-4 text-sm font-bold ${ratingTone}`}>
         Economic Opportunity Rating: ● {economic.economicOpportunityRating.toUpperCase()}
@@ -326,20 +340,22 @@ export function CompetitorsSection({
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#0B1220]">Top 3 Competitors</p>
       <ExplanationPanel text={overviewExplanation} isLoading={explanationsLoading} />
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-        {competitors.map((c, i) => (
+        {competitors.map((c, i) => {
+          const sharePct = sharePercentFromCard(c);
+          return (
           <article key={`${c.name}-${i}`} className={`${CARD} p-4`}>
             <CompanyInitial name={c.name} />
             <p className="mt-3 font-bold text-[#0B1220]">{c.name}</p>
             <p className="mt-1 text-xs text-[#64748B]">{c.tagline}</p>
             <div className="mt-3 grid grid-cols-1 gap-1 text-[11px] text-[#64748B]">
               <p>
-                <span className="font-semibold text-[#0B1220]">Revenue:</span> {c.estimatedRevenue}
+                <span className="font-semibold text-[#0B1220]">Revenue:</span> {displayValue(c.estimatedRevenue)}
               </p>
               <p>
-                <span className="font-semibold text-[#0B1220]">Users:</span> {c.userBase}
+                <span className="font-semibold text-[#0B1220]">Users:</span> {displayValue(c.userBase)}
               </p>
               <p>
-                <span className="font-semibold text-[#0B1220]">Since:</span> {c.founded}
+                <span className="font-semibold text-[#0B1220]">Since:</span> {displayValue(c.founded)}
               </p>
             </div>
             <p className="mt-3 text-[10px] font-bold uppercase text-emerald-600">Strengths</p>
@@ -360,14 +376,18 @@ export function CompetitorsSection({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-[10px] font-semibold text-[#94A3B8]">Market Share</p>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#F1F5F9]">
-              <div
-                className="h-full rounded-full bg-[#5B21FF] transition-all"
-                style={{ width: `${parseSharePercent(c.marketShare)}%` }}
-              />
-            </div>
-            <p className="mt-1 text-xs font-bold text-[#5B21FF]">{c.marketShare}</p>
+            {sharePct != null ? (
+              <>
+                <p className="mt-3 text-[10px] font-semibold text-[#94A3B8]">Market Share</p>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#F1F5F9]">
+                  <div
+                    className="h-full rounded-full bg-[#5B21FF] transition-all"
+                    style={{ width: `${sharePct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs font-bold text-[#5B21FF]">{Math.round(sharePct)}%</p>
+              </>
+            ) : null}
             <button
               type="button"
               onClick={() => setModalIndex(i)}
@@ -376,7 +396,8 @@ export function CompetitorsSection({
               Read More →
             </button>
           </article>
-        ))}
+          );
+        })}
       </div>
       {modalIndex != null ? (
         <CompetitorModal
@@ -416,7 +437,7 @@ function OpportunityCard({ opportunity }: { opportunity: EnrichedOpportunityCard
         </p>
       </div>
       <p className="mt-3 text-xs text-[#64748B]">
-        <span className="font-semibold text-[#0B1220]">Time Window:</span> {opportunity.timeWindow}
+        <span className="font-semibold text-[#0B1220]">Time Window:</span> {displayValue(opportunity.timeWindow)}
       </p>
       <p className="mt-1 text-xs text-[#64748B]">
         <span className="font-semibold text-[#0B1220]">Market Signal:</span> {opportunity.marketSignal}

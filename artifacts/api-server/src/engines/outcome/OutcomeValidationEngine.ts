@@ -68,7 +68,7 @@ export async function validateOutcome(params: {
       : 0;
 
   let targetProgressRatio = completionCount * 0.05;
-  let linkedToTarget = Boolean(params.targetId);
+  const linkedToTarget = Boolean(params.targetId);
 
   if (params.targetId) {
     const [target] = await db
@@ -92,8 +92,8 @@ export async function validateOutcome(params: {
     claimContradicted: false,
   });
 
-  let evidenceScore = scores.evidenceScore;
-  let outcomeMovementScore = scores.outcomeMovementScore;
+  const evidenceScore = scores.evidenceScore;
+  const outcomeMovementScore = scores.outcomeMovementScore;
   const alignmentScore = scores.alignmentScore;
   const contradictionScore = scores.contradictionScore;
 

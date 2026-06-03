@@ -17,6 +17,7 @@ import { populateWorkspaceAfterRun } from "./ErectorValidationWorkspace.js";
 import { resolveValidationTimeframeFields } from "../../lib/validationTimeframe.js";
 import { extractEnrichedFromOutputs } from "../../lib/enrichedValidationIntel.js";
 import { logger } from "../../lib/logger.js";
+import { enrichValidationAfterErector } from "./postErectorValidationEnrichment.js";
 
 function normalizeErectorInput(input: ErectorValidationInput): ErectorValidationInput {
   const country = input.location.country;
@@ -258,11 +259,32 @@ export async function runErectorValidation(input: ErectorValidationInput): Promi
   });
 
   const result = rowToErectorResult(completedRow);
+
+  if (!input.skipBhudhiPanelEnrichment) {
+    await enrichValidationAfterErector({
+      validationId: created.id,
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      ideaTitle: input.businessModel || input.rawGoal.slice(0, 80),
+      goal: input.goalFinal ?? input.rawGoal,
+      purpose: input.purposeFinal ?? input.purpose,
+      timeframe: String(input.timeframe),
+      context: input.currentContext,
+      commitmentLevel: input.commitmentLevel,
+      businessModel: input.businessModel,
+      businessType: input.businessType,
+      location: input.location,
+    });
+  }
+
   await populateWorkspaceAfterRun(created.id, result, {
     ...input,
     goalFinal: input.goalFinal,
     purposeFinal: input.purposeFinal,
     economicType: archetypeResolution.primaryArchetype.name,
   }).catch(() => null);
-  return result;
+  return rowToErectorResult(
+    (await db.select().from(validations).where(eq(validations.id, created.id)).limit(1))[0] ??
+      completedRow,
+  );
 }

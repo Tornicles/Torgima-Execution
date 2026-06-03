@@ -1,6 +1,7 @@
 import crypto from "crypto";
-import { db, validationRuns, validations } from "@workspace/db";
+import { db, validationCompetitors, validationRuns, validations } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { mapValidationCompetitorRowForApi } from "../../lib/loadValidationPanels.js";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
@@ -15,6 +16,7 @@ import {
   loadExplanationContext,
   researchCompetitorsDeep,
 } from "./validationCompetitorIntelligence.js";
+import { buildValidationPathsViaBhudhi } from "./validationPathsBhudhi.js";
 
 export type ValidationRunInput = {
   user_id: string;
@@ -79,6 +81,7 @@ function mapToErectorInput(runId: string, input: ValidationRunInput): ErectorVal
     currentContext: input.context,
     domainHint: null,
     tier: input.tier ?? "starter",
+    skipBhudhiPanelEnrichment: true,
   };
 }
 
@@ -147,6 +150,22 @@ export class ValidationResearchEngine {
 
       await researchCompetitorsDeep(runId, input, (status) => updateRunStatus(runId, status));
 
+      const competitorRows = await db
+        .select()
+        .from(validationCompetitors)
+        .where(eq(validationCompetitors.validation_run_id, runId));
+      if (competitorRows.length > 0) {
+        const mapped = competitorRows.map(mapValidationCompetitorRowForApi);
+        await db
+          .update(validations)
+          .set({
+            enriched_competitors: mapped,
+            competitor_analysis: { competitors: mapped },
+            updated_at: new Date(),
+          })
+          .where(eq(validations.id, legacyRow.id));
+      }
+
       await updateRunStatus(runId, "running_path_analysis");
       await writeEvent({
         eventType: EVENT_TYPES.VALIDATION_PHASE_STARTED,
@@ -158,7 +177,24 @@ export class ValidationResearchEngine {
         idempotencyKey: `validation_phase:${runId}:paths`,
       }).catch(() => null);
 
-      await patchValidationRunFromLegacyRow(runId, legacyRow);
+      const pathsBuilt = await buildValidationPathsViaBhudhi(runId, legacyRow.id, input);
+      await db
+        .update(validations)
+        .set({
+          path_current: pathsBuilt.current,
+          path_adjusted: pathsBuilt.adjusted,
+          path_alternative: pathsBuilt.alternative,
+          updated_at: new Date(),
+        })
+        .where(eq(validations.id, legacyRow.id));
+
+      const [legacyAfterPaths] = await db
+        .select()
+        .from(validations)
+        .where(eq(validations.id, legacyRow.id))
+        .limit(1);
+
+      await patchValidationRunFromLegacyRow(runId, legacyAfterPaths ?? legacyRow);
 
       const explanationCtx = await loadExplanationContext(runId, input);
       await updateRunStatus(runId, "generating_explanations");

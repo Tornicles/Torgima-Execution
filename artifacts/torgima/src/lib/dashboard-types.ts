@@ -155,6 +155,10 @@ export type DashboardSignalBreakdown = {
 
 export type DashboardProjection = DashboardState & {
   dashboardUiState?: DashboardUiState;
+  blueprintId?: string | null;
+  conditionLabel?: string;
+  locked?: boolean;
+  lockReason?: string;
   blueprintTier?: string | null;
   signalMode?: string | null;
   simplifiedSignalLabel?: string | null;
@@ -173,6 +177,19 @@ export type DashboardProjection = DashboardState & {
     blocked_actions?: string[];
     recovery_required?: boolean;
   };
+  identity?: {
+    stage?: string | null;
+    label?: string | null;
+    summary?: string | null;
+    description?: string | null;
+  };
+  latestReward?: {
+    type?: string;
+    label?: string;
+    message?: string;
+    rewardType?: string;
+    description?: string;
+  } | null;
 };
 
 export function toDashboardProjection(state: DashboardState): DashboardProjection {
@@ -182,7 +199,9 @@ export function toDashboardProjection(state: DashboardState): DashboardProjectio
 export function getDashboardUiState(state: DashboardProjection | null | undefined): DashboardUiState {
   if (!state) return "ERROR";
   if (state.dashboardUiState) return state.dashboardUiState as DashboardUiState;
-  if (!state.activeBlueprint) return "NO_BLUEPRINT";
+  if (!state.activeBlueprint && !(state as { blueprintId?: string }).blueprintId) return "NO_BLUEPRINT";
+  if ((state as { locked?: boolean }).locked) return "LOCKED";
   if (state.health && state.health.systemOperational === false) return "LOCKED";
+  if (state.pendingSync) return "PENDING_SYNC";
   return "READY";
 }

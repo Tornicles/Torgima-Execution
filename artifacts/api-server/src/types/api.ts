@@ -6,6 +6,7 @@ export interface ApiResponse<T = unknown> {
     message: string;
     fieldErrors?: Record<string, string[]>;
     retryable?: boolean;
+    sessionExpired?: boolean;
   };
   meta?: {
     requestId?: string;

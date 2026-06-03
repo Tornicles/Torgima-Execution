@@ -16,7 +16,7 @@ describe("assertSelectionComplete", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(TorgimaError);
       const e = err as TorgimaError;
-      expect(e.code).toBe("BLUEPRINT_SELECTION_REQUIRED");
+      expect(e.code).toBe("ACTIVATION_FAILED");
       expect(e.message).toContain("tier");
       expect(e.message).toContain("selection_confirmed_at");
       expect(e.message).toContain("bp-123");

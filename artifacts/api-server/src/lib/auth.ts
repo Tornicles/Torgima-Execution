@@ -4,6 +4,7 @@ import { TorgimaError } from "./errors.js";
 import { logger } from "./logger.js";
 import type { AuthClass, AuthContext } from "../types/auth.js";
 import { extractInternalToken, getInternalAuthSecret } from "./security/internalAuth.js";
+import { logAuthSecurityEvent } from "./auth-security-log.js";
 
 export const SESSION_COOKIE_NAME = "torgima_session";
 
@@ -34,9 +35,10 @@ export async function requireAuth(req: Request, authClass: AuthClass): Promise<A
 
   if (authClass === "INTERNAL_SERVICE" || authClass === "ADMIN_INTERNAL") {
     if (req.headers.origin) {
-      logger.error(
+      await logAuthSecurityEvent(
+        "BROWSER_INTERNAL_ROUTE_ATTEMPT",
         { origin: req.headers.origin, path: req.path, ip: req.ip },
-        "[SECURITY] Internal route accessed without service context (browser origin)",
+        "ERROR",
       );
       throw new TorgimaError("FORBIDDEN", "Internal route not accessible from browser");
     }
@@ -78,11 +80,11 @@ export function assertOwnership(
 ): void {
   if (auth.isInternal) return;
   if (auth.userId !== resourceUserId) {
-    logger.error(
+    void logAuthSecurityEvent(
+      "CROSS_USER_ACCESS_ATTEMPT",
       { authUserId: auth.userId, resourceUserId, resourceType },
-      "[Auth] Ownership mismatch",
+      "ERROR",
     );
-    // Return 404 to prevent resource enumeration
     throw new TorgimaError("NOT_FOUND", `${resourceType} not found`);
   }
 }

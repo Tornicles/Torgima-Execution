@@ -24,6 +24,10 @@ import {
 } from "@workspace/db";
 import { checkAssumptionDrift } from "../engines/validation/AssumptionMonitoringService.js";
 import { buildDashboardAlerts, deriveDashboardUiState } from "./DashboardUiState.js";
+import {
+  conditionUserLabel,
+  deriveOrderAllowedActions,
+} from "../lib/dashboardOrderActions.js";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   deriveExecutionIdentityLines,
@@ -869,6 +873,34 @@ export const DashboardService = {
         ? await buildBlueprintPositionProjection(blueprintId, userId).catch(() => null)
         : null;
 
+    const locked = !health.systemOperational || dashboardUiState === "LOCKED";
+    const lockReason =
+      locked && health.message
+        ? String(health.message)
+        : locked
+          ? "Your execution system is being repaired. Your progress is safe."
+          : undefined;
+    const conditionLabel = conditionUserLabel(condEffective.condition);
+    const enforcementAllowed = (enforcementProjection?.allowedActions as string[] | undefined) ?? [];
+    const orderAllowedActions = deriveOrderAllowedActions({
+      orderStatus: primaryTask?.status ?? null,
+      uiState: dashboardUiState,
+      systemOperational: health.systemOperational,
+      hasAwaitingFeedbackOrder,
+      enforcementAllowed,
+    });
+    const currentActionWithActions = primaryTask
+      ? {
+          ...primaryTask,
+          allowedActions: orderAllowedActions,
+          priorityReason:
+            primaryTask.whyItMatters ??
+            primaryTask.priorityEngine?.formulaSummary ??
+            null,
+          timeEstimate: primaryTask.timeEstimateMinutes,
+        }
+      : null;
+
     return {
       hasActiveBlueprint: Boolean(activeBlueprint),
       state: activeBlueprint ? ("ACTIVE_BLUEPRINT" as const) : ("NO_ACTIVE_BLUEPRINT" as const),
@@ -927,7 +959,11 @@ export const DashboardService = {
         recovery_required: Boolean(enforcementProjection?.recoveryRequired ?? condEffective.recoveryRequired),
       },
       enforcement: enforcementProjection,
-      currentAction: primaryTask,
+      currentAction: currentActionWithActions,
+      locked,
+      lockReason,
+      conditionLabel,
+      blueprintId: blueprintId ?? activeBlueprint?.id ?? null,
       health,
       featureFlags: featureFlagMap,
       operationalAwareness,

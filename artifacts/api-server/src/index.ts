@@ -3,8 +3,19 @@
  */
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { assertAuthEnvOnBoot } from "./lib/auth-env.js";
 import { applyCorsHeaders, applyPreflightHeaders } from "./lib/cors.js";
 import { logger } from "./lib/logger.js";
+
+try {
+  assertAuthEnvOnBoot();
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  logger.error({ err: msg }, "[SERVER] Auth environment validation failed");
+  if (process.env.NODE_ENV === "production") {
+    process.exit(1);
+  }
+}
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const HOST = "0.0.0.0";

@@ -59,9 +59,11 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function str(value: unknown, fallback = "Not available"): string {
+function str(value: unknown, fallback = "—"): string {
   if (value == null || value === "") return fallback;
-  return String(value).trim() || fallback;
+  const s = String(value).trim();
+  if (!s || /^not available$/i.test(s)) return fallback;
+  return s;
 }
 
 function impactNorm(value: unknown): EnrichedOpportunity["impact"] {
@@ -203,7 +205,7 @@ export function mapOpportunityRaw(o: Record<string, unknown>): EnrichedOpportuni
     title: str(o.title ?? o.name, "Market opportunity"),
     impact: impactNorm(o.impact),
     summary: str(o.summary ?? o.description, ""),
-    timeWindow: str(o.timeWindow ?? o.time_window, "Not available"),
+    timeWindow: str(o.timeWindow ?? o.time_window, "—"),
     marketSignal: str(o.marketSignal ?? o.signal, ""),
   };
 }

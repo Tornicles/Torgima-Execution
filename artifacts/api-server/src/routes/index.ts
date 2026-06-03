@@ -1,5 +1,6 @@
 import { Router } from "express";
 import healthRouter from "./health.js";
+import doc29Router from "./doc29-routes.js";
 import meRouter from "./me.js";
 import onboardingRouter from "./onboarding.js";
 import blueprintsRouter from "./blueprints.js";
@@ -85,6 +86,7 @@ import debugRouter from "./debug.js";
 const router = Router();
 
 router.use(healthRouter);
+router.use(doc29Router);
 router.use(meRouter);
 router.use(onboardingRouter);
 router.use(blueprintsRouter);

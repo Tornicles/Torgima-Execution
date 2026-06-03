@@ -39,6 +39,10 @@
     "postgres:down": "node scripts/stop-local-postgres.mjs",
     "test:phase9:local": "node scripts/run-phase9-e2e.mjs",
     "test:phase9:production": "node scripts/run-phase9-production-acceptance.mjs",
+    "test:doc36": "node scripts/run-doc36-e2e.mjs",
+    "test:doc36:reset": "pnpm -F @workspace/scripts exec tsx ./doc36-reset-test-user.ts",
+    "test:doc37": "node scripts/run-doc37-e2e.mjs",
+    "reset:users": "pnpm -F @workspace/scripts exec tsx ./reset-execution-users.ts",
     "start:api": "node scripts/start-api.mjs",
     "db:migrate:prod": "pnpm -F @workspace/db migrate",
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen"

@@ -156,7 +156,11 @@ export async function syncValidationRunPanelsFromLegacyRow(
     const competitors = enriched.competitors.slice(0, 3);
     for (let i = 0; i < competitors.length; i++) {
       const c = competitors[i]!;
-      const shareNum = parseFloat(String(c.marketShare).replace(/[^0-9.]/g, "")) || 10 + i * 5;
+      const shareMatch = String(c.marketShare ?? "").match(/(\d+(?:\.\d+)?)/);
+      const shareNum =
+        shareMatch && !/market leader/i.test(c.name)
+          ? Math.min(100, Math.max(0, Number(shareMatch[1])))
+          : null;
       await db.insert(validationCompetitors).values({
         validation_run_id: validationRunId,
         rank: i + 1,
@@ -164,7 +168,7 @@ export async function syncValidationRunPanelsFromLegacyRow(
         description: c.description || c.tagline,
         website: "",
         market_share_pct: shareNum,
-        market_share_label: c.marketShare || `${shareNum}%`,
+        market_share_label: shareNum != null ? `${Math.round(shareNum)}%` : null,
         strengths: c.strengths,
         weaknesses: c.weaknesses,
         relevance_summary: c.whereYourIdeaFits,

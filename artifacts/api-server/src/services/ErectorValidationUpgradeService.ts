@@ -18,7 +18,32 @@ import { writeEvent } from "./EventService.js";
 import { VALIDATION_RUN_QUEUE } from "../workers/ValidationResearchWorker.js";
 import { EventTypes } from "../types/eventContracts.js";
 
+async function resolveRunId(runOrLegacyId: string, userId: string): Promise<string> {
+  const [byId] = await db
+    .select({ id: validationRuns.id })
+    .from(validationRuns)
+    .where(and(eq(validationRuns.id, runOrLegacyId), eq(validationRuns.user_id, userId)))
+    .limit(1);
+  if (byId?.id) return byId.id;
+
+  const [byLegacy] = await db
+    .select({ id: validationRuns.id })
+    .from(validationRuns)
+    .where(
+      and(
+        eq(validationRuns.legacy_validation_id, runOrLegacyId),
+        eq(validationRuns.user_id, userId),
+      ),
+    )
+    .limit(1);
+  if (byLegacy?.id) return byLegacy.id;
+
+  throw new TorgimaError("NOT_FOUND", "Validation run not found", false);
+}
+
 export const ErectorValidationUpgradeService = {
+  resolveRunId,
+
   async startRun(input: ValidationRunInput): Promise<{ id: string; status: string }> {
     const [run] = await db
       .insert(validationRuns)
@@ -60,6 +85,7 @@ export const ErectorValidationUpgradeService = {
   },
 
   async getStatus(runId: string, userId: string) {
+    const resolvedId = await resolveRunId(runId, userId);
     const [run] = await db
       .select({
         id: validationRuns.id,
@@ -70,7 +96,7 @@ export const ErectorValidationUpgradeService = {
         selected_path: validationRuns.selected_path,
       })
       .from(validationRuns)
-      .where(and(eq(validationRuns.id, runId), eq(validationRuns.user_id, userId)))
+      .where(and(eq(validationRuns.id, resolvedId), eq(validationRuns.user_id, userId)))
       .limit(1);
 
     if (!run) throw new TorgimaError("NOT_FOUND", "Validation run not found", false);
@@ -78,22 +104,23 @@ export const ErectorValidationUpgradeService = {
   },
 
   async getFullResults(runId: string, userId: string) {
+    const resolvedId = await resolveRunId(runId, userId);
     const [run] = await db
       .select()
       .from(validationRuns)
-      .where(and(eq(validationRuns.id, runId), eq(validationRuns.user_id, userId)))
+      .where(and(eq(validationRuns.id, resolvedId), eq(validationRuns.user_id, userId)))
       .limit(1);
 
     if (!run) throw new TorgimaError("NOT_FOUND", "Validation run not found", false);
 
     const [glance, market, competitors, prosCons, opportunities, risks, paths, researchLog] =
       await Promise.all([
-        db.select().from(validationAtAGlance).where(eq(validationAtAGlance.validation_run_id, runId)),
-        db.select().from(validationMarketTrends).where(eq(validationMarketTrends.validation_run_id, runId)),
+        db.select().from(validationAtAGlance).where(eq(validationAtAGlance.validation_run_id, resolvedId)),
+        db.select().from(validationMarketTrends).where(eq(validationMarketTrends.validation_run_id, resolvedId)),
         db
           .select()
           .from(validationCompetitors)
-          .where(eq(validationCompetitors.validation_run_id, runId))
+          .where(eq(validationCompetitors.validation_run_id, resolvedId))
           .orderBy(validationCompetitors.rank),
         db
           .select()
@@ -131,10 +158,11 @@ export const ErectorValidationUpgradeService = {
   },
 
   async selectPath(runId: string, userId: string, pathType: "current" | "adjusted" | "alternative") {
+    const resolvedId = await resolveRunId(runId, userId);
     const [run] = await db
       .update(validationRuns)
       .set({ selected_path: pathType, updated_at: new Date() })
-      .where(and(eq(validationRuns.id, runId), eq(validationRuns.user_id, userId)))
+      .where(and(eq(validationRuns.id, resolvedId), eq(validationRuns.user_id, userId)))
       .returning();
 
     if (!run) throw new TorgimaError("NOT_FOUND", "Validation run not found", false);

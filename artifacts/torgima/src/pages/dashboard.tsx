@@ -1,70 +1,95 @@
-import { useEffect, useState } from "react";
-import { useDashboardProjection } from "@/hooks/useDashboardProjection";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { ConditionalScreen } from "@/components/dashboard/ConditionalScreens";
+import { DashboardControlPanel } from "@/components/dashboard/DashboardControlPanel";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { HealthLockState } from "@/components/dashboard/HealthLockState";
 import { MainDashboardView } from "@/components/dashboard/MainDashboardView";
+import { PendingSyncState } from "@/components/dashboard/PendingSyncState";
+import { useDashboardProjection } from "@/hooks/useDashboardProjection";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
+import { resolveDashboardShellState, toDashboardControlProjection } from "@/lib/dashboard-control";
 import { getDashboardUiState, toDashboardProjection } from "@/lib/dashboard-types";
+import { LANGUAGE } from "@/lib/language";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { checking } = useAppRouteGuard("post-launch");
-  const { data, isLoading, isError, refetch } = useDashboardProjection();
-  const projection = data ? toDashboardProjection(data) : null;
-  const uiState = getDashboardUiState(projection);
-  const [syncStartedAt] = useState(() => Date.now());
-  const syncTimedOut = Date.now() - syncStartedAt > 30_000;
+  const { loaded } = useSessionGuard();
+  const { data, isLoading, isError, refetch, projection, pendingSync, invalidate } =
+    useDashboardProjection();
+  const state = projection ?? (data ? toDashboardProjection(data) : null);
+  const uiState = getDashboardUiState(state);
+  const shellState = resolveDashboardShellState({
+    loading: checking || !loaded || (isLoading && !data),
+    projection: state,
+  });
+  const control = state ? toDashboardControlProjection(state) : null;
 
   useEffect(() => {
-    if (uiState !== "PENDING_SYNC" || syncTimedOut) return;
-    const t = setInterval(() => void refetch(), 3000);
-    return () => clearInterval(t);
-  }, [uiState, syncTimedOut, refetch]);
+    if (shellState === "PENDING_SYNC") {
+      const t = setInterval(() => void refetch(), 5_000);
+      return () => clearInterval(t);
+    }
+    return undefined;
+  }, [shellState, refetch]);
 
-  if (checking || (isLoading && !data)) {
-    return (
-      <div className="p-4 sm:p-8 space-y-6 animate-pulse max-w-5xl">
-        <div className="h-10 bg-gray-100 rounded-lg w-full max-w-72" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
+  useEffect(() => {
+    if (shellState === "NO_BLUEPRINT") {
+      setLocation("/onboarding");
+    }
+  }, [shellState, setLocation]);
+
+  const handleRefresh = () => {
+    invalidate();
+    void refetch();
+  };
+
+  if (shellState === "LOADING") {
+    return <DashboardSkeleton />;
   }
 
   if (isError && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 p-8">
-        <p className="text-gray-500 text-sm">Cannot connect to execution server.</p>
-        <button type="button" onClick={() => void refetch()} className="text-green-600 underline text-sm">
-          Refresh
+        <p className="text-gray-500 text-sm">{LANGUAGE.errors.serverBusy}</p>
+        <button type="button" onClick={handleRefresh} className="text-[#5B21FF] underline text-sm font-semibold">
+          {LANGUAGE.actions.retry}
         </button>
       </div>
     );
   }
 
-  if (!projection) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-        <p className="text-gray-500 text-sm">Loading execution state…</p>
-      </div>
-    );
+  if (shellState === "NO_BLUEPRINT") {
+    return null;
   }
+
+  if (!state || !control) {
+    return <DashboardSkeleton />;
+  }
+
+  if (shellState === "LOCKED" || control.locked) {
+    return <HealthLockState reason={control.lockReason} onRefresh={handleRefresh} />;
+  }
+
+  const overlay = <ConditionalScreen state={state} />;
+  if (overlay) return overlay;
 
   if (
-    uiState === "PENDING_SYNC" &&
-    !syncTimedOut &&
-    (projection.launchFirstLoad?.totalOrders ?? 0) === 0
+    shellState === "PENDING_SYNC" ||
+    (pendingSync && !control.currentAction && (state.launchFirstLoad?.totalOrders ?? 0) === 0)
   ) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center bg-white p-8 text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B21FF] border-t-transparent" />
-        <p className="mt-4 text-sm font-medium text-[#0B1220]">Preparing your first 8 tasks…</p>
-        <p className="mt-2 max-w-sm text-xs text-[#64748B]">
-          Your blueprint is active. Foundation tasks are being generated from your validation.
-        </p>
-      </div>
-    );
+    return <PendingSyncState />;
   }
 
-  return <MainDashboardView state={projection} />;
+  return (
+    <DashboardShell condition={control.condition}>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <DashboardControlPanel state={state} uiState={uiState} onRefresh={handleRefresh} />
+      </div>
+      <MainDashboardView state={state} />
+    </DashboardShell>
+  );
 }

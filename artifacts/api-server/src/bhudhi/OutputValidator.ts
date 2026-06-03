@@ -296,6 +296,16 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
     case "erector_purpose":
     case "erector_industry":
     case "erector_market":
+    case "erector_competitors":
+    case "erector_economy":
+    case "erector_pain":
+    case "erector_time_simulation":
+    case "erector_paths":
+    case "erector_first_week":
+      if (!d["summary"]) errors.push(`${expectedType}: missing summary`);
+      if (!Array.isArray(d["warnings"])) errors.push(`${expectedType}: warnings must be array`);
+      if (!Array.isArray(d["opportunities"])) errors.push(`${expectedType}: opportunities must be array`);
+      break;
     case "validation_competitor_deep":
       if (!d["name"]) errors.push("validation_competitor_deep: missing name");
       if (!d["archetype"]) errors.push("validation_competitor_deep: missing archetype");
@@ -311,17 +321,6 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       }
       break;
     }
-    case "erector_competitors":
-    case "erector_economy":
-    case "erector_pain":
-    case "erector_time_simulation":
-    case "erector_paths":
-    case "erector_first_week":
-      if (!d["summary"]) errors.push(`${expectedType}: missing summary`);
-      if (!Array.isArray(d["warnings"])) errors.push(`${expectedType}: warnings must be array`);
-      if (!Array.isArray(d["opportunities"])) errors.push(`${expectedType}: opportunities must be array`);
-      break;
-
     default:
       errors.push(`Unknown output type: ${expectedType}`);
   }

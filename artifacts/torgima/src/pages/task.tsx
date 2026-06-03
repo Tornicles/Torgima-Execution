@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ChevronRight, Clock, Zap, Camera, Play, CheckCircle2, Brain } from "lucide-react";
-import { apiGet, getOrder, getExecutionActiveOrder, startOrder, blockOrder } from "@/lib/torgima-api";
-import type { Order } from "@workspace/api-client-react";
+import { apiGet, getExecutionActiveOrder, startOrder, blockOrder } from "@/lib/torgima-api";
+import { fetchOrderDetail } from "@/api/orders";
 import { KnowledgeInjectionAccordion, type KnowledgeInjection } from "@/components/execution/KnowledgeInjectionAccordion";
 import { ExecutionHelpPanel } from "@/components/execution/ExecutionHelpPanel";
 import { AcademyOrderCard } from "@/components/execution/AcademyOrderCard";
+import { TaskSkeleton } from "@/components/tasks/TaskSkeleton";
+import { BlockedTaskState } from "@/components/tasks/BlockedTaskState";
+import { ProofRequirement } from "@/components/tasks/ProofRequirement";
+import { FeedbackForm } from "@/components/tasks/FeedbackForm";
+import { useDashboardProjection } from "@/hooks/useDashboardProjection";
+import { parseTaskExecutionView } from "@/lib/task-feedback";
+import type { TaskExecutionView } from "@/types/task-execution";
 
 type Trace = { goal?: string; plan?: string; phase?: string; project?: string; action?: string; task?: string };
 
@@ -36,21 +43,32 @@ type OrderVm = {
   knowledgeObjects?: Array<{ id: string; title: string; content?: string | null }>;
 };
 
-function orderToVm(order: Order): OrderVm {
+function detailToVm(data: Record<string, unknown>): OrderVm {
+  const ctx = (data.commandContext ?? {}) as CommandCtx;
   return {
-    title: order.title,
-    instruction: order.instructions ?? order.description ?? "",
-    timeEstimateMinutes: order.estimatedMinutes ?? null,
-    proofRequired: order.proofRequired,
-    taskType: order.type,
-    priority: order.priority,
+    title: String(data.title ?? ""),
+    instruction: String(data.instruction ?? data.instructions ?? ""),
+    expectedOutput: (data.expectedOutput as string | null) ?? null,
+    definitionOfDone: (data.definitionOfDone as string | null) ?? null,
+    whyItMatters: (data.whyItMatters as string | null) ?? null,
+    timeEstimateMinutes: (data.timeEstimateMinutes as number | null) ?? null,
+    proofRequired: Boolean(data.proofRequired),
+    taskType: String(data.taskType ?? data.type ?? "execution"),
+    difficulty: (data.difficulty as string | null) ?? null,
+    priority: (data.priority as number) ?? 0,
+    commandContext: ctx,
+    knowledgeObjects: Array.isArray(data.knowledgeObjects)
+      ? (data.knowledgeObjects as OrderVm["knowledgeObjects"])
+      : undefined,
   };
 }
 
 export default function TaskPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [, setLocation] = useLocation();
+  const { stateVersion, invalidate } = useDashboardProjection();
   const [order, setOrder] = useState<OrderVm | null>(null);
+  const [execution, setExecution] = useState<TaskExecutionView | null>(null);
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
@@ -61,8 +79,16 @@ export default function TaskPage() {
 
   useEffect(() => {
     if (!orderId) return;
-    void getOrder(orderId)
-      .then((d) => setOrder(orderToVm(d)))
+    void fetchOrderDetail(orderId)
+      .then((res) => {
+        if (!res.ok) {
+          setLocation("/dashboard");
+          return;
+        }
+        const data = res.data ?? {};
+        setOrder(detailToVm(data));
+        setExecution(parseTaskExecutionView(data));
+      })
       .finally(() => setLoading(false));
 
     void apiGet<{ summary?: string }>(`/api/orders/${orderId}/decision-trace`)
@@ -77,7 +103,7 @@ export default function TaskPage() {
         if (inj) setKnowledgeInjection(inj);
       })
       .catch(() => null);
-  }, [orderId]);
+  }, [orderId, setLocation]);
 
   useEffect(() => {
     if (!started) return;
@@ -101,12 +127,7 @@ export default function TaskPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-gray-400 font-mono uppercase">Loading execution order</p>
-      </div>
-    );
+    return <TaskSkeleton />;
   }
 
   if (!order) {
@@ -117,6 +138,21 @@ export default function TaskPage() {
           Return to execution queue
         </button>
       </div>
+    );
+  }
+
+  if (execution?.blocked) {
+    return (
+      <BlockedTaskState
+        reason={execution.disabledReason}
+        onRefresh={() => {
+          invalidate();
+          if (!orderId) return;
+          void fetchOrderDetail(orderId).then((res) => {
+            if (res.ok) setExecution(parseTaskExecutionView(res.data));
+          });
+        }}
+      />
     );
   }
 
@@ -277,7 +313,12 @@ export default function TaskPage() {
           <p className="text-sm text-gray-700">{order.definitionOfDone}</p>
         </div>
 
-        {ctx.proof ? (
+        {execution ? (
+          <ProofRequirement
+            proofType={execution.proofType}
+            instruction={execution.proofInstruction}
+          />
+        ) : ctx.proof ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-1">
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider font-mono flex items-center gap-1">
               <Camera className="w-3 h-3" />
@@ -360,14 +401,13 @@ export default function TaskPage() {
             Begin execution
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => setLocation(`/feedback/${orderId}`)}
-            className="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+          <a
+            href={`#execution-report`}
+            className="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2 no-underline"
           >
             <CheckCircle2 className="w-4 h-4" />
             Submit execution report
-          </button>
+          </a>
         )}
         <button
           type="button"
@@ -384,6 +424,17 @@ export default function TaskPage() {
           Report blocked
         </button>
       </div>
+
+      {started && execution ? (
+        <div id="execution-report" className="scroll-mt-6">
+          <FeedbackForm
+            order={execution}
+            stateVersion={stateVersion}
+            onSuccess={invalidate}
+            compact
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

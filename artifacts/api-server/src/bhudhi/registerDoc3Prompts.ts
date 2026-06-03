@@ -271,7 +271,9 @@ export function ensureDoc3PromptsRegistered(api: PromptRegistryApi): void {
     maxTokens: 1200,
     temperature: 0.25,
     fallbackKey: "fallback.validation_competitors",
-    buildUserPrompt: (ctx) => `Competitor research. Context: ${JSON.stringify(ctx)}`,
+    webSearchEligible: true,
+    buildUserPrompt: (ctx) =>
+      `Identify 3 REAL, EXISTING competitors for this idea using web search. Use actual brand names only (e.g. Notion, Shopify). Never use "Market Leader A/B/C" or fictional names. If market_share_pct cannot be verified, set market_share_pct to null. Context: ${JSON.stringify(ctx)}`,
   });
 
   const COMPETITOR_DEEP_SYSTEM = `You are Bhudhi, the execution intelligence layer for the Torgima system.
@@ -294,7 +296,7 @@ HARD RULES:
     systemPrompt: COMPETITOR_DEEP_SYSTEM,
     webSearchEligible: true,
     buildUserPrompt: (ctx) =>
-      `Archetype: ${String(ctx["archetype_label"] ?? "")}. Idea: ${String(ctx["idea_title"] ?? "")}. Goal: ${String(ctx["goal"] ?? "")}. Domain: ${String(ctx["domain"] ?? "")}. Market context: ${String(ctx["market_context"] ?? "")}. Return JSON with name, archetype, description, website, twitter, linkedin, community_hub, market_share_pct, market_share_label, relevance_summary, differentiation_hint, strengths[], weaknesses[], revenue_lifecycle, marketing_strategy, growth_catalyst, first_product_origin, source_urls[].`,
+      `Archetype: ${String(ctx["archetype_label"] ?? "")}. Idea: ${String(ctx["idea_title"] ?? "")}. Goal: ${String(ctx["goal"] ?? "")}. Domain: ${String(ctx["domain"] ?? "")}. Market context: ${String(ctx["market_context"] ?? "")}. Return JSON with name, archetype, description, website, twitter, linkedin, community_hub, market_share_pct (null if unverified via web search), market_share_label, relevance_summary, differentiation_hint, strengths[], weaknesses[], revenue_lifecycle, marketing_strategy, growth_catalyst, first_product_origin, source_urls[].`,
   });
 
   const EXPLANATIONS_SYSTEM = `You are Bhudhi generating explanation paragraphs for a completed validation report.
@@ -349,11 +351,15 @@ No markdown. Max 60 words per tier description.`;
     version: "1.0",
     mode: "STRUCTURE",
     outputType: "erector_paths",
-    maxTokens: 900,
+    maxTokens: 1200,
     temperature: 0.22,
     fallbackKey: "fallback.validation_paths",
     buildUserPrompt: (ctx) =>
-      `Build one basic path from goal and timeframe. Context: ${JSON.stringify(ctx)}`,
+      `Return JSON { "paths": { "current": {...}, "adjusted": {...}, "alternative": {...} } } with THREE clearly different execution paths for the same goal.
+current: execute the idea as-is with full scope; realistic risks; success_potential low|medium; time_to_traction slower (e.g. 6-12 months).
+adjusted: specific scope adjustments for faster proof; success_potential medium|high; time_to_traction faster (e.g. 3-6 months); is_recommended true.
+alternative: pivot wedge or business model; higher ceiling but longer timeline; success_potential medium|high; time_to_traction longest (e.g. 9-18 months).
+Each path must have distinct description, success_potential, estimated_outcome, and time_to_traction. Context: ${JSON.stringify(ctx)}`,
   });
 
   registerDoc3Contract("ERECTOR_ACADEMY_CONTENT", {

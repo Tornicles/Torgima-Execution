@@ -9,3 +9,4 @@ export * from "./growthTables";
 export * from "./ultimateTables";
 export * from "./validationUpgradeTables";
 export * from "./blueprintTierTables";
+export * from "./adminTables";

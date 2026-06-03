@@ -1,5 +1,90 @@
 # AUDIT CLOSURE — 2026-05-27
 
+## TORGIMA Super Admin Dashboard (2026-06-02)
+
+Per `TORGIMA_ADMIN_DASHBOARD.docx`:
+
+- DB: `admin_sessions`, `admin_support_notes`, `admin_actions_log` — `lib/db/src/schema/adminTables.ts`, migration `20260602140000_admin_tables.sql`
+- Auth: `AdminAuthService` (separate `admin_session` cookie, 8h TTL) — env `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`
+- API: `artifacts/api-server/src/routes/admin.ts` mounted at `/api/admin`
+- UI: `artifacts/torgima/src/admin/` — dark theme app at `/admin/*` (dashboard, users, health, analytics, Bhudhi, DLQ, audit)
+- Gate: `artifacts/torgima/src/__tests__/unit/admin-dashboard.test.ts`
+
+## DOC 37 — Error handling & edge case testing (2026-06-02)
+
+Per `TORGIMA_DOC37_ERROR_HANDLING.docx` / `DOC_37_Error_Handling_Edge_Case_Testing_Guide.docx`:
+
+- Taxonomy: `artifacts/api-server/src/lib/failure-taxonomy.ts` — seven classes on API `error.class`
+- Payload guard: `feedback-payload-limit.ts` (10 KB) on `POST /orders/:id/feedback`; `ACTIVATION_FAILED` on incomplete launch
+- Frontend: `feedback-draft.ts`, `useNetworkResilience`, `refetchOnWindowFocus`, offline banner on `FeedbackForm`
+- Tests: `artifacts/api-server/src/tests/e2e/doc37/` (6 API suites) + `artifacts/torgima/tests/e2e/doc37/errors.frontend-resilience.spec.ts`
+- Gate: `artifacts/torgima/src/__tests__/unit/doc37-error-handling.test.ts`; `pnpm test:doc37` → `scripts/run-doc37-e2e.mjs`
+
+## DOC 36 — End-to-end loop testing (2026-06-02)
+
+Per `TORGIMA_DOC36_E2E_TESTING.docx` / `DOC_36_End_to_End_Loop_Testing_Specification.docx`:
+
+- Integration: `artifacts/api-server/src/tests/e2e/doc36/` — full loop, engine rules, DB integrity
+- Helpers: `doc36-reset.ts`, `doc36-loop-runner.ts` (15s budget), `doc36-constants.ts`
+- Scripts: `scripts/doc36-reset-test-user.ts`, `scripts/run-doc36-e2e.mjs`; `pnpm test:doc36`
+- Playwright: `artifacts/torgima/tests/e2e/doc36/loop.spec.ts`
+- Structural gate: `artifacts/torgima/src/__tests__/unit/doc36-e2e-loop.test.ts`
+
+## DOC 35 — Signal, condition & identity panel (2026-06-02)
+
+Per `TORGIMA_DOC35_SIGNAL_CONDITION_PANEL.docx` / `DOC_35_Signal_Condition_Identity_Panel.docx`:
+
+- `/signals` reads shared `useDashboardProjection` only (no parallel signal API calls)
+- Components: `StateFreshnessBadge`, `ConditionPanel`, `SignalMetricsPanel`, `IdentityPanel`, `ExplainStateDrawer`, `PanelSkeleton`
+- `lib/signals-panel.ts` maps verified dashboard projection to plain-language panels; identity stages via `LANGUAGE.identity`
+- Bhudhi explain: `POST /api/bhudhi/explain-state` via `api/bhudhi.ts` with safe fallback copy
+- Tests: `artifacts/torgima/src/__tests__/unit/doc35-signals-panel.test.ts`
+
+## DOC 34 — Task execution & feedback screens (2026-06-02)
+
+Per `TORGIMA_DOC34_TASK_FEEDBACK_SCREENS.docx` / `DOC_34_Task_Execution_Feedback_Screens.docx`:
+
+- API: `GET /api/orders/:id` returns `stateVersion` + `taskExecution` (`buildTaskExecutionView`)
+- Components: `TaskSkeleton`, `BlockedTaskState`, `ProofRequirement`, `ProofInputs`, `OptionalEffortInputs`, `FeedbackForm`
+- Pages: `/tasks/:orderId` and `/feedback/:orderId` load order detail, blocked state without form, feedback via `runDashboardMutation` with stable `idempotencyKey` per order session
+- Proof: TEXT 20 chars, FILE upload, LINK, CHECKLIST, OUTPUT client validation
+- Tests: `artifacts/torgima/src/__tests__/unit/doc34-task-feedback.test.ts`
+
+## DOC 33 — Dashboard & control panel (2026-06-02)
+
+Per `TORGIMA_DOC33_DASHBOARD_SCREENS.docx` / `DOC_33_Dashboard_Control_Panel_Screens.docx`:
+
+- API: `locked`, `lockReason`, `conditionLabel`, `blueprintId`, `currentAction.allowedActions` on dashboard projection
+- Shell states: loading skeleton, NO_BLUEPRINT → onboarding, LOCKED, PENDING_SYNC (5s poll), ACTIVE
+- Components: `DashboardShell`, `CurrentActionPanel`, `SystemStateStrip`, `HealthLockState`, banners, `ActionButtons`
+- Condition-aware: reduced motion during danger/urgency
+- Tests: `artifacts/torgima/src/__tests__/unit/doc33-dashboard-screens.test.ts`
+
+## DOC 32 — Onboarding & goal input screens (2026-06-02)
+
+Per `DOC_32_Onboarding_Goal_Input_Screens.docx` / `TORGIMA_DOC32_ONBOARDING_SCREENS.docx`:
+
+- API: `GET /api/onboarding/status` returns `hasActiveBlueprint`, `onboardingStep`; `POST /api/onboarding/configure-tier` (tier/mode before launch)
+- Flow: welcome → goal → context → **structure** (Bhudhi + clarification fallback) → review → validation → tier → activate
+- Guard: `useOnboardingActiveBlueprintGuard` on onboarding routes
+- Launch: tier card → `configureOnboardingTier`; footer → `selectTierAndLaunch` (idempotent, disabled while pending)
+- Copy: `LANGUAGE.onboarding` placeholders and “Start My Execution System” activation label
+- Tests: `artifacts/torgima/src/__tests__/unit/doc32-onboarding-screens.test.ts`
+
+## DOC 31 — Frontend architecture & state sync (2026-06-02)
+
+Per `TORGIMA_DOC31_FRONTEND_ARCHITECTURE.docx` / `DOC_31_Frontend_Architecture_State_Sync.docx`:
+
+- Typed API layer: `artifacts/torgima/src/api/*` (credentials, 401 → login, idempotency/state version headers)
+- Stores: `sessionStore`, `dashboardStore`, `onboardingStore`
+- Hooks: `useSessionGuard`, `useDashboardProjection` (15s poll when `pendingSync`, invalidate map)
+- Sync: `lib/query-keys.ts`, `lib/mutations.ts` (`runDashboardMutation`, `afterMutationSuccess`, stale/auth)
+- UI safety: `ErrorBoundary` on protected routes; `lib/language.ts` internal-term labels
+- Shared client: `lib/api-client-react/src/custom-fetch.ts` — 401 redirect on protected paths
+- Wired: `DashboardFeedbackForm`, `pages/feedback.tsx` post-mutation invalidation
+- Tests: `artifacts/torgima/src/__tests__/unit/doc31-frontend-architecture.test.ts` (7 passing)
+- Gates: `pnpm typecheck`, `pnpm -F torgima build` pass
+
 ## Erector validation upgrade (2026-06-01)
 
 Structured validation panels + launch bridge:

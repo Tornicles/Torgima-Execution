@@ -384,6 +384,24 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
+    if (
+      response.status === 401 &&
+      typeof globalThis !== "undefined" &&
+      typeof (globalThis as { window?: { location?: { pathname?: string } } }).window?.location
+        ?.pathname === "string"
+    ) {
+      const path = (globalThis as { window: { location: { pathname: string } } }).window.location
+        .pathname;
+      const publicPaths = ["/login", "/verify", "/signup", "/landing", "/"];
+      const isPublic = publicPaths.some(
+        (p) => path === p || path.startsWith(`${p}/`) || (p === "/" && path === "/"),
+      );
+      if (!isPublic) {
+        const returnTo = encodeURIComponent(path);
+        (globalThis as { window: { location: { href: string } } }).window.location.href =
+          `/login?returnTo=${returnTo}`;
+      }
+    }
     throw new ApiError(response, errorData, requestInfo);
   }
 

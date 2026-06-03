@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
-import { getGetDashboardStateQueryKey } from "@workspace/api-client-react";
+import { afterMutationSuccess } from "@/lib/mutations";
 import { buttons } from "@/design";
 import type { TaskRealityState } from "@/lib/structured-feedback-api";
 
@@ -73,7 +73,7 @@ export function DashboardFeedbackForm({
       return;
     }
 
-    await queryClient.invalidateQueries({ queryKey: getGetDashboardStateQueryKey() });
+    await afterMutationSuccess(queryClient);
     onSubmitted?.();
   }
 

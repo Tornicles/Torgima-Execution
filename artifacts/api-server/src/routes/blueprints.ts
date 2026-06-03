@@ -82,6 +82,59 @@ export const blueprintLaunchBodySchema = z
     purpose: data.purpose,
   }));
 
+const selectTierBodySchema = z
+  .object({
+    blueprintId: z.string().uuid(),
+    validationId: z.string().uuid(),
+    selectedTier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    selected_tier: z.enum(["starter", "growth", "ultimate"]).optional(),
+    selectedPath: pathTypeSchema.optional(),
+    selected_path: pathTypeSchema.optional(),
+  })
+  .transform((data) => ({
+    blueprintId: data.blueprintId,
+    validationId: data.validationId,
+    selectedTier: data.selectedTier ?? data.selected_tier ?? "starter",
+    selectedPath: data.selectedPath ?? data.selected_path ?? "adjusted",
+  }));
+
+async function selectTierLaunchHandler(
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const parsed = selectTierBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      failure(res, "VALIDATION_ERROR", detail || "Invalid select-tier body", 400);
+      return;
+    }
+
+    const { blueprintId, validationId, selectedTier, selectedPath } = parsed.data;
+    const result = await ValidationLaunchService.launch({
+      validationId,
+      userId: auth.userId,
+      blueprintId,
+      tier: selectedTier,
+      selectedPath,
+    });
+
+    success(res, {
+      blueprintId: result.blueprintId,
+      tier: result.tier ?? selectedTier,
+      redirectTo: result.redirectTo,
+      generationSummary: result.generationSummary,
+      launched: result.launched,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+}
+
+// POST /api/blueprints/select-tier — register before /blueprints/:id
+router.post("/blueprints/select-tier", selectTierLaunchHandler);
+
 // GET /api/blueprints/features — client-side feature gating manifest
 router.get("/blueprints/features", async (req, res) => {
   try {
@@ -663,22 +716,6 @@ router.post("/blueprints/:id/strategy-review/request", async (req, res) => {
   }
 });
 
-const selectTierBodySchema = z
-  .object({
-    blueprintId: z.string().uuid(),
-    validationId: z.string().uuid(),
-    selectedTier: z.enum(["starter", "growth", "ultimate"]).optional(),
-    selected_tier: z.enum(["starter", "growth", "ultimate"]).optional(),
-    selectedPath: pathTypeSchema.optional(),
-    selected_path: pathTypeSchema.optional(),
-  })
-  .transform((data) => ({
-    blueprintId: data.blueprintId,
-    validationId: data.validationId,
-    selectedTier: data.selectedTier ?? data.selected_tier ?? "starter",
-    selectedPath: data.selectedPath ?? data.selected_path ?? "adjusted",
-  }));
-
 // GET /api/blueprints/:id/tier-preview — saved tier cards for selection screen
 router.get("/blueprints/:id/tier-preview", async (req, res) => {
   try {
@@ -709,38 +746,6 @@ router.get("/blueprints/:id/tier-preview", async (req, res) => {
       previews = await ensureTierPreviewsPresent(validation.id, auth.userId);
     }
     success(res, { previews });
-  } catch (err) {
-    handleError(req, res, err);
-  }
-});
-
-// POST /api/blueprints/select-tier — tier selection → chain generation → launch
-router.post("/blueprints/select-tier", async (req, res) => {
-  try {
-    const auth = await requireAuth(req, "USER_SESSION");
-    const parsed = selectTierBodySchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      const detail = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-      failure(res, "VALIDATION_ERROR", detail || "Invalid select-tier body", 400);
-      return;
-    }
-
-    const { blueprintId, validationId, selectedTier, selectedPath } = parsed.data;
-    const result = await ValidationLaunchService.launch({
-      validationId,
-      userId: auth.userId,
-      blueprintId,
-      tier: selectedTier,
-      selectedPath,
-    });
-
-    success(res, {
-      blueprintId: result.blueprintId,
-      tier: result.tier ?? selectedTier,
-      redirectTo: result.redirectTo,
-      generationSummary: result.generationSummary,
-      launched: result.launched,
-    });
   } catch (err) {
     handleError(req, res, err);
   }
