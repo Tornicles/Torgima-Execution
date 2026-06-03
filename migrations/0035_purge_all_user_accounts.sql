@@ -19,6 +19,9 @@ BEGIN
   -- Remove upgrade archive rows (references users)
   DELETE FROM platform_upgrade_archive;
 
+  -- Remove events that reference blueprints (FK is not ON DELETE CASCADE)
+  DELETE FROM events;
+
   -- Hard-delete all accounts; FK ON DELETE CASCADE removes blueprints, projects, plans, orders, validations, sessions, etc.
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;

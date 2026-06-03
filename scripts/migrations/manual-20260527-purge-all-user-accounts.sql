@@ -15,6 +15,7 @@ BEGIN
 
   UPDATE users SET active_blueprint_id = NULL WHERE active_blueprint_id IS NOT NULL;
   DELETE FROM platform_upgrade_archive;
+  DELETE FROM events;
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;
 
