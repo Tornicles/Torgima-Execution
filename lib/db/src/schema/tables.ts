@@ -1049,7 +1049,9 @@ export const events = pgTable(
     entity_type: text("entity_type").notNull(),
     entity_id: uuid("entity_id"),
     user_id: uuid("user_id"),
-    blueprint_id: uuid("blueprint_id").references(() => blueprints.id),
+    blueprint_id: uuid("blueprint_id").references(() => blueprints.id, {
+      onDelete: "set null",
+    }),
     payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
     idempotency_key: text("idempotency_key").unique(),
     status: eventStatusEnum("status").notNull().default("pending"),

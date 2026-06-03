@@ -19,6 +19,9 @@ BEGIN
   -- Remove upgrade archive rows (references users)
   DELETE FROM platform_upgrade_archive;
 
+  -- events.blueprint_id had no ON DELETE rule — blocked blueprint/user cascade deletes
+  DELETE FROM events WHERE blueprint_id IS NOT NULL;
+
   -- Hard-delete all accounts; FK ON DELETE CASCADE removes blueprints, projects, plans, orders, validations, sessions, etc.
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;
