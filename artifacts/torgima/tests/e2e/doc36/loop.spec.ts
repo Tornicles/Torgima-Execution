@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { expectLoginAuthGate, gotoProtectedRoute } from "../helpers/auth-gate";
 
 /**
  * DOC 36 — frontend loop gate (shell + copy + feedback guardrails).
@@ -7,28 +8,26 @@ import { test, expect } from "@playwright/test";
 const FORBIDDEN_INTERNAL = /ControlEngine|SignalWorker|dead_letter_events|enforcement_package|signal_snapshot/i;
 
 test.describe("DOC 36 — Frontend E2E gate", () => {
-  test("dashboard route shows loading or content — never empty body", async ({ page }) => {
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const body = await page.locator("body").innerText();
-    expect(body.trim().length).toBeGreaterThan(10);
+  test("dashboard route shows login gate when no API session exists", async ({ page }) => {
+    await gotoProtectedRoute(page, "/dashboard");
+    await expectLoginAuthGate(page);
   });
 
-  test("onboarding route is reachable", async ({ page }) => {
-    await page.goto("/onboarding", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 20_000 });
+  test("onboarding route redirects to login without session", async ({ page }) => {
+    await gotoProtectedRoute(page, "/onboarding");
+    await expectLoginAuthGate(page);
   });
 
-  test("signals route resolves (auth gate or dashboard)", async ({ page }) => {
-    await page.goto("/signals", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  test("signals route resolves through login auth gate", async ({ page }) => {
+    await gotoProtectedRoute(page, "/signals");
+    await expectLoginAuthGate(page);
     const body = await page.locator("body").innerText();
-    expect(body.length).toBeGreaterThan(20);
     expect(body).not.toMatch(FORBIDDEN_INTERNAL);
   });
 
-  test("feedback route resolves through auth gate", async ({ page }) => {
-    await page.goto("/feedback/test-order-id", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const body = await page.locator("body").innerText();
-    expect(body.length).toBeGreaterThan(20);
+  test("feedback route resolves through login auth gate", async ({ page }) => {
+    await gotoProtectedRoute(page, "/feedback/test-order-id");
+    await expectLoginAuthGate(page);
   });
 
   test("no forbidden internal engine terms on marketing shell", async ({ page }) => {

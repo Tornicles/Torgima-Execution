@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { expectLoginAuthGate, gotoProtectedRoute } from "../helpers/auth-gate";
 
 /**
  * SPA smoke checks for the Phase 1 Vite shell (canonical frontend).
- * Start the UI: `pnpm -F @workspace/torgima dev` (defaults to port 5173).
  * Install browsers once: `pnpm -F @workspace/torgima exec playwright install chromium`.
  */
 test.describe("Torgima critical path — SPA shell", () => {
@@ -14,14 +14,12 @@ test.describe("Torgima critical path — SPA shell", () => {
   });
 
   test("dashboard is protected when no API session exists", async ({ page }) => {
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 25_000 });
+    await gotoProtectedRoute(page, "/dashboard");
+    await expectLoginAuthGate(page);
   });
 
   test("signals route resolves through the auth gate", async ({ page }) => {
-    await page.goto("/signals", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 20_000 });
+    await gotoProtectedRoute(page, "/signals");
+    await expectLoginAuthGate(page);
   });
 });

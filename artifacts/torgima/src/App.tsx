@@ -1,6 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -119,7 +119,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!authenticated) return null;
+  if (!authenticated) {
+    return <Redirect to="/login" />;
+  }
   return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 

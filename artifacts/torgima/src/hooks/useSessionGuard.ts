@@ -17,19 +17,24 @@ export function useSessionGuard() {
   useEffect(() => {
     if (loaded) return;
 
-    void fetchAuthSession().then((res) => {
-      if (!res.ok || !res.data?.authenticated || !res.data.userId) {
+    void fetchAuthSession()
+      .then((res) => {
+        if (!res.ok || !res.data?.authenticated || !res.data.userId) {
+          clearSession();
+          setLocation("/login");
+          return;
+        }
+        setSession({
+          userId: res.data.userId,
+          sessionId: res.data.sessionId ?? "",
+          userMode: res.data.userMode ?? "individual",
+          userTier: res.data.userTier ?? "starter",
+        });
+      })
+      .catch(() => {
         clearSession();
         setLocation("/login");
-        return;
-      }
-      setSession({
-        userId: res.data.userId,
-        sessionId: res.data.sessionId ?? "",
-        userMode: res.data.userMode ?? "individual",
-        userTier: res.data.userTier ?? "starter",
       });
-    });
   }, [loaded, setSession, clearSession, setLocation]);
 
   return { userId, loaded, authenticated: Boolean(userId) };
