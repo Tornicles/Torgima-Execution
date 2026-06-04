@@ -23,6 +23,7 @@ import ChangelogPage from "@/pages/changelog";
 import LoginPage from "@/pages/login";
 import SignupPage from "@/pages/signup";
 import VerifyPage from "@/pages/verify";
+import AuthCallbackPage from "@/pages/auth/callback";
 import UnsubscribePage from "@/pages/unsubscribe";
 
 const Dashboard = lazy(() => import("@/pages/dashboard"));
@@ -316,6 +317,7 @@ function AppRoutes() {
         <Route path="/changelog" component={ChangelogPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
+        <Route path="/auth/callback" component={AuthCallbackPage} />
         <Route path="/verify" component={VerifyPage} />
         <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 

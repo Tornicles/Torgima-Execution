@@ -18,9 +18,17 @@ describe("DOC 30 — Authentication & Session Management", () => {
     expect(auth).toContain("SESSION_IDLE_MS");
   });
 
-  it("resolves APP_URL for magic links", () => {
+  it("resolves APP_URL for post-verify SPA redirects", () => {
     const appUrl = readRepo("artifacts/api-server/src/lib/app-url.ts");
     expect(appUrl).toContain('process.env["APP_URL"]');
+  });
+
+  it("uses SPA auth callback URL in magic-link emails", () => {
+    const auth = readRepo("artifacts/api-server/src/services/AuthService.ts");
+    const apiUrl = readRepo("artifacts/api-server/src/lib/api-url.ts");
+    expect(auth).toContain("buildMagicLinkVerifyUrl");
+    expect(apiUrl).toContain("/auth/callback");
+    expect(apiUrl).toContain("resolveAppUrl");
   });
 
   it("registers session cleanup worker at 02:00 UTC", () => {

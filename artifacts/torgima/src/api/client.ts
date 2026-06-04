@@ -6,7 +6,7 @@
 import { API_BASE_URL } from "@/lib/api-base";
 import type { ApiRequestOptions, ApiResponse } from "./types";
 
-const AUTH_PUBLIC_PATHS = ["/login", "/verify", "/signup", "/landing", "/"];
+const AUTH_PUBLIC_PATHS = ["/login", "/verify", "/auth/callback", "/signup", "/landing", "/"];
 
 function resolveUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;

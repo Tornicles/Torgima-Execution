@@ -5,7 +5,7 @@ import { eq, and, gt, like, not } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { sendEmail, EMAIL_FROM_HEADER } from "../lib/resend.js";
-import { resolveAppUrl } from "../lib/app-url.js";
+import { buildMagicLinkVerifyUrl } from "../lib/api-url.js";
 import { logAuthSecurityEvent } from "../lib/auth-security-log.js";
 import type { AuthContext, SafeUser } from "../types/auth.js";
 
@@ -58,7 +58,7 @@ export async function sendMagicLink(email: string): Promise<SendMagicLinkResult>
     expires_at: expiresAt,
   });
 
-  const verifyUrl = `${resolveAppUrl()}/verify?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+  const verifyUrl = buildMagicLinkVerifyUrl(rawToken, normalizedEmail);
 
   // Always log a dev-friendly trail so the link is recoverable when no
   // email provider is configured. In production we additionally try Resend.

@@ -20,6 +20,8 @@ const router = Router();
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
 const prod = process.env["NODE_ENV"] === "production";
 
+// Production: SameSite=None + Secure — required for Vercel SPA → Railway API (cross-site credentialed fetch).
+// Magic-link completion uses top-level GET /api/auth/verify; lax alone would not send the cookie on API calls from the app.
 const sessionCookieOptions = {
   httpOnly: true,
   secure: prod,
@@ -27,6 +29,10 @@ const sessionCookieOptions = {
   path: "/" as const,
   maxAge: COOKIE_MAX_AGE * 1000,
 };
+
+function postVerifyRedirectPath(onboardingComplete: boolean): string {
+  return onboardingComplete ? "/dashboard" : "/onboarding";
+}
 
 const verifySchema = z.object({ token: z.string(), email: z.email() });
 
@@ -39,23 +45,27 @@ async function completeMagicLinkVerify(
 ): Promise<void> {
   const verifyAllowed = await magicLinkVerifyLimit(email);
   if (!verifyAllowed) {
-    failure(res, "RATE_LIMITED", "Too many verification attempts. Try again later.", 429, {
-      retryable: true,
-    });
+    const rateMsg = "Too many verification attempts. Try again later.";
+    if (redirectOnSuccess) {
+      const q = new URLSearchParams({ error: rateMsg });
+      res.redirect(302, `${resolveAppUrl()}/auth/callback?${q.toString()}`);
+      return;
+    }
+    failure(res, "RATE_LIMITED", rateMsg, 429, { retryable: true });
     return;
   }
 
   const { sessionToken, user } = await verifyMagicLink(token, email);
   res.cookie(SESSION_COOKIE_NAME, sessionToken, sessionCookieOptions);
 
+  const redirectTo = postVerifyRedirectPath(user.onboardingComplete);
+
   if (redirectOnSuccess) {
-    const base = resolveAppUrl();
-    const target = user.onboardingComplete ? `${base}/dashboard` : `${base}/onboarding`;
-    res.redirect(302, target);
+    res.redirect(302, `${resolveAppUrl()}${redirectTo}`);
     return;
   }
 
-  success(res, { user, verified: true });
+  success(res, { user, verified: true, redirectTo });
 }
 
 // POST /api/auth/login — DOC 30 magic-link bootstrap
@@ -81,27 +91,48 @@ router.post("/login", async (req, res) => {
   }
 });
 
+function wantsHtmlRedirect(req: Request): boolean {
+  const accept = String(req.headers.accept ?? "");
+  return accept.includes("text/html") || accept === "*/*" || accept === "";
+}
+
+function redirectVerifyError(_req: Request, res: Response, message: string): void {
+  const q = new URLSearchParams({ error: message });
+  res.redirect(302, `${resolveAppUrl()}/auth/callback?${q.toString()}`);
+}
+
 // GET /api/auth/verify — browser magic-link landing (redirect after cookie)
 router.get("/verify", async (req, res) => {
+  const htmlFlow = wantsHtmlRedirect(req);
   try {
     const parsed = verifySchema.safeParse({
       token: req.query.token,
       email: req.query.email,
     });
     if (!parsed.success) {
+      if (htmlFlow) {
+        redirectVerifyError(req, res, "This sign-in link is invalid or incomplete.");
+        return;
+      }
       failure(res, "VALIDATION_ERROR", "Invalid verify query", 422);
       return;
     }
-    const accept = String(req.headers.accept ?? "");
-    const wantsHtml = accept.includes("text/html");
     await completeMagicLinkVerify(
       req,
       res,
       parsed.data.token,
       parsed.data.email,
-      wantsHtml,
+      htmlFlow,
     );
   } catch (err) {
+    if (htmlFlow) {
+      const message =
+        err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "Verification failed or this link has expired.";
+      redirectVerifyError(req, res, message);
+      return;
+    }
     handleError(req, res, err);
   }
 });

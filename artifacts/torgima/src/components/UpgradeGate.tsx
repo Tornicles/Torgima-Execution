@@ -8,6 +8,7 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
   "/verify",
+  "/auth/callback",
   "/how-it-works",
   "/pricing",
   "/about",

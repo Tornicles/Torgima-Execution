@@ -392,7 +392,7 @@ export async function customFetch<T = unknown>(
     ) {
       const path = (globalThis as { window: { location: { pathname: string } } }).window.location
         .pathname;
-      const publicPaths = ["/login", "/verify", "/signup", "/landing", "/"];
+      const publicPaths = ["/login", "/verify", "/auth/callback", "/signup", "/landing", "/"];
       const isPublic = publicPaths.some(
         (p) => path === p || path.startsWith(`${p}/`) || (p === "/" && path === "/"),
       );
