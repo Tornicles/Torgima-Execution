@@ -10,15 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Build, migrate, deploy
+  test:
+    name: Typecheck, build, test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.0.9
+          version: 11
 
       - uses: actions/setup-node@v4
         with:
@@ -40,15 +40,62 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
+      - name: Unit tests
+        run: pnpm test:api
+
+  deploy-worker:
+    name: Deploy API Worker
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API Worker
+        run: pnpm --filter @workspace/api-server build
+
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: artifacts/api-server
           command: deploy
 
+  deploy-pages:
+    name: Deploy Frontend (Pages)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build Frontend (Pages)
-        run: pnpm run build:cloudflare:pages
+        run: pnpm --filter @workspace/torgima build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
@@ -56,5 +103,6 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: "."
           command: pages deploy artifacts/torgima/dist --project-name=torgima-frontend
