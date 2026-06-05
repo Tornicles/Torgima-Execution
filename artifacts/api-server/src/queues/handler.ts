@@ -29,6 +29,11 @@ import "../workers/PredictionWorker.js";
 import "../workers/EISWorker.js";
 import "../workers/FalseProgressWorker.js";
 import "../workers/BlueprintPositionWorker.js";
+import "../workers/SessionCleanupWorker.js";
+import "../workers/InactivityWorker.js";
+import "../workers/PatternScanWorker.js";
+import "../workers/StateIntegrityWorker.js";
+import "../workers/EventDispatcherWorker.js";
 
 async function dispatchQueueMessage(message: TorgimaQueueMessage): Promise<void> {
   const handlers = workerRegistry.getRegistered().filter((d) => d.queue === message.queue);

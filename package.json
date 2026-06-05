@@ -48,7 +48,8 @@
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen",
     "build:cloudflare:pages": "pnpm --filter @workspace/state-machine build && pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/torgima build",
     "deploy:cloudflare:pages": "pnpm exec wrangler pages deploy artifacts/torgima/dist --project-name=torgima-frontend",
-    "deploy:cloudflare:api": "pnpm exec wrangler deploy --config artifacts/api-server/wrangler.jsonc"
+    "deploy:cloudflare:api": "pnpm exec wrangler deploy --config artifacts/api-server/wrangler.jsonc",
+    "provision:cloudflare": "node scripts/provision-cloudflare.mjs"
   },
   "private": true,
   "devDependencies": {

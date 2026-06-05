@@ -3,7 +3,7 @@
  * Infrastructure only; no business-logic changes.
  */
 
-import type { Hyperdrive } from "@cloudflare/workers-types";
+import type { Hyperdrive, KVNamespace, Queue } from "@cloudflare/workers-types";
 
 export type TorgimaWorkerEnv = {
   NODE_ENV?: string;

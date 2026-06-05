@@ -10,7 +10,7 @@ Create these **before** first deploy:
 |----------|------|--------|
 | **Pages project** | `torgima-frontend` | Connect GitHub repo `artifacts/torgima` build → `dist` |
 | **Worker** | `torgima-api` | Deployed from `artifacts/api-server` |
-| **KV namespace** | `TORGIMA_SESSIONS` | Copy ID into `artifacts/api-server/wrangler.jsonc` |
+| **KV namespace** | `TORGIMA_SESSIONS` | ID in `artifacts/api-server/wrangler.jsonc` (`aa13fb8cb21d44aa965fbcc7cc9ea1f7`) |
 | **Queue** | `torgima-task-queue` | Replaces pg-boss job delivery on Workers |
 | **Hyperdrive** | `torgima-supabase` | Point at Supabase Postgres connection string |
 
@@ -65,7 +65,19 @@ Cookie: `SameSite=Lax` on Cloudflare runtime.
 - Consumer: `src/queues/handler.ts` — dispatches to existing worker handlers
 - Node/Railway: pg-boss unchanged when `TORGIMA_RUNTIME` is not `cloudflare`
 
-Cron triggers in `wrangler.jsonc` cover scheduled jobs that previously used pg-boss cron.
+Cron triggers in `wrangler.jsonc` cover scheduled jobs that previously used pg-boss cron:
+
+| Cron | Job |
+|------|-----|
+| `0 2 * * *` | Session cleanup |
+| `*/30 * * * *` | Inactivity scan |
+| `0 3 * * *` | Pattern daily scan |
+| `*/10 * * * *` | State integrity sweep |
+| `* * * * *` | Event dispatch poll |
+
+`src/schedulers/cloudflare-cron.ts` enqueues these onto `torgima-task-queue`; `worker.scheduled()` is the Cloudflare entrypoint.
+
+Provision + deploy locally: `pnpm provision:cloudflare` (requires `wrangler login` or `CLOUDFLARE_API_TOKEN`).
 
 ## Phase 8 — CI/CD
 

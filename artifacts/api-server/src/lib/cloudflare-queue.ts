@@ -22,6 +22,15 @@ export class CloudflareQueueProducer {
     // Queues are provisioned in wrangler.jsonc
   }
 
+  async schedule(
+    _queue: string,
+    _cron: string,
+    _payload: unknown,
+    _options?: unknown,
+  ): Promise<void> {
+    // Cron schedules run via wrangler triggers + worker.scheduled() on Cloudflare
+  }
+
   async send(queue: string, payload: unknown, _options?: unknown): Promise<string | null> {
     const binding = globalThis.__TORGIMA_TASK_QUEUE__;
     if (!binding) {

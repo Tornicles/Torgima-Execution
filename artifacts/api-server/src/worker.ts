@@ -1,14 +1,14 @@
 /**
  * Cloudflare Workers entry — wraps existing Express API without rewriting routes.
  */
-/// <reference types="@cloudflare/workers-types" />
 
 import { createServer } from "node:http";
-import type { ExecutionContext, MessageBatch } from "@cloudflare/workers-types";
+import type { ExecutionContext, MessageBatch, ScheduledController } from "@cloudflare/workers-types";
 import express from "express";
 import { bindCloudflareEnv, type TorgimaQueueMessage, type TorgimaWorkerEnv } from "./lib/cloudflare-runtime.js";
 import { createCorsMiddleware } from "./lib/cors.js";
 import { handleQueueBatch } from "./queues/handler.js";
+import { handleCloudflareCron } from "./schedulers/cloudflare-cron.js";
 
 type FetchHandler = (
   request: Request,
@@ -31,7 +31,6 @@ async function createFetchHandler(): Promise<FetchHandler> {
   root.use(apiApp);
 
   const server = createServer(root);
-  cachedServer = server;
 
   const { httpServerHandler } = await import("cloudflare:node:http");
   return httpServerHandler(server) as FetchHandler;
@@ -53,5 +52,9 @@ export default {
 
   async queue(batch: MessageBatch<TorgimaQueueMessage>, env: TorgimaWorkerEnv): Promise<void> {
     await handleQueueBatch(batch, env);
+  },
+
+  async scheduled(controller: ScheduledController, env: TorgimaWorkerEnv): Promise<void> {
+    await handleCloudflareCron(controller, env);
   },
 };

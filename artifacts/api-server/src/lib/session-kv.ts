@@ -2,6 +2,8 @@
  * KV session infrastructure (Cloudflare). Used when SESSIONS binding is present.
  */
 
+import type { KVNamespace } from "@cloudflare/workers-types";
+
 const SESSION_PREFIX = "session:";
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 

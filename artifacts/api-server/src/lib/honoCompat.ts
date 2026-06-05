@@ -91,7 +91,7 @@ export function adaptExpressHandler(
     }
 
     if (typeof responseBody === "string") {
-      return c.body(responseBody, statusCode);
+      return new Response(responseBody, { status: statusCode });
     }
 
     return c.json(responseBody ?? null, statusCode as 200);

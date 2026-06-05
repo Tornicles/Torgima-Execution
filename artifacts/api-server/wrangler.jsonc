@@ -15,7 +15,7 @@
   "kv_namespaces": [
     {
       "binding": "SESSIONS",
-      "id": "REPLACE_WITH_TORGIMA_SESSIONS_KV_ID"
+      "id": "aa13fb8cb21d44aa965fbcc7cc9ea1f7"
     }
   ],
   "queues": {
@@ -29,17 +29,19 @@
       {
         "queue": "torgima-task-queue",
         "max_batch_size": 10,
-        "max_batch_timeout": 30
+        "max_batch_timeout": 30,
+        "max_retries": 10,
+        "dead_letter_queue": "torgima-task-queue-dlq"
       }
     ]
   },
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_HYPERDRIVE_ID"
-    }
-  ],
   "triggers": {
-    "crons": ["0 2 * * *", "*/30 * * * *", "0 3 * * *"]
+    "crons": [
+      "0 2 * * *",
+      "*/30 * * * *",
+      "0 3 * * *",
+      "*/10 * * * *",
+      "* * * * *"
+    ]
   }
 }
