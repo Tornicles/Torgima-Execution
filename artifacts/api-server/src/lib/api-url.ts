@@ -22,7 +22,7 @@ export function resolveApiPublicUrl(): string {
 
 /**
  * Link in sign-in emails — always the Vercel SPA callback (APP_URL / FRONTEND_URL).
- * Example: https://torgima-execution.vercel.app/auth/callback?token=...&email=...
+ * Example: https://torgima.com/auth/callback?token=...&email=...
  */
 export function buildMagicLinkVerifyUrl(token: string, email: string): string {
   const base = resolveAppUrl();

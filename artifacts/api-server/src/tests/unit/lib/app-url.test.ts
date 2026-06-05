@@ -16,10 +16,10 @@ describe("resolveAppUrl", () => {
     expect(resolveAppUrl()).toBe("https://my-app.vercel.app");
   });
 
-  it("falls back to hardwired Vercel URL in production without APP_URL", () => {
+  it("falls back to production frontend URL without APP_URL", () => {
     process.env.NODE_ENV = "production";
     delete process.env.APP_URL;
-    expect(resolveAppUrl()).toBe("https://torgima-execution.vercel.app");
+    expect(resolveAppUrl()).toBe("https://torgima.com");
   });
 
   it("prefers APP_URL when set in development (DOC 30)", () => {

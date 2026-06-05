@@ -8,8 +8,8 @@ describe("api-url", () => {
     process.env = { ...env };
   });
 
-  it("builds Vercel callback URLs with encoded email", () => {
-    process.env.APP_URL = "https://torgima-execution.vercel.app";
+  it("builds SPA callback URLs with encoded email", () => {
+    process.env.APP_URL = "https://torgima.com";
     process.env.NODE_ENV = "production";
     const url = buildMagicLinkVerifyUrl("raw-token", "user@example.com");
     expect(url).toBe(

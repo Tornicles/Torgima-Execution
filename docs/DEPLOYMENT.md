@@ -82,7 +82,7 @@ See `artifacts/api-server/.env.example` for the full list with comments. Critica
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Postgres URL. Provider must support `LISTEN`/`NOTIFY` and `pg_advisory_lock` (Supabase / Neon / Railway Postgres / RDS all qualify). |
 | `PORT` | Yes on Railway etc. | e.g. `3001`; required at boot — see `artifacts/api-server/src/index.ts`. |
-| `FRONTEND_URL` | Required for production browsers | Exact SPA origin (e.g. `https://torgima-execution.vercel.app`) for credentialed CORS. Comma-separated for multiple preview deployments. |
+| `FRONTEND_URL` | Required for production browsers | Exact SPA origin (e.g. `https://torgima.com`) for credentialed CORS. Comma-separated for multiple preview deployments. |
 | `ANTHROPIC_API_KEY` | Yes for Bhudhi | Preferred. Legacy alias: `AI_INTEGRATIONS_ANTHROPIC_API_KEY`. Without either, Bhudhi features degrade. |
 | `RESEND_API_KEY` | Yes in production | Email for magic links. Without it, `sendMagicLink` can still persist the session but `{ sent: false }`. Dev logs magic link URLs when not production. |
 | `RESEND_WEBHOOK_SECRET` | Recommended in production | Signing secret from the Resend dashboard for **webhooks**. Used by `POST /api/webhooks/notifications/bounce` (Svix verification). If unset, the public webhook still accepts JSON in development but will not verify signatures. Register the public URL in Resend after deploy. |
@@ -110,7 +110,7 @@ Email never arrives (or the UI now shows a delivery error) means one of:
 
 1. **`RESEND_API_KEY`** is unset on the API host — the API returns `{ sent: false }`; the login page surfaces this instead of a false success.
 2. **`EMAIL_FROM`** is not a domain verified in [Resend](https://resend.com) — sends fail with `sent: false` (check Railway logs for `[resend] Send failed`).
-3. **`FRONTEND_URL`** does not match where users open the app — magic links point at `FRONTEND_URL/verify`; if that host is only the marketing site (no SPA), the link 404s. Set `FRONTEND_URL` to your Vercel execution app (e.g. `https://torgima-execution.vercel.app`), comma-separated before other origins if you use multiple.
+3. **`FRONTEND_URL`** does not match where users open the app — magic links point at `FRONTEND_URL/verify`; if that host is only the marketing site (no SPA), the link 404s. Set `FRONTEND_URL` to your production SPA (e.g. `https://torgima.com`), comma-separated before other origins if you use multiple.
 
 ### Database schema + seed
 

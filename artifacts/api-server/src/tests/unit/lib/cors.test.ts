@@ -13,9 +13,11 @@ describe("CORS allowlist", () => {
     process.env.NODE_ENV = "production";
   });
 
-  it("allows only the hardwired production Vercel SPA origin", () => {
+  it("allows production SPA origins (torgima.com + Vercel transition)", () => {
+    expect(isAllowedOrigin("https://torgima.com")).toBe(true);
     expect(isAllowedOrigin("https://torgima-execution.vercel.app")).toBe(true);
-    expect(getAllowedOrigins()).toEqual(["https://torgima-execution.vercel.app"]);
+    expect(getAllowedOrigins()).toContain("https://torgima.com");
+    expect(getAllowedOrigins()).toContain("https://torgima-execution.vercel.app");
   });
 
   it("rejects preview and unknown origins in production", () => {

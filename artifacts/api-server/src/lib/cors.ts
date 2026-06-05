@@ -7,6 +7,12 @@ const ALLOW_HEADERS =
   "Content-Type,Authorization,x-internal-auth,x-internal-token,x-expected-state-version,idempotency-key,Cookie";
 const MAX_AGE = "86400";
 
+/** Production browser origins — primary domain plus Vercel during DNS transition. */
+const ALLOWED_ORIGINS = [
+  PRODUCTION_FRONTEND_URL,
+  "https://torgima-execution.vercel.app",
+];
+
 function devOrigins(): string[] {
   return [
     PRODUCTION_FRONTEND_URL,
@@ -19,7 +25,7 @@ function devOrigins(): string[] {
 
 export function getAllowedOrigins(): string[] {
   if (process.env.NODE_ENV === "production") {
-    return [PRODUCTION_FRONTEND_URL];
+    return [...ALLOWED_ORIGINS];
   }
   return [...new Set(devOrigins())];
 }
@@ -28,7 +34,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   const normalized = origin.replace(/\/$/, "");
   if (process.env.NODE_ENV === "production") {
-    return normalized === PRODUCTION_FRONTEND_URL;
+    return ALLOWED_ORIGINS.includes(normalized);
   }
   return getAllowedOrigins().includes(normalized);
 }
