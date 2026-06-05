@@ -8,7 +8,7 @@
     "prebuild": "pnpm --filter @workspace/state-machine build && pnpm --filter @workspace/api-client-react build",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "deploy:frontend": "pnpm run build && wrangler pages deploy dist",
+    "deploy:frontend": "pnpm run build && pnpm exec wrangler pages deploy dist --project-name=torgima-frontend",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test"

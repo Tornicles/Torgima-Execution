@@ -25,9 +25,16 @@ Set `APP_URL=https://torgima.com` on the Worker.
 
 ## Phase 2 — Frontend (Pages)
 
+See **`artifacts/torgima/CLOUDFLARE_PAGES.md`** for exact dashboard fields.
+
+| Field | Value |
+|-------|--------|
+| Build command | `pnpm build:cloudflare:pages` |
+| Build output directory | `artifacts/torgima/dist` |
+| **Deploy command** | **(empty)** — do not use `npx wrangler deploy` |
+
 - Config: `artifacts/torgima/wrangler.jsonc`
-- Build: `pnpm -F @workspace/torgima build`
-- Deploy: `pnpm -F @workspace/torgima deploy:frontend`
+- Manual CLI deploy: `pnpm deploy:cloudflare:pages`
 - Set `VITE_API_BASE_URL=https://api.torgima.com` in Pages env (see `.env.production.example`)
 
 ## Phase 3–4 — API (Workers + Express bridge)
