@@ -1,9 +1,13 @@
 import { PgBoss } from "pg-boss";
 import { resolvePgSsl, stripSslModeFromConnectionString } from "@workspace/db";
+import { CloudflareQueueProducer } from "./cloudflare-queue.js";
+import { isCloudflareRuntime } from "./cloudflare-runtime.js";
 import { logger } from "./logger.js";
 
+type QueueBoss = PgBoss | CloudflareQueueProducer;
+
 const globalForBoss = globalThis as unknown as {
-  boss: PgBoss | undefined;
+  boss: QueueBoss | undefined;
 };
 
 export function createBoss(): PgBoss {
@@ -20,14 +24,20 @@ export function createBoss(): PgBoss {
   });
 }
 
-export async function getBoss(): Promise<PgBoss> {
+export async function getBoss(): Promise<QueueBoss> {
   if (!globalForBoss.boss) {
-    globalForBoss.boss = createBoss();
-    globalForBoss.boss.on("error", (error: Error) => {
-      logger.error({ err: error, message: error.message }, "[Queue] pg-boss error");
-    });
-    await globalForBoss.boss.start();
-    logger.info("pg-boss queue started");
+    if (isCloudflareRuntime() || process.env.TORGIMA_CF_QUEUES === "true") {
+      globalForBoss.boss = new CloudflareQueueProducer();
+      await globalForBoss.boss.start();
+      logger.info("[Queue] Cloudflare Queues producer started");
+    } else {
+      globalForBoss.boss = createBoss();
+      globalForBoss.boss.on("error", (error: Error) => {
+        logger.error({ err: error, message: error.message }, "[Queue] pg-boss error");
+      });
+      await globalForBoss.boss.start();
+      logger.info("pg-boss queue started");
+    }
   }
   return globalForBoss.boss;
 }

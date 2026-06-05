@@ -1,0 +1,45 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "torgima-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-02-01",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "TORGIMA_RUNTIME": "cloudflare"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "REPLACE_WITH_TORGIMA_SESSIONS_KV_ID"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "TASK_QUEUE",
+        "queue": "torgima-task-queue"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "torgima-task-queue",
+        "max_batch_size": 10,
+        "max_batch_timeout": 30
+      }
+    ]
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID"
+    }
+  ],
+  "triggers": {
+    "crons": ["0 2 * * *", "*/30 * * * *", "0 3 * * *"]
+  }
+}

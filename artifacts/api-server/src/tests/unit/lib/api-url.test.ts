@@ -13,7 +13,7 @@ describe("api-url", () => {
     process.env.NODE_ENV = "production";
     const url = buildMagicLinkVerifyUrl("raw-token", "user@example.com");
     expect(url).toBe(
-      "https://torgima-execution.vercel.app/auth/callback?token=raw-token&email=user%40example.com",
+      "https://torgima.com/auth/callback?token=raw-token&email=user%40example.com",
     );
   });
 
@@ -21,8 +21,6 @@ describe("api-url", () => {
     delete process.env.API_PUBLIC_URL;
     delete process.env.PUBLIC_API_URL;
     process.env.NODE_ENV = "production";
-    expect(resolveApiPublicUrl()).toBe(
-      "https://workspaceapi-server-production-63b3.up.railway.app",
-    );
+    expect(resolveApiPublicUrl()).toBe("https://api.torgima.com");
   });
 });

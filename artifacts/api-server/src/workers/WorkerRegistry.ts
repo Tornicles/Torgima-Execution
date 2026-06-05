@@ -1,4 +1,5 @@
 import type { Job, WorkOptions } from "pg-boss";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { getBoss } from "../lib/queue.js";
 import { logger } from "../lib/logger.js";
 import { WorkerQueues } from "../types/eventContracts.js";
@@ -45,6 +46,14 @@ export const workerRegistry = {
   },
 
   async startAll(): Promise<void> {
+    if (isCloudflareRuntime()) {
+      logger.info(
+        { count: _registry.length },
+        "[WorkerRegistry] Cloudflare runtime — in-process pg-boss workers skipped (queue consumer handles jobs)",
+      );
+      return;
+    }
+
     const boss = await getBoss();
 
     const uniqueQueues = [...new Set(_registry.map((d) => d.queue))];

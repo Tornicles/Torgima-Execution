@@ -7,6 +7,7 @@ import { logger } from "../lib/logger.js";
 import { sendEmail, EMAIL_FROM_HEADER } from "../lib/resend.js";
 import { buildMagicLinkVerifyUrl } from "../lib/api-url.js";
 import { logAuthSecurityEvent } from "../lib/auth-security-log.js";
+import { kvCreateSession, kvDeleteSession, kvGetSession, kvSessionsEnabled } from "../lib/session-kv.js";
 import type { AuthContext, SafeUser } from "../types/auth.js";
 
 const SESSION_MAX_HOURS = 24 * 30;
@@ -190,6 +191,36 @@ export async function verifyMagicLink(
 // ── VALIDATE SESSION ───────────────────────────────────────────────────────────
 
 export async function validateSession(sessionToken: string): Promise<AuthContext> {
+  if (kvSessionsEnabled()) {
+    const kvSession = await kvGetSession(sessionToken);
+    if (kvSession?.userId) {
+      const [userRow] = await db
+        .select({
+          userActive: users.active,
+          userMode: users.mode,
+          userTier: users.tier,
+        })
+        .from(users)
+        .where(eq(users.id, kvSession.userId))
+        .limit(1);
+
+      if (!userRow) {
+        throw new TorgimaError("UNAUTHENTICATED", "Session not found");
+      }
+      if (!userRow.userActive) {
+        throw new TorgimaError("FORBIDDEN", "Account is inactive");
+      }
+
+      return {
+        userId: kvSession.userId,
+        sessionId: `kv:${tokenHashPrefix(sessionToken)}`,
+        userMode: userRow.userMode as "individual" | "team",
+        userTier: userRow.userTier,
+        isInternal: false,
+      };
+    }
+  }
+
   const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
 
   const [row] = await db
@@ -267,6 +298,10 @@ export async function revokeSession(sessionToken: string): Promise<void> {
 
   await db.delete(sessions).where(eq(sessions.token_hash, tokenHash));
 
+  if (kvSessionsEnabled()) {
+    await kvDeleteSession(sessionToken).catch(() => null);
+  }
+
   if (sessionRow?.user_id) {
     const { BhudhiMemoryService } = await import("../bhudhi/BhudhiMemoryService.js");
     await BhudhiMemoryService.clearSessionScopeForUser(sessionRow.user_id).catch((err) => {
@@ -319,6 +354,10 @@ export async function updateUserSettings(
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────
+
+function tokenHashPrefix(sessionToken: string): string {
+  return crypto.createHash("sha256").update(sessionToken).digest("hex").slice(0, 12);
+}
 
 function toSafeUser(user: typeof users.$inferSelect, activeBlueprintId: string | null): SafeUser {
   return {

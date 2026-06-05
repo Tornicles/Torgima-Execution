@@ -1,13 +1,14 @@
 /**
  * Resolved API origin (no trailing slash).
- * Production: hardwired Railway URL. Development: localhost or VITE_API_BASE_URL override.
+ * Production: Cloudflare Worker URL (override via VITE_API_BASE_URL).
  */
-const PRODUCTION_API_BASE_URL =
-  "https://workspaceapi-server-production-63b3.up.railway.app";
+const PRODUCTION_API_BASE_URL = "https://api.torgima.com";
 
 export function getDefaultApiBaseUrl(): string {
   if (import.meta.env.PROD) {
-    return PRODUCTION_API_BASE_URL;
+    const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+    const trimmed = raw.trim().replace(/\/+$/, "");
+    return trimmed !== "" ? trimmed : PRODUCTION_API_BASE_URL;
   }
   const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
   const trimmed = raw.trim().replace(/\/+$/, "");
