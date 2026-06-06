@@ -9,8 +9,7 @@
   },
   "scripts": {
     "build": "pnpm run typecheck:libs && pnpm -r --if-present run build",
-    "postbuild": "node scripts/ensure-cloudflare-queues.mjs --soft",
-    "deploy": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy",
+    "deploy": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy --config artifacts/api-server/wrangler.toml",
     "typecheck:libs": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:unit": "pnpm -F @workspace/api-server exec vitest run src/tests/unit",
@@ -53,7 +52,7 @@
     "deploy:cloudflare:pages": "pnpm exec wrangler pages deploy artifacts/torgima/dist --project-name=torgima-frontend",
     "ensure:cloudflare:queues": "node scripts/ensure-cloudflare-queues.mjs",
     "deploy:cloudflare:api": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy --config artifacts/api-server/wrangler.toml",
-    "deploy:cloudflare:worker": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy",
+    "deploy:cloudflare:worker": "pnpm run deploy:cloudflare:api",
     "provision:cloudflare": "node scripts/provision-cloudflare.mjs",
     "cf:verify": "node scripts/verify-cloudflare-auth.mjs && pnpm --filter @workspace/api-server build && pnpm exec wrangler deploy --dry-run",
     "cf:dev": "pnpm exec wrangler dev",

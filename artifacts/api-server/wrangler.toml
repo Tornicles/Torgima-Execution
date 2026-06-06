@@ -24,7 +24,7 @@ queue = "torgima-task-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 max_retries = 10
-dead_letter_queue = "torgima-task-queue-dlq"
+# dead_letter_queue = "torgima-task-queue-dlq"  # enable after DLQ is created in dashboard
 
 [triggers]
 crons = [ "0 2 * * *", "*/30 * * * *", "0 3 * * *", "*/10 * * * *", "* * * * *" ]

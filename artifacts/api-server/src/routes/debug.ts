@@ -360,4 +360,70 @@ router.get("/v1/debug/complete-diagnostic", async (req, res) => {
   }
 });
 
+/**
+ * GET /api/debug/cloudflare-env — present/missing env (no secret values).
+ */
+router.get("/debug/cloudflare-env", (_req, res) => {
+  const keys = [
+    "DATABASE_URL",
+    "APP_URL",
+    "ANTHROPIC_API_KEY",
+    "RESEND_API_KEY",
+    "INTERNAL_SERVICE_SECRET",
+    "INTERNAL_AUTH_SECRET",
+    "TORGIMA_RUNTIME",
+    "NODE_ENV",
+  ] as const;
+  const env: Record<string, "present" | "missing"> = {};
+  for (const key of keys) {
+    const val = process.env[key];
+    env[key] = typeof val === "string" && val.trim() ? "present" : "missing";
+  }
+  success(res, {
+    ok: true,
+    runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
+    env,
+  });
+});
+
+/**
+ * GET /api/debug/routes — deploy smoke list (public).
+ */
+router.get("/debug/routes", (_req, res) => {
+  success(res, {
+    ok: true,
+    routes: [
+      "GET /health",
+      "GET /api/health",
+      "GET /api/debug/routes",
+      "GET /api/debug/cloudflare-env",
+      "GET /api/debug/blueprint-launch-health",
+      "POST /api/v1/validations",
+      "GET /api/v1/validations/:id",
+      "POST /api/v1/validations/:id/launch",
+      "POST /api/v1/blueprints",
+      "GET /api/v1/orders/today",
+      "GET /api/v1/signals/current",
+    ],
+  });
+});
+
+/**
+ * GET /api/debug/blueprint-launch-health — launch prerequisites (no secrets).
+ */
+router.get("/debug/blueprint-launch-health", (_req, res) => {
+  success(res, {
+    ok: true,
+    launch_route: "POST /api/v1/validations/:id/launch",
+    database: process.env.DATABASE_URL?.trim() ? "present" : "missing",
+    anthropic: process.env.ANTHROPIC_API_KEY?.trim() ? "present" : "missing",
+    internal_auth:
+      process.env.INTERNAL_SERVICE_SECRET?.trim() ||
+      process.env.INTERNAL_AUTH_SECRET?.trim()
+        ? "present"
+        : "missing",
+    runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
+  });
+});
+
 export default router;

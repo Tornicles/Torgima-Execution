@@ -11,6 +11,8 @@ const MAX_AGE = "86400";
 const ALLOWED_ORIGINS = [
   PRODUCTION_FRONTEND_URL,
   "https://torgima-execution.vercel.app",
+  "https://torgima.tmagaya.workers.dev",
+  "https://torgima-frontend.pages.dev",
 ];
 
 function devOrigins(): string[] {

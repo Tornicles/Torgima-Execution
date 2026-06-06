@@ -2,7 +2,6 @@
 /**
  * Ensure Cloudflare Queues referenced in wrangler config exist before deploy.
  * Safe to run repeatedly (Workers Builds, GitHub Actions, local provision).
- * Never fails the build — warns and continues if provisioning is unavailable.
  */
 
 import { spawnSync } from "node:child_process";
@@ -12,8 +11,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const soft = process.argv.includes("--soft") || process.env.QUEUES_SOFT === "1";
 
-/** Primary queue first; DLQ is optional for initial deploy. */
-const QUEUES = ["torgima-task-queue", "torgima-task-queue-dlq"];
+/** Primary queue only — DLQ optional; add dead_letter_queue in wrangler.toml after DLQ exists. */
+const QUEUES = ["torgima-task-queue"];
 
 function runCapture(args) {
   const result = spawnSync("pnpm", args, {
@@ -29,16 +28,13 @@ function runCapture(args) {
   };
 }
 
-function listQueues() {
-  const { status, stdout } = runCapture(["exec", "wrangler", "queues", "list"]);
-  if (status !== 0) return new Set();
-  return new Set(
-    [...stdout.matchAll(/^\s*([a-zA-Z0-9_-]+)\s/mgm)].map((m) => m[1]),
-  );
+function queueExists(name) {
+  const { status } = runCapture(["exec", "wrangler", "queues", "info", name]);
+  return status === 0;
 }
 
-function ensureQueue(name, existing) {
-  if (existing.has(name)) {
+function ensureQueue(name) {
+  if (queueExists(name)) {
     console.log(`[queues] ${name} already exists`);
     return true;
   }
@@ -72,10 +68,9 @@ if (!process.env.CLOUDFLARE_API_TOKEN?.trim()) {
   process.exit(0);
 }
 
-const existing = listQueues();
 let ok = true;
 for (const name of QUEUES) {
-  if (!ensureQueue(name, existing)) ok = false;
+  if (!ensureQueue(name)) ok = false;
 }
 
 if (ok) {
@@ -84,6 +79,6 @@ if (ok) {
 }
 
 console.warn(
-  "[queues] Some queues could not be provisioned — create them in the Cloudflare dashboard or retry deploy.",
+  "[queues] Queue provisioning incomplete — create torgima-task-queue in the Cloudflare dashboard if deploy fails.",
 );
 process.exit(soft ? 0 : 1);

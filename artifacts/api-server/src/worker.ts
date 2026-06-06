@@ -25,7 +25,7 @@ async function createFetchHandler(): Promise<FetchHandler> {
   root.use(createCorsMiddleware());
 
   root.get("/health", (_req, res) => {
-    res.status(200).json({ ok: true, runtime: "cloudflare" });
+    res.status(200).json({ ok: true, service: "torgima-api", runtime: "cloudflare-worker" });
   });
 
   root.use(apiApp);

@@ -70,6 +70,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: artifacts/api-server
+          command: deploy
           secrets: |
             DATABASE_URL
             ANTHROPIC_API_KEY

@@ -79,6 +79,19 @@ Cron triggers in `wrangler.jsonc` cover scheduled jobs that previously used pg-b
 
 Provision + deploy locally: `pnpm provision:cloudflare` (requires `wrangler login` or `CLOUDFLARE_API_TOKEN`).
 
+Queues are created automatically by `scripts/ensure-cloudflare-queues.mjs` (also run before `deploy:cloudflare:api` and `deploy:cloudflare:worker`).
+
+### Workers Builds (dashboard)
+
+If the Worker is connected to GitHub via **Workers Builds**, set:
+
+| Field | Value |
+|-------|--------|
+| Build command | `pnpm run build` |
+| Deploy command | `pnpm run deploy:cloudflare:worker` |
+
+Do **not** use bare `npx wrangler deploy` — deploy fails when `torgima-task-queue` / `torgima-task-queue-dlq` have not been created yet.
+
 ## Phase 8 — CI/CD
 
 - `.github/workflows/deploy-cloudflare.yml` — build, migrate, deploy Worker + Pages

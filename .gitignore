@@ -17,6 +17,8 @@ _doc*.zip
 _doc*_docx/
 _doc*_extracted.txt
 .env.staging
+.env.cloudflare.local
+.dev.vars
 
 # Dependencies
 pnpm-store/

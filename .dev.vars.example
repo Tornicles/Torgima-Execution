@@ -1,0 +1,9 @@
+# Copy to .dev.vars (gitignored) for `pnpm run cf:dev` local Worker dev.
+# Wrangler loads this file automatically next to wrangler.jsonc.
+
+DATABASE_URL=postgresql://user:pass@host:5432/postgres?sslmode=require
+APP_URL=http://localhost:8787
+FRONTEND_URL=http://localhost:5173
+INTERNAL_AUTH_SECRET=local-dev-secret-min-32-chars-long
+NEXTAUTH_SECRET=local-dev-secret-min-32-chars-long
+SESSION_SECRET=local-dev-secret-min-32-chars-long
