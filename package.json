@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "pnpm run typecheck:libs && pnpm -r --if-present run build",
-    "postbuild": "node scripts/ensure-cloudflare-queues.mjs",
+    "postbuild": "node scripts/ensure-cloudflare-queues.mjs --soft",
     "deploy": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy",
     "typecheck:libs": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
