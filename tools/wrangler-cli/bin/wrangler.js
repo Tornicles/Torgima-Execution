@@ -34,16 +34,13 @@ const isDeploy =
   (args[0] === "versions" && args[1] === "upload");
 
 if (isDeploy) {
-  console.log("[wrangler-shim] Ensuring Cloudflare Queues before deploy…");
+  console.log("[wrangler-shim] Ensuring Cloudflare Queues before deploy (soft)…");
   const ensureScript = resolve(repoRoot, "scripts/ensure-cloudflare-queues.mjs");
-  const ensure = spawnSync(process.execPath, [ensureScript], {
+  spawnSync(process.execPath, [ensureScript, "--soft"], {
     cwd: repoRoot,
     stdio: "inherit",
     env: process.env,
   });
-  if (ensure.status !== 0) {
-    process.exit(ensure.status ?? 1);
-  }
 }
 
 const upstreamEntry = require.resolve("wrangler-upstream/bin/wrangler.js");

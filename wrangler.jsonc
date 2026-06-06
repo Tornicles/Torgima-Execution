@@ -6,7 +6,11 @@
   "name": "torgima",
   "main": "artifacts/api-server/src/worker.ts",
   "compatibility_date": "2026-02-01",
-  "compatibility_flags": ["nodejs_compat_v2"],
+  "compatibility_flags": ["nodejs_compat"],
+  "alias": {
+    "node:fs": "./artifacts/api-server/src/shims/node-fs.ts",
+    "fs": "./artifacts/api-server/src/shims/node-fs.ts"
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
@@ -22,7 +26,7 @@
       "id": "aa13fb8cb21d44aa965fbcc7cc9ea1f7"
     }
   ],
-  // Queues: uncomment after creating torgima-task-queue in dashboard
+  // Queues: uncomment after creating torgima-task-queue in Cloudflare dashboard
   // "queues": { "producers": [...], "consumers": [...] },
   "triggers": {
     "crons": [
