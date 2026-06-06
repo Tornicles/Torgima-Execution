@@ -22,22 +22,8 @@
       "id": "aa13fb8cb21d44aa965fbcc7cc9ea1f7"
     }
   ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "TASK_QUEUE",
-        "queue": "torgima-task-queue"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "torgima-task-queue",
-        "max_batch_size": 10,
-        "max_batch_timeout": 30,
-        "max_retries": 10
-      }
-    ]
-  },
+  // Queues: uncomment after creating torgima-task-queue in dashboard
+  // "queues": { "producers": [...], "consumers": [...] },
   "triggers": {
     "crons": [
       "0 2 * * *",

@@ -82,5 +82,8 @@ if (ok) {
 console.warn(
   "[queues] Queue provisioning incomplete — create torgima-task-queue in the Cloudflare dashboard if deploy fails.",
 );
+if (soft) {
+  process.exit(0);
+}
 const strict = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-process.exit(strict ? 1 : soft ? 0 : 1);
+process.exit(strict ? 1 : 0);

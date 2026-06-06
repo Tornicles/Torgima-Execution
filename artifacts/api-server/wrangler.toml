@@ -16,16 +16,15 @@ APP_URL = "https://torgima-frontend.pages.dev"
 binding = "SESSIONS"
 id = "aa13fb8cb21d44aa965fbcc7cc9ea1f7"
 
-[[queues.producers]]
-binding = "TASK_QUEUE"
-queue = "torgima-task-queue"
-
-[[queues.consumers]]
-queue = "torgima-task-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-max_retries = 10
-# dead_letter_queue = "torgima-task-queue-dlq"  # enable after DLQ is created in dashboard
+# Queues: create torgima-task-queue in Cloudflare dashboard, then uncomment:
+# [[queues.producers]]
+# binding = "TASK_QUEUE"
+# queue = "torgima-task-queue"
+# [[queues.consumers]]
+# queue = "torgima-task-queue"
+# max_batch_size = 10
+# max_batch_timeout = 30
+# max_retries = 10
 
 [triggers]
 crons = [ "0 2 * * *", "*/30 * * * *", "0 3 * * *", "*/10 * * * *", "* * * * *" ]
