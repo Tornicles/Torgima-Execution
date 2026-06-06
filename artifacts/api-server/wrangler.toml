@@ -1,7 +1,10 @@
 name = "torgima"
 main = "src/worker.ts"
 compatibility_date = "2026-02-01"
-compatibility_flags = [ "nodejs_compat_v2" ]
+compatibility_flags = [ "nodejs_compat", "nodejs_compat_v2" ]
+
+[alias]
+"node:fs" = "./src/shims/node-fs.ts"
 
 [observability]
 enabled = true

@@ -85,4 +85,4 @@ if (soft) {
   process.exit(0);
 }
 const strict = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-process.exit(strict ? 1 : 1);
+process.exit(strict ? 1 : 0);
