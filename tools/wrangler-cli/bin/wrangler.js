@@ -36,7 +36,7 @@ const isDeploy =
 if (isDeploy) {
   console.log("[wrangler-shim] Ensuring Cloudflare Queues before deploy…");
   const ensureScript = resolve(repoRoot, "scripts/ensure-cloudflare-queues.mjs");
-  const ensure = spawnSync(process.execPath, [ensureScript, "--soft"], {
+  const ensure = spawnSync(process.execPath, [ensureScript], {
     cwd: repoRoot,
     stdio: "inherit",
     env: process.env,

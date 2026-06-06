@@ -24,5 +24,5 @@ function run(label, cmd, args, opts = {}) {
   }
 }
 
-run("Ensuring Cloudflare Queues", "node", ["scripts/ensure-cloudflare-queues.mjs", "--soft"]);
+run("Ensuring Cloudflare Queues", "node", ["scripts/ensure-cloudflare-queues.mjs"]);
 run("Deploying Worker", "pnpm", ["exec", "wrangler", "deploy"]);
