@@ -4,6 +4,7 @@ import { db, featureFlags } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { BHUDHI_MODEL } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import {
   FORBIDDEN_MODES,
   type BhudhiOutputEnvelope,
@@ -232,7 +233,7 @@ function handleBhudhiLogWriteFailure(
     "[BhudhiCore] BhudhiLog write failed",
   );
 
-  if (CRITICAL_BHUDHI_LOG_TRIGGERS.has(triggerType)) {
+  if (CRITICAL_BHUDHI_LOG_TRIGGERS.has(triggerType) && !isCloudflareRuntime()) {
     return {
       abort: true,
       err: new TorgimaError(
