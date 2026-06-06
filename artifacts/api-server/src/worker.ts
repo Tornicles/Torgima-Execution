@@ -19,7 +19,8 @@ type FetchHandler = (
 let cachedFetch: FetchHandler | null = null;
 
 async function createFetchHandler(): Promise<FetchHandler> {
-  const { default: apiApp } = await import("./app.js");
+  const { createApp } = await import("./app.js");
+  const apiApp = await createApp();
   const root = express();
   root.disable("x-powered-by");
   root.use(createCorsMiddleware());

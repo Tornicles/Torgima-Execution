@@ -45,7 +45,8 @@ async function maybeApplyManualMigrations(): Promise<void> {
 /** Attach Express (separate bundle) as the handler for non-/health traffic. */
 export async function mountExpressApp(setListener: (fn: NodeListener) => void): Promise<void> {
   const express = (await import("express")).default;
-  const { default: apiApp } = await import("./app.js");
+  const { createApp } = await import("./app.js");
+  const apiApp = await createApp();
   const app = express();
   app.use(apiApp);
   setListener((req: IncomingMessage, res: ServerResponse) => {

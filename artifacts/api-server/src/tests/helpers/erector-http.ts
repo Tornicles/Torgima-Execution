@@ -15,7 +15,8 @@ export async function jsonFetch(url: string, init?: RequestInit): Promise<JsonRe
 }
 
 export async function startErectorTestServer(): Promise<{ server: Server; baseUrl: string; close: () => Promise<void> }> {
-  const { default: app } = await import("../../app.js");
+  const { createApp } = await import("../../app.js");
+  const app = await createApp();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const addr = server.address();
