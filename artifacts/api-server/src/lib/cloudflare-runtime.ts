@@ -39,8 +39,7 @@ export function isCloudflareRuntime(): boolean {
 }
 
 export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
-  process.env.TORGIMA_RUNTIME = "cloudflare";
-  process.env.NODE_ENV = env.NODE_ENV ?? "production";
+  // NODE_ENV / TORGIMA_RUNTIME come from wrangler [vars] as compile-time defines — do not assign.
   process.env.START_WORKERS = "false";
 
   if (env.HYPERDRIVE) {

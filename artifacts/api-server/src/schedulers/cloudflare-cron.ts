@@ -19,6 +19,14 @@ const CRON_TO_QUEUE: Record<string, string> = {
   "* * * * *": EVENT_DISPATCH_POLL_QUEUE,
 };
 
+async function runCronJobInline(queue: string, cron: string): Promise<void> {
+  const { dispatchQueueMessage } = await import("../queues/handler.js");
+  await dispatchQueueMessage({
+    queue,
+    payload: { trigger: "cloudflare_cron", cron },
+  });
+}
+
 export async function handleCloudflareCron(
   controller: ScheduledController,
   env: TorgimaWorkerEnv,
@@ -33,7 +41,16 @@ export async function handleCloudflareCron(
 
   const binding = env.TASK_QUEUE;
   if (!binding) {
-    throw new Error("[Cron] TASK_QUEUE binding is not configured");
+    try {
+      await runCronJobInline(queue, controller.cron);
+      logger.info({ cron: controller.cron, queue }, "[Cron] Ran inline (no TASK_QUEUE binding)");
+    } catch (err) {
+      logger.error(
+        { cron: controller.cron, queue, err: err instanceof Error ? err.message : String(err) },
+        "[Cron] Inline handler failed",
+      );
+    }
+    return;
   }
 
   await binding.send({

@@ -35,7 +35,7 @@ import "../workers/PatternScanWorker.js";
 import "../workers/StateIntegrityWorker.js";
 import "../workers/EventDispatcherWorker.js";
 
-async function dispatchQueueMessage(message: TorgimaQueueMessage): Promise<void> {
+export async function dispatchQueueMessage(message: TorgimaQueueMessage): Promise<void> {
   const handlers = workerRegistry.getRegistered().filter((d) => d.queue === message.queue);
   if (handlers.length === 0) {
     logger.warn({ queue: message.queue }, "[Queue] No handler registered for queue");

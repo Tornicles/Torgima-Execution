@@ -32,13 +32,18 @@ export class CloudflareQueueProducer {
   }
 
   async send(queue: string, payload: unknown, _options?: unknown): Promise<string | null> {
-    const binding = globalThis.__TORGIMA_TASK_QUEUE__;
-    if (!binding) {
-      throw new Error("[Queue] TASK_QUEUE binding is not configured");
-    }
     const message: TorgimaQueueMessage = { queue, payload };
-    await binding.send(message);
-    return `cf:${queue}:${Date.now()}`;
+    const binding = globalThis.__TORGIMA_TASK_QUEUE__;
+    if (binding) {
+      await binding.send(message);
+      return `cf:${queue}:${Date.now()}`;
+    }
+
+    // No queue binding — run handler in-process (Workers Phase 2 fallback).
+    const { dispatchQueueMessage } = await import("../queues/handler.js");
+    await dispatchQueueMessage(message);
+    logger.debug({ queue }, "[Queue] Inline handler completed (no TASK_QUEUE binding)");
+    return `inline:${queue}:${Date.now()}`;
   }
 
   async work(

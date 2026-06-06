@@ -7,6 +7,7 @@ import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import webhooksRouter from "./routes/webhooks.js";
 import { logger } from "./lib/logger.js";
+import { isCloudflareRuntime } from "./lib/cloudflare-runtime.js";
 import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
 import { securityHeadersMiddleware } from "./middleware/securityHeaders.js";
 import { apiRateLimitMiddleware } from "./middleware/apiRateLimit.js";
@@ -19,25 +20,44 @@ app.disable("x-powered-by");
 
 app.use(securityHeadersMiddleware);
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
+if (isCloudflareRuntime()) {
+  // pino-http breaks on Workers (stringifySym TypeError) — use lightweight logging.
+  app.use((req, res, next) => {
+    const started = Date.now();
+    res.on("finish", () => {
+      logger.info(
+        {
           method: req.method,
           url: req.url?.split("?")[0],
-        };
+          status: res.statusCode,
+          durationMs: Date.now() - started,
+        },
+        "request",
+      );
+    });
+    next();
+  });
+} else {
+  app.use(
+    pinoHttp({
+      logger,
+      serializers: {
+        req(req) {
+          return {
+            id: req.id,
+            method: req.method,
+            url: req.url?.split("?")[0],
+          };
+        },
+        res(res) {
+          return {
+            statusCode: res.statusCode,
+          };
+        },
       },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
-    },
-  }),
-);
+    }),
+  );
+}
 
 app.use(helmet({
   contentSecurityPolicy: false,
