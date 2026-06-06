@@ -23,8 +23,12 @@
   "vars": {
     "NODE_ENV": "production",
     "TORGIMA_RUNTIME": "cloudflare",
-    "APP_URL": "https://torgima-frontend.pages.dev"
+    "APP_URL": "https://torgima.com",
+    "FRONTEND_URL": "https://torgima.com"
   },
+  "routes": [
+    { "pattern": "api.torgima.com/*", "zone_name": "torgima.com" }
+  ],
   "kv_namespaces": [
     {
       "binding": "SESSIONS",

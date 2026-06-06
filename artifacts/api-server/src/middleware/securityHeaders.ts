@@ -11,17 +11,27 @@ export function securityHeadersMiddleware(
 ): void {
   const requestId = randomUUID();
   (req as Request & { requestId?: string }).requestId = requestId;
+  res.locals.requestId = requestId;
   res.setHeader("X-Request-ID", requestId);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains; preload",
   );
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Cache-Control", "no-store");
   res.removeHeader("X-Powered-By");
+
+  const path = req.path;
+  if (path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  } else if (path === "/health" || path === "/healthz") {
+    res.setHeader("Cache-Control", "public, max-age=30");
+  } else {
+    res.setHeader("Cache-Control", "no-store");
+  }
 
   const ip = req.ip ?? "unknown";
   if (req.path.startsWith("/api/internal")) {

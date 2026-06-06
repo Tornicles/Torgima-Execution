@@ -137,7 +137,12 @@ router.get("/verify", async (req, res) => {
 });
 
 // POST /api/auth/send-magic-link
-router.post("/send-magic-link", async (req, res) => {
+router.post("/send-magic-link", handleSendMagicLink);
+
+// POST /api/auth/magic-link/send — alias for launch verification scripts
+router.post("/magic-link/send", handleSendMagicLink);
+
+async function handleSendMagicLink(req: Request, res: Response): Promise<void> {
   try {
     const schema = z.object({ email: z.email() });
     const result = schema.safeParse(req.body);
@@ -162,7 +167,7 @@ router.post("/send-magic-link", async (req, res) => {
   } catch (err) {
     handleError(req, res, err);
   }
-});
+}
 
 // POST /api/auth/verify
 router.post("/verify", async (req, res) => {

@@ -16,12 +16,18 @@ async function attachRequestLogging(app: Express): Promise<void> {
     app.use((req, res, next) => {
       const started = Date.now();
       res.on("finish", () => {
+        const path = req.url?.split("?")[0] ?? req.path;
+        if (path === "/health" || path === "/healthz") return;
         logger.info(
           {
+            type: "request",
+            requestId: res.locals.requestId,
             method: req.method,
-            url: req.url?.split("?")[0],
+            url: path,
             status: res.statusCode,
             durationMs: Date.now() - started,
+            ip: req.headers["cf-connecting-ip"] ?? req.ip,
+            country: req.headers["cf-ipcountry"],
           },
           "request",
         );

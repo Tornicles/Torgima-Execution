@@ -21,6 +21,6 @@ describe("api-url", () => {
     delete process.env.API_PUBLIC_URL;
     delete process.env.PUBLIC_API_URL;
     process.env.NODE_ENV = "production";
-    expect(resolveApiPublicUrl()).toBe("https://torgima.tmagaya.workers.dev");
+    expect(resolveApiPublicUrl()).toBe("https://api.torgima.com");
   });
 });

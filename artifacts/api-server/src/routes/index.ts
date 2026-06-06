@@ -81,6 +81,7 @@ import erectorGoalRouter from "./erector-goal.js";
 import erectorDashboardRouter from "./erector-dashboard.js";
 import erectorValidationRouter from "./erectorValidation.js";
 import upgradeRouter from "./upgrade.js";
+import waitlistRouter from "./waitlist.js";
 import debugRouter from "./debug.js";
 
 const router = Router();
@@ -167,6 +168,7 @@ router.use(erectorGoalRouter);
 router.use(erectorDashboardRouter);
 router.use("/api/erector/validation", erectorValidationRouter);
 router.use(upgradeRouter);
+router.use(waitlistRouter);
 router.use(debugRouter);
 
 export default router;

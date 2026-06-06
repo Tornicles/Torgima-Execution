@@ -18,7 +18,14 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     sourcemap: false,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom"],
+          "query-vendor": ["@tanstack/react-query"],
+        },
+      },
       onwarn(warning, warn) {
         if (warning.code === "SOURCEMAP_ERROR") return;
         if (warning.message?.includes("sourcemap")) return;

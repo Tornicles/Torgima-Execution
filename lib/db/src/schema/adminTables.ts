@@ -44,3 +44,18 @@ export const adminActionsLog = pgTable(
     index("idx_admin_actions_log_user").on(t.target_user_id),
   ],
 );
+
+export const waitlist = pgTable(
+  "waitlist",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    name: text("name"),
+    source: text("source").notNull().default("website"),
+    goal: text("goal"),
+    invited: boolean("invited").notNull().default(false),
+    invited_at: timestamp("invited_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_waitlist_email").on(t.email), index("idx_waitlist_invited").on(t.invited)],
+);

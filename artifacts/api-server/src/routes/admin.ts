@@ -1,6 +1,17 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod/v4";
 import {
+  db,
+  users,
+  blueprints,
+  orders,
+  validations,
+  sessions,
+  magicLinkTokens,
+  feedback as feedbackTable,
+} from "@workspace/db";
+import { count, eq } from "drizzle-orm";
+import {
   adminLogin,
   adminLogout,
   ADMIN_SESSION_COOKIE,
@@ -31,6 +42,7 @@ import { processFindings } from "../services/SystemHealthService.js";
 import { deadLetterQueue } from "../services/DeadLetterQueue.js";
 import { getEventSystemHealth } from "../services/EventDispatcher.js";
 import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
+import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
 const prod = process.env.NODE_ENV === "production";
@@ -46,6 +58,75 @@ const adminCookieOptions = {
   path: "/",
   maxAge: 8 * 60 * 60 * 1000,
 };
+
+// ── Internal service token routes (no admin session) ─────────────────────────
+
+router.get("/stats", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const [userCount] = await db.select({ count: count() }).from(users);
+    const [blueprintCount] = await db
+      .select({ count: count() })
+      .from(blueprints)
+      .where(eq(blueprints.active, true));
+    const [taskCount] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(eq(orders.status, "completed"));
+    const [validationCount] = await db
+      .select({ count: count() })
+      .from(validations)
+      .where(eq(validations.status, "complete"));
+
+    success(res, {
+      users: Number(userCount?.count ?? 0),
+      activeBlueprints: Number(blueprintCount?.count ?? 0),
+      tasksCompleted: Number(taskCount?.count ?? 0),
+      validationsRun: Number(validationCount?.count ?? 0),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+router.post("/purge-test-user", async (req, res) => {
+  try {
+    if (prod) {
+      failure(res, "FORBIDDEN", "Not available in production.", 403);
+      return;
+    }
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const body = z.object({ email: z.email() }).safeParse(req.body);
+    if (!body.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid email.", 422);
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, body.data.email.toLowerCase().trim()))
+      .limit(1);
+
+    if (!user) {
+      failure(res, "NOT_FOUND", "User not found.", 404);
+      return;
+    }
+
+    await db.delete(orders).where(eq(orders.user_id, user.id));
+    await db.delete(feedbackTable).where(eq(feedbackTable.user_id, user.id));
+    await db.delete(blueprints).where(eq(blueprints.user_id, user.id));
+    await db.delete(validations).where(eq(validations.user_id, user.id));
+    await db.delete(sessions).where(eq(sessions.user_id, user.id));
+    await db.delete(magicLinkTokens).where(eq(magicLinkTokens.user_id, user.id));
+    await db.delete(users).where(eq(users.id, user.id));
+
+    success(res, { deleted: body.data.email });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
 
 // ── Auth (no middleware) ─────────────────────────────────────────────────────
 

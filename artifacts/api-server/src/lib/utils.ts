@@ -29,6 +29,15 @@ export interface ApiResponse<T = unknown> {
   stateChanged?: boolean;
 }
 
+function responseMeta(res: Response): { timestamp: string; requestId?: string } {
+  const requestId =
+    typeof res.locals?.requestId === "string" ? res.locals.requestId : undefined;
+  return {
+    timestamp: new Date().toISOString(),
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
 export function success<T>(
   res: Response,
   data: T,
@@ -38,7 +47,7 @@ export function success<T>(
   const body: ApiResponse<T> = {
     ok: true,
     data,
-    meta: { timestamp: new Date().toISOString() },
+    meta: responseMeta(res),
     ...(opts?.stateChanged ? { stateChanged: true } : {}),
   };
   res.status(status).json(body);
@@ -56,15 +65,18 @@ export function failure(
     sessionExpired?: boolean;
   },
 ): void {
+  const requestId =
+    typeof res.locals?.requestId === "string" ? res.locals.requestId : undefined;
   const body: ApiResponse = {
     ok: false,
     error: {
       code,
       message,
       class: classifyFailureCode(code),
+      ...(requestId ? { requestId } : {}),
       ...opts,
     },
-    meta: { timestamp: new Date().toISOString() },
+    meta: responseMeta(res),
   };
   res.status(status).json(body);
 }
@@ -205,7 +217,7 @@ export function handleError(req: Request, res: Response, err: unknown): void {
   }
 
   log.error({ err }, "Unhandled error in route handler");
-  failure(res, "INTERNAL_ERROR", "An unexpected error occurred", 500);
+  failure(res, "INTERNAL_ERROR", "Something went wrong. Please try again.", 500);
 }
 
 export function requireParam(
