@@ -19,10 +19,6 @@ import { BlueprintStatus, EventStatus, OrderStatus } from "@workspace/state-mach
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
-import {
-  runCompleteSystemDiagnostic,
-  formatDiagnosticReportMarkdown,
-} from "../diagnostics/completeSystemDiagnostic.js";
 
 const router = Router();
 
@@ -348,6 +344,9 @@ router.get("/v1/debug/complete-diagnostic", async (req, res) => {
   try {
     await requireAuth(req, "USER_SESSION");
     const probeDb = req.query.probeDb === "1" || req.query.probeDb === "true";
+    const { runCompleteSystemDiagnostic, formatDiagnosticReportMarkdown } = await import(
+      "../diagnostics/completeSystemDiagnostic.js"
+    );
     const report = await runCompleteSystemDiagnostic({ probeDatabase: probeDb });
     const format = req.query.format === "markdown" ? "markdown" : "json";
     if (format === "markdown") {

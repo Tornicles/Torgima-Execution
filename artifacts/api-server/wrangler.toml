@@ -5,6 +5,7 @@ compatibility_flags = [ "nodejs_compat", "nodejs_compat_v2" ]
 
 [alias]
 "node:fs" = "./src/shims/node-fs.ts"
+"pino-http" = "./src/shims/pino-http-stub.ts"
 
 [observability]
 enabled = true

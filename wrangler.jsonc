@@ -6,10 +6,11 @@
   "name": "torgima",
   "main": "artifacts/api-server/src/worker.ts",
   "compatibility_date": "2026-02-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "nodejs_compat_v2"],
   "alias": {
     "node:fs": "./artifacts/api-server/src/shims/node-fs.ts",
-    "fs": "./artifacts/api-server/src/shims/node-fs.ts"
+    "fs": "./artifacts/api-server/src/shims/node-fs.ts",
+    "pino-http": "./artifacts/api-server/src/shims/pino-http-stub.ts"
   },
   "observability": {
     "enabled": true,
