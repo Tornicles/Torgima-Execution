@@ -144,7 +144,19 @@ function mapInfrastructureFailure(err: unknown): {
   }
 
   if (
-    combinedMsg.includes("password authentication failed") ||
+    combinedMsg.includes("database_url is not set") ||
+    combinedMsg.includes("[db] database_url")
+  ) {
+    return {
+      status: 503,
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        "Database is not configured on the Worker. Set DATABASE_URL (or Hyperdrive) in Cloudflare secrets.",
+      retryable: false,
+    };
+  }
+
+  if (
     combinedMsg.includes("no pg_hba.conf") ||
     combinedMsg.includes("connection terminated") ||
     combinedMsg.includes("server closed the connection") ||
@@ -168,12 +180,14 @@ function mapInfrastructureFailure(err: unknown): {
 }
 
 export function handleError(req: Request, res: Response, err: unknown): void {
+  const log = req.log ?? logger;
+
   if (isTorgimaError(err)) {
     const status = torgimaErrorToStatus(err.code);
     const sessionExpired =
       err.code === "UNAUTHENTICATED" && /expired|inactivity/i.test(err.message);
     if (sessionExpired && req.method !== "GET") {
-      req.log.info({ path: req.path }, "[Auth] Session expired on mutation");
+      log.info({ path: req.path }, "[Auth] Session expired on mutation");
     }
     failure(res, err.code, err.message, status, {
       fieldErrors: err.fieldErrors,
@@ -185,12 +199,12 @@ export function handleError(req: Request, res: Response, err: unknown): void {
 
   const infra = mapInfrastructureFailure(err);
   if (infra) {
-    req.log.error({ err }, "Infrastructure error in route handler");
+    log.error({ err }, "Infrastructure error in route handler");
     failure(res, infra.code, infra.message, infra.status, { retryable: infra.retryable });
     return;
   }
 
-  req.log.error({ err }, "Unhandled error in route handler");
+  log.error({ err }, "Unhandled error in route handler");
   failure(res, "INTERNAL_ERROR", "An unexpected error occurred", 500);
 }
 
