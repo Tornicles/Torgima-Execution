@@ -7,14 +7,14 @@ const readRepo = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("Cloudflare Workers runtime bridge", () => {
   it("maps wrangler cron triggers to queue producers", () => {
-    const wrangler = readRepo("artifacts/api-server/wrangler.jsonc");
+    const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const cronBridge = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
 
-    expect(wrangler).toContain('"0 2 * * *"');
-    expect(wrangler).toContain('"*/30 * * * *"');
-    expect(wrangler).toContain('"0 3 * * *"');
-    expect(wrangler).toContain('"*/10 * * * *"');
-    expect(wrangler).toContain('"* * * * *"');
+    expect(wrangler).toContain("0 2 * * *");
+    expect(wrangler).toContain("*/30 * * * *");
+    expect(wrangler).toContain("0 3 * * *");
+    expect(wrangler).toContain("*/10 * * * *");
+    expect(wrangler).toContain("* * * * *");
 
     expect(cronBridge).toContain('"0 2 * * *": SESSION_CLEANUP_QUEUE');
     expect(cronBridge).toContain('WorkerQueues.INACTIVITY_CRON');
@@ -30,8 +30,8 @@ describe("Cloudflare Workers runtime bridge", () => {
   });
 
   it("binds TORGIMA_SESSIONS KV namespace in wrangler", () => {
-    const wrangler = readRepo("artifacts/api-server/wrangler.jsonc");
-    expect(wrangler).toContain('"binding": "SESSIONS"');
+    const wrangler = readRepo("artifacts/api-server/wrangler.toml");
+    expect(wrangler).toContain('binding = "SESSIONS"');
     expect(wrangler).not.toContain("REPLACE_WITH_TORGIMA_SESSIONS_KV_ID");
   });
 

@@ -65,6 +65,8 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     "ANTHROPIC_API_KEY",
     "RESEND_API_KEY",
     "INTERNAL_API_SECRET",
+    "INTERNAL_AUTH_SECRET",
+    "INTERNAL_SERVICE_SECRET",
     "NEXTAUTH_SECRET",
     "SESSION_SECRET",
     "EMAIL_FROM",

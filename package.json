@@ -16,6 +16,7 @@
     "test:acceptance": "pnpm -F @workspace/api-server exec vitest run src/tests/acceptance",
     "test:integration": "pnpm -F @workspace/api-server exec vitest run src/tests/integration",
     "test:api": "pnpm -F @workspace/api-server exec vitest run src/tests",
+    "test": "pnpm test:api",
     "test:e2e": "pnpm -F @workspace/torgima exec playwright test",
     "test:phase9": "pnpm -F @workspace/scripts test:phase9",
     "test:system:e2e": "pnpm -F @workspace/scripts test:system:e2e",
@@ -48,8 +49,14 @@
     "generate:api": "node scripts/generateOpenApi.mjs && pnpm -F @workspace/api-spec run codegen",
     "build:cloudflare:pages": "pnpm --filter @workspace/state-machine build && pnpm --filter @workspace/api-client-react build && pnpm --filter @workspace/torgima build",
     "deploy:cloudflare:pages": "pnpm exec wrangler pages deploy artifacts/torgima/dist --project-name=torgima-frontend",
-    "deploy:cloudflare:api": "pnpm exec wrangler deploy --config artifacts/api-server/wrangler.jsonc",
-    "provision:cloudflare": "node scripts/provision-cloudflare.mjs"
+    "ensure:cloudflare:queues": "node scripts/ensure-cloudflare-queues.mjs",
+    "deploy:cloudflare:api": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy --config artifacts/api-server/wrangler.toml",
+    "deploy:cloudflare:worker": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy",
+    "provision:cloudflare": "node scripts/provision-cloudflare.mjs",
+    "cf:verify": "node scripts/verify-cloudflare-auth.mjs && pnpm --filter @workspace/api-server build && pnpm exec wrangler deploy --dry-run",
+    "cf:dev": "pnpm exec wrangler dev",
+    "cf:deploy": "node scripts/cf-deploy.mjs",
+    "cf:pages:deploy": "node scripts/verify-cloudflare-auth.mjs && pnpm run build:cloudflare:pages && pnpm run deploy:cloudflare:pages"
   },
   "private": true,
   "devDependencies": {

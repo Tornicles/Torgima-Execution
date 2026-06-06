@@ -11,7 +11,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const wranglerPath = resolve(root, "artifacts/api-server/wrangler.jsonc");
+const wranglerPath = resolve(root, "artifacts/api-server/wrangler.toml");
 const envLocalPath = resolve(root, ".env.production.local");
 
 function loadEnvFile(path) {
@@ -67,11 +67,11 @@ function patchWranglerHyperdriveId(id) {
     `"id": "${id}"`,
   );
   if (updated === text) {
-    console.log("[provision] Hyperdrive ID already set in wrangler.jsonc");
+    console.log("[provision] Hyperdrive ID already set in wrangler.toml");
     return;
   }
   writeFileSync(wranglerPath, updated, "utf8");
-  console.log(`[provision] Updated wrangler.jsonc Hyperdrive id → ${id}`);
+  console.log(`[provision] Updated wrangler.toml Hyperdrive id → ${id}`);
 }
 
 function ensureHyperdrive() {
@@ -128,7 +128,7 @@ function setWorkerSecrets() {
       "put",
       name,
       "--config",
-      "artifacts/api-server/wrangler.jsonc",
+      "artifacts/api-server/wrangler.toml",
     ], {
       input: value,
       stdio: ["pipe", "inherit", "inherit"],
@@ -143,6 +143,9 @@ async function main() {
 
   console.log("[provision] Ensuring Hyperdrive…");
   ensureHyperdrive();
+
+  console.log("[provision] Ensuring Queues…");
+  run("pnpm", ["run", "ensure:cloudflare:queues"]);
 
   console.log("[provision] Building monorepo…");
   run("pnpm", ["run", "build"]);
