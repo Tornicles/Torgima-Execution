@@ -2,8 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
 
   // Cloudflare Workers Builds deploys from repo root by default.
-  // Deploy command in dashboard: `pnpm run deploy:cloudflare:worker`
-  // (creates queues first — bare `npx wrangler deploy` fails without them).
+  // Workers Builds deploy: `pnpm run deploy` or `npx wrangler deploy` (shim provisions queues).
   "name": "torgima",
   "main": "artifacts/api-server/src/worker.ts",
   "compatibility_date": "2026-02-01",

@@ -1,0 +1,12 @@
+{
+  "name": "wrangler",
+  "version": "4.40.0",
+  "private": true,
+  "description": "Wrangler CLI shim — ensures Cloudflare Queues exist before deploy",
+  "bin": {
+    "wrangler": "bin/wrangler.js"
+  },
+  "dependencies": {
+    "wrangler-upstream": "npm:wrangler@4.40.0"
+  }
+}

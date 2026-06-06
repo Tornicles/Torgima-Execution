@@ -14,7 +14,7 @@ allowBuilds:
   '@embedded-postgres/windows-x64': true
   embedded-postgres: true
   sharp: set this to true or false
-  workerd: set this to true or false
+  workerd: true
 
 # pnpm 11+ (strictDepBuilds default true) fails non-interactive CI when deps need build scripts
 # not listed above. Use `pnpm approve-builds` locally to grow the list over time.

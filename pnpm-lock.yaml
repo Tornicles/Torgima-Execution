@@ -110,8 +110,8 @@ importers:
         specifier: ^8.46.4
         version: 8.60.0(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
       wrangler:
-        specifier: 4.40.0
-        version: 4.40.0(@cloudflare/workers-types@4.20251014.0)
+        specifier: file:./tools/wrangler-cli
+        version: file:tools/wrangler-cli(@cloudflare/workers-types@4.20251014.0)
 
   artifacts/api-server:
     dependencies:
@@ -8127,6 +8127,10 @@ packages:
     peerDependenciesMeta:
       '@cloudflare/workers-types':
         optional: true
+
+  wrangler@file:tools/wrangler-cli:
+    resolution: {directory: tools/wrangler-cli, type: directory}
+    hasBin: true
 
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
@@ -16840,6 +16844,14 @@ snapshots:
       '@cloudflare/workers-types': 4.20251014.0
       fsevents: 2.3.3
     transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  wrangler@file:tools/wrangler-cli(@cloudflare/workers-types@4.20251014.0):
+    dependencies:
+      wrangler-upstream: wrangler@4.40.0(@cloudflare/workers-types@4.20251014.0)
+    transitivePeerDependencies:
+      - '@cloudflare/workers-types'
       - bufferutil
       - utf-8-validate
 
