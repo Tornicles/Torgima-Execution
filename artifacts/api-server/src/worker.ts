@@ -3,6 +3,7 @@
  */
 
 import { createServer } from "node:http";
+import { httpServerHandler } from "cloudflare:node";
 import type { ExecutionContext, MessageBatch, ScheduledController } from "@cloudflare/workers-types";
 import express from "express";
 import { bindCloudflareEnv, type TorgimaQueueMessage, type TorgimaWorkerEnv } from "./lib/cloudflare-runtime.js";
@@ -32,8 +33,6 @@ async function createFetchHandler(): Promise<FetchHandler> {
   root.use(apiApp);
 
   const server = createServer(root);
-
-  const { httpServerHandler } = await import("cloudflare:node:http");
   return httpServerHandler(server) as FetchHandler;
 }
 
