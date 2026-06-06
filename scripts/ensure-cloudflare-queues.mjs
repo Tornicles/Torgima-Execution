@@ -64,8 +64,9 @@ function ensureQueue(name) {
 }
 
 if (!process.env.CLOUDFLARE_API_TOKEN?.trim()) {
-  console.warn("[queues] CLOUDFLARE_API_TOKEN not set — skipping queue provisioning");
-  process.exit(0);
+  console.warn(
+    "[queues] CLOUDFLARE_API_TOKEN not set — attempting wrangler with ambient Workers Builds auth",
+  );
 }
 
 let ok = true;

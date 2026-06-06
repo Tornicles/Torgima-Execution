@@ -88,7 +88,7 @@ If the Worker is connected to GitHub via **Workers Builds**, set:
 | Field | Value |
 |-------|--------|
 | Build command | `pnpm run build` |
-| Deploy command | `pnpm run deploy:cloudflare:worker` |
+| Deploy command | `pnpm run deploy` |
 
 Do **not** use bare `npx wrangler deploy` — deploy fails when `torgima-task-queue` / `torgima-task-queue-dlq` have not been created yet.
 
