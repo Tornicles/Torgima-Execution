@@ -1,0 +1,4 @@
+# Minimal wrangler config for provisioning Cloudflare resources (queues, etc.)
+# without loading queue consumer bindings from the production wrangler.jsonc.
+name = "torgima-provision"
+compatibility_date = "2026-02-01"

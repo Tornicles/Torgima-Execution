@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const soft = process.argv.includes("--soft") || process.env.QUEUES_SOFT === "1";
+const provisionConfig = resolve(root, "scripts/wrangler-provision.toml");
 
 /** Primary queue only — DLQ optional; add dead_letter_queue in wrangler.toml after DLQ exists. */
 const QUEUES = ["torgima-task-queue"];
@@ -28,8 +29,12 @@ function runCapture(args) {
   };
 }
 
+function wranglerArgs(subcommand) {
+  return ["exec", "wrangler", ...subcommand, "--config", provisionConfig];
+}
+
 function queueExists(name) {
-  const { status } = runCapture(["exec", "wrangler", "queues", "info", name]);
+  const { status } = runCapture(wranglerArgs(["queues", "info", name]));
   return status === 0;
 }
 
@@ -40,13 +45,7 @@ function ensureQueue(name) {
   }
 
   console.log(`[queues] Creating ${name}…`);
-  const { status, stderr, stdout } = runCapture([
-    "exec",
-    "wrangler",
-    "queues",
-    "create",
-    name,
-  ]);
+  const { status, stderr, stdout } = runCapture(wranglerArgs(["queues", "create", name]));
 
   if (status === 0) {
     console.log(`[queues] Created ${name}`);
@@ -86,4 +85,4 @@ if (soft) {
   process.exit(0);
 }
 const strict = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-process.exit(strict ? 1 : 0);
+process.exit(strict ? 1 : 1);
