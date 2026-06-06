@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "pnpm run typecheck:libs && pnpm -r --if-present run build",
+    "postbuild": "node scripts/ensure-cloudflare-queues.mjs",
+    "deploy": "node scripts/ensure-cloudflare-queues.mjs && pnpm exec wrangler deploy",
     "typecheck:libs": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:unit": "pnpm -F @workspace/api-server exec vitest run src/tests/unit",

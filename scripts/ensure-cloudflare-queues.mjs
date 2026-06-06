@@ -13,6 +13,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** DLQ first — consumer config references it on the primary queue. */
 const QUEUES = ["torgima-task-queue-dlq", "torgima-task-queue"];
 
+if (!process.env.CLOUDFLARE_API_TOKEN?.trim()) {
+  console.warn("[queues] CLOUDFLARE_API_TOKEN not set — skipping queue provisioning");
+  process.exit(0);
+}
+
 function runCapture(args) {
   const result = spawnSync("pnpm", args, {
     cwd: root,
