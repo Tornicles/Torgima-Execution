@@ -5,8 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  NODE_VERSION: "22"
+
 jobs:
-  build-test:
+  ci:
     name: Typecheck, build, test
     runs-on: ubuntu-latest
     steps:
@@ -16,8 +19,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -25,15 +28,26 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Build
+      - name: Build all packages
         run: pnpm build
 
-      - name: Run tests
+      - name: Run unit tests
         run: pnpm test
+        env:
+          NODE_ENV: test
 
-  deploy-worker:
-    name: Deploy API Worker
-    needs: build-test
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            artifacts/api-server/dist
+            artifacts/torgima/dist
+          retention-days: 1
+
+  migrate:
+    name: Run database migrations
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,8 +56,35 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Drizzle migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run manual migrations
+        run: pnpm db:apply-manual
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy-worker:
+    name: Deploy API Worker
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -53,18 +94,19 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Verify Worker entry and build output
+        run: |
+          test -f artifacts/api-server/src/worker.ts
+          ls -la artifacts/api-server/dist/ | head -20
+          echo "Worker entry src/worker.ts present; Wrangler bundles TypeScript at deploy."
+
       - name: Ensure Cloudflare Queues
         run: pnpm run ensure:cloudflare:queues
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Run database migrations
-        run: pnpm db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Deploy Worker to Cloudflare
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -82,9 +124,20 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           INTERNAL_SERVICE_SECRET: ${{ secrets.INTERNAL_SERVICE_SECRET }}
 
+      - name: Verify Worker is live (JSON health)
+        run: |
+          sleep 15
+          BODY=$(curl -sS https://torgima.tmagaya.workers.dev/health)
+          echo "$BODY"
+          echo "$BODY" | grep -q '"ok"' || echo "$BODY" | grep -q 'torgima-api' || {
+            echo "ERROR: Worker still returning placeholder or non-JSON health"
+            exit 1
+          }
+          echo "Worker health OK"
+
   deploy-pages:
     name: Deploy Frontend (Pages)
-    needs: build-test
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,8 +146,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -105,10 +158,16 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           NODE_ENV: production
 
+      - name: Verify frontend build output
+        run: |
+          ls -la artifacts/torgima/dist/
+          test -f artifacts/torgima/dist/index.html
+          echo "Frontend build verified."
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: "."
-          command: pages deploy artifacts/torgima/dist --project-name=torgima-frontend --branch=main
+          command: pages deploy artifacts/torgima/dist --project-name=torgima-frontend --branch=main --commit-dirty=true

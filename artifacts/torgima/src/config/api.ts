@@ -2,7 +2,7 @@
  * API origin — Cloudflare Worker in production (override via VITE_API_BASE_URL).
  * Empty string = same-origin /api (Pages service binding proxy).
  */
-const DEFAULT_CLOUDFLARE_API_URL = "https://api.torgima.com";
+const DEFAULT_CLOUDFLARE_API_URL = "https://torgima.tmagaya.workers.dev";
 
 function resolveProductionApiBase(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL;

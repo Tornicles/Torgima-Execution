@@ -10,7 +10,6 @@ import { requireAuth } from "../lib/auth.js";
 import { SESSION_COOKIE_NAME } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { resolveAppUrl } from "../lib/app-url.js";
-import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import {
   magicLinkHourlyLimit,
   magicLinkVerifyLimit,
@@ -21,16 +20,11 @@ const router = Router();
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
 const prod = process.env["NODE_ENV"] === "production";
 
-// Cloudflare (same parent domain): Lax. Legacy cross-origin hosts: None + Secure.
+// Cross-origin Pages (pages.dev) + Worker (workers.dev): cookie must be None+Secure.
 const sessionCookieOptions = {
   httpOnly: true,
   secure: prod,
-  sameSite:
-    isCloudflareRuntime() || process.env.TORGIMA_RUNTIME === "cloudflare"
-      ? ("lax" as const)
-      : prod
-        ? ("none" as const)
-        : ("lax" as const),
+  sameSite: prod ? ("none" as const) : ("lax" as const),
   path: "/" as const,
   maxAge: COOKIE_MAX_AGE * 1000,
 };

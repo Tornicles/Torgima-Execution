@@ -26,7 +26,14 @@ function run(label, cmd, args) {
 run("Checking API token…", "node", ["scripts/verify-cloudflare-auth.mjs"]);
 run("Ensuring Queues…", "node", ["scripts/ensure-cloudflare-queues.mjs"]);
 run("Building API Worker bundle…", "pnpm", ["--filter", "@workspace/api-server", "build"]);
-run("Dry-run deploy (local verification)…", "pnpm", ["exec", "wrangler", "deploy", "--dry-run"]);
-run("Deploying Worker…", "pnpm", ["exec", "wrangler", "deploy"]);
+run("Dry-run deploy (local verification)…", "pnpm", [
+  "exec",
+  "wrangler",
+  "deploy",
+  "--dry-run",
+  "--config",
+  "artifacts/api-server/wrangler.toml",
+]);
+run("Deploying Worker…", "pnpm", ["run", "deploy:cloudflare:api"]);
 
 console.log("\n[cf:deploy] Done.");

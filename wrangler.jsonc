@@ -14,7 +14,8 @@
   },
   "vars": {
     "NODE_ENV": "production",
-    "TORGIMA_RUNTIME": "cloudflare"
+    "TORGIMA_RUNTIME": "cloudflare",
+    "APP_URL": "https://torgima-frontend.pages.dev"
   },
   "kv_namespaces": [
     {

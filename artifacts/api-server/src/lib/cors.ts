@@ -7,9 +7,11 @@ const ALLOW_HEADERS =
   "Content-Type,Authorization,x-internal-auth,x-internal-token,x-expected-state-version,idempotency-key,Cookie";
 const MAX_AGE = "86400";
 
-/** Production browser origins — primary domain plus Vercel during DNS transition. */
+/** Production browser origins — Pages, custom domain, and legacy hosts. */
 const ALLOWED_ORIGINS = [
   PRODUCTION_FRONTEND_URL,
+  "https://torgima.com",
+  "https://www.torgima.com",
   "https://torgima-execution.vercel.app",
   "https://torgima.tmagaya.workers.dev",
   "https://torgima-frontend.pages.dev",
