@@ -4,13 +4,16 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 import { sql } from "drizzle-orm";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const REPO_ROOT = join(__dirname, "..", "..", "..", "..");
+function repoRoot(): string {
+  if (isCloudflareRuntime()) return "";
+  const { fileURLToPath } = require("node:url") as typeof import("node:url");
+  const { dirname, join } = require("node:path") as typeof import("node:path");
+  const __filename = fileURLToPath(import.meta.url);
+  return join(dirname(__filename), "..", "..", "..", "..");
+}
 
 export type DiagnosticStatus = "YES" | "NO" | "PARTIAL" | "STUB" | "UNKNOWN" | "DOES NOT EXIST";
 
@@ -197,7 +200,7 @@ const REQUIRED_ENV = [
 ] as const;
 
 function repoPath(...segments: string[]): string {
-  return join(REPO_ROOT, ...segments);
+  return join(repoRoot(), ...segments);
 }
 
 function readText(relPath: string): string | null {
@@ -226,9 +229,9 @@ function listTsFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(full, { withFileTypes: true })) {
     const p = join(full, entry.name);
-    if (entry.isDirectory()) out.push(...listTsFiles(relative(REPO_ROOT, p)));
+    if (entry.isDirectory()) out.push(...listTsFiles(relative(repoRoot(), p)));
     else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
-      out.push(relative(REPO_ROOT, p).replace(/\\/g, "/"));
+      out.push(relative(repoRoot(), p).replace(/\\/g, "/"));
     }
   }
   return out;
@@ -242,7 +245,7 @@ function findAnthropicViolations(): string[] {
       const p = join(dir, entry.name);
       if (entry.isDirectory() && entry.name !== "node_modules") walk(p);
       else if (entry.name.endsWith(".ts") && !entry.name.includes(".test.")) {
-        const rel = relative(REPO_ROOT, p).replace(/\\/g, "/");
+        const rel = relative(repoRoot(), p).replace(/\\/g, "/");
         if (rel.includes("TriggerRouter.ts")) continue;
         const text = readFileSync(p, "utf8");
         if (/new Anthropic\(|messages\.create\(/.test(text)) violations.push(rel);
