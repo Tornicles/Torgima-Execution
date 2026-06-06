@@ -3,13 +3,15 @@
  */
 
 import { createServer } from "node:http";
-import { httpServerHandler } from "cloudflare:node";
+import { handleAsNodeRequest } from "cloudflare:node";
 import type { ExecutionContext, MessageBatch, ScheduledController } from "@cloudflare/workers-types";
 import express from "express";
 import { bindCloudflareEnv, type TorgimaQueueMessage, type TorgimaWorkerEnv } from "./lib/cloudflare-runtime.js";
 import { createCorsMiddleware } from "./lib/cors.js";
 import { handleQueueBatch } from "./queues/handler.js";
 import { handleCloudflareCron } from "./schedulers/cloudflare-cron.js";
+
+const HTTP_PORT = 8080;
 
 type FetchHandler = (
   request: Request,
@@ -33,7 +35,9 @@ async function createFetchHandler(): Promise<FetchHandler> {
   root.use(apiApp);
 
   const server = createServer(root);
-  return httpServerHandler(server) as FetchHandler;
+  server.listen(HTTP_PORT);
+
+  return (request) => handleAsNodeRequest(HTTP_PORT, request);
 }
 
 async function getFetchHandler(): Promise<FetchHandler> {

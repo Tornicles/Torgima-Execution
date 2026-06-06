@@ -37,7 +37,9 @@ export async function shouldHoldConditionForFatigue(params: {
     return false;
   }
 
-  const patterns = await getActivePatterns(params.userId, params.blueprintId).catch(() => []);
+  const patterns = await getActivePatterns(params.userId, params.blueprintId).catch(
+    (): Awaited<ReturnType<typeof getActivePatterns>> => [],
+  );
   return patterns.some(
     (p) => p.status === "active" && patternSpecLabel(p) === "FATIGUE_RISK",
   );

@@ -2,7 +2,7 @@ import { db, blueprints, orders } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { CognitiveKernel, cognitiveKernel } from "../kernel/cognitive-kernel/CognitiveKernel.js";
 import { sharedContextService } from "../kernel/shared-context/SharedContext.js";
-import { intelligenceService } from "../intelligence/IntelligenceService.js";
+import { intelligenceService, type StoredRecommendation } from "../intelligence/IntelligenceService.js";
 import { signalService } from "../signals/SignalService.js";
 import { torgimaIntegration } from "../integration/TorgimaIntegration.js";
 import { torgimaBhudhiBridge, TorgimaBhudhiBridge } from "./TorgimaBhudhiBridge.js";
@@ -113,7 +113,9 @@ export class ConvergenceLayer {
       ctx = null;
     }
 
-    const recommendations = await intelligenceService.listRecommendations(blueprintId).catch(() => []);
+    const recommendations = await intelligenceService
+      .listRecommendations(blueprintId)
+      .catch((): StoredRecommendation[] => []);
     const top = recommendations.sort((a, b) => b.confidence - a.confidence)[0];
 
     const signal = ctx?.signal ?? "stability";
