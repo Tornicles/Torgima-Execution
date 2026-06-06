@@ -56,6 +56,10 @@ function mapOrderSummary(action: Record<string, unknown> | null | undefined): Or
       (action.whyItMatters as string | null | undefined) ??
       null,
     status: action.status as string | undefined,
+    generationReason:
+      (action.generationReason as string | null | undefined) ??
+      (action.generation_reason as string | null | undefined) ??
+      null,
   };
 }
 

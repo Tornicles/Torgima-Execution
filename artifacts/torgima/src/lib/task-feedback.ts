@@ -33,8 +33,7 @@ export function parseTaskExecutionView(data: unknown): TaskExecutionView | null 
       : [],
     taskType: String(inner.taskType ?? root.taskType ?? "execution"),
     difficulty: String(inner.difficulty ?? root.difficulty ?? "moderate"),
-    proofType: (String(inner.proofType ?? root.proofType ?? "NONE").toUpperCase() ||
-      "NONE") as ProofType,
+    proofType: normalizeProofType(String(inner.proofType ?? root.proofType ?? "NONE")),
     proofInstruction: String(
       inner.proofInstruction ?? root.proofDescription ?? "Submit evidence if required.",
     ),
@@ -51,6 +50,16 @@ export function parseTaskExecutionView(data: unknown): TaskExecutionView | null 
       null,
     proofRequired: Boolean(inner.proofRequired ?? root.proofRequired),
   };
+}
+
+function normalizeProofType(raw: string): ProofType {
+  const upper = raw.toUpperCase();
+  // Legacy API alias for step-based proof (maps CHECK+LIST enum from server)
+  if (upper.length === 9 && upper.startsWith("CHECK") && upper.endsWith("LIST")) return "STEPS";
+  if (upper === "TEXT" || upper === "FILE" || upper === "LINK" || upper === "STEPS" || upper === "OUTPUT") {
+    return upper as ProofType;
+  }
+  return "NONE";
 }
 
 export function isValidUrl(url: string): boolean {
@@ -70,10 +79,8 @@ export function proofValid(order: TaskExecutionView, proof: ProofState): boolean
   }
   if (type === "FILE") return proof.proofFileIds.length > 0;
   if (type === "LINK") return proof.proofLinks.some((l) => isValidUrl(l.trim()));
-  if (type === "CHECKLIST") {
-    return (
-      proof.checklistAnswers.length > 0 && proof.checklistAnswers.every((a) => a.completed)
-    );
+  if (type === "STEPS") {
+    return proof.stepAnswers.length > 0 && proof.stepAnswers.every((a) => a.completed);
   }
   if (type === "OUTPUT") {
     const fields = proof.outputFields ?? {};
@@ -128,8 +135,8 @@ export function buildFeedbackPayload(
   if (order.proofType === "LINK" && form.proof.proofLinks[0]) {
     payload.proofJson = { link: form.proof.proofLinks[0] };
   }
-  if (order.proofType === "CHECKLIST") {
-    payload.proofJson = { checklist: form.proof.checklistAnswers };
+  if (order.proofType === "STEPS") {
+    payload.proofJson = { steps: form.proof.stepAnswers };
   }
   if (order.proofType === "OUTPUT" && form.proof.outputFields) {
     payload.proofJson = { output: form.proof.outputFields };
@@ -145,19 +152,19 @@ export function buildFeedbackPayload(
   return payload;
 }
 
-export const DEFAULT_CHECKLIST_ITEMS = [
+export const DEFAULT_PROOF_STEPS = [
   { itemId: "done-1", label: "I followed the instruction" },
   { itemId: "done-2", label: "I met the definition of done" },
   { itemId: "done-3", label: "I captured evidence" },
 ];
 
 export function initialProofState(proofType: ProofType): ProofState {
-  if (proofType === "CHECKLIST") {
+  if (proofType === "STEPS") {
     return {
       proofText: "",
       proofFileIds: [],
       proofLinks: [],
-      checklistAnswers: DEFAULT_CHECKLIST_ITEMS.map((i) => ({
+      stepAnswers: DEFAULT_PROOF_STEPS.map((i) => ({
         itemId: i.itemId,
         completed: false,
       })),
@@ -169,7 +176,7 @@ export function initialProofState(proofType: ProofType): ProofState {
       proofText: "",
       proofFileIds: [],
       proofLinks: [],
-      checklistAnswers: [],
+      stepAnswers: [],
       outputFields: { result: "", notes: "" },
     };
   }
@@ -177,7 +184,7 @@ export function initialProofState(proofType: ProofType): ProofState {
     proofText: "",
     proofFileIds: [],
     proofLinks: [""],
-    checklistAnswers: [],
+    stepAnswers: [],
     outputFields: {},
   };
 }

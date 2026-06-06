@@ -13,6 +13,7 @@ export type OrderSummary = {
   allowedActions: string[];
   priorityReason?: string | null;
   status?: string;
+  generationReason?: string | null;
 };
 
 export type SignalSummaryStrip = {

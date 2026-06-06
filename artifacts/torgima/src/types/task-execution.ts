@@ -7,7 +7,7 @@ export type FeedbackCompletion =
   | "BLOCKED"
   | "SKIPPED";
 
-export type ProofType = "NONE" | "TEXT" | "FILE" | "LINK" | "CHECKLIST" | "OUTPUT";
+export type ProofType = "NONE" | "TEXT" | "FILE" | "LINK" | "STEPS" | "OUTPUT";
 
 export type TaskExecutionView = {
   orderId: string;
@@ -31,7 +31,7 @@ export type ProofState = {
   proofText?: string;
   proofFileIds: string[];
   proofLinks: string[];
-  checklistAnswers: Array<{ itemId: string; completed: boolean }>;
+  stepAnswers: Array<{ itemId: string; completed: boolean }>;
   outputFields?: Record<string, string>;
 };
 

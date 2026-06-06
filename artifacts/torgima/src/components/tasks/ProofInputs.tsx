@@ -2,10 +2,7 @@ import { useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { LANGUAGE } from "@/lib/language";
 import { uploadProofFile } from "@/api/orders";
-import {
-  DEFAULT_CHECKLIST_ITEMS,
-  isValidUrl,
-} from "@/lib/task-feedback";
+import { DEFAULT_PROOF_STEPS, isValidUrl } from "@/lib/task-feedback";
 import type { ProofState, TaskExecutionView } from "@/types/task-execution";
 
 export function ProofInputs({
@@ -111,10 +108,10 @@ export function ProofInputs({
         </div>
       )}
 
-      {order.proofType === "CHECKLIST" && (
+      {order.proofType === "STEPS" && (
         <ul className="space-y-2">
-          {DEFAULT_CHECKLIST_ITEMS.map((item) => {
-            const ans = proof.checklistAnswers.find((a) => a.itemId === item.itemId);
+          {DEFAULT_PROOF_STEPS.map((item) => {
+            const ans = proof.stepAnswers.find((a) => a.itemId === item.itemId);
             return (
               <li key={item.itemId}>
                 <label className="flex items-center gap-2 text-sm text-amber-950">
@@ -122,10 +119,10 @@ export function ProofInputs({
                     type="checkbox"
                     checked={ans?.completed ?? false}
                     onChange={(e) => {
-                      const next = proof.checklistAnswers.map((a) =>
+                      const next = proof.stepAnswers.map((a) =>
                         a.itemId === item.itemId ? { ...a, completed: e.target.checked } : a,
                       );
-                      onChange({ checklistAnswers: next });
+                      onChange({ stepAnswers: next });
                     }}
                   />
                   {item.label}

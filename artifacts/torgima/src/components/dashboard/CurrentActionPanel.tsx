@@ -4,6 +4,9 @@ import type { OrderSummary } from "@/types/dashboard";
 import { ActionButtons } from "./ActionButtons";
 import { NoTaskState } from "./NoTaskState";
 
+const SMOKE_GENERATION_REASON = "erector_first_week_seed";
+const SMOKE_WEEK_LABEL = "Smoke Test — Week 1";
+
 /** DOC 33 — primary task card; actions from backend allowedActions only. */
 export function CurrentActionPanel({
   uiState,
@@ -61,6 +64,11 @@ export function CurrentActionPanel({
           {order.proofRequired ? (
             <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 ring-1 ring-amber-200">
               Evidence required
+            </span>
+          ) : null}
+          {order.generationReason === SMOKE_GENERATION_REASON ? (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-violet-50 text-violet-800 ring-1 ring-violet-200">
+              {SMOKE_WEEK_LABEL}
             </span>
           ) : null}
         </div>
