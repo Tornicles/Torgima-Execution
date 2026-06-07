@@ -12,8 +12,8 @@ describe("resolveAppUrl", () => {
 
   it("prefers APP_URL in production when set (DOC 30)", () => {
     process.env.NODE_ENV = "production";
-    process.env.APP_URL = "https://my-app.vercel.app/";
-    expect(resolveAppUrl()).toBe("https://my-app.vercel.app");
+    process.env.APP_URL = "https://app.example.com/";
+    expect(resolveAppUrl()).toBe("https://app.example.com");
   });
 
   it("falls back to production frontend URL without APP_URL", () => {
@@ -24,7 +24,7 @@ describe("resolveAppUrl", () => {
 
   it("prefers APP_URL when set in development (DOC 30)", () => {
     process.env.NODE_ENV = "development";
-    process.env.FRONTEND_URL = "https://torgima-execution.vercel.app";
+    process.env.FRONTEND_URL = "https://torgima-execution.pages.dev";
     process.env.APP_URL = "https://torgima.com";
     expect(resolveAppUrl()).toBe("https://torgima.com");
   });
@@ -32,8 +32,8 @@ describe("resolveAppUrl", () => {
   it("uses first comma-separated FRONTEND_URL entry in development", () => {
     process.env.NODE_ENV = "development";
     process.env.FRONTEND_URL =
-      "https://torgima-execution.vercel.app,https://torgima.com";
-    expect(resolveAppUrl()).toBe("https://torgima-execution.vercel.app");
+      "https://torgima-execution.pages.dev,https://torgima.com";
+    expect(resolveAppUrl()).toBe("https://torgima-execution.pages.dev");
   });
 
   it("strips trailing slash in development", () => {

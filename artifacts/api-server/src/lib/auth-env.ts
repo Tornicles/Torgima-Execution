@@ -17,7 +17,7 @@ export function resolveRequiredAppUrl(): string {
 
   if (!raw.trim()) {
     throw new Error(
-      "Missing env: APP_URL (must be your Vercel frontend origin, no trailing slash)",
+      "Missing env: APP_URL (must be your production frontend origin, e.g. https://torgima.com — no trailing slash)",
     );
   }
 
@@ -25,7 +25,7 @@ export function resolveRequiredAppUrl(): string {
   const lower = url.toLowerCase();
   for (const bad of FORBIDDEN_APP_URL_SUBSTRINGS) {
     if (lower.includes(bad)) {
-      throw new Error(`APP_URL must not point to ${bad}; set your production Vercel domain`);
+      throw new Error(`APP_URL must not point to ${bad}; set APP_URL to https://torgima.com (Cloudflare Pages)`);
     }
   }
 

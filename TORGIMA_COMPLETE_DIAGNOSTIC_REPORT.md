@@ -1,5 +1,7 @@
 # TORGIMA Complete System Diagnostic Report
 
+> **Historical snapshot (2026-05-27).** Production architecture has migrated to **Cloudflare Pages** (frontend) and **Cloudflare Worker** (API). Vercel and Railway are deprecated. See `docs/CLOUDFLARE_MIGRATION.md`.
+
 Generated: 2026-05-27T22:51:30.480Z
 
 ## PART A — Stack Confirmation
@@ -11,8 +13,8 @@ Generated: 2026-05-27T22:51:30.480Z
 - **aiProvider**: Anthropic Claude via TriggerRouter
 - **authSystem**: Magic link + sessions
 - **databaseHost**: Supabase Postgres
-- **deploymentApi**: Railway
-- **deploymentFrontend**: Vercel
+- **deploymentApi**: Cloudflare Worker (was Railway — deprecated)
+- **deploymentFrontend**: Cloudflare Pages (was Vercel — deprecated)
 - **packageManager**: pnpm@11.0.9
 - **engineModuleCount**: 206
 - **workerModuleCount**: 31

@@ -214,19 +214,18 @@ Execution metrics + investigations
 ## Deployment topology
 
 ```
-┌─────────────────┐         ┌──────────────────────────┐
-│ Vercel          │  HTTPS  │ Railway / Fly / Render   │
-│ artifacts/      │ ──────► │ artifacts/api-server     │
-│ torgima (SPA)   │         │ Express + workers        │
-│ /app/bhudhi     │         │ Bhudhi routes            │
-└─────────────────┘         └────────────┬─────────────┘
-                                           │
-                                           ▼
-                                ┌──────────────────────┐
-                                │ PostgreSQL           │
-                                │ migrations 0001-0029 │
-                                │ bhudhi_* tables      │
-                                └──────────────────────┘
+┌─────────────────────────┐         ┌──────────────────────────┐
+│ Cloudflare Pages        │  HTTPS  │ Cloudflare Worker        │
+│ artifacts/torgima (SPA) │ ──────► │ artifacts/api-server     │
+│ https://torgima.com     │         │ https://api.torgima.com  │
+└─────────────────────────┘         └────────────┬─────────────┘
+                                               │
+                                               ▼
+                                    ┌──────────────────────┐
+                                    │ PostgreSQL (Supabase)│
+                                    │ migrations 0001-0029 │
+                                    │ bhudhi_* tables      │
+                                    └──────────────────────┘
 ```
 
 ---

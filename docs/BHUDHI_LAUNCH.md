@@ -9,7 +9,7 @@ Server module: `artifacts/api-server/src/config/environments.ts`
 | Environment | Resolved when | Monitoring | Rate limit | Telemetry sample |
 |-------------|---------------|------------|------------|------------------|
 | `development` | default / `ENVIRONMENT=development` | off | off | 0% |
-| `staging` | `ENVIRONMENT=staging` or `VERCEL_ENV=preview` | on | on | 50% |
+| `staging` | `ENVIRONMENT=staging` or Pages preview URL | on | on | 50% |
 | `production` | `NODE_ENV=production` | on | on | 10% |
 
 Override API URL with `API_PUBLIC_URL`, `PUBLIC_API_URL`, or `VITE_API_BASE_URL`.
@@ -74,7 +74,7 @@ Returns manifest: routes, dashboard paths, doc links, feature flags.
 
 - [`DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md)
 - [`RELEASE_NOTES.md`](./RELEASE_NOTES.md)
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Vercel + Railway split
+- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Cloudflare Pages + Worker (Vercel deprecated)
 
 ## Verification
 

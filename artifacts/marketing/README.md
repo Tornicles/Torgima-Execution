@@ -16,4 +16,4 @@ pnpm --filter @workspace/marketing start
 
 ## Deploy
 
-Point your host (e.g. Vercel) at **`artifacts/marketing`** with default Next.js settings.
+Point your host at **`artifacts/marketing`** with default Next.js settings (e.g. Cloudflare Pages or another static/Node host). **Vercel is not used for production TORGIMA execution SPA** — that runs on Cloudflare Pages at https://torgima.com.

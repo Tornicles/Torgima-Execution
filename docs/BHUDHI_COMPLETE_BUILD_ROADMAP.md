@@ -94,7 +94,7 @@ Apply Postgres migrations **0026–0029** before exercising kernel, memory, prot
 
 1. **Development** — local API + Vite; `ENVIRONMENT=development`
 2. **Staging** — full batches 1–4; `ENVIRONMENT=staging`
-3. **Production** — Vercel SPA + Railway (or equivalent) API; `ENVIRONMENT=production`
+3. **Production** — Cloudflare Pages + Cloudflare Worker API; `ENVIRONMENT=production`
 4. **Scale** — optional Prompts 29–30 (civilization / AGI expansion)
 
 ---

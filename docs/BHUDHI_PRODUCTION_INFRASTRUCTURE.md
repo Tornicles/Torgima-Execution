@@ -2,16 +2,20 @@
 
 Production-grade deployment, monitoring, rate limiting, and backup for Bhudhi 2.0 in Torgima-Execution.
 
-**Stack (this repo):**
+**Stack (this repo — production):**
 
 | Layer | Host |
 |-------|------|
-| Frontend SPA | Vercel (`artifacts/torgima`) |
-| API + pg-boss workers | Railway / Fly / Render (long-running Node) |
+| Frontend SPA | **Cloudflare Pages** (`torgima-execution`) → https://torgima.com |
+| API | **Cloudflare Worker** (`torgima`) → https://api.torgima.com |
 | Database | Supabase PostgreSQL |
-| Queue | pg-boss (same Postgres) |
+| Sessions | Cloudflare KV (`SESSIONS`) |
+| Scheduled jobs | Worker cron triggers; optional Cloudflare Queues (`torgima-task-queue`) |
+| Node-only queue (local/dev) | pg-boss when running long-lived Node API |
 | Rate limit | In-memory (optional `REDIS_URL` reserved) |
 | Logging | Pino (`artifacts/api-server/src/lib/logger.ts`) |
+
+**Deprecated:** Vercel frontend deploy, Railway API deploy.
 
 ## Certification (Prompt 38)
 
@@ -30,7 +34,7 @@ See also: [DEPLOYMENT.md](./DEPLOYMENT.md) · [BHUDHI_OS_SPEC.md](./BHUDHI_OS_SP
 1. Apply Drizzle migrations through `0029` on production Postgres.
 2. Run supplemental indexes: `psql $DATABASE_URL -f scripts/db-setup.sql`
 3. Configure API host from `artifacts/api-server/.env.production.example`
-4. Set Vercel `VITE_API_BASE_URL` to the API origin (no trailing slash).
+4. Set Cloudflare Pages `VITE_API_BASE_URL=https://api.torgima.com` (no trailing slash).
 5. Probe `GET /api/health` and `GET /api/bhudhi/monitoring/health`
 6. Open `/app/bhudhi/monitoring` in the SPA
 
@@ -99,9 +103,11 @@ Copy `artifacts/api-server/.env.production.example` to your host secret store. C
 
 ---
 
-## Vercel
+## Cloudflare Pages (production frontend)
 
-Root `vercel.json` builds **only the SPA**. Do not deploy the API to Vercel. No changes required for Prompt 37 beyond ensuring `VITE_API_BASE_URL` points at the API host.
+Build with `pnpm build:cloudflare:pages` → `artifacts/torgima/dist`. Deploy to project **`torgima-execution`**. Set `VITE_API_BASE_URL=https://api.torgima.com`.
+
+**Deprecated:** root `vercel.json` — do not deploy production to Vercel.
 
 ---
 

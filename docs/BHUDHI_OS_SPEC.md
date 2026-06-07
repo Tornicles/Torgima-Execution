@@ -380,8 +380,8 @@ See **[BHUDHI_API_REFERENCE.md](./BHUDHI_API_REFERENCE.md)** for the full endpoi
 - Node.js 20+
 - PostgreSQL 14+ (Supabase or self-hosted)
 - pnpm monorepo
-- Long-running host for API (Railway / Fly / Render — not Vercel serverless)
-- Vercel for frontend SPA only
+- Cloudflare Worker for API (Express bridge on Workers)
+- Cloudflare Pages for frontend SPA (`https://torgima.com`)
 
 ### Steps
 
@@ -392,7 +392,7 @@ pnpm --filter @workspace/api-server build
 pnpm --filter @workspace/torgima build
 ```
 
-Deploy API per [DEPLOYMENT.md](./DEPLOYMENT.md). Set `VITE_API_BASE_URL` on Vercel to the API origin.
+Deploy per [DEPLOYMENT.md](./DEPLOYMENT.md). Set `VITE_API_BASE_URL=https://api.torgima.com` on Cloudflare Pages.
 
 ### Bhudhi migrations (Phase 2)
 
