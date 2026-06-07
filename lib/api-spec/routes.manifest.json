@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-03T13:28:26.096Z",
-  "routeCount": 664,
+  "generatedAt": "2026-06-07T07:00:26.698Z",
+  "routeCount": 698,
   "routes": [
     {
       "method": "GET",
@@ -331,6 +331,16 @@
       "method": "GET",
       "path": "/analytics/velocity/:userId",
       "file": "analytics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "file": "admin.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "file": "admin.ts"
     },
     {
       "method": "POST",
@@ -1378,6 +1388,11 @@
       "file": "blueprints.ts"
     },
     {
+      "method": "PATCH",
+      "path": "/blueprints/:id",
+      "file": "doc29-routes.ts"
+    },
+    {
       "method": "POST",
       "path": "/blueprints/:id/activate",
       "file": "blueprints.ts"
@@ -1496,6 +1511,11 @@
       "method": "GET",
       "path": "/blueprints/:id/tier-preview",
       "file": "blueprints.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/blueprints/:id/versions",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -1668,6 +1688,11 @@
       "file": "chat.ts"
     },
     {
+      "method": "GET",
+      "path": "/cognitive-load/current",
+      "file": "doc29-routes.ts"
+    },
+    {
       "method": "POST",
       "path": "/communication/filter",
       "file": "communication.ts"
@@ -1696,6 +1721,31 @@
       "method": "GET",
       "path": "/dashboard/intelligence/:blueprintId",
       "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/blueprint-launch-health",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/cloudflare-env",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/routes",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/decisions/history",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/dependencies/current",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -1736,6 +1786,21 @@
       "method": "GET",
       "path": "/execution/session",
       "file": "executionRoutes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/failures/current",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/feedback/:id",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback/:id/clarify",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "POST",
@@ -1806,6 +1871,11 @@
       "method": "POST",
       "path": "/feedback/weekly-review",
       "file": "feedback.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/friction/current",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -1936,6 +2006,11 @@
       "method": "GET",
       "path": "/identity/current",
       "file": "engagement.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/identity/history",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -2104,6 +2179,11 @@
     },
     {
       "method": "POST",
+      "path": "/internal/auth/validate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
       "path": "/internal/bhudhi/trigger",
       "file": "internal.ts"
     },
@@ -2194,6 +2274,11 @@
     },
     {
       "method": "POST",
+      "path": "/login",
+      "file": "auth.ts"
+    },
+    {
+      "method": "POST",
       "path": "/logout",
       "file": "auth.ts"
     },
@@ -2201,6 +2286,11 @@
       "method": "POST",
       "path": "/loop/regenerate",
       "file": "loop.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/magic-link/send",
+      "file": "auth.ts"
     },
     {
       "method": "GET",
@@ -2374,6 +2464,11 @@
     },
     {
       "method": "POST",
+      "path": "/onboarding/configure-tier",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
       "path": "/onboarding/goal",
       "file": "onboarding.ts"
     },
@@ -2384,8 +2479,13 @@
     },
     {
       "method": "POST",
-      "path": "/onboarding/select-blueprint",
-      "file": "validation.ts"
+      "path": "/onboarding/select-blueprint-tier",
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/onboarding/select-tier",
+      "file": "onboarding.ts"
     },
     {
       "method": "GET",
@@ -2474,6 +2574,11 @@
     },
     {
       "method": "GET",
+      "path": "/patterns/current",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/principle-applications/:applicationId",
       "file": "principles.ts"
     },
@@ -2551,6 +2656,11 @@
       "method": "GET",
       "path": "/principles/today",
       "file": "principles.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/priority/current",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -2648,6 +2758,11 @@
       "file": "principles.ts"
     },
     {
+      "method": "POST",
+      "path": "/purge-test-user",
+      "file": "admin.ts"
+    },
+    {
       "method": "GET",
       "path": "/rewards/current",
       "file": "engagement.ts"
@@ -2656,6 +2771,11 @@
       "method": "GET",
       "path": "/rewards/current/:blueprintId",
       "file": "rewards.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/rewards/history",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "GET",
@@ -2759,6 +2879,11 @@
     },
     {
       "method": "GET",
+      "path": "/state/current",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/state/dashboard",
       "file": "state.ts"
     },
@@ -2766,6 +2891,21 @@
       "method": "GET",
       "path": "/state/dashboard-intelligence",
       "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/state/project",
+      "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/state/signals",
+      "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/stats",
+      "file": "admin.ts"
     },
     {
       "method": "POST",
@@ -2816,6 +2956,11 @@
       "method": "GET",
       "path": "/upgrade/status",
       "file": "upgrade.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/uploads/proof",
+      "file": "doc29-routes.ts"
     },
     {
       "method": "POST",
@@ -3009,13 +3154,18 @@
     },
     {
       "method": "POST",
-      "path": "/v1/onboarding/select-blueprint",
+      "path": "/v1/onboarding/configure-tier",
       "file": "onboarding.ts"
     },
     {
       "method": "POST",
       "path": "/v1/onboarding/select-blueprint",
-      "file": "validation.ts"
+      "file": "onboarding.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/onboarding/select-tier",
+      "file": "onboarding.ts"
     },
     {
       "method": "POST",
@@ -3248,6 +3398,16 @@
       "file": "validation.ts"
     },
     {
+      "method": "GET",
+      "path": "/validation/:id",
+      "file": "doc29-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/validation/:id/archetypes",
+      "file": "doc29-routes.ts"
+    },
+    {
       "method": "POST",
       "path": "/validation/:id/edit-inputs",
       "file": "validation.ts"
@@ -3298,9 +3458,19 @@
       "file": "validation.ts"
     },
     {
+      "method": "GET",
+      "path": "/verify",
+      "file": "auth.ts"
+    },
+    {
       "method": "POST",
       "path": "/verify",
       "file": "auth.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/waitlist",
+      "file": "waitlist.ts"
     },
     {
       "method": "POST",
@@ -3323,5 +3493,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 644
+  "openApiPathCount": 676
 }

@@ -9,7 +9,6 @@
   },
   "scripts": {
     "build": "pnpm run typecheck:libs && pnpm -r --if-present run build",
-    "postbuild": "node scripts/ensure-cloudflare-queues.mjs --soft",
     "deploy": "node scripts/wrangler-deploy.mjs",
     "typecheck:libs": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
@@ -18,6 +17,7 @@
     "test:acceptance": "pnpm -F @workspace/api-server exec vitest run src/tests/acceptance",
     "test:integration": "pnpm -F @workspace/api-server exec vitest run src/tests/integration",
     "test:api": "pnpm -F @workspace/api-server exec vitest run src/tests",
+    "pretest": "node scripts/generateOpenApi.mjs",
     "test": "pnpm test:api",
     "test:e2e": "pnpm -F @workspace/torgima exec playwright test",
     "test:phase9": "pnpm -F @workspace/scripts test:phase9",
