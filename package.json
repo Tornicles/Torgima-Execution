@@ -33,6 +33,7 @@
     "verify:25-sequences": "node scripts/verify-25-sequences.mjs",
     "db:generate": "pnpm -F @workspace/db generate",
     "db:migrate": "pnpm -F @workspace/db migrate",
+    "db:migration-precheck": "node scripts/check-migrations-idempotent.mjs",
     "db:check": "pnpm -F @workspace/db check",
     "db:apply-manual": "pnpm -F @workspace/db exec tsx ../../scripts/apply-all-manual-migrations.mjs",
     "db:verify-onboarding-schema": "node scripts/verify-onboarding-goal-schema-columns.mjs",

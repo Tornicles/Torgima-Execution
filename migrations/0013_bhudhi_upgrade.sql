@@ -1,264 +1,264 @@
 DO $$ BEGIN
-  CREATE TYPE "public"."action_type" AS ENUM('create', 'replicate', 'analyze', 'improve', 'standardize', 'recover', 'test', 'publish', 'validate', 'measure', 'build');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."ai_mode" AS ENUM('command', 'correction', 'stabilization', 'optimization', 'expansion', 'strategic', 'analytical');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."behavior_pattern_status" AS ENUM('active', 'resolved', 'ignored', 'monitoring');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."behavior_pattern_type" AS ENUM('procrastination', 'burnout', 'inconsistency', 'avoidance', 'fake_completion', 'low_reflection', 'blocker_repetition', 'inactivity', 'score_inflation', 'difficulty_ceiling', 'task_type_avoidance', 'recovery_dependence', 'false_progress', 'focus_drift');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."bhudhi_execution_context" AS ENUM('marketing', 'pr', 'strategy', 'execution', 'analysis');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."bhudhi_request_type" AS ENUM('goal_validation', 'blueprint_generation', 'policy_generation', 'task_generation', 'task_regeneration', 'feedback_interpretation', 'feedback_interrogation', 'condition_explanation', 'recovery_suggestion', 'academy_content', 'knowledge_generation', 'behavior_analysis', 'dashboard_summary', 'other');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."bhudhi_trigger_type" AS ENUM('task_generation', 'feedback_interpretation', 'feedback_interrogation', 'goal_structuring', 'validation_analysis', 'condition_explanation', 'state_explanation', 'blocker_classification', 'pattern_summary', 'evidence_summary', 'root_cause_candidates', 'pivot_path_generation', 'academy_content', 'knowledge_update', 'blueprint_generation', 'blueprint_interpretation', 'erector_analysis');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."blueprint_operational_state" AS ENUM('ACTIVE', 'STALLED', 'DEGRADED', 'RECOVERY', 'COLLAPSED', 'ARCHIVED');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."blueprint_status" AS ENUM('draft', 'validating', 'awaiting_selection', 'path_selection', 'active', 'paused', 'complete', 'abandoned');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."capability_level" AS ENUM('beginner', 'operator', 'advanced', 'lead');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."commitment_level" AS ENUM('low', 'medium', 'high', 'full');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."condition" AS ENUM('nothingness', 'danger', 'urgency', 'stability', 'power', 'affluence', 'power_change');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."difficulty" AS ENUM('very_easy', 'easy', 'moderate', 'hard', 'very_hard');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."domain" AS ENUM('genesis', 'market', 'delivery', 'operations', 'people', 'growth', 'continuity');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."domain_transition_trigger" AS ENUM('validation_complete', 'blueprint_launched', 'signal_change', 'condition_change', 'strategy_pivot', 'manual_review', 'phase_complete', 'recovery_mode');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."event_log_result" AS ENUM('success', 'retry', 'failed', 'dead_lettered', 'noop_duplicate');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."event_status" AS ENUM('pending', 'claimed', 'processed', 'retry_pending', 'dead_lettered', 'cancelled');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."fatigue_risk" AS ENUM('low', 'moderate', 'high', 'critical');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."framework_activation_level" AS ENUM('dormant', 'monitor', 'diagnose', 'recommend', 'enforce');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."framework_decision_status" AS ENUM('proposed', 'approved', 'rejected', 'applied', 'superseded');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."framework_name" AS ENUM('governance_risk', 'finmatrix', 'strategycore', 'synergyops', 'talentsync', 'alignment_accountability', 'customervalue', 'omnigrowth', 'adaptive_intelligence', 'knowledgeflow', 'decision_velocity', 'culture_dynamics', 'regeneration_exit', 'clarity_catalyst');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."generation_mode" AS ENUM('initial', 'post_feedback', 'daily', 'recovery', 'condition_change');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."generation_trigger" AS ENUM('blueprint_launched', 'feedback_submitted', 'condition_changed', 'task_completed', 'task_blocked', 'user_inactive', 'phase_checkpoint_required', 'academy_gap_detected', 'weekly_review_due', 'habit_check_due', 'dependency_unblocked', 'daily_cycle', 'recovery_triggered', 'manual_regeneration');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."identity_stage" AS ENUM('starting', 'forming', 'building', 'establishing', 'consolidated', 'transforming');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."inactivity_threshold" AS ENUM('warning', 'soft', 'hard', 'critical');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."intelligence_depth" AS ENUM('guided', 'operational', 'strategic');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."milestone_type" AS ENUM('task_streak', 'phase_complete', 'project_complete', 'target_hit', 'blueprint_complete', 'comeback', 'score_improvement', 'capability_level_up');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."order_status" AS ENUM('pending', 'active', 'paused', 'blocked', 'needs_feedback', 'needs_proof', 'completed', 'failed', 'skipped', 'cancelled', 'pre_generated');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."phase_name" AS ENUM('initiation', 'development', 'completion');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."phase_permission" AS ENUM('restricted', 'blocked', 'normal', 'accelerated');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."phase_status" AS ENUM('pending', 'active', 'gated', 'blocked', 'complete', 'skipped');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."plan_status" AS ENUM('pending', 'active', 'complete', 'skipped');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."project_status" AS ENUM('pending', 'active', 'blocked', 'complete', 'failed', 'skipped');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."project_type" AS ENUM('setup', 'execution', 'analysis', 'optimization', 'recovery');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."proof_type" AS ENUM('link', 'file', 'text', 'image', 'none');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."risk_level" AS ENUM('low', 'medium', 'high', 'critical');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."season_name" AS ENUM('ignition', 'foundation', 'traction', 'scale');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."selected_path" AS ENUM('current', 'adjusted', 'alternative');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."signal_confidence" AS ENUM('insufficient_data', 'low', 'medium', 'high');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."signal_trend" AS ENUM('rising', 'stable', 'declining', 'recovering', 'volatile');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."target_adjustment" AS ENUM('reduce', 'maintain', 'expand');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."target_status" AS ENUM('pending', 'active', 'on_track', 'at_risk', 'complete', 'failed', 'skipped');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."target_type" AS ENUM('major', 'primary', 'vital', 'operating', 'production', 'conditional');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."task_type" AS ENUM('execution', 'recovery', 'academy', 'clarification', 'blocker_resolution', 'phase_checkpoint', 'habit', 'review', 'smoke_test');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."team_role" AS ENUM('owner', 'strategist', 'operator', 'contributor', 'reviewer', 'observer');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."throughput" AS ENUM('very_low', 'low', 'moderate', 'high', 'very_high');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."ui_mode" AS ENUM('starter', 'restrictive', 'focused', 'standard', 'expanded', 'strategic', 'transitional');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."user_mode" AS ENUM('individual', 'team');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."user_tier" AS ENUM('starter', 'growth', 'ultimate');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."validation_kind" AS ENUM('legacy', 'intelligence', 'erector', 'readiness', 'path_selection', 'unknown');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."validation_readiness" AS ENUM('not_ready', 'partial', 'ready_proceed', 'ready_with_adjustment', 'blocked_pivot', 'blocked_reality');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
-  CREATE TYPE "public"."validation_verdict" AS ENUM('proceed', 'adjust', 'pivot', 'blocked');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
-CREATE TABLE "academy_chapters" (
+END $$;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "academy_chapters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"course_id" uuid NOT NULL,
 	"chapter_number" integer NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE "academy_chapters" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_concept_mastery" (
+CREATE TABLE IF NOT EXISTS "academy_concept_mastery" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"concept_id" text NOT NULL,
@@ -282,7 +282,7 @@ CREATE TABLE "academy_concept_mastery" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_courses" (
+CREATE TABLE IF NOT EXISTS "academy_courses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" text NOT NULL,
 	"description" text NOT NULL,
@@ -292,7 +292,7 @@ CREATE TABLE "academy_courses" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_generated_content" (
+CREATE TABLE IF NOT EXISTS "academy_generated_content" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"content_type" text NOT NULL,
@@ -301,7 +301,7 @@ CREATE TABLE "academy_generated_content" (
 	"generated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_learning_goals" (
+CREATE TABLE IF NOT EXISTS "academy_learning_goals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"goal_title" text NOT NULL,
@@ -313,7 +313,7 @@ CREATE TABLE "academy_learning_goals" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_learning_patterns" (
+CREATE TABLE IF NOT EXISTS "academy_learning_patterns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"pattern_type" text NOT NULL,
@@ -324,7 +324,7 @@ CREATE TABLE "academy_learning_patterns" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_lesson_attempts" (
+CREATE TABLE IF NOT EXISTS "academy_lesson_attempts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"lesson_id" uuid NOT NULL,
@@ -336,7 +336,7 @@ CREATE TABLE "academy_lesson_attempts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_lessons" (
+CREATE TABLE IF NOT EXISTS "academy_lessons" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"chapter_id" uuid NOT NULL,
 	"lesson_number" integer NOT NULL,
@@ -348,7 +348,7 @@ CREATE TABLE "academy_lessons" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_practice_attempts" (
+CREATE TABLE IF NOT EXISTS "academy_practice_attempts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"practice_item_id" uuid NOT NULL,
@@ -359,7 +359,7 @@ CREATE TABLE "academy_practice_attempts" (
 	"is_retry" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_practice_items" (
+CREATE TABLE IF NOT EXISTS "academy_practice_items" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"lesson_id" uuid NOT NULL,
 	"item_type" text DEFAULT 'quiz' NOT NULL,
@@ -371,7 +371,7 @@ CREATE TABLE "academy_practice_items" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_proof" (
+CREATE TABLE IF NOT EXISTS "academy_proof" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"academy_task_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE "academy_proof" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_retention_data" (
+CREATE TABLE IF NOT EXISTS "academy_retention_data" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"lesson_id" uuid NOT NULL,
@@ -396,7 +396,7 @@ CREATE TABLE "academy_retention_data" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_roadmap_steps" (
+CREATE TABLE IF NOT EXISTS "academy_roadmap_steps" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"learning_goal_id" uuid NOT NULL,
@@ -409,7 +409,7 @@ CREATE TABLE "academy_roadmap_steps" (
 	"completed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "academy_student_enrollments" (
+CREATE TABLE IF NOT EXISTS "academy_student_enrollments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"course_id" uuid NOT NULL,
@@ -421,7 +421,7 @@ CREATE TABLE "academy_student_enrollments" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_student_learning_profiles" (
+CREATE TABLE IF NOT EXISTS "academy_student_learning_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"learning_style" text DEFAULT 'reading' NOT NULL,
@@ -436,7 +436,7 @@ CREATE TABLE "academy_student_learning_profiles" (
 	CONSTRAINT "academy_student_learning_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "academy_study_schedules" (
+CREATE TABLE IF NOT EXISTS "academy_study_schedules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"learning_goal_id" uuid NOT NULL,
@@ -448,7 +448,7 @@ CREATE TABLE "academy_study_schedules" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_study_sessions" (
+CREATE TABLE IF NOT EXISTS "academy_study_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"learning_goal_id" uuid,
@@ -461,7 +461,7 @@ CREATE TABLE "academy_study_sessions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_tasks" (
+CREATE TABLE IF NOT EXISTS "academy_tasks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -489,7 +489,7 @@ CREATE TABLE "academy_tasks" (
 	"completed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "achievements" (
+CREATE TABLE IF NOT EXISTS "achievements" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"achievement_id" text NOT NULL,
 	"title" text NOT NULL,
@@ -502,7 +502,7 @@ CREATE TABLE "achievements" (
 	CONSTRAINT "achievements_achievement_id_unique" UNIQUE("achievement_id")
 );
 --> statement-breakpoint
-CREATE TABLE "actions" (
+CREATE TABLE IF NOT EXISTS "actions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"project_id" uuid NOT NULL,
@@ -523,7 +523,7 @@ CREATE TABLE "actions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "active_feedback_sessions" (
+CREATE TABLE IF NOT EXISTS "active_feedback_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -545,7 +545,7 @@ CREATE TABLE "active_feedback_sessions" (
 	"completed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "agent_conflict_logs" (
+CREATE TABLE IF NOT EXISTS "agent_conflict_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"agent_a" text NOT NULL,
@@ -559,7 +559,7 @@ CREATE TABLE "agent_conflict_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "agent_registry" (
+CREATE TABLE IF NOT EXISTS "agent_registry" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"agent_name" text NOT NULL,
 	"status" text DEFAULT 'ACTIVE' NOT NULL,
@@ -574,7 +574,7 @@ CREATE TABLE "agent_registry" (
 	CONSTRAINT "agent_registry_agent_name_unique" UNIQUE("agent_name")
 );
 --> statement-breakpoint
-CREATE TABLE "avatar_templates" (
+CREATE TABLE IF NOT EXISTS "avatar_templates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"avatar_name" text NOT NULL,
 	"base_asset_url" text,
@@ -583,7 +583,7 @@ CREATE TABLE "avatar_templates" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "behavior_events" (
+CREATE TABLE IF NOT EXISTS "behavior_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -595,7 +595,7 @@ CREATE TABLE "behavior_events" (
 	"detected_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "behavior_patterns" (
+CREATE TABLE IF NOT EXISTS "behavior_patterns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -610,7 +610,7 @@ CREATE TABLE "behavior_patterns" (
 	"resolved_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "behavioral_insight_records" (
+CREATE TABLE IF NOT EXISTS "behavioral_insight_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"insight_type" text NOT NULL,
@@ -623,7 +623,7 @@ CREATE TABLE "behavioral_insight_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_logs" (
+CREATE TABLE IF NOT EXISTS "bhudhi_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
 	"blueprint_id" uuid,
@@ -657,7 +657,7 @@ CREATE TABLE "bhudhi_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -680,7 +680,7 @@ CREATE TABLE "bhudhi_memory" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_research_cache" (
+CREATE TABLE IF NOT EXISTS "bhudhi_research_cache" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"query_hash" text NOT NULL,
 	"query_text" text NOT NULL,
@@ -694,7 +694,7 @@ CREATE TABLE "bhudhi_research_cache" (
 	CONSTRAINT "bhudhi_research_cache_query_hash_unique" UNIQUE("query_hash")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_usage_budget" (
+CREATE TABLE IF NOT EXISTS "bhudhi_usage_budget" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"date_utc" text NOT NULL,
@@ -709,7 +709,7 @@ CREATE TABLE "bhudhi_usage_budget" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "blocker_logs" (
+CREATE TABLE IF NOT EXISTS "blocker_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"message_id" uuid NOT NULL,
@@ -722,7 +722,7 @@ CREATE TABLE "blocker_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_framework_signals" (
+CREATE TABLE IF NOT EXISTS "blueprint_framework_signals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"signal_key" text NOT NULL,
@@ -737,7 +737,7 @@ CREATE TABLE "blueprint_framework_signals" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_health_records" (
+CREATE TABLE IF NOT EXISTS "blueprint_health_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"health_score" double precision NOT NULL,
@@ -755,7 +755,7 @@ CREATE TABLE "blueprint_health_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_interpretations" (
+CREATE TABLE IF NOT EXISTS "blueprint_interpretations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"interpretation" text NOT NULL,
@@ -770,7 +770,7 @@ CREATE TABLE "blueprint_interpretations" (
 	CONSTRAINT "blueprint_interpretations_blueprint_id_unique" UNIQUE("blueprint_id")
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_members" (
+CREATE TABLE IF NOT EXISTS "blueprint_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -781,7 +781,7 @@ CREATE TABLE "blueprint_members" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_mutations" (
+CREATE TABLE IF NOT EXISTS "blueprint_mutations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"mutation_type" text NOT NULL,
@@ -794,7 +794,7 @@ CREATE TABLE "blueprint_mutations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_policies" (
+CREATE TABLE IF NOT EXISTS "blueprint_policies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -810,7 +810,7 @@ CREATE TABLE "blueprint_policies" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_tier_migrations" (
+CREATE TABLE IF NOT EXISTS "blueprint_tier_migrations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -821,7 +821,7 @@ CREATE TABLE "blueprint_tier_migrations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_versions" (
+CREATE TABLE IF NOT EXISTS "blueprint_versions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"version_number" integer NOT NULL,
@@ -834,7 +834,7 @@ CREATE TABLE "blueprint_versions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprints" (
+CREATE TABLE IF NOT EXISTS "blueprints" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
@@ -918,7 +918,7 @@ CREATE TABLE "blueprints" (
 	"last_sequence_update" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "burnout_records" (
+CREATE TABLE IF NOT EXISTS "burnout_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"risk_level" text NOT NULL,
@@ -935,7 +935,7 @@ CREATE TABLE "burnout_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_conflicts" (
+CREATE TABLE IF NOT EXISTS "calendar_conflicts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"event_1_id" uuid NOT NULL,
@@ -947,7 +947,7 @@ CREATE TABLE "calendar_conflicts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_events" (
+CREATE TABLE IF NOT EXISTS "calendar_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -968,7 +968,7 @@ CREATE TABLE "calendar_events" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_notifications" (
+CREATE TABLE IF NOT EXISTS "calendar_notifications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"event_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -980,7 +980,7 @@ CREATE TABLE "calendar_notifications" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_time_blocks" (
+CREATE TABLE IF NOT EXISTS "calendar_time_blocks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"block_type" text NOT NULL,
@@ -991,7 +991,7 @@ CREATE TABLE "calendar_time_blocks" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_views_preferences" (
+CREATE TABLE IF NOT EXISTS "calendar_views_preferences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"default_view" text DEFAULT 'calendar' NOT NULL,
@@ -1004,7 +1004,7 @@ CREATE TABLE "calendar_views_preferences" (
 	CONSTRAINT "calendar_views_preferences_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "capability_gap_logs" (
+CREATE TABLE IF NOT EXISTS "capability_gap_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1019,7 +1019,7 @@ CREATE TABLE "capability_gap_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "capability_history" (
+CREATE TABLE IF NOT EXISTS "capability_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1028,7 +1028,7 @@ CREATE TABLE "capability_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "capability_profiles" (
+CREATE TABLE IF NOT EXISTS "capability_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1052,7 +1052,7 @@ CREATE TABLE "capability_profiles" (
 	CONSTRAINT "capability_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "channel_notification_preferences" (
+CREATE TABLE IF NOT EXISTS "channel_notification_preferences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"channel_type" text NOT NULL,
@@ -1065,7 +1065,7 @@ CREATE TABLE "channel_notification_preferences" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "character_progression" (
+CREATE TABLE IF NOT EXISTS "character_progression" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"consistency" double precision DEFAULT 0 NOT NULL,
@@ -1080,7 +1080,7 @@ CREATE TABLE "character_progression" (
 	CONSTRAINT "character_progression_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "chat_voice_messages" (
+CREATE TABLE IF NOT EXISTS "chat_voice_messages" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"message_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1092,7 +1092,7 @@ CREATE TABLE "chat_voice_messages" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "cognitive_load_scores" (
+CREATE TABLE IF NOT EXISTS "cognitive_load_scores" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1108,7 +1108,7 @@ CREATE TABLE "cognitive_load_scores" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "competitor_intelligence" (
+CREATE TABLE IF NOT EXISTS "competitor_intelligence" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"domain" text NOT NULL,
@@ -1124,7 +1124,7 @@ CREATE TABLE "competitor_intelligence" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "condition_records" (
+CREATE TABLE IF NOT EXISTS "condition_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1139,7 +1139,7 @@ CREATE TABLE "condition_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "conditions" (
+CREATE TABLE IF NOT EXISTS "conditions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1158,7 +1158,7 @@ CREATE TABLE "conditions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "content_guidance" (
+CREATE TABLE IF NOT EXISTS "content_guidance" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid NOT NULL,
@@ -1172,7 +1172,7 @@ CREATE TABLE "content_guidance" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "continuous_task_guarantee_logs" (
+CREATE TABLE IF NOT EXISTS "continuous_task_guarantee_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1183,7 +1183,7 @@ CREATE TABLE "continuous_task_guarantee_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "contradiction_records" (
+CREATE TABLE IF NOT EXISTS "contradiction_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1197,7 +1197,7 @@ CREATE TABLE "contradiction_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "critic_review_logs" (
+CREATE TABLE IF NOT EXISTS "critic_review_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"bhudhi_log_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1215,7 +1215,7 @@ CREATE TABLE "critic_review_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "daily_principle_records" (
+CREATE TABLE IF NOT EXISTS "daily_principle_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_date" text NOT NULL,
@@ -1228,7 +1228,7 @@ CREATE TABLE "daily_principle_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "dashboard_intelligence_snapshots" (
+CREATE TABLE IF NOT EXISTS "dashboard_intelligence_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"strategic_outlook" jsonb,
@@ -1243,7 +1243,7 @@ CREATE TABLE "dashboard_intelligence_snapshots" (
 	CONSTRAINT "dashboard_intelligence_snapshots_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "dead_letter_events" (
+CREATE TABLE IF NOT EXISTS "dead_letter_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"original_event_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -1263,7 +1263,7 @@ CREATE TABLE "dead_letter_events" (
 	"resolved_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "debate_logs" (
+CREATE TABLE IF NOT EXISTS "debate_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"trigger_type" text NOT NULL,
@@ -1277,7 +1277,7 @@ CREATE TABLE "debate_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "decision_traces" (
+CREATE TABLE IF NOT EXISTS "decision_traces" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
 	"blueprint_id" uuid NOT NULL,
@@ -1296,7 +1296,7 @@ CREATE TABLE "decision_traces" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "do_not_disturb_schedules" (
+CREATE TABLE IF NOT EXISTS "do_not_disturb_schedules" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"start_time" text DEFAULT '22:00' NOT NULL,
@@ -1309,7 +1309,7 @@ CREATE TABLE "do_not_disturb_schedules" (
 	CONSTRAINT "do_not_disturb_schedules_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "domain_history" (
+CREATE TABLE IF NOT EXISTS "domain_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1323,7 +1323,7 @@ CREATE TABLE "domain_history" (
 	"exited_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "economic_archetypes" (
+CREATE TABLE IF NOT EXISTS "economic_archetypes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"archetype_number" integer NOT NULL,
 	"name" text NOT NULL,
@@ -1352,7 +1352,7 @@ CREATE TABLE "economic_archetypes" (
 	CONSTRAINT "economic_archetypes_archetype_number_unique" UNIQUE("archetype_number")
 );
 --> statement-breakpoint
-CREATE TABLE "eis_call_logs" (
+CREATE TABLE IF NOT EXISTS "eis_call_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1367,7 +1367,7 @@ CREATE TABLE "eis_call_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "eis_rate_limits" (
+CREATE TABLE IF NOT EXISTS "eis_rate_limits" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"industry" text NOT NULL,
@@ -1377,7 +1377,7 @@ CREATE TABLE "eis_rate_limits" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "enforcement_packages" (
+CREATE TABLE IF NOT EXISTS "enforcement_packages" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid,
@@ -1404,7 +1404,7 @@ CREATE TABLE "enforcement_packages" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "escalation_logs" (
+CREATE TABLE IF NOT EXISTS "escalation_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1416,7 +1416,7 @@ CREATE TABLE "escalation_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "event_logs" (
+CREATE TABLE IF NOT EXISTS "event_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"event_id" uuid NOT NULL,
 	"worker" text,
@@ -1427,7 +1427,7 @@ CREATE TABLE "event_logs" (
 	"processed_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "events" (
+CREATE TABLE IF NOT EXISTS "events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"event_type" text NOT NULL,
 	"entity_type" text NOT NULL,
@@ -1445,7 +1445,7 @@ CREATE TABLE "events" (
 	CONSTRAINT "events_idempotency_key_unique" UNIQUE("idempotency_key")
 );
 --> statement-breakpoint
-CREATE TABLE "execution_sessions" (
+CREATE TABLE IF NOT EXISTS "execution_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1460,7 +1460,7 @@ CREATE TABLE "execution_sessions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "external_intelligence" (
+CREATE TABLE IF NOT EXISTS "external_intelligence" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1477,7 +1477,7 @@ CREATE TABLE "external_intelligence" (
 	"expires_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "external_signals" (
+CREATE TABLE IF NOT EXISTS "external_signals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1494,7 +1494,7 @@ CREATE TABLE "external_signals" (
 	"processed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "failure_classifications" (
+CREATE TABLE IF NOT EXISTS "failure_classifications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"order_id" uuid NOT NULL,
@@ -1510,7 +1510,7 @@ CREATE TABLE "failure_classifications" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "fallback_usage_logs" (
+CREATE TABLE IF NOT EXISTS "fallback_usage_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"trigger_type" text NOT NULL,
 	"prompt_name" text NOT NULL,
@@ -1521,7 +1521,7 @@ CREATE TABLE "fallback_usage_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "false_progress_flags" (
+CREATE TABLE IF NOT EXISTS "false_progress_flags" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1535,7 +1535,7 @@ CREATE TABLE "false_progress_flags" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "feature_flags" (
+CREATE TABLE IF NOT EXISTS "feature_flags" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"feature_name" text NOT NULL,
 	"enabled" boolean DEFAULT false NOT NULL,
@@ -1545,7 +1545,7 @@ CREATE TABLE "feature_flags" (
 	CONSTRAINT "feature_flags_feature_name_unique" UNIQUE("feature_name")
 );
 --> statement-breakpoint
-CREATE TABLE "feedback" (
+CREATE TABLE IF NOT EXISTS "feedback" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"order_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1572,7 +1572,7 @@ CREATE TABLE "feedback" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "framework_activations" (
+CREATE TABLE IF NOT EXISTS "framework_activations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1587,7 +1587,7 @@ CREATE TABLE "framework_activations" (
 	"resolved_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "framework_decisions" (
+CREATE TABLE IF NOT EXISTS "framework_decisions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"activation_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1601,7 +1601,7 @@ CREATE TABLE "framework_decisions" (
 	"resolved_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "framework_signal_snapshots" (
+CREATE TABLE IF NOT EXISTS "framework_signal_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"signal_snapshot_id" uuid,
@@ -1613,7 +1613,7 @@ CREATE TABLE "framework_signal_snapshots" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "governance_queue" (
+CREATE TABLE IF NOT EXISTS "governance_queue" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1633,7 +1633,7 @@ CREATE TABLE "governance_queue" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "habit_checkins" (
+CREATE TABLE IF NOT EXISTS "habit_checkins" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"habit_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1645,7 +1645,7 @@ CREATE TABLE "habit_checkins" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "habits" (
+CREATE TABLE IF NOT EXISTS "habits" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -1659,7 +1659,7 @@ CREATE TABLE "habits" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "idempotency_records" (
+CREATE TABLE IF NOT EXISTS "idempotency_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"key" text NOT NULL,
 	"event_id" uuid,
@@ -1669,7 +1669,7 @@ CREATE TABLE "idempotency_records" (
 	CONSTRAINT "idempotency_records_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
-CREATE TABLE "identity_history" (
+CREATE TABLE IF NOT EXISTS "identity_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1681,7 +1681,7 @@ CREATE TABLE "identity_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "identity_profiles" (
+CREATE TABLE IF NOT EXISTS "identity_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"self_image" text,
@@ -1700,7 +1700,7 @@ CREATE TABLE "identity_profiles" (
 	CONSTRAINT "identity_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "in_app_notifications" (
+CREATE TABLE IF NOT EXISTS "in_app_notifications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"title" text NOT NULL,
@@ -1711,7 +1711,7 @@ CREATE TABLE "in_app_notifications" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "inactivity_records" (
+CREATE TABLE IF NOT EXISTS "inactivity_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1730,7 +1730,7 @@ CREATE TABLE "inactivity_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "knowledge_objects" (
+CREATE TABLE IF NOT EXISTS "knowledge_objects" (
 	"id" text PRIMARY KEY NOT NULL,
 	"blueprint_id" uuid,
 	"user_id" uuid,
@@ -1747,7 +1747,7 @@ CREATE TABLE "knowledge_objects" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "knowledge_packages" (
+CREATE TABLE IF NOT EXISTS "knowledge_packages" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"domain" text NOT NULL,
 	"action_type" text NOT NULL,
@@ -1764,7 +1764,7 @@ CREATE TABLE "knowledge_packages" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "learning_paths" (
+CREATE TABLE IF NOT EXISTS "learning_paths" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1780,7 +1780,7 @@ CREATE TABLE "learning_paths" (
 	"completed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "level_definitions" (
+CREATE TABLE IF NOT EXISTS "level_definitions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"level" integer NOT NULL,
 	"xp_required_total" integer NOT NULL,
@@ -1792,7 +1792,7 @@ CREATE TABLE "level_definitions" (
 	CONSTRAINT "level_definitions_level_unique" UNIQUE("level")
 );
 --> statement-breakpoint
-CREATE TABLE "magic_link_tokens" (
+CREATE TABLE IF NOT EXISTS "magic_link_tokens" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"email" text NOT NULL,
@@ -1803,7 +1803,7 @@ CREATE TABLE "magic_link_tokens" (
 	CONSTRAINT "magic_link_tokens_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "message_attachments" (
+CREATE TABLE IF NOT EXISTS "message_attachments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"message_id" uuid NOT NULL,
 	"file_url" text NOT NULL,
@@ -1813,7 +1813,7 @@ CREATE TABLE "message_attachments" (
 	"uploaded_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "message_search_index" (
+CREATE TABLE IF NOT EXISTS "message_search_index" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"message_id" uuid NOT NULL,
@@ -1821,7 +1821,7 @@ CREATE TABLE "message_search_index" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "meta_cognition_profiles" (
+CREATE TABLE IF NOT EXISTS "meta_cognition_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"agent_name" text NOT NULL,
 	"domain_reliability" jsonb DEFAULT '[]'::jsonb NOT NULL,
@@ -1837,7 +1837,7 @@ CREATE TABLE "meta_cognition_profiles" (
 	CONSTRAINT "meta_cognition_profiles_agent_name_unique" UNIQUE("agent_name")
 );
 --> statement-breakpoint
-CREATE TABLE "milestones" (
+CREATE TABLE IF NOT EXISTS "milestones" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -1851,7 +1851,7 @@ CREATE TABLE "milestones" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mobile_device_tokens" (
+CREATE TABLE IF NOT EXISTS "mobile_device_tokens" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"push_token" text NOT NULL,
@@ -1864,7 +1864,7 @@ CREATE TABLE "mobile_device_tokens" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mobile_health_metrics" (
+CREATE TABLE IF NOT EXISTS "mobile_health_metrics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"metric_date" text NOT NULL,
@@ -1879,7 +1879,7 @@ CREATE TABLE "mobile_health_metrics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mobile_sync_log" (
+CREATE TABLE IF NOT EXISTS "mobile_sync_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"client_action_id" text NOT NULL,
@@ -1890,7 +1890,7 @@ CREATE TABLE "mobile_sync_log" (
 	"applied_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mobile_wearable_connections" (
+CREATE TABLE IF NOT EXISTS "mobile_wearable_connections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"provider" text NOT NULL,
@@ -1902,7 +1902,7 @@ CREATE TABLE "mobile_wearable_connections" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "morning_reports" (
+CREATE TABLE IF NOT EXISTS "morning_reports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1914,7 +1914,7 @@ CREATE TABLE "morning_reports" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "narrative_intelligence" (
+CREATE TABLE IF NOT EXISTS "narrative_intelligence" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"domain" text NOT NULL,
@@ -1931,7 +1931,7 @@ CREATE TABLE "narrative_intelligence" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "notification_delivery_history" (
+CREATE TABLE IF NOT EXISTS "notification_delivery_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"queue_id" uuid,
@@ -1942,7 +1942,7 @@ CREATE TABLE "notification_delivery_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "notification_delivery_queue" (
+CREATE TABLE IF NOT EXISTS "notification_delivery_queue" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"notification_type" text NOT NULL,
@@ -1957,7 +1957,7 @@ CREATE TABLE "notification_delivery_queue" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "notification_logs" (
+CREATE TABLE IF NOT EXISTS "notification_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -1976,7 +1976,7 @@ CREATE TABLE "notification_logs" (
 	CONSTRAINT "notification_logs_idempotency_key_unique" UNIQUE("idempotency_key")
 );
 --> statement-breakpoint
-CREATE TABLE "order_dependencies" (
+CREATE TABLE IF NOT EXISTS "order_dependencies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"blocking_order_id" uuid NOT NULL,
@@ -1987,7 +1987,7 @@ CREATE TABLE "order_dependencies" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "order_knowledge_links" (
+CREATE TABLE IF NOT EXISTS "order_knowledge_links" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"order_id" uuid NOT NULL,
 	"knowledge_id" text NOT NULL,
@@ -1995,7 +1995,7 @@ CREATE TABLE "order_knowledge_links" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "orders" (
+CREATE TABLE IF NOT EXISTS "orders" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2056,7 +2056,7 @@ CREATE TABLE "orders" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "outcome_validation_records" (
+CREATE TABLE IF NOT EXISTS "outcome_validation_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"order_id" uuid NOT NULL,
@@ -2072,7 +2072,7 @@ CREATE TABLE "outcome_validation_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "outcome_validations" (
+CREATE TABLE IF NOT EXISTS "outcome_validations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2091,7 +2091,7 @@ CREATE TABLE "outcome_validations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "pattern_records" (
+CREATE TABLE IF NOT EXISTS "pattern_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"pattern_type" text NOT NULL,
@@ -2106,7 +2106,7 @@ CREATE TABLE "pattern_records" (
 	"metadata_json" jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "personal_messages" (
+CREATE TABLE IF NOT EXISTS "personal_messages" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"message_type" text DEFAULT 'text' NOT NULL,
@@ -2126,7 +2126,7 @@ CREATE TABLE "personal_messages" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "phase_checkpoints" (
+CREATE TABLE IF NOT EXISTS "phase_checkpoints" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"phase_id" uuid NOT NULL,
@@ -2143,7 +2143,7 @@ CREATE TABLE "phase_checkpoints" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "phases" (
+CREATE TABLE IF NOT EXISTS "phases" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"target_id" uuid,
@@ -2167,7 +2167,7 @@ CREATE TABLE "phases" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "pivot_reviews" (
+CREATE TABLE IF NOT EXISTS "pivot_reviews" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2182,7 +2182,7 @@ CREATE TABLE "pivot_reviews" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "plans" (
+CREATE TABLE IF NOT EXISTS "plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid,
@@ -2197,7 +2197,7 @@ CREATE TABLE "plans" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "platform_algorithm_signals" (
+CREATE TABLE IF NOT EXISTS "platform_algorithm_signals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"platform" text NOT NULL,
 	"signal_type" text DEFAULT 'UNKNOWN' NOT NULL,
@@ -2210,7 +2210,7 @@ CREATE TABLE "platform_algorithm_signals" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "prediction_logs" (
+CREATE TABLE IF NOT EXISTS "prediction_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -2226,7 +2226,7 @@ CREATE TABLE "prediction_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "prediction_snapshots" (
+CREATE TABLE IF NOT EXISTS "prediction_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2242,7 +2242,7 @@ CREATE TABLE "prediction_snapshots" (
 	"generated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_applications" (
+CREATE TABLE IF NOT EXISTS "principle_applications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid NOT NULL,
@@ -2257,7 +2257,7 @@ CREATE TABLE "principle_applications" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_proof_uploads" (
+CREATE TABLE IF NOT EXISTS "principle_proof_uploads" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"application_id" uuid NOT NULL,
 	"file_url" text,
@@ -2267,7 +2267,7 @@ CREATE TABLE "principle_proof_uploads" (
 	"uploaded_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_selections" (
+CREATE TABLE IF NOT EXISTS "principle_selections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid NOT NULL,
@@ -2278,7 +2278,7 @@ CREATE TABLE "principle_selections" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_streaks" (
+CREATE TABLE IF NOT EXISTS "principle_streaks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"current_streak" integer DEFAULT 0 NOT NULL,
@@ -2289,7 +2289,7 @@ CREATE TABLE "principle_streaks" (
 	CONSTRAINT "principle_streaks_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "principles" (
+CREATE TABLE IF NOT EXISTS "principles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"day_number" integer NOT NULL,
 	"principle_statement" text NOT NULL,
@@ -2303,7 +2303,7 @@ CREATE TABLE "principles" (
 	CONSTRAINT "principles_day_number_unique" UNIQUE("day_number")
 );
 --> statement-breakpoint
-CREATE TABLE "project_dependencies" (
+CREATE TABLE IF NOT EXISTS "project_dependencies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"blocking_project_id" uuid NOT NULL,
@@ -2314,7 +2314,7 @@ CREATE TABLE "project_dependencies" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "projects" (
+CREATE TABLE IF NOT EXISTS "projects" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"phase_id" uuid,
@@ -2339,7 +2339,7 @@ CREATE TABLE "projects" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "published_content" (
+CREATE TABLE IF NOT EXISTS "published_content" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid,
@@ -2352,7 +2352,7 @@ CREATE TABLE "published_content" (
 	"synced_engagement_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "real_outcomes" (
+CREATE TABLE IF NOT EXISTS "real_outcomes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2370,7 +2370,7 @@ CREATE TABLE "real_outcomes" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "reward_events" (
+CREATE TABLE IF NOT EXISTS "reward_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -2391,7 +2391,7 @@ CREATE TABLE "reward_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "rewards" (
+CREATE TABLE IF NOT EXISTS "rewards" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"reward_id" text NOT NULL,
 	"reward_type" text NOT NULL,
@@ -2402,7 +2402,7 @@ CREATE TABLE "rewards" (
 	CONSTRAINT "rewards_reward_id_unique" UNIQUE("reward_id")
 );
 --> statement-breakpoint
-CREATE TABLE "seasons" (
+CREATE TABLE IF NOT EXISTS "seasons" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"plan_id" uuid,
@@ -2415,7 +2415,7 @@ CREATE TABLE "seasons" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sessions" (
+CREATE TABLE IF NOT EXISTS "sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"token_hash" text NOT NULL,
@@ -2427,7 +2427,7 @@ CREATE TABLE "sessions" (
 	CONSTRAINT "sessions_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "signal_snapshots" (
+CREATE TABLE IF NOT EXISTS "signal_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2459,7 +2459,7 @@ CREATE TABLE "signal_snapshots" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "skill_profiles" (
+CREATE TABLE IF NOT EXISTS "skill_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"domain" text DEFAULT 'Content' NOT NULL,
@@ -2472,7 +2472,7 @@ CREATE TABLE "skill_profiles" (
 	CONSTRAINT "skill_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "stability_events" (
+CREATE TABLE IF NOT EXISTS "stability_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
 	"event_type" text NOT NULL,
@@ -2484,7 +2484,7 @@ CREATE TABLE "stability_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "state_memory" (
+CREATE TABLE IF NOT EXISTS "state_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2502,7 +2502,7 @@ CREATE TABLE "state_memory" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "status_snapshots" (
+CREATE TABLE IF NOT EXISTS "status_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"status" text NOT NULL,
@@ -2513,7 +2513,7 @@ CREATE TABLE "status_snapshots" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "strategic_assumptions" (
+CREATE TABLE IF NOT EXISTS "strategic_assumptions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2525,7 +2525,7 @@ CREATE TABLE "strategic_assumptions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "strategic_outlook_records" (
+CREATE TABLE IF NOT EXISTS "strategic_outlook_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"execution_forecast" text NOT NULL,
@@ -2539,7 +2539,7 @@ CREATE TABLE "strategic_outlook_records" (
 	"expires_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "system_health_logs" (
+CREATE TABLE IF NOT EXISTS "system_health_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"area" text,
 	"severity" text,
@@ -2557,7 +2557,7 @@ CREATE TABLE "system_health_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "system_health_records" (
+CREATE TABLE IF NOT EXISTS "system_health_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"health_score" double precision NOT NULL,
 	"signal_engine_health" double precision DEFAULT 1 NOT NULL,
@@ -2574,7 +2574,7 @@ CREATE TABLE "system_health_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "targets" (
+CREATE TABLE IF NOT EXISTS "targets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"plan_id" uuid,
@@ -2603,7 +2603,7 @@ CREATE TABLE "targets" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "task_generation_log" (
+CREATE TABLE IF NOT EXISTS "task_generation_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2630,7 +2630,7 @@ CREATE TABLE "task_generation_log" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "task_generation_logs" (
+CREATE TABLE IF NOT EXISTS "task_generation_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -2646,7 +2646,7 @@ CREATE TABLE "task_generation_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "trend_intelligence" (
+CREATE TABLE IF NOT EXISTS "trend_intelligence" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"domain" text NOT NULL,
@@ -2663,7 +2663,7 @@ CREATE TABLE "trend_intelligence" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_achievements" (
+CREATE TABLE IF NOT EXISTS "user_achievements" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"achievement_id" uuid NOT NULL,
@@ -2672,7 +2672,7 @@ CREATE TABLE "user_achievements" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_avatar" (
+CREATE TABLE IF NOT EXISTS "user_avatar" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"current_avatar_template_id" uuid,
@@ -2684,7 +2684,7 @@ CREATE TABLE "user_avatar" (
 	CONSTRAINT "user_avatar_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_gamification_profile" (
+CREATE TABLE IF NOT EXISTS "user_gamification_profile" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"current_level" integer DEFAULT 1 NOT NULL,
@@ -2699,7 +2699,7 @@ CREATE TABLE "user_gamification_profile" (
 	CONSTRAINT "user_gamification_profile_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_identity_states" (
+CREATE TABLE IF NOT EXISTS "user_identity_states" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2721,7 +2721,7 @@ CREATE TABLE "user_identity_states" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_levels" (
+CREATE TABLE IF NOT EXISTS "user_levels" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"level_number" integer NOT NULL,
@@ -2731,7 +2731,7 @@ CREATE TABLE "user_levels" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_notification_channels" (
+CREATE TABLE IF NOT EXISTS "user_notification_channels" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"channel_type" text NOT NULL,
@@ -2744,7 +2744,7 @@ CREATE TABLE "user_notification_channels" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_principle_profiles" (
+CREATE TABLE IF NOT EXISTS "user_principle_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"username" text NOT NULL,
@@ -2765,7 +2765,7 @@ CREATE TABLE "user_principle_profiles" (
 	CONSTRAINT "user_principle_profiles_profile_url_slug_unique" UNIQUE("profile_url_slug")
 );
 --> statement-breakpoint
-CREATE TABLE "user_rewards" (
+CREATE TABLE IF NOT EXISTS "user_rewards" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"reward_id" uuid NOT NULL,
@@ -2774,7 +2774,7 @@ CREATE TABLE "user_rewards" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_social_accounts" (
+CREATE TABLE IF NOT EXISTS "user_social_accounts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"platform" text NOT NULL,
@@ -2785,7 +2785,7 @@ CREATE TABLE "user_social_accounts" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user_streaks" (
+CREATE TABLE IF NOT EXISTS "user_streaks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"streak_type" text NOT NULL,
@@ -2797,7 +2797,7 @@ CREATE TABLE "user_streaks" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
 	"username" text,
@@ -2822,7 +2822,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "validation_archetype_maps" (
+CREATE TABLE IF NOT EXISTS "validation_archetype_maps" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"validation_id" uuid NOT NULL,
 	"archetype_id" uuid NOT NULL,
@@ -2830,7 +2830,7 @@ CREATE TABLE "validation_archetype_maps" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "validation_event_logs" (
+CREATE TABLE IF NOT EXISTS "validation_event_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"validation_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2844,7 +2844,7 @@ CREATE TABLE "validation_event_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "validation_memory" (
+CREATE TABLE IF NOT EXISTS "validation_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -2861,7 +2861,7 @@ CREATE TABLE "validation_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "validations" (
+CREATE TABLE IF NOT EXISTS "validations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"contract_id" uuid DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -3004,7 +3004,7 @@ CREATE TABLE "validations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "verdict_evolution" (
+CREATE TABLE IF NOT EXISTS "verdict_evolution" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"validation_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -3016,7 +3016,7 @@ CREATE TABLE "verdict_evolution" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "weekly_reviews" (
+CREATE TABLE IF NOT EXISTS "weekly_reviews" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -3032,7 +3032,7 @@ CREATE TABLE "weekly_reviews" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "world_models" (
+CREATE TABLE IF NOT EXISTS "world_models" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"user_state" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -3048,7 +3048,7 @@ CREATE TABLE "world_models" (
 	CONSTRAINT "world_models_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "xp_ledger" (
+CREATE TABLE IF NOT EXISTS "xp_ledger" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"xp_amount" integer NOT NULL,
@@ -3059,7 +3059,7 @@ CREATE TABLE "xp_ledger" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "academy_analytics" (
+CREATE TABLE IF NOT EXISTS "academy_analytics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"metric_date" text NOT NULL,
@@ -3075,7 +3075,7 @@ CREATE TABLE "academy_analytics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "analytics_insights" (
+CREATE TABLE IF NOT EXISTS "analytics_insights" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"domain" text NOT NULL,
@@ -3084,7 +3084,7 @@ CREATE TABLE "analytics_insights" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "content_analytics" (
+CREATE TABLE IF NOT EXISTS "content_analytics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"metric_date" text NOT NULL,
@@ -3099,7 +3099,7 @@ CREATE TABLE "content_analytics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "content_insights" (
+CREATE TABLE IF NOT EXISTS "content_insights" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"insight_type" text NOT NULL,
@@ -3110,7 +3110,7 @@ CREATE TABLE "content_insights" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_analytics" (
+CREATE TABLE IF NOT EXISTS "execution_analytics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"metric_date" text NOT NULL,
@@ -3130,7 +3130,7 @@ CREATE TABLE "execution_analytics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_benchmarks" (
+CREATE TABLE IF NOT EXISTS "execution_benchmarks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"metric_name" text NOT NULL,
@@ -3143,7 +3143,7 @@ CREATE TABLE "execution_benchmarks" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_patterns" (
+CREATE TABLE IF NOT EXISTS "execution_patterns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"pattern_type" text NOT NULL,
@@ -3155,7 +3155,7 @@ CREATE TABLE "execution_patterns" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_velocity" (
+CREATE TABLE IF NOT EXISTS "execution_velocity" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"window_start_date" text NOT NULL,
@@ -3168,7 +3168,7 @@ CREATE TABLE "execution_velocity" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "failure_analysis" (
+CREATE TABLE IF NOT EXISTS "failure_analysis" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"failed_order_id" uuid,
@@ -3182,7 +3182,7 @@ CREATE TABLE "failure_analysis" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "learning_velocity_analytics" (
+CREATE TABLE IF NOT EXISTS "learning_velocity_analytics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"window_start_date" text NOT NULL,
@@ -3196,7 +3196,7 @@ CREATE TABLE "learning_velocity_analytics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "platform_performance" (
+CREATE TABLE IF NOT EXISTS "platform_performance" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"platform" text NOT NULL,
@@ -3210,7 +3210,7 @@ CREATE TABLE "platform_performance" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "post_performance" (
+CREATE TABLE IF NOT EXISTS "post_performance" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid,
@@ -3233,7 +3233,7 @@ CREATE TABLE "post_performance" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_analytics" (
+CREATE TABLE IF NOT EXISTS "principle_analytics" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid,
@@ -3249,7 +3249,7 @@ CREATE TABLE "principle_analytics" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_effectiveness" (
+CREATE TABLE IF NOT EXISTS "principle_effectiveness" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid NOT NULL,
@@ -3263,7 +3263,7 @@ CREATE TABLE "principle_effectiveness" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "principle_insights" (
+CREATE TABLE IF NOT EXISTS "principle_insights" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"principle_id" uuid,
@@ -3275,7 +3275,7 @@ CREATE TABLE "principle_insights" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "productivity_heatmap" (
+CREATE TABLE IF NOT EXISTS "productivity_heatmap" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"day_of_week" integer NOT NULL,
@@ -3286,7 +3286,7 @@ CREATE TABLE "productivity_heatmap" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "weak_areas_detected" (
+CREATE TABLE IF NOT EXISTS "weak_areas_detected" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"concept_id" text NOT NULL,
@@ -3299,7 +3299,7 @@ CREATE TABLE "weak_areas_detected" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "automation_flows" (
+CREATE TABLE IF NOT EXISTS "automation_flows" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -3312,7 +3312,7 @@ CREATE TABLE "automation_flows" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_conflicts_external" (
+CREATE TABLE IF NOT EXISTS "calendar_conflicts_external" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"torgima_event_id" uuid,
@@ -3324,7 +3324,7 @@ CREATE TABLE "calendar_conflicts_external" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "calendar_sync_log" (
+CREATE TABLE IF NOT EXISTS "calendar_sync_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"integration_id" uuid NOT NULL,
@@ -3339,7 +3339,7 @@ CREATE TABLE "calendar_sync_log" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "engagement_sync_log" (
+CREATE TABLE IF NOT EXISTS "engagement_sync_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"social_post_mapping_id" uuid NOT NULL,
 	"platform" text NOT NULL,
@@ -3354,7 +3354,7 @@ CREATE TABLE "engagement_sync_log" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "external_integrations" (
+CREATE TABLE IF NOT EXISTS "external_integrations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"integration_type" text NOT NULL,
@@ -3373,7 +3373,7 @@ CREATE TABLE "external_integrations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "health_data_sync_log" (
+CREATE TABLE IF NOT EXISTS "health_data_sync_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"integration_id" uuid,
@@ -3385,7 +3385,7 @@ CREATE TABLE "health_data_sync_log" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "integration_webhook_logs" (
+CREATE TABLE IF NOT EXISTS "integration_webhook_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"webhook_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -3398,7 +3398,7 @@ CREATE TABLE "integration_webhook_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "integration_webhooks" (
+CREATE TABLE IF NOT EXISTS "integration_webhooks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"webhook_url" text NOT NULL,
@@ -3408,7 +3408,7 @@ CREATE TABLE "integration_webhooks" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "social_post_mappings" (
+CREATE TABLE IF NOT EXISTS "social_post_mappings" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"published_content_id" uuid,
@@ -3418,7 +3418,7 @@ CREATE TABLE "social_post_mappings" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "zapier_connections" (
+CREATE TABLE IF NOT EXISTS "zapier_connections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"zapier_id" text NOT NULL,
@@ -3428,7 +3428,7 @@ CREATE TABLE "zapier_connections" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "accountability_pledges" (
+CREATE TABLE IF NOT EXISTS "accountability_pledges" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"pledge_text" text NOT NULL,
@@ -3438,7 +3438,7 @@ CREATE TABLE "accountability_pledges" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "profile_social_links" (
+CREATE TABLE IF NOT EXISTS "profile_social_links" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"platform" text NOT NULL,
@@ -3446,7 +3446,7 @@ CREATE TABLE "profile_social_links" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "profile_widgets" (
+CREATE TABLE IF NOT EXISTS "profile_widgets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"widget_type" text NOT NULL,
@@ -3454,7 +3454,7 @@ CREATE TABLE "profile_widgets" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "public_profile_views" (
+CREATE TABLE IF NOT EXISTS "public_profile_views" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"viewer_id" uuid,
@@ -3463,7 +3463,7 @@ CREATE TABLE "public_profile_views" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "shareable_daily_entries" (
+CREATE TABLE IF NOT EXISTS "shareable_daily_entries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"entry_date" text NOT NULL,
@@ -3478,7 +3478,7 @@ CREATE TABLE "shareable_daily_entries" (
 	CONSTRAINT "shareable_daily_entries_share_token_unique" UNIQUE("share_token")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_belief_conflicts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_belief_conflicts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"belief_id_a" uuid,
@@ -3490,7 +3490,7 @@ CREATE TABLE "bhudhi_belief_conflicts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_belief_evidence" (
+CREATE TABLE IF NOT EXISTS "bhudhi_belief_evidence" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"belief_id" uuid NOT NULL,
 	"source" text NOT NULL,
@@ -3504,7 +3504,7 @@ CREATE TABLE "bhudhi_belief_evidence" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_belief_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_belief_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"belief_id" uuid NOT NULL,
 	"change_type" text NOT NULL,
@@ -3517,7 +3517,7 @@ CREATE TABLE "bhudhi_belief_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_belief_records" (
+CREATE TABLE IF NOT EXISTS "bhudhi_belief_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid,
@@ -3536,7 +3536,7 @@ CREATE TABLE "bhudhi_belief_records" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_belief_truth" (
+CREATE TABLE IF NOT EXISTS "bhudhi_belief_truth" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"belief_id" uuid NOT NULL,
 	"truth_score" double precision NOT NULL,
@@ -3548,7 +3548,7 @@ CREATE TABLE "bhudhi_belief_truth" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_civilization_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_civilization_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"civilization_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -3556,7 +3556,7 @@ CREATE TABLE "bhudhi_civilization_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_civilization_forecasts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_civilization_forecasts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"civilization_id" uuid NOT NULL,
 	"horizon_years" integer NOT NULL,
@@ -3566,7 +3566,7 @@ CREATE TABLE "bhudhi_civilization_forecasts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_civilization_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_civilization_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"civilization_id" uuid,
@@ -3576,7 +3576,7 @@ CREATE TABLE "bhudhi_civilization_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_civilization_states" (
+CREATE TABLE IF NOT EXISTS "bhudhi_civilization_states" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"civilization_id" uuid NOT NULL,
 	"phase" text NOT NULL,
@@ -3589,7 +3589,7 @@ CREATE TABLE "bhudhi_civilization_states" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_civilizations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_civilizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"name" text DEFAULT 'Blueprint Civilization' NOT NULL,
@@ -3603,7 +3603,7 @@ CREATE TABLE "bhudhi_civilizations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_context_states" (
+CREATE TABLE IF NOT EXISTS "bhudhi_context_states" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"current_domain" text NOT NULL,
@@ -3616,7 +3616,7 @@ CREATE TABLE "bhudhi_context_states" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_decision_forecasts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_decision_forecasts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"decision_id" uuid NOT NULL,
 	"horizon_days" integer NOT NULL,
@@ -3628,7 +3628,7 @@ CREATE TABLE "bhudhi_decision_forecasts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_decision_options" (
+CREATE TABLE IF NOT EXISTS "bhudhi_decision_options" (
 	"id" text NOT NULL,
 	"decision_id" uuid NOT NULL,
 	"label" text NOT NULL,
@@ -3645,7 +3645,7 @@ CREATE TABLE "bhudhi_decision_options" (
 	CONSTRAINT "bhudhi_decision_options_decision_id_id_pk" PRIMARY KEY("decision_id","id")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_decision_records" (
+CREATE TABLE IF NOT EXISTS "bhudhi_decision_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"recommendation_id" uuid,
@@ -3666,7 +3666,7 @@ CREATE TABLE "bhudhi_decision_records" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_decision_replay" (
+CREATE TABLE IF NOT EXISTS "bhudhi_decision_replay" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"decision_id" uuid NOT NULL,
 	"replay_type" text NOT NULL,
@@ -3678,7 +3678,7 @@ CREATE TABLE "bhudhi_decision_replay" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_decision_scores" (
+CREATE TABLE IF NOT EXISTS "bhudhi_decision_scores" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"decision_id" uuid NOT NULL,
 	"option_id" text NOT NULL,
@@ -3691,7 +3691,7 @@ CREATE TABLE "bhudhi_decision_scores" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_domains" (
+CREATE TABLE IF NOT EXISTS "bhudhi_domains" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text NOT NULL,
@@ -3703,7 +3703,7 @@ CREATE TABLE "bhudhi_domains" (
 	CONSTRAINT "bhudhi_domains_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_economics_forecasts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_economics_forecasts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -3718,7 +3718,7 @@ CREATE TABLE "bhudhi_economics_forecasts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_economics_logs" (
+CREATE TABLE IF NOT EXISTS "bhudhi_economics_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"session_id" uuid,
 	"user_id" uuid NOT NULL,
@@ -3730,7 +3730,7 @@ CREATE TABLE "bhudhi_economics_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_economics_profiles" (
+CREATE TABLE IF NOT EXISTS "bhudhi_economics_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -3743,7 +3743,7 @@ CREATE TABLE "bhudhi_economics_profiles" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_economics_rules" (
+CREATE TABLE IF NOT EXISTS "bhudhi_economics_rules" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"category" text NOT NULL,
@@ -3755,7 +3755,7 @@ CREATE TABLE "bhudhi_economics_rules" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_economics_sessions" (
+CREATE TABLE IF NOT EXISTS "bhudhi_economics_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"blueprint_id" uuid,
@@ -3777,7 +3777,7 @@ CREATE TABLE "bhudhi_economics_sessions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_engine_registry" (
+CREATE TABLE IF NOT EXISTS "bhudhi_engine_registry" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"engine_id" text NOT NULL,
 	"engine_name" text NOT NULL,
@@ -3794,7 +3794,7 @@ CREATE TABLE "bhudhi_engine_registry" (
 	CONSTRAINT "bhudhi_engine_registry_engine_id_unique" UNIQUE("engine_id")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_engines" (
+CREATE TABLE IF NOT EXISTS "bhudhi_engines" (
 	"id" text PRIMARY KEY NOT NULL,
 	"system_id" text NOT NULL,
 	"name" text NOT NULL,
@@ -3809,7 +3809,7 @@ CREATE TABLE "bhudhi_engines" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_execution_contracts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_execution_contracts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"contract_type" text NOT NULL,
@@ -3828,7 +3828,7 @@ CREATE TABLE "bhudhi_execution_contracts" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_execution_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_execution_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -3840,7 +3840,7 @@ CREATE TABLE "bhudhi_execution_events" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_execution_plans" (
+CREATE TABLE IF NOT EXISTS "bhudhi_execution_plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"recommendation_id" uuid,
@@ -3855,7 +3855,7 @@ CREATE TABLE "bhudhi_execution_plans" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_expansion_benchmarks" (
+CREATE TABLE IF NOT EXISTS "bhudhi_expansion_benchmarks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"capability_id" uuid NOT NULL,
 	"gain" double precision DEFAULT 0 NOT NULL,
@@ -3865,7 +3865,7 @@ CREATE TABLE "bhudhi_expansion_benchmarks" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_expansion_capabilities" (
+CREATE TABLE IF NOT EXISTS "bhudhi_expansion_capabilities" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"capability_key" text NOT NULL,
@@ -3881,7 +3881,7 @@ CREATE TABLE "bhudhi_expansion_capabilities" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_expansion_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_expansion_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"capability_id" uuid,
@@ -3890,7 +3890,7 @@ CREATE TABLE "bhudhi_expansion_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_expansion_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_expansion_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"action" text NOT NULL,
@@ -3899,7 +3899,7 @@ CREATE TABLE "bhudhi_expansion_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_expansion_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_expansion_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"memory_type" text NOT NULL,
@@ -3908,7 +3908,7 @@ CREATE TABLE "bhudhi_expansion_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_experiment_groups" (
+CREATE TABLE IF NOT EXISTS "bhudhi_experiment_groups" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"experiment_id" uuid NOT NULL,
 	"group_key" text NOT NULL,
@@ -3920,7 +3920,7 @@ CREATE TABLE "bhudhi_experiment_groups" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_experiment_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_experiment_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"experiment_id" uuid NOT NULL,
 	"memory_type" text NOT NULL,
@@ -3929,7 +3929,7 @@ CREATE TABLE "bhudhi_experiment_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_experiment_promotions" (
+CREATE TABLE IF NOT EXISTS "bhudhi_experiment_promotions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"experiment_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -3942,7 +3942,7 @@ CREATE TABLE "bhudhi_experiment_promotions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_experiment_results" (
+CREATE TABLE IF NOT EXISTS "bhudhi_experiment_results" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"experiment_id" uuid NOT NULL,
 	"group_id" uuid,
@@ -3955,7 +3955,7 @@ CREATE TABLE "bhudhi_experiment_results" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_experiments" (
+CREATE TABLE IF NOT EXISTS "bhudhi_experiments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"goal" text NOT NULL,
@@ -3971,7 +3971,7 @@ CREATE TABLE "bhudhi_experiments" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_external_connections" (
+CREATE TABLE IF NOT EXISTS "bhudhi_external_connections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"system_name" text NOT NULL,
@@ -3988,7 +3988,7 @@ CREATE TABLE "bhudhi_external_connections" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_external_data" (
+CREATE TABLE IF NOT EXISTS "bhudhi_external_data" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"connection_id" uuid NOT NULL,
 	"data_type" text NOT NULL,
@@ -4000,7 +4000,7 @@ CREATE TABLE "bhudhi_external_data" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_framework_learning" (
+CREATE TABLE IF NOT EXISTS "bhudhi_framework_learning" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"framework_id" text NOT NULL,
 	"learning_type" text NOT NULL,
@@ -4014,7 +4014,7 @@ CREATE TABLE "bhudhi_framework_learning" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_frameworks" (
+CREATE TABLE IF NOT EXISTS "bhudhi_frameworks" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"type" text NOT NULL,
@@ -4032,7 +4032,7 @@ CREATE TABLE "bhudhi_frameworks" (
 	CONSTRAINT "bhudhi_frameworks_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governance_approvals" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governance_approvals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"subject_type" text NOT NULL,
@@ -4049,7 +4049,7 @@ CREATE TABLE "bhudhi_governance_approvals" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governance_audit" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governance_audit" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid,
 	"event_type" text NOT NULL,
@@ -4066,7 +4066,7 @@ CREATE TABLE "bhudhi_governance_audit" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governance_emergency" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governance_emergency" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid,
 	"mode" text NOT NULL,
@@ -4077,7 +4077,7 @@ CREATE TABLE "bhudhi_governance_emergency" (
 	"cleared_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governance_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governance_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid,
 	"memory_type" text NOT NULL,
@@ -4087,7 +4087,7 @@ CREATE TABLE "bhudhi_governance_memory" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governance_violations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governance_violations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid,
 	"actor_type" text NOT NULL,
@@ -4100,7 +4100,7 @@ CREATE TABLE "bhudhi_governance_violations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governor_allocations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governor_allocations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"resource_type" text NOT NULL,
@@ -4111,7 +4111,7 @@ CREATE TABLE "bhudhi_governor_allocations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governor_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governor_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4123,7 +4123,7 @@ CREATE TABLE "bhudhi_governor_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governor_health" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governor_health" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"quality" double precision DEFAULT 0.5 NOT NULL,
@@ -4136,7 +4136,7 @@ CREATE TABLE "bhudhi_governor_health" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governor_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governor_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"session_id" uuid NOT NULL,
@@ -4147,7 +4147,7 @@ CREATE TABLE "bhudhi_governor_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_governor_recovery" (
+CREATE TABLE IF NOT EXISTS "bhudhi_governor_recovery" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"recovery_mode" text NOT NULL,
@@ -4158,7 +4158,7 @@ CREATE TABLE "bhudhi_governor_recovery" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_idea_sets" (
+CREATE TABLE IF NOT EXISTS "bhudhi_idea_sets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"problem" text NOT NULL,
@@ -4169,7 +4169,7 @@ CREATE TABLE "bhudhi_idea_sets" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_identity_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_identity_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"profile_id" uuid,
@@ -4180,7 +4180,7 @@ CREATE TABLE "bhudhi_identity_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_identity_growth" (
+CREATE TABLE IF NOT EXISTS "bhudhi_identity_growth" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"profile_id" uuid NOT NULL,
 	"current_state" text NOT NULL,
@@ -4191,7 +4191,7 @@ CREATE TABLE "bhudhi_identity_growth" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_identity_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_identity_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"profile_id" uuid NOT NULL,
 	"change_type" text NOT NULL,
@@ -4201,7 +4201,7 @@ CREATE TABLE "bhudhi_identity_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_identity_profiles" (
+CREATE TABLE IF NOT EXISTS "bhudhi_identity_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid,
@@ -4217,7 +4217,7 @@ CREATE TABLE "bhudhi_identity_profiles" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_identity_values" (
+CREATE TABLE IF NOT EXISTS "bhudhi_identity_values" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"profile_id" uuid NOT NULL,
 	"value_key" text NOT NULL,
@@ -4228,7 +4228,7 @@ CREATE TABLE "bhudhi_identity_values" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_incident_logs" (
+CREATE TABLE IF NOT EXISTS "bhudhi_incident_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"incident_id" uuid NOT NULL,
@@ -4242,7 +4242,7 @@ CREATE TABLE "bhudhi_incident_logs" (
 	"closed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_infra_capacity" (
+CREATE TABLE IF NOT EXISTS "bhudhi_infra_capacity" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"cpu" double precision DEFAULT 0 NOT NULL,
@@ -4255,7 +4255,7 @@ CREATE TABLE "bhudhi_infra_capacity" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_infra_deployments" (
+CREATE TABLE IF NOT EXISTS "bhudhi_infra_deployments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"strategy" text NOT NULL,
@@ -4265,7 +4265,7 @@ CREATE TABLE "bhudhi_infra_deployments" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_infra_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_infra_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4276,7 +4276,7 @@ CREATE TABLE "bhudhi_infra_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_infra_health" (
+CREATE TABLE IF NOT EXISTS "bhudhi_infra_health" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"availability" double precision DEFAULT 0.99 NOT NULL,
@@ -4287,7 +4287,7 @@ CREATE TABLE "bhudhi_infra_health" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_infra_runtime" (
+CREATE TABLE IF NOT EXISTS "bhudhi_infra_runtime" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"runtime_type" text NOT NULL,
@@ -4300,7 +4300,7 @@ CREATE TABLE "bhudhi_infra_runtime" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_investigations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_investigations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"engine_id" text NOT NULL,
@@ -4313,7 +4313,7 @@ CREATE TABLE "bhudhi_investigations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_kernel_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_kernel_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4328,7 +4328,7 @@ CREATE TABLE "bhudhi_kernel_events" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory_edges" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory_edges" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"from_node_id" uuid NOT NULL,
@@ -4340,7 +4340,7 @@ CREATE TABLE "bhudhi_memory_edges" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory_nodes" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory_nodes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"node_type" text NOT NULL,
@@ -4359,7 +4359,7 @@ CREATE TABLE "bhudhi_memory_nodes" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory_queries" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory_queries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"query" text NOT NULL,
@@ -4372,7 +4372,7 @@ CREATE TABLE "bhudhi_memory_queries" (
 	"expires_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory_relationships" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory_relationships" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"node_id_1" uuid NOT NULL,
@@ -4382,7 +4382,7 @@ CREATE TABLE "bhudhi_memory_relationships" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_memory_timeline" (
+CREATE TABLE IF NOT EXISTS "bhudhi_memory_timeline" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
@@ -4392,7 +4392,7 @@ CREATE TABLE "bhudhi_memory_timeline" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_model_capabilities" (
+CREATE TABLE IF NOT EXISTS "bhudhi_model_capabilities" (
 	"id" text PRIMARY KEY NOT NULL,
 	"model_id" text NOT NULL,
 	"provider" text NOT NULL,
@@ -4410,7 +4410,7 @@ CREATE TABLE "bhudhi_model_capabilities" (
 	CONSTRAINT "bhudhi_model_capabilities_model_id_unique" UNIQUE("model_id")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_modules" (
+CREATE TABLE IF NOT EXISTS "bhudhi_modules" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"system" text NOT NULL,
@@ -4427,7 +4427,7 @@ CREATE TABLE "bhudhi_modules" (
 	CONSTRAINT "bhudhi_modules_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_organization_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_organization_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -4438,7 +4438,7 @@ CREATE TABLE "bhudhi_organization_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_organization_health" (
+CREATE TABLE IF NOT EXISTS "bhudhi_organization_health" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"execution_score" double precision DEFAULT 0.5 NOT NULL,
@@ -4451,7 +4451,7 @@ CREATE TABLE "bhudhi_organization_health" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_organization_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_organization_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"memory_type" text NOT NULL,
@@ -4460,7 +4460,7 @@ CREATE TABLE "bhudhi_organization_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_organization_roles" (
+CREATE TABLE IF NOT EXISTS "bhudhi_organization_roles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"user_id" uuid,
@@ -4471,7 +4471,7 @@ CREATE TABLE "bhudhi_organization_roles" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_organizations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_organizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -4484,7 +4484,7 @@ CREATE TABLE "bhudhi_organizations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_permission_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_permission_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"subject_id" text NOT NULL,
@@ -4495,7 +4495,7 @@ CREATE TABLE "bhudhi_permission_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_predictions" (
+CREATE TABLE IF NOT EXISTS "bhudhi_predictions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"scenario" text NOT NULL,
@@ -4508,7 +4508,7 @@ CREATE TABLE "bhudhi_predictions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_protocol_contracts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_protocol_contracts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"engine_a" text NOT NULL,
 	"engine_b" text NOT NULL,
@@ -4519,7 +4519,7 @@ CREATE TABLE "bhudhi_protocol_contracts" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_protocol_messages" (
+CREATE TABLE IF NOT EXISTS "bhudhi_protocol_messages" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"version" text DEFAULT '1.0' NOT NULL,
@@ -4537,7 +4537,7 @@ CREATE TABLE "bhudhi_protocol_messages" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_protocol_routes" (
+CREATE TABLE IF NOT EXISTS "bhudhi_protocol_routes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"pattern" text NOT NULL,
 	"handler" text NOT NULL,
@@ -4551,7 +4551,7 @@ CREATE TABLE "bhudhi_protocol_routes" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_recommendations" (
+CREATE TABLE IF NOT EXISTS "bhudhi_recommendations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"engine_id" text NOT NULL,
@@ -4567,7 +4567,7 @@ CREATE TABLE "bhudhi_recommendations" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_recovery_records" (
+CREATE TABLE IF NOT EXISTS "bhudhi_recovery_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"strategy" text NOT NULL,
@@ -4578,7 +4578,7 @@ CREATE TABLE "bhudhi_recovery_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_reliability_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_reliability_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4591,7 +4591,7 @@ CREATE TABLE "bhudhi_reliability_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_rollback_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_rollback_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"target" text NOT NULL,
@@ -4602,7 +4602,7 @@ CREATE TABLE "bhudhi_rollback_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_secret_registry" (
+CREATE TABLE IF NOT EXISTS "bhudhi_secret_registry" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"secret_key" text NOT NULL,
@@ -4614,7 +4614,7 @@ CREATE TABLE "bhudhi_secret_registry" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_security_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_security_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4627,7 +4627,7 @@ CREATE TABLE "bhudhi_security_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_shared_context" (
+CREATE TABLE IF NOT EXISTS "bhudhi_shared_context" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"domain" text DEFAULT 'genesis' NOT NULL,
@@ -4650,7 +4650,7 @@ CREATE TABLE "bhudhi_shared_context" (
 	CONSTRAINT "bhudhi_shared_context_blueprint_id_unique" UNIQUE("blueprint_id")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_signals" (
+CREATE TABLE IF NOT EXISTS "bhudhi_signals" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"global_signal" text NOT NULL,
@@ -4664,7 +4664,7 @@ CREATE TABLE "bhudhi_signals" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_simulation_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_simulation_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"run_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4672,7 +4672,7 @@ CREATE TABLE "bhudhi_simulation_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_simulation_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_simulation_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"memory_type" text NOT NULL,
@@ -4681,7 +4681,7 @@ CREATE TABLE "bhudhi_simulation_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_simulation_runs" (
+CREATE TABLE IF NOT EXISTS "bhudhi_simulation_runs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"simulation_id" uuid NOT NULL,
 	"blueprint_id" uuid NOT NULL,
@@ -4695,7 +4695,7 @@ CREATE TABLE "bhudhi_simulation_runs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_simulation_scores" (
+CREATE TABLE IF NOT EXISTS "bhudhi_simulation_scores" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"run_id" uuid NOT NULL,
 	"survival" integer DEFAULT 50 NOT NULL,
@@ -4708,7 +4708,7 @@ CREATE TABLE "bhudhi_simulation_scores" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_simulation_worlds" (
+CREATE TABLE IF NOT EXISTS "bhudhi_simulation_worlds" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"mode" text DEFAULT 'STANDARD' NOT NULL,
@@ -4721,7 +4721,7 @@ CREATE TABLE "bhudhi_simulation_worlds" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_strategic_choices" (
+CREATE TABLE IF NOT EXISTS "bhudhi_strategic_choices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"options" jsonb DEFAULT '[]'::jsonb NOT NULL,
@@ -4733,7 +4733,7 @@ CREATE TABLE "bhudhi_strategic_choices" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_system_health" (
+CREATE TABLE IF NOT EXISTS "bhudhi_system_health" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"resilience_score" integer DEFAULT 50 NOT NULL,
@@ -4744,7 +4744,7 @@ CREATE TABLE "bhudhi_system_health" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_systems" (
+CREATE TABLE IF NOT EXISTS "bhudhi_systems" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text NOT NULL,
@@ -4756,7 +4756,7 @@ CREATE TABLE "bhudhi_systems" (
 	CONSTRAINT "bhudhi_systems_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_team_alignment" (
+CREATE TABLE IF NOT EXISTS "bhudhi_team_alignment" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"team_id" uuid NOT NULL,
 	"goal_alignment" double precision DEFAULT 0.5 NOT NULL,
@@ -4767,7 +4767,7 @@ CREATE TABLE "bhudhi_team_alignment" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_team_health" (
+CREATE TABLE IF NOT EXISTS "bhudhi_team_health" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"team_id" uuid NOT NULL,
 	"score" integer DEFAULT 50 NOT NULL,
@@ -4780,7 +4780,7 @@ CREATE TABLE "bhudhi_team_health" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_team_identity" (
+CREATE TABLE IF NOT EXISTS "bhudhi_team_identity" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"team_id" uuid NOT NULL,
 	"mission" text,
@@ -4793,7 +4793,7 @@ CREATE TABLE "bhudhi_team_identity" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_team_memory" (
+CREATE TABLE IF NOT EXISTS "bhudhi_team_memory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"team_id" uuid NOT NULL,
 	"memory_type" text NOT NULL,
@@ -4802,7 +4802,7 @@ CREATE TABLE "bhudhi_team_memory" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_teams" (
+CREATE TABLE IF NOT EXISTS "bhudhi_teams" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -4815,7 +4815,7 @@ CREATE TABLE "bhudhi_teams" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_temporal_forecasts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_temporal_forecasts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"horizon_days" integer NOT NULL,
@@ -4825,7 +4825,7 @@ CREATE TABLE "bhudhi_temporal_forecasts" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_temporal_history" (
+CREATE TABLE IF NOT EXISTS "bhudhi_temporal_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4836,7 +4836,7 @@ CREATE TABLE "bhudhi_temporal_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_temporal_patterns" (
+CREATE TABLE IF NOT EXISTS "bhudhi_temporal_patterns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"pattern_type" text NOT NULL,
@@ -4847,7 +4847,7 @@ CREATE TABLE "bhudhi_temporal_patterns" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_temporal_timelines" (
+CREATE TABLE IF NOT EXISTS "bhudhi_temporal_timelines" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"goal" text,
@@ -4861,7 +4861,7 @@ CREATE TABLE "bhudhi_temporal_timelines" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_temporal_windows" (
+CREATE TABLE IF NOT EXISTS "bhudhi_temporal_windows" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"window_type" text NOT NULL,
@@ -4875,7 +4875,7 @@ CREATE TABLE "bhudhi_temporal_windows" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_threat_records" (
+CREATE TABLE IF NOT EXISTS "bhudhi_threat_records" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"threat" text NOT NULL,
@@ -4886,7 +4886,7 @@ CREATE TABLE "bhudhi_threat_records" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_trust_profiles" (
+CREATE TABLE IF NOT EXISTS "bhudhi_trust_profiles" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"subject_id" text NOT NULL,
@@ -4898,7 +4898,7 @@ CREATE TABLE "bhudhi_trust_profiles" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_unified_execution_contexts" (
+CREATE TABLE IF NOT EXISTS "bhudhi_unified_execution_contexts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"execution_type" text NOT NULL,
@@ -4918,7 +4918,7 @@ CREATE TABLE "bhudhi_unified_execution_contexts" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_unified_execution_feedback" (
+CREATE TABLE IF NOT EXISTS "bhudhi_unified_execution_feedback" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"execution_id" text NOT NULL,
 	"feedback_type" text NOT NULL,
@@ -4928,7 +4928,7 @@ CREATE TABLE "bhudhi_unified_execution_feedback" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_unified_execution_results" (
+CREATE TABLE IF NOT EXISTS "bhudhi_unified_execution_results" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"execution_id" text NOT NULL,
 	"success" boolean NOT NULL,
@@ -4941,7 +4941,7 @@ CREATE TABLE "bhudhi_unified_execution_results" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_unified_execution_steps" (
+CREATE TABLE IF NOT EXISTS "bhudhi_unified_execution_steps" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"execution_id" text NOT NULL,
 	"step_number" integer NOT NULL,
@@ -4955,7 +4955,7 @@ CREATE TABLE "bhudhi_unified_execution_steps" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_world_entities" (
+CREATE TABLE IF NOT EXISTS "bhudhi_world_entities" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"entity_type" text NOT NULL,
@@ -4968,7 +4968,7 @@ CREATE TABLE "bhudhi_world_entities" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_world_events" (
+CREATE TABLE IF NOT EXISTS "bhudhi_world_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"event_type" text NOT NULL,
@@ -4981,7 +4981,7 @@ CREATE TABLE "bhudhi_world_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_world_relationships" (
+CREATE TABLE IF NOT EXISTS "bhudhi_world_relationships" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"from_entity_id" uuid NOT NULL,
@@ -4992,7 +4992,7 @@ CREATE TABLE "bhudhi_world_relationships" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_world_snapshots" (
+CREATE TABLE IF NOT EXISTS "bhudhi_world_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
@@ -5003,7 +5003,7 @@ CREATE TABLE "bhudhi_world_snapshots" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "bhudhi_world_states" (
+CREATE TABLE IF NOT EXISTS "bhudhi_world_states" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"entity_id" uuid,
@@ -5016,7 +5016,7 @@ CREATE TABLE "bhudhi_world_states" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_sequence_history" (
+CREATE TABLE IF NOT EXISTS "blueprint_sequence_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5032,7 +5032,7 @@ CREATE TABLE "blueprint_sequence_history" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_sequences" (
+CREATE TABLE IF NOT EXISTS "blueprint_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"current_sequence" integer DEFAULT 1 NOT NULL,
@@ -5045,7 +5045,7 @@ CREATE TABLE "blueprint_sequences" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blueprint_tier_sequences" (
+CREATE TABLE IF NOT EXISTS "blueprint_tier_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"selected_tier" text NOT NULL,
@@ -5054,7 +5054,7 @@ CREATE TABLE "blueprint_tier_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "context_sequences" (
+CREATE TABLE IF NOT EXISTS "context_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"timeframe" integer,
@@ -5074,7 +5074,7 @@ CREATE TABLE "context_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_feedback_sequences" (
+CREATE TABLE IF NOT EXISTS "execution_feedback_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"execution_output" text,
@@ -5093,7 +5093,7 @@ CREATE TABLE "execution_feedback_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "execution_structure_sequences" (
+CREATE TABLE IF NOT EXISTS "execution_structure_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"targets" jsonb,
@@ -5109,7 +5109,7 @@ CREATE TABLE "execution_structure_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "goal_sequences" (
+CREATE TABLE IF NOT EXISTS "goal_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"goal_text" text NOT NULL,
@@ -5126,7 +5126,7 @@ CREATE TABLE "goal_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "master_plan_sequences" (
+CREATE TABLE IF NOT EXISTS "master_plan_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"mission" text,
@@ -5139,7 +5139,7 @@ CREATE TABLE "master_plan_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mini_plan_allocation_history" (
+CREATE TABLE IF NOT EXISTS "mini_plan_allocation_history" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -5152,7 +5152,7 @@ CREATE TABLE "mini_plan_allocation_history" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "mini_plan_sequences" (
+CREATE TABLE IF NOT EXISTS "mini_plan_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"mini_plans" text[],
@@ -5164,7 +5164,7 @@ CREATE TABLE "mini_plan_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "policy_sequences" (
+CREATE TABLE IF NOT EXISTS "policy_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"do_rules" text[],
@@ -5180,7 +5180,7 @@ CREATE TABLE "policy_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "prediction_scene_sequences" (
+CREATE TABLE IF NOT EXISTS "prediction_scene_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"future_scene" text,
@@ -5198,7 +5198,7 @@ CREATE TABLE "prediction_scene_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "purpose_sequences" (
+CREATE TABLE IF NOT EXISTS "purpose_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"purpose_text" text NOT NULL,
@@ -5215,7 +5215,7 @@ CREATE TABLE "purpose_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sequence_flows" (
+CREATE TABLE IF NOT EXISTS "sequence_flows" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"total_sequences" integer NOT NULL,
@@ -5228,7 +5228,7 @@ CREATE TABLE "sequence_flows" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "signal_condition_sequences" (
+CREATE TABLE IF NOT EXISTS "signal_condition_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"signal_progress" double precision,
@@ -5255,7 +5255,7 @@ CREATE TABLE "signal_condition_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "signal_sequences" (
+CREATE TABLE IF NOT EXISTS "signal_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"signals" text[],
@@ -5268,7 +5268,7 @@ CREATE TABLE "signal_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "task_generation_sequences" (
+CREATE TABLE IF NOT EXISTS "task_generation_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"current_orders" jsonb,
@@ -5283,7 +5283,7 @@ CREATE TABLE "task_generation_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "tier_sequence_gates" (
+CREATE TABLE IF NOT EXISTS "tier_sequence_gates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_tier" text NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5296,7 +5296,7 @@ CREATE TABLE "tier_sequence_gates" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "validation_result_sequences" (
+CREATE TABLE IF NOT EXISTS "validation_result_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"selected_path" text,
@@ -5307,7 +5307,7 @@ CREATE TABLE "validation_result_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "validation_sequences" (
+CREATE TABLE IF NOT EXISTS "validation_sequences" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"reality_result" text,
@@ -5330,7 +5330,7 @@ CREATE TABLE "validation_sequences" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "adaptation_suggestions" (
+CREATE TABLE IF NOT EXISTS "adaptation_suggestions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5346,7 +5346,7 @@ CREATE TABLE "adaptation_suggestions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "growth_execution_patterns" (
+CREATE TABLE IF NOT EXISTS "growth_execution_patterns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"pattern_type" text NOT NULL,
@@ -5361,7 +5361,7 @@ CREATE TABLE "growth_execution_patterns" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "interrogation_logs" (
+CREATE TABLE IF NOT EXISTS "interrogation_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5374,7 +5374,7 @@ CREATE TABLE "interrogation_logs" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "knowledge_cards" (
+CREATE TABLE IF NOT EXISTS "knowledge_cards" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"tier" text NOT NULL,
@@ -5388,7 +5388,7 @@ CREATE TABLE "knowledge_cards" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ultimate_emergency_orders" (
+CREATE TABLE IF NOT EXISTS "ultimate_emergency_orders" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5404,7 +5404,7 @@ CREATE TABLE "ultimate_emergency_orders" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ultimate_predictions" (
+CREATE TABLE IF NOT EXISTS "ultimate_predictions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5421,7 +5421,7 @@ CREATE TABLE "ultimate_predictions" (
 	"validated_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "ultimate_scenes" (
+CREATE TABLE IF NOT EXISTS "ultimate_scenes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5435,7 +5435,7 @@ CREATE TABLE "ultimate_scenes" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "ultimate_validation_checkpoints" (
+CREATE TABLE IF NOT EXISTS "ultimate_validation_checkpoints" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"blueprint_id" uuid NOT NULL,
 	"sequence_number" integer NOT NULL,
@@ -5449,950 +5449,3933 @@ CREATE TABLE "ultimate_validation_checkpoints" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "academy_chapters" ADD CONSTRAINT "academy_chapters_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_concept_mastery" ADD CONSTRAINT "academy_concept_mastery_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_generated_content" ADD CONSTRAINT "academy_generated_content_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_learning_goals" ADD CONSTRAINT "academy_learning_goals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_learning_goals" ADD CONSTRAINT "academy_learning_goals_aligned_with_blueprint_id_blueprints_id_fk" FOREIGN KEY ("aligned_with_blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_learning_patterns" ADD CONSTRAINT "academy_learning_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_lesson_attempts" ADD CONSTRAINT "academy_lesson_attempts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_lesson_attempts" ADD CONSTRAINT "academy_lesson_attempts_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_lessons" ADD CONSTRAINT "academy_lessons_chapter_id_academy_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."academy_chapters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_practice_attempts" ADD CONSTRAINT "academy_practice_attempts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_practice_attempts" ADD CONSTRAINT "academy_practice_attempts_practice_item_id_academy_practice_items_id_fk" FOREIGN KEY ("practice_item_id") REFERENCES "public"."academy_practice_items"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_practice_items" ADD CONSTRAINT "academy_practice_items_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_proof" ADD CONSTRAINT "academy_proof_academy_task_id_academy_tasks_id_fk" FOREIGN KEY ("academy_task_id") REFERENCES "public"."academy_tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_proof" ADD CONSTRAINT "academy_proof_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_retention_data" ADD CONSTRAINT "academy_retention_data_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_retention_data" ADD CONSTRAINT "academy_retention_data_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_student_enrollments" ADD CONSTRAINT "academy_student_enrollments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_student_enrollments" ADD CONSTRAINT "academy_student_enrollments_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_student_learning_profiles" ADD CONSTRAINT "academy_student_learning_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_study_schedules" ADD CONSTRAINT "academy_study_schedules_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_study_schedules" ADD CONSTRAINT "academy_study_schedules_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_schedule_id_academy_study_schedules_id_fk" FOREIGN KEY ("schedule_id") REFERENCES "public"."academy_study_schedules"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_learning_path_id_learning_paths_id_fk" FOREIGN KEY ("learning_path_id") REFERENCES "public"."learning_paths"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_knowledge_id_knowledge_objects_id_fk" FOREIGN KEY ("knowledge_id") REFERENCES "public"."knowledge_objects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "actions" ADD CONSTRAINT "actions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "actions" ADD CONSTRAINT "actions_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "actions" ADD CONSTRAINT "actions_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "actions" ADD CONSTRAINT "actions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "active_feedback_sessions" ADD CONSTRAINT "active_feedback_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "active_feedback_sessions" ADD CONSTRAINT "active_feedback_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_conflict_logs" ADD CONSTRAINT "agent_conflict_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_pattern_id_behavior_patterns_id_fk" FOREIGN KEY ("pattern_id") REFERENCES "public"."behavior_patterns"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavior_patterns" ADD CONSTRAINT "behavior_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavior_patterns" ADD CONSTRAINT "behavior_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "behavioral_insight_records" ADD CONSTRAINT "behavioral_insight_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_logs" ADD CONSTRAINT "bhudhi_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory" ADD CONSTRAINT "bhudhi_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory" ADD CONSTRAINT "bhudhi_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_usage_budget" ADD CONSTRAINT "bhudhi_usage_budget_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_related_order_id_orders_id_fk" FOREIGN KEY ("related_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_framework_signals" ADD CONSTRAINT "blueprint_framework_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_health_records" ADD CONSTRAINT "blueprint_health_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_interpretations" ADD CONSTRAINT "blueprint_interpretations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_mutations" ADD CONSTRAINT "blueprint_mutations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_ai_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("ai_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_tier_migrations" ADD CONSTRAINT "blueprint_tier_migrations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_tier_migrations" ADD CONSTRAINT "blueprint_tier_migrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_versions" ADD CONSTRAINT "blueprint_versions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprints" ADD CONSTRAINT "blueprints_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprints" ADD CONSTRAINT "blueprints_primary_archetype_id_economic_archetypes_id_fk" FOREIGN KEY ("primary_archetype_id") REFERENCES "public"."economic_archetypes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "burnout_records" ADD CONSTRAINT "burnout_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_event_1_id_calendar_events_id_fk" FOREIGN KEY ("event_1_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_event_2_id_calendar_events_id_fk" FOREIGN KEY ("event_2_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_events" ADD CONSTRAINT "calendar_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_notifications" ADD CONSTRAINT "calendar_notifications_event_id_calendar_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_notifications" ADD CONSTRAINT "calendar_notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_time_blocks" ADD CONSTRAINT "calendar_time_blocks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_views_preferences" ADD CONSTRAINT "calendar_views_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_learning_path_id_learning_paths_id_fk" FOREIGN KEY ("learning_path_id") REFERENCES "public"."learning_paths"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_history" ADD CONSTRAINT "capability_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_profiles" ADD CONSTRAINT "capability_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "capability_profiles" ADD CONSTRAINT "capability_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "channel_notification_preferences" ADD CONSTRAINT "channel_notification_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "character_progression" ADD CONSTRAINT "character_progression_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "chat_voice_messages" ADD CONSTRAINT "chat_voice_messages_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "chat_voice_messages" ADD CONSTRAINT "chat_voice_messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "cognitive_load_scores" ADD CONSTRAINT "cognitive_load_scores_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "cognitive_load_scores" ADD CONSTRAINT "cognitive_load_scores_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "competitor_intelligence" ADD CONSTRAINT "competitor_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "condition_records" ADD CONSTRAINT "condition_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "condition_records" ADD CONSTRAINT "condition_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "conditions" ADD CONSTRAINT "conditions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "conditions" ADD CONSTRAINT "conditions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "conditions" ADD CONSTRAINT "conditions_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_guidance" ADD CONSTRAINT "content_guidance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_guidance" ADD CONSTRAINT "content_guidance_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "contradiction_records" ADD CONSTRAINT "contradiction_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "contradiction_records" ADD CONSTRAINT "contradiction_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "critic_review_logs" ADD CONSTRAINT "critic_review_logs_bhudhi_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("bhudhi_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "critic_review_logs" ADD CONSTRAINT "critic_review_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_application_id_principle_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."principle_applications"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "dashboard_intelligence_snapshots" ADD CONSTRAINT "dashboard_intelligence_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "debate_logs" ADD CONSTRAINT "debate_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "decision_traces" ADD CONSTRAINT "decision_traces_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "decision_traces" ADD CONSTRAINT "decision_traces_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "do_not_disturb_schedules" ADD CONSTRAINT "do_not_disturb_schedules_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_trigger_event_id_events_id_fk" FOREIGN KEY ("trigger_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "eis_rate_limits" ADD CONSTRAINT "eis_rate_limits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "enforcement_packages" ADD CONSTRAINT "enforcement_packages_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "enforcement_packages" ADD CONSTRAINT "enforcement_packages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "escalation_logs" ADD CONSTRAINT "escalation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "escalation_logs" ADD CONSTRAINT "escalation_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "event_logs" ADD CONSTRAINT "event_logs_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "events" ADD CONSTRAINT "events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_sessions" ADD CONSTRAINT "execution_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_sessions" ADD CONSTRAINT "execution_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "external_intelligence" ADD CONSTRAINT "external_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "external_intelligence" ADD CONSTRAINT "external_intelligence_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "external_signals" ADD CONSTRAINT "external_signals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "external_signals" ADD CONSTRAINT "external_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "fallback_usage_logs" ADD CONSTRAINT "fallback_usage_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "fallback_usage_logs" ADD CONSTRAINT "fallback_usage_logs_bhudhi_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("bhudhi_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_resolution_task_id_orders_id_fk" FOREIGN KEY ("resolution_task_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "feedback" ADD CONSTRAINT "feedback_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "feedback" ADD CONSTRAINT "feedback_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "feedback" ADD CONSTRAINT "feedback_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_decisions" ADD CONSTRAINT "framework_decisions_activation_id_framework_activations_id_fk" FOREIGN KEY ("activation_id") REFERENCES "public"."framework_activations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_decisions" ADD CONSTRAINT "framework_decisions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_signal_snapshots" ADD CONSTRAINT "framework_signal_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "framework_signal_snapshots" ADD CONSTRAINT "framework_signal_snapshots_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "governance_queue" ADD CONSTRAINT "governance_queue_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "governance_queue" ADD CONSTRAINT "governance_queue_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_habit_id_habits_id_fk" FOREIGN KEY ("habit_id") REFERENCES "public"."habits"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "habits" ADD CONSTRAINT "habits_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "habits" ADD CONSTRAINT "habits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "idempotency_records" ADD CONSTRAINT "idempotency_records_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "identity_history" ADD CONSTRAINT "identity_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "identity_profiles" ADD CONSTRAINT "identity_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "in_app_notifications" ADD CONSTRAINT "in_app_notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_response_event_id_events_id_fk" FOREIGN KEY ("response_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_recovery_task_id_orders_id_fk" FOREIGN KEY ("recovery_task_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "knowledge_objects" ADD CONSTRAINT "knowledge_objects_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "knowledge_objects" ADD CONSTRAINT "knowledge_objects_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "learning_paths" ADD CONSTRAINT "learning_paths_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "learning_paths" ADD CONSTRAINT "learning_paths_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "magic_link_tokens" ADD CONSTRAINT "magic_link_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "message_attachments" ADD CONSTRAINT "message_attachments_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "message_search_index" ADD CONSTRAINT "message_search_index_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "message_search_index" ADD CONSTRAINT "message_search_index_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "milestones" ADD CONSTRAINT "milestones_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "milestones" ADD CONSTRAINT "milestones_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mobile_device_tokens" ADD CONSTRAINT "mobile_device_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mobile_health_metrics" ADD CONSTRAINT "mobile_health_metrics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mobile_sync_log" ADD CONSTRAINT "mobile_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mobile_wearable_connections" ADD CONSTRAINT "mobile_wearable_connections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "morning_reports" ADD CONSTRAINT "morning_reports_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "morning_reports" ADD CONSTRAINT "morning_reports_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "narrative_intelligence" ADD CONSTRAINT "narrative_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notification_delivery_history" ADD CONSTRAINT "notification_delivery_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notification_delivery_history" ADD CONSTRAINT "notification_delivery_history_queue_id_notification_delivery_queue_id_fk" FOREIGN KEY ("queue_id") REFERENCES "public"."notification_delivery_queue"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notification_delivery_queue" ADD CONSTRAINT "notification_delivery_queue_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notification_logs" ADD CONSTRAINT "notification_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notification_logs" ADD CONSTRAINT "notification_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blocking_order_id_orders_id_fk" FOREIGN KEY ("blocking_order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blocked_order_id_orders_id_fk" FOREIGN KEY ("blocked_order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_knowledge_links" ADD CONSTRAINT "order_knowledge_links_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_knowledge_links" ADD CONSTRAINT "order_knowledge_links_knowledge_id_knowledge_objects_id_fk" FOREIGN KEY ("knowledge_id") REFERENCES "public"."knowledge_objects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_action_id_actions_id_fk" FOREIGN KEY ("action_id") REFERENCES "public"."actions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_plan_id_plans_id_fk" FOREIGN KEY ("linked_plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_season_id_seasons_id_fk" FOREIGN KEY ("linked_season_id") REFERENCES "public"."seasons"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_target_id_targets_id_fk" FOREIGN KEY ("linked_target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_phase_id_phases_id_fk" FOREIGN KEY ("linked_phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_project_id_projects_id_fk" FOREIGN KEY ("linked_project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_enforcement_package_id_enforcement_packages_id_fk" FOREIGN KEY ("enforcement_package_id") REFERENCES "public"."enforcement_packages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_assigned_member_id_users_id_fk" FOREIGN KEY ("assigned_member_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_real_outcome_id_real_outcomes_id_fk" FOREIGN KEY ("real_outcome_id") REFERENCES "public"."real_outcomes"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pattern_records" ADD CONSTRAINT "pattern_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "personal_messages" ADD CONSTRAINT "personal_messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "personal_messages" ADD CONSTRAINT "personal_messages_linked_order_id_orders_id_fk" FOREIGN KEY ("linked_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phases" ADD CONSTRAINT "phases_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phases" ADD CONSTRAINT "phases_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phases" ADD CONSTRAINT "phases_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "phases" ADD CONSTRAINT "phases_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "plans" ADD CONSTRAINT "plans_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "plans" ADD CONSTRAINT "plans_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_logs" ADD CONSTRAINT "prediction_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_logs" ADD CONSTRAINT "prediction_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_applications" ADD CONSTRAINT "principle_applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_applications" ADD CONSTRAINT "principle_applications_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_proof_uploads" ADD CONSTRAINT "principle_proof_uploads_application_id_principle_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."principle_applications"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_selections" ADD CONSTRAINT "principle_selections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_selections" ADD CONSTRAINT "principle_selections_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_streaks" ADD CONSTRAINT "principle_streaks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blocking_project_id_projects_id_fk" FOREIGN KEY ("blocking_project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blocked_project_id_projects_id_fk" FOREIGN KEY ("blocked_project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "projects" ADD CONSTRAINT "projects_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "published_content" ADD CONSTRAINT "published_content_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "published_content" ADD CONSTRAINT "published_content_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "reward_events" ADD CONSTRAINT "reward_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "seasons" ADD CONSTRAINT "seasons_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "seasons" ADD CONSTRAINT "seasons_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_causation_event_id_events_id_fk" FOREIGN KEY ("causation_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "skill_profiles" ADD CONSTRAINT "skill_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "stability_events" ADD CONSTRAINT "stability_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "state_memory" ADD CONSTRAINT "state_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "state_memory" ADD CONSTRAINT "state_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "status_snapshots" ADD CONSTRAINT "status_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "strategic_outlook_records" ADD CONSTRAINT "strategic_outlook_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "system_health_logs" ADD CONSTRAINT "system_health_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "system_health_logs" ADD CONSTRAINT "system_health_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "targets" ADD CONSTRAINT "targets_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "targets" ADD CONSTRAINT "targets_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "targets" ADD CONSTRAINT "targets_season_id_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."seasons"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "targets" ADD CONSTRAINT "targets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "targets" ADD CONSTRAINT "targets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_enforcement_package_id_enforcement_packages_id_fk" FOREIGN KEY ("enforcement_package_id") REFERENCES "public"."enforcement_packages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_ai_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("ai_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_logs" ADD CONSTRAINT "task_generation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_logs" ADD CONSTRAINT "task_generation_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "trend_intelligence" ADD CONSTRAINT "trend_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_achievement_id_achievements_id_fk" FOREIGN KEY ("achievement_id") REFERENCES "public"."achievements"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_avatar" ADD CONSTRAINT "user_avatar_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_avatar" ADD CONSTRAINT "user_avatar_current_avatar_template_id_avatar_templates_id_fk" FOREIGN KEY ("current_avatar_template_id") REFERENCES "public"."avatar_templates"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_gamification_profile" ADD CONSTRAINT "user_gamification_profile_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_identity_states" ADD CONSTRAINT "user_identity_states_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_identity_states" ADD CONSTRAINT "user_identity_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_levels" ADD CONSTRAINT "user_levels_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_notification_channels" ADD CONSTRAINT "user_notification_channels_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_principle_profiles" ADD CONSTRAINT "user_principle_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_rewards" ADD CONSTRAINT "user_rewards_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_rewards" ADD CONSTRAINT "user_rewards_reward_id_rewards_id_fk" FOREIGN KEY ("reward_id") REFERENCES "public"."rewards"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_social_accounts" ADD CONSTRAINT "user_social_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_streaks" ADD CONSTRAINT "user_streaks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_archetype_maps" ADD CONSTRAINT "validation_archetype_maps_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_archetype_maps" ADD CONSTRAINT "validation_archetype_maps_archetype_id_economic_archetypes_id_fk" FOREIGN KEY ("archetype_id") REFERENCES "public"."economic_archetypes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validations" ADD CONSTRAINT "validations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validations" ADD CONSTRAINT "validations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "weekly_reviews" ADD CONSTRAINT "weekly_reviews_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "weekly_reviews" ADD CONSTRAINT "weekly_reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "world_models" ADD CONSTRAINT "world_models_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "xp_ledger" ADD CONSTRAINT "xp_ledger_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "academy_analytics" ADD CONSTRAINT "academy_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "analytics_insights" ADD CONSTRAINT "analytics_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_analytics" ADD CONSTRAINT "content_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "content_insights" ADD CONSTRAINT "content_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_analytics" ADD CONSTRAINT "execution_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_benchmarks" ADD CONSTRAINT "execution_benchmarks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_patterns" ADD CONSTRAINT "execution_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_velocity" ADD CONSTRAINT "execution_velocity_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "failure_analysis" ADD CONSTRAINT "failure_analysis_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "failure_analysis" ADD CONSTRAINT "failure_analysis_failed_order_id_orders_id_fk" FOREIGN KEY ("failed_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "learning_velocity_analytics" ADD CONSTRAINT "learning_velocity_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "platform_performance" ADD CONSTRAINT "platform_performance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "post_performance" ADD CONSTRAINT "post_performance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "post_performance" ADD CONSTRAINT "post_performance_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_analytics" ADD CONSTRAINT "principle_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_analytics" ADD CONSTRAINT "principle_analytics_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_effectiveness" ADD CONSTRAINT "principle_effectiveness_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_effectiveness" ADD CONSTRAINT "principle_effectiveness_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_insights" ADD CONSTRAINT "principle_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "principle_insights" ADD CONSTRAINT "principle_insights_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "productivity_heatmap" ADD CONSTRAINT "productivity_heatmap_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "weak_areas_detected" ADD CONSTRAINT "weak_areas_detected_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "automation_flows" ADD CONSTRAINT "automation_flows_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_conflicts_external" ADD CONSTRAINT "calendar_conflicts_external_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_conflicts_external" ADD CONSTRAINT "calendar_conflicts_external_torgima_event_id_calendar_events_id_fk" FOREIGN KEY ("torgima_event_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_sync_log" ADD CONSTRAINT "calendar_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "calendar_sync_log" ADD CONSTRAINT "calendar_sync_log_integration_id_external_integrations_id_fk" FOREIGN KEY ("integration_id") REFERENCES "public"."external_integrations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "engagement_sync_log" ADD CONSTRAINT "engagement_sync_log_social_post_mapping_id_social_post_mappings_id_fk" FOREIGN KEY ("social_post_mapping_id") REFERENCES "public"."social_post_mappings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "external_integrations" ADD CONSTRAINT "external_integrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "health_data_sync_log" ADD CONSTRAINT "health_data_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "health_data_sync_log" ADD CONSTRAINT "health_data_sync_log_integration_id_external_integrations_id_fk" FOREIGN KEY ("integration_id") REFERENCES "public"."external_integrations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "integration_webhook_logs" ADD CONSTRAINT "integration_webhook_logs_webhook_id_integration_webhooks_id_fk" FOREIGN KEY ("webhook_id") REFERENCES "public"."integration_webhooks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "integration_webhooks" ADD CONSTRAINT "integration_webhooks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "social_post_mappings" ADD CONSTRAINT "social_post_mappings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "social_post_mappings" ADD CONSTRAINT "social_post_mappings_published_content_id_published_content_id_fk" FOREIGN KEY ("published_content_id") REFERENCES "public"."published_content"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "zapier_connections" ADD CONSTRAINT "zapier_connections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "accountability_pledges" ADD CONSTRAINT "accountability_pledges_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "profile_social_links" ADD CONSTRAINT "profile_social_links_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "profile_widgets" ADD CONSTRAINT "profile_widgets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "public_profile_views" ADD CONSTRAINT "public_profile_views_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "public_profile_views" ADD CONSTRAINT "public_profile_views_viewer_id_users_id_fk" FOREIGN KEY ("viewer_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_daily_record_id_daily_principle_records_id_fk" FOREIGN KEY ("daily_record_id") REFERENCES "public"."daily_principle_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_belief_id_a_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id_a") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_belief_id_b_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id_b") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_evidence" ADD CONSTRAINT "bhudhi_belief_evidence_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_history" ADD CONSTRAINT "bhudhi_belief_history_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_records" ADD CONSTRAINT "bhudhi_belief_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_belief_truth" ADD CONSTRAINT "bhudhi_belief_truth_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilization_events" ADD CONSTRAINT "bhudhi_civilization_events_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilization_forecasts" ADD CONSTRAINT "bhudhi_civilization_forecasts_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilization_memory" ADD CONSTRAINT "bhudhi_civilization_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilization_memory" ADD CONSTRAINT "bhudhi_civilization_memory_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilization_states" ADD CONSTRAINT "bhudhi_civilization_states_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_civilizations" ADD CONSTRAINT "bhudhi_civilizations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_context_states" ADD CONSTRAINT "bhudhi_context_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_decision_forecasts" ADD CONSTRAINT "bhudhi_decision_forecasts_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_decision_options" ADD CONSTRAINT "bhudhi_decision_options_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_decision_records" ADD CONSTRAINT "bhudhi_decision_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_decision_replay" ADD CONSTRAINT "bhudhi_decision_replay_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_decision_scores" ADD CONSTRAINT "bhudhi_decision_scores_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_economics_forecasts" ADD CONSTRAINT "bhudhi_economics_forecasts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_economics_logs" ADD CONSTRAINT "bhudhi_economics_logs_session_id_bhudhi_economics_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."bhudhi_economics_sessions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_economics_profiles" ADD CONSTRAINT "bhudhi_economics_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_economics_sessions" ADD CONSTRAINT "bhudhi_economics_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_engines" ADD CONSTRAINT "bhudhi_engines_system_id_bhudhi_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."bhudhi_systems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_execution_contracts" ADD CONSTRAINT "bhudhi_execution_contracts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_execution_events" ADD CONSTRAINT "bhudhi_execution_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_execution_plans" ADD CONSTRAINT "bhudhi_execution_plans_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_benchmarks" ADD CONSTRAINT "bhudhi_expansion_benchmarks_capability_id_bhudhi_expansion_capabilities_id_fk" FOREIGN KEY ("capability_id") REFERENCES "public"."bhudhi_expansion_capabilities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_capabilities" ADD CONSTRAINT "bhudhi_expansion_capabilities_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_events" ADD CONSTRAINT "bhudhi_expansion_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_events" ADD CONSTRAINT "bhudhi_expansion_events_capability_id_bhudhi_expansion_capabilities_id_fk" FOREIGN KEY ("capability_id") REFERENCES "public"."bhudhi_expansion_capabilities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_history" ADD CONSTRAINT "bhudhi_expansion_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_expansion_memory" ADD CONSTRAINT "bhudhi_expansion_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_groups" ADD CONSTRAINT "bhudhi_experiment_groups_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_memory" ADD CONSTRAINT "bhudhi_experiment_memory_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_promotions" ADD CONSTRAINT "bhudhi_experiment_promotions_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_promotions" ADD CONSTRAINT "bhudhi_experiment_promotions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_results" ADD CONSTRAINT "bhudhi_experiment_results_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiment_results" ADD CONSTRAINT "bhudhi_experiment_results_group_id_bhudhi_experiment_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."bhudhi_experiment_groups"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_experiments" ADD CONSTRAINT "bhudhi_experiments_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_external_connections" ADD CONSTRAINT "bhudhi_external_connections_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_external_data" ADD CONSTRAINT "bhudhi_external_data_connection_id_bhudhi_external_connections_id_fk" FOREIGN KEY ("connection_id") REFERENCES "public"."bhudhi_external_connections"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_framework_learning" ADD CONSTRAINT "bhudhi_framework_learning_framework_id_bhudhi_frameworks_id_fk" FOREIGN KEY ("framework_id") REFERENCES "public"."bhudhi_frameworks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governance_approvals" ADD CONSTRAINT "bhudhi_governance_approvals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governance_audit" ADD CONSTRAINT "bhudhi_governance_audit_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governance_emergency" ADD CONSTRAINT "bhudhi_governance_emergency_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governance_memory" ADD CONSTRAINT "bhudhi_governance_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governance_violations" ADD CONSTRAINT "bhudhi_governance_violations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governor_allocations" ADD CONSTRAINT "bhudhi_governor_allocations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governor_events" ADD CONSTRAINT "bhudhi_governor_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governor_health" ADD CONSTRAINT "bhudhi_governor_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governor_history" ADD CONSTRAINT "bhudhi_governor_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_governor_recovery" ADD CONSTRAINT "bhudhi_governor_recovery_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_idea_sets" ADD CONSTRAINT "bhudhi_idea_sets_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_events" ADD CONSTRAINT "bhudhi_identity_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_events" ADD CONSTRAINT "bhudhi_identity_events_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_growth" ADD CONSTRAINT "bhudhi_identity_growth_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_history" ADD CONSTRAINT "bhudhi_identity_history_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_profiles" ADD CONSTRAINT "bhudhi_identity_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_identity_values" ADD CONSTRAINT "bhudhi_identity_values_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_incident_logs" ADD CONSTRAINT "bhudhi_incident_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_infra_capacity" ADD CONSTRAINT "bhudhi_infra_capacity_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_infra_deployments" ADD CONSTRAINT "bhudhi_infra_deployments_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_infra_events" ADD CONSTRAINT "bhudhi_infra_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_infra_health" ADD CONSTRAINT "bhudhi_infra_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_infra_runtime" ADD CONSTRAINT "bhudhi_infra_runtime_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_investigations" ADD CONSTRAINT "bhudhi_investigations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_investigations" ADD CONSTRAINT "bhudhi_investigations_engine_id_bhudhi_engines_id_fk" FOREIGN KEY ("engine_id") REFERENCES "public"."bhudhi_engines"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_kernel_events" ADD CONSTRAINT "bhudhi_kernel_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_from_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("from_node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_to_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("to_node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_nodes" ADD CONSTRAINT "bhudhi_memory_nodes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_queries" ADD CONSTRAINT "bhudhi_memory_queries_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_node_id_1_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id_1") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_node_id_2_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id_2") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_timeline" ADD CONSTRAINT "bhudhi_memory_timeline_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_memory_timeline" ADD CONSTRAINT "bhudhi_memory_timeline_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organization_events" ADD CONSTRAINT "bhudhi_organization_events_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organization_events" ADD CONSTRAINT "bhudhi_organization_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organization_health" ADD CONSTRAINT "bhudhi_organization_health_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organization_memory" ADD CONSTRAINT "bhudhi_organization_memory_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organization_roles" ADD CONSTRAINT "bhudhi_organization_roles_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_organizations" ADD CONSTRAINT "bhudhi_organizations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_permission_history" ADD CONSTRAINT "bhudhi_permission_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_predictions" ADD CONSTRAINT "bhudhi_predictions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_protocol_messages" ADD CONSTRAINT "bhudhi_protocol_messages_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_recommendations" ADD CONSTRAINT "bhudhi_recommendations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_recommendations" ADD CONSTRAINT "bhudhi_recommendations_engine_id_bhudhi_engines_id_fk" FOREIGN KEY ("engine_id") REFERENCES "public"."bhudhi_engines"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_recovery_records" ADD CONSTRAINT "bhudhi_recovery_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_reliability_events" ADD CONSTRAINT "bhudhi_reliability_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_rollback_history" ADD CONSTRAINT "bhudhi_rollback_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_secret_registry" ADD CONSTRAINT "bhudhi_secret_registry_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_security_events" ADD CONSTRAINT "bhudhi_security_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_shared_context" ADD CONSTRAINT "bhudhi_shared_context_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_signals" ADD CONSTRAINT "bhudhi_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_events" ADD CONSTRAINT "bhudhi_simulation_events_run_id_bhudhi_simulation_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."bhudhi_simulation_runs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_memory" ADD CONSTRAINT "bhudhi_simulation_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_runs" ADD CONSTRAINT "bhudhi_simulation_runs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_runs" ADD CONSTRAINT "bhudhi_simulation_runs_world_id_bhudhi_simulation_worlds_id_fk" FOREIGN KEY ("world_id") REFERENCES "public"."bhudhi_simulation_worlds"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_scores" ADD CONSTRAINT "bhudhi_simulation_scores_run_id_bhudhi_simulation_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."bhudhi_simulation_runs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_simulation_worlds" ADD CONSTRAINT "bhudhi_simulation_worlds_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_strategic_choices" ADD CONSTRAINT "bhudhi_strategic_choices_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_system_health" ADD CONSTRAINT "bhudhi_system_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_team_alignment" ADD CONSTRAINT "bhudhi_team_alignment_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_team_health" ADD CONSTRAINT "bhudhi_team_health_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_team_identity" ADD CONSTRAINT "bhudhi_team_identity_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_team_memory" ADD CONSTRAINT "bhudhi_team_memory_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_teams" ADD CONSTRAINT "bhudhi_teams_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_temporal_forecasts" ADD CONSTRAINT "bhudhi_temporal_forecasts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_temporal_history" ADD CONSTRAINT "bhudhi_temporal_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_temporal_patterns" ADD CONSTRAINT "bhudhi_temporal_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_temporal_timelines" ADD CONSTRAINT "bhudhi_temporal_timelines_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_temporal_windows" ADD CONSTRAINT "bhudhi_temporal_windows_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_threat_records" ADD CONSTRAINT "bhudhi_threat_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_trust_profiles" ADD CONSTRAINT "bhudhi_trust_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_unified_execution_contexts" ADD CONSTRAINT "bhudhi_unified_execution_contexts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_entities" ADD CONSTRAINT "bhudhi_world_entities_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_events" ADD CONSTRAINT "bhudhi_world_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_events" ADD CONSTRAINT "bhudhi_world_events_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_from_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("from_entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_to_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("to_entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_snapshots" ADD CONSTRAINT "bhudhi_world_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_states" ADD CONSTRAINT "bhudhi_world_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "bhudhi_world_states" ADD CONSTRAINT "bhudhi_world_states_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_sequence_history" ADD CONSTRAINT "blueprint_sequence_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_sequences" ADD CONSTRAINT "blueprint_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "blueprint_tier_sequences" ADD CONSTRAINT "blueprint_tier_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "context_sequences" ADD CONSTRAINT "context_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_feedback_sequences" ADD CONSTRAINT "execution_feedback_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "execution_structure_sequences" ADD CONSTRAINT "execution_structure_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "goal_sequences" ADD CONSTRAINT "goal_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "master_plan_sequences" ADD CONSTRAINT "master_plan_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mini_plan_allocation_history" ADD CONSTRAINT "mini_plan_allocation_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "mini_plan_sequences" ADD CONSTRAINT "mini_plan_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "policy_sequences" ADD CONSTRAINT "policy_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "prediction_scene_sequences" ADD CONSTRAINT "prediction_scene_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "purpose_sequences" ADD CONSTRAINT "purpose_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "sequence_flows" ADD CONSTRAINT "sequence_flows_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "signal_condition_sequences" ADD CONSTRAINT "signal_condition_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "signal_sequences" ADD CONSTRAINT "signal_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_generation_sequences" ADD CONSTRAINT "task_generation_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_result_sequences" ADD CONSTRAINT "validation_result_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "validation_sequences" ADD CONSTRAINT "validation_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "adaptation_suggestions" ADD CONSTRAINT "adaptation_suggestions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "growth_execution_patterns" ADD CONSTRAINT "growth_execution_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "interrogation_logs" ADD CONSTRAINT "interrogation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "knowledge_cards" ADD CONSTRAINT "knowledge_cards_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ultimate_emergency_orders" ADD CONSTRAINT "ultimate_emergency_orders_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ultimate_predictions" ADD CONSTRAINT "ultimate_predictions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ultimate_scenes" ADD CONSTRAINT "ultimate_scenes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ultimate_validation_checkpoints" ADD CONSTRAINT "ultimate_validation_checkpoints_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_chapter_course_num" ON "academy_chapters" USING btree ("course_id","chapter_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_concept_mastery_user_concept" ON "academy_concept_mastery" USING btree ("user_id","concept_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_lesson_chapter_num" ON "academy_lessons" USING btree ("chapter_id","lesson_number");--> statement-breakpoint
-CREATE INDEX "idx_academy_practice_items_lesson" ON "academy_practice_items" USING btree ("lesson_id");--> statement-breakpoint
-CREATE INDEX "idx_academy_proof_task_id" ON "academy_proof" USING btree ("academy_task_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_retention_user_lesson" ON "academy_retention_data" USING btree ("user_id","lesson_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_roadmap_goal_step" ON "academy_roadmap_steps" USING btree ("learning_goal_id","step_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_enrollment_user_course" ON "academy_student_enrollments" USING btree ("user_id","course_id");--> statement-breakpoint
-CREATE INDEX "idx_academy_study_sessions_user_date" ON "academy_study_sessions" USING btree ("user_id","session_date");--> statement-breakpoint
-CREATE INDEX "idx_academy_tasks_blueprint_id" ON "academy_tasks" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_academy_tasks_status" ON "academy_tasks" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_actions_blueprint_id" ON "actions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_actions_project_id" ON "actions" USING btree ("project_id");--> statement-breakpoint
-CREATE INDEX "idx_active_feedback_sessions_blueprint_date" ON "active_feedback_sessions" USING btree ("blueprint_id","session_date");--> statement-breakpoint
-CREATE INDEX "idx_active_feedback_sessions_user_blueprint" ON "active_feedback_sessions" USING btree ("user_id","blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_agent_conflict_logs_user_id" ON "agent_conflict_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_behavior_events_user_id" ON "behavior_events" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_behavior_events_pattern_id" ON "behavior_events" USING btree ("pattern_id");--> statement-breakpoint
-CREATE INDEX "idx_behavior_patterns_user_id" ON "behavior_patterns" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_behavior_patterns_status" ON "behavior_patterns" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_behavioral_insights_user_seen" ON "behavioral_insight_records" USING btree ("user_id","seen","dismissed");--> statement-breakpoint
-CREATE INDEX "idx_behavioral_insights_created" ON "behavioral_insight_records" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_logs_user_id" ON "bhudhi_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_logs_blueprint_id" ON "bhudhi_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_logs_request_type" ON "bhudhi_logs" USING btree ("request_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_user_id" ON "bhudhi_memory" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_user_type" ON "bhudhi_memory" USING btree ("user_id","memory_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_budget_user_date" ON "bhudhi_usage_budget" USING btree ("user_id","date_utc");--> statement-breakpoint
-CREATE INDEX "idx_blocker_logs_user_status" ON "blocker_logs" USING btree ("user_id","status");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_framework_signals_blueprint" ON "blueprint_framework_signals" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uq_blueprint_framework_signal" ON "blueprint_framework_signals" USING btree ("blueprint_id","signal_key");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_health_records_blueprint_id" ON "blueprint_health_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_interpretations_blueprint_id" ON "blueprint_interpretations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_members_blueprint_id" ON "blueprint_members" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_members_user_id" ON "blueprint_members" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_mutations_blueprint_id" ON "blueprint_mutations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_policies_blueprint_id" ON "blueprint_policies" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_policies_blueprint_active" ON "blueprint_policies" USING btree ("blueprint_id","active");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_tier_migrations_blueprint_id" ON "blueprint_tier_migrations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_versions_blueprint_id" ON "blueprint_versions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprints_user_id" ON "blueprints" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprints_status" ON "blueprints" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_burnout_records_user_created" ON "burnout_records" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_calendar_conflicts_user" ON "calendar_conflicts" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_calendar_event_user_source" ON "calendar_events" USING btree ("user_id","source_id","source_type");--> statement-breakpoint
-CREATE INDEX "idx_calendar_events_user_start" ON "calendar_events" USING btree ("user_id","start_time");--> statement-breakpoint
-CREATE INDEX "idx_calendar_events_user_status" ON "calendar_events" USING btree ("user_id","status");--> statement-breakpoint
-CREATE INDEX "idx_calendar_notifications_due" ON "calendar_notifications" USING btree ("scheduled_send_at");--> statement-breakpoint
-CREATE INDEX "idx_calendar_time_blocks_user" ON "calendar_time_blocks" USING btree ("user_id","start_time");--> statement-breakpoint
-CREATE INDEX "idx_capability_gap_logs_user_resolved" ON "capability_gap_logs" USING btree ("user_id","resolved");--> statement-breakpoint
-CREATE INDEX "idx_capability_history_user_id" ON "capability_history" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_channel_notification_pref" ON "channel_notification_preferences" USING btree ("user_id","channel_type","notification_type");--> statement-breakpoint
-CREATE INDEX "idx_character_progression_user_id" ON "character_progression" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_cognitive_load_scores_user_id" ON "cognitive_load_scores" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_cognitive_load_scores_blueprint_id" ON "cognitive_load_scores" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_competitor_intelligence_user_created" ON "competitor_intelligence" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_competitor_intelligence_expires" ON "competitor_intelligence" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_condition_records_blueprint_id" ON "condition_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_condition_records_blueprint_current" ON "condition_records" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE INDEX "idx_conditions_blueprint_id" ON "conditions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_conditions_blueprint_current" ON "conditions" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_content_guidance_user_date" ON "content_guidance" USING btree ("user_id","guidance_date");--> statement-breakpoint
-CREATE INDEX "idx_continuous_task_guarantee_logs_user" ON "continuous_task_guarantee_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_contradiction_records_blueprint_id" ON "contradiction_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_contradiction_records_user_id" ON "contradiction_records" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_critic_review_logs_bhudhi_log_id" ON "critic_review_logs" USING btree ("bhudhi_log_id");--> statement-breakpoint
-CREATE INDEX "idx_critic_review_logs_user_id" ON "critic_review_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_daily_principle_record_user_date" ON "daily_principle_records" USING btree ("user_id","principle_date");--> statement-breakpoint
-CREATE INDEX "idx_daily_principle_records_user_date" ON "daily_principle_records" USING btree ("user_id","principle_date");--> statement-breakpoint
-CREATE INDEX "idx_dashboard_intelligence_user" ON "dashboard_intelligence_snapshots" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_dead_letter_event_type" ON "dead_letter_events" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "idx_dead_letter_resolved" ON "dead_letter_events" USING btree ("resolved");--> statement-breakpoint
-CREATE INDEX "idx_debate_logs_user_id" ON "debate_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_decision_traces_blueprint_id" ON "decision_traces" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_decision_traces_decision_type" ON "decision_traces" USING btree ("decision_type");--> statement-breakpoint
-CREATE INDEX "idx_domain_history_blueprint_id" ON "domain_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_domain_history_blueprint_current" ON "domain_history" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE INDEX "idx_economic_archetypes_number" ON "economic_archetypes" USING btree ("archetype_number");--> statement-breakpoint
-CREATE INDEX "idx_eis_call_logs_user_id" ON "eis_call_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_eis_call_logs_created_at" ON "eis_call_logs" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_eis_rate_limits_user_industry" ON "eis_rate_limits" USING btree ("user_id","industry","niche");--> statement-breakpoint
-CREATE INDEX "idx_enforcement_packages_blueprint_id" ON "enforcement_packages" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_enforcement_packages_blueprint_current" ON "enforcement_packages" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE INDEX "idx_escalation_logs_blueprint_id" ON "escalation_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_event_logs_event_id" ON "event_logs" USING btree ("event_id");--> statement-breakpoint
-CREATE INDEX "idx_events_status" ON "events" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_events_event_type" ON "events" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "idx_events_blueprint_id" ON "events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_execution_sessions_user_id" ON "execution_sessions" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_execution_sessions_blueprint_id" ON "execution_sessions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_external_intelligence_blueprint" ON "external_intelligence" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_external_intelligence_expires" ON "external_intelligence" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_external_signals_user_id" ON "external_signals" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_external_signals_blueprint_id" ON "external_signals" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_external_signals_source_name" ON "external_signals" USING btree ("source_name");--> statement-breakpoint
-CREATE INDEX "idx_external_signals_status" ON "external_signals" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_failure_classifications_feedback" ON "failure_classifications" USING btree ("feedback_id");--> statement-breakpoint
-CREATE INDEX "idx_fallback_usage_logs_created_at" ON "fallback_usage_logs" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_false_progress_flags_blueprint_id" ON "false_progress_flags" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_false_progress_flags_resolved" ON "false_progress_flags" USING btree ("resolved");--> statement-breakpoint
-CREATE INDEX "idx_feedback_order_id" ON "feedback" USING btree ("order_id");--> statement-breakpoint
-CREATE INDEX "idx_feedback_blueprint_id" ON "feedback" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_feedback_blueprint_created_at" ON "feedback" USING btree ("blueprint_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_feedback_user_id" ON "feedback" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_framework_activations_blueprint_id" ON "framework_activations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_framework_decisions_blueprint_id" ON "framework_decisions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_framework_decisions_status" ON "framework_decisions" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_framework_signal_snapshots_blueprint_id" ON "framework_signal_snapshots" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_governance_queue_blueprint_id" ON "governance_queue" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_governance_queue_status" ON "governance_queue" USING btree ("blueprint_id","status");--> statement-breakpoint
-CREATE INDEX "idx_habit_checkins_habit_id" ON "habit_checkins" USING btree ("habit_id");--> statement-breakpoint
-CREATE INDEX "idx_habits_blueprint_id" ON "habits" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_idempotency_records_expires_at" ON "idempotency_records" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_idempotency_records_key" ON "idempotency_records" USING btree ("key");--> statement-breakpoint
-CREATE INDEX "idx_identity_history_user_id" ON "identity_history" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_identity_profiles_user_id" ON "identity_profiles" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_in_app_notifications_user" ON "in_app_notifications" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_inactivity_records_user_id" ON "inactivity_records" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_inactivity_records_blueprint_resolved" ON "inactivity_records" USING btree ("blueprint_id","resolved");--> statement-breakpoint
-CREATE INDEX "idx_knowledge_objects_domain" ON "knowledge_objects" USING btree ("domain");--> statement-breakpoint
-CREATE INDEX "idx_knowledge_objects_type" ON "knowledge_objects" USING btree ("type");--> statement-breakpoint
-CREATE INDEX "idx_knowledge_packages_domain_action" ON "knowledge_packages" USING btree ("domain","action_type");--> statement-breakpoint
-CREATE INDEX "idx_learning_paths_user_status" ON "learning_paths" USING btree ("user_id","path_status");--> statement-breakpoint
-CREATE INDEX "idx_magic_link_tokens_user_id" ON "magic_link_tokens" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_magic_link_tokens_email" ON "magic_link_tokens" USING btree ("email");--> statement-breakpoint
-CREATE INDEX "idx_message_search_user" ON "message_search_index" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_milestones_user_id" ON "milestones" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_milestones_blueprint_id" ON "milestones" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_mobile_device_token" ON "mobile_device_tokens" USING btree ("user_id","push_token");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_mobile_health_day" ON "mobile_health_metrics" USING btree ("user_id","metric_date","source");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_mobile_sync_action" ON "mobile_sync_log" USING btree ("user_id","client_action_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_mobile_wearable" ON "mobile_wearable_connections" USING btree ("user_id","provider");--> statement-breakpoint
-CREATE INDEX "idx_morning_reports_user_id" ON "morning_reports" USING btree ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_morning_reports_user_date" ON "morning_reports" USING btree ("user_id","report_date");--> statement-breakpoint
-CREATE INDEX "idx_narrative_intelligence_user_created" ON "narrative_intelligence" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_narrative_intelligence_expires" ON "narrative_intelligence" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_notification_delivery_queue_due" ON "notification_delivery_queue" USING btree ("scheduled_for");--> statement-breakpoint
-CREATE INDEX "idx_notification_logs_user_id" ON "notification_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_notification_logs_status" ON "notification_logs" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_notification_logs_type" ON "notification_logs" USING btree ("notification_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_order_dependency" ON "order_dependencies" USING btree ("blocking_order_id","blocked_order_id");--> statement-breakpoint
-CREATE INDEX "idx_order_dependencies_blocked_status" ON "order_dependencies" USING btree ("blocked_order_id","status");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_order_knowledge" ON "order_knowledge_links" USING btree ("order_id","knowledge_id");--> statement-breakpoint
-CREATE INDEX "idx_orders_blueprint_id" ON "orders" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_orders_action_id" ON "orders" USING btree ("action_id");--> statement-breakpoint
-CREATE INDEX "idx_orders_status" ON "orders" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_orders_blueprint_status" ON "orders" USING btree ("blueprint_id","status");--> statement-breakpoint
-CREATE INDEX "idx_outcome_validation_records_feedback" ON "outcome_validation_records" USING btree ("feedback_id");--> statement-breakpoint
-CREATE INDEX "idx_outcome_validations_blueprint_id" ON "outcome_validations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_outcome_validations_validation_result" ON "outcome_validations" USING btree ("blueprint_id","validation_result");--> statement-breakpoint
-CREATE INDEX "idx_pattern_records_user_active" ON "pattern_records" USING btree ("user_id","is_active");--> statement-breakpoint
-CREATE INDEX "idx_personal_messages_user_created" ON "personal_messages" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_phase_checkpoints_blueprint_id" ON "phase_checkpoints" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_phases_blueprint_id" ON "phases" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_phases_status" ON "phases" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_pivot_reviews_blueprint_id" ON "pivot_reviews" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_pivot_reviews_status" ON "pivot_reviews" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_plans_blueprint_id" ON "plans" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_platform_algorithm_signals_platform" ON "platform_algorithm_signals" USING btree ("platform");--> statement-breakpoint
-CREATE INDEX "idx_platform_algorithm_signals_valid_until" ON "platform_algorithm_signals" USING btree ("valid_until");--> statement-breakpoint
-CREATE INDEX "idx_prediction_logs_user_id" ON "prediction_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_prediction_snapshots_blueprint" ON "prediction_snapshots" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_principle_application_user_date" ON "principle_applications" USING btree ("user_id","principle_date");--> statement-breakpoint
-CREATE INDEX "idx_principle_applications_user_date" ON "principle_applications" USING btree ("user_id","principle_date");--> statement-breakpoint
-CREATE INDEX "idx_principle_proof_uploads_application" ON "principle_proof_uploads" USING btree ("application_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_principle_selection_user_date" ON "principle_selections" USING btree ("user_id","selected_date");--> statement-breakpoint
-CREATE INDEX "idx_principle_selections_user_date" ON "principle_selections" USING btree ("user_id","selected_date");--> statement-breakpoint
-CREATE INDEX "idx_principles_day_number" ON "principles" USING btree ("day_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_project_dependency" ON "project_dependencies" USING btree ("blocking_project_id","blocked_project_id");--> statement-breakpoint
-CREATE INDEX "idx_projects_blueprint_id" ON "projects" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_projects_status" ON "projects" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_real_outcomes_blueprint_id" ON "real_outcomes" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_reward_events_user_id" ON "reward_events" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_reward_events_delivered" ON "reward_events" USING btree ("delivered");--> statement-breakpoint
-CREATE INDEX "idx_reward_events_source_event_id" ON "reward_events" USING btree ("source_event_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_reward_events_idempotency" ON "reward_events" USING btree ("idempotency_key");--> statement-breakpoint
-CREATE INDEX "idx_seasons_blueprint_id" ON "seasons" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_sessions_user_id" ON "sessions" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_sessions_expires_at" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_signal_snapshots_blueprint_id" ON "signal_snapshots" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_signal_snapshots_blueprint_current" ON "signal_snapshots" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE INDEX "idx_skill_profiles_user_id" ON "skill_profiles" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_stability_events_user_id" ON "stability_events" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_stability_events_created_at" ON "stability_events" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_state_memory_blueprint_id" ON "state_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_state_memory_blueprint_current" ON "state_memory" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE INDEX "idx_strategic_assumptions_blueprint_id" ON "strategic_assumptions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_strategic_assumptions_status" ON "strategic_assumptions" USING btree ("monitoring_status");--> statement-breakpoint
-CREATE INDEX "idx_strategic_outlook_user_generated" ON "strategic_outlook_records" USING btree ("user_id","generated_at");--> statement-breakpoint
-CREATE INDEX "idx_strategic_outlook_expires" ON "strategic_outlook_records" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_system_health_logs_blueprint_id" ON "system_health_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_system_health_logs_check_type" ON "system_health_logs" USING btree ("check_type");--> statement-breakpoint
-CREATE INDEX "idx_system_health_logs_area" ON "system_health_logs" USING btree ("area");--> statement-breakpoint
-CREATE INDEX "idx_system_health_records_created_at" ON "system_health_records" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_targets_blueprint_id" ON "targets" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_targets_status" ON "targets" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_task_generation_log_blueprint_id" ON "task_generation_log" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_task_generation_log_trigger" ON "task_generation_log" USING btree ("generation_trigger");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_task_generation_log_idempotency_key" ON "task_generation_log" USING btree ("idempotency_key") WHERE "task_generation_log"."idempotency_key" is not null;--> statement-breakpoint
-CREATE INDEX "idx_task_generation_logs_blueprint_id" ON "task_generation_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_task_generation_logs_user_id" ON "task_generation_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_trend_intelligence_user_created" ON "trend_intelligence" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "idx_trend_intelligence_expires" ON "trend_intelligence" USING btree ("expires_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_achievement" ON "user_achievements" USING btree ("user_id","achievement_id");--> statement-breakpoint
-CREATE INDEX "idx_user_identity_states_user_id" ON "user_identity_states" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_user_identity_states_blueprint_current" ON "user_identity_states" USING btree ("blueprint_id","is_current");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_level" ON "user_levels" USING btree ("user_id","level_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_notification_channel" ON "user_notification_channels" USING btree ("user_id","channel_type");--> statement-breakpoint
-CREATE INDEX "idx_user_principle_profiles_slug" ON "user_principle_profiles" USING btree ("profile_url_slug");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_reward" ON "user_rewards" USING btree ("user_id","reward_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_social_platform" ON "user_social_accounts" USING btree ("user_id","platform");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_user_streak_type" ON "user_streaks" USING btree ("user_id","streak_type");--> statement-breakpoint
-CREATE INDEX "idx_validation_archetype_maps_validation_id" ON "validation_archetype_maps" USING btree ("validation_id");--> statement-breakpoint
-CREATE INDEX "idx_validation_event_logs_validation_id" ON "validation_event_logs" USING btree ("validation_id");--> statement-breakpoint
-CREATE INDEX "idx_validation_event_logs_created_at" ON "validation_event_logs" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_validation_memory_user_id" ON "validation_memory" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_validation_memory_goal_hash" ON "validation_memory" USING btree ("goal_hash");--> statement-breakpoint
-CREATE INDEX "idx_validation_memory_blueprint_id" ON "validation_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_validations_blueprint_id" ON "validations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_validations_contract_id" ON "validations" USING btree ("contract_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_validations_idempotency_key" ON "validations" USING btree ("idempotency_key");--> statement-breakpoint
-CREATE INDEX "idx_verdict_evolution_blueprint_id" ON "verdict_evolution" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_weekly_reviews_blueprint_id" ON "weekly_reviews" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_world_models_user_id" ON "world_models" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_xp_ledger_user_earned" ON "xp_ledger" USING btree ("user_id","earned_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_academy_analytics_user_date" ON "academy_analytics" USING btree ("user_id","metric_date");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_content_analytics_user_date" ON "content_analytics" USING btree ("user_id","metric_date");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_execution_analytics_user_date" ON "execution_analytics" USING btree ("user_id","metric_date");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_execution_benchmark" ON "execution_benchmarks" USING btree ("user_id","metric_name");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_platform_performance" ON "platform_performance" USING btree ("user_id","platform","metric_date");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_post_performance" ON "post_performance" USING btree ("user_id","post_id","platform");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_principle_effectiveness" ON "principle_effectiveness" USING btree ("user_id","principle_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_productivity_heatmap" ON "productivity_heatmap" USING btree ("user_id","day_of_week","hour_of_day");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_external_integrations_user_type" ON "external_integrations" USING btree ("user_id","integration_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_zapier_connections_user_zapier" ON "zapier_connections" USING btree ("user_id","zapier_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_profile_social_links_user_platform" ON "profile_social_links" USING btree ("user_id","platform");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_profile_widgets_user_type" ON "profile_widgets" USING btree ("user_id","widget_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_shareable_daily_entries_user_date" ON "shareable_daily_entries" USING btree ("user_id","entry_date");--> statement-breakpoint
-CREATE INDEX "idx_shareable_daily_entries_token" ON "shareable_daily_entries" USING btree ("share_token");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_conflicts_blueprint_id" ON "bhudhi_belief_conflicts" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_evidence_belief_id" ON "bhudhi_belief_evidence" USING btree ("belief_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_history_belief_id" ON "bhudhi_belief_history" USING btree ("belief_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_records_blueprint_id" ON "bhudhi_belief_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_records_state" ON "bhudhi_belief_records" USING btree ("state");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_records_belief_type" ON "bhudhi_belief_records" USING btree ("belief_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_belief_truth_belief_id" ON "bhudhi_belief_truth" USING btree ("belief_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_civilization_events_civilization_id" ON "bhudhi_civilization_events" USING btree ("civilization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_civilization_forecasts_civilization_id" ON "bhudhi_civilization_forecasts" USING btree ("civilization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_civilization_memory_blueprint_id" ON "bhudhi_civilization_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_civilization_states_civilization_id" ON "bhudhi_civilization_states" USING btree ("civilization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_civilizations_blueprint_id" ON "bhudhi_civilizations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_context_states_blueprint_id" ON "bhudhi_context_states" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_forecasts_decision_id" ON "bhudhi_decision_forecasts" USING btree ("decision_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_options_decision_id" ON "bhudhi_decision_options" USING btree ("decision_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_records_blueprint_id" ON "bhudhi_decision_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_records_recommendation_id" ON "bhudhi_decision_records" USING btree ("recommendation_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_records_status" ON "bhudhi_decision_records" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_replay_decision_id" ON "bhudhi_decision_replay" USING btree ("decision_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_decision_scores_decision_id" ON "bhudhi_decision_scores" USING btree ("decision_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_forecasts_user_id" ON "bhudhi_economics_forecasts" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_forecasts_horizon" ON "bhudhi_economics_forecasts" USING btree ("horizon_days");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_logs_user_id" ON "bhudhi_economics_logs" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_logs_session_id" ON "bhudhi_economics_logs" USING btree ("session_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_profiles_user_id" ON "bhudhi_economics_profiles" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_profiles_blueprint_id" ON "bhudhi_economics_profiles" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_sessions_user_id" ON "bhudhi_economics_sessions" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_sessions_blueprint_id" ON "bhudhi_economics_sessions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_economics_sessions_created_at" ON "bhudhi_economics_sessions" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_engine_registry_system" ON "bhudhi_engine_registry" USING btree ("system");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_engines_system_id" ON "bhudhi_engines" USING btree ("system_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_engines_status" ON "bhudhi_engines" USING btree ("status");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_bhudhi_engines_system_name" ON "bhudhi_engines" USING btree ("system_id","name");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_contracts_blueprint_id" ON "bhudhi_execution_contracts" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_contracts_contract_type" ON "bhudhi_execution_contracts" USING btree ("contract_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_contracts_status" ON "bhudhi_execution_contracts" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_events_blueprint_id" ON "bhudhi_execution_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_plans_blueprint_id" ON "bhudhi_execution_plans" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_execution_plans_recommendation_id" ON "bhudhi_execution_plans" USING btree ("recommendation_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_benchmarks_capability_id" ON "bhudhi_expansion_benchmarks" USING btree ("capability_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_capabilities_blueprint_id" ON "bhudhi_expansion_capabilities" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_capabilities_key" ON "bhudhi_expansion_capabilities" USING btree ("capability_key");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_events_blueprint_id" ON "bhudhi_expansion_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_history_blueprint_id" ON "bhudhi_expansion_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_expansion_memory_blueprint_id" ON "bhudhi_expansion_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiment_groups_experiment_id" ON "bhudhi_experiment_groups" USING btree ("experiment_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiment_memory_experiment_id" ON "bhudhi_experiment_memory" USING btree ("experiment_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiment_promotions_experiment_id" ON "bhudhi_experiment_promotions" USING btree ("experiment_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiment_results_experiment_id" ON "bhudhi_experiment_results" USING btree ("experiment_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiments_blueprint_id" ON "bhudhi_experiments" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_experiments_status" ON "bhudhi_experiments" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_external_connections_blueprint_id" ON "bhudhi_external_connections" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_external_data_connection_id" ON "bhudhi_external_data" USING btree ("connection_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_framework_learning_framework_id" ON "bhudhi_framework_learning" USING btree ("framework_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_frameworks_status" ON "bhudhi_frameworks" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_approvals_blueprint_id" ON "bhudhi_governance_approvals" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_approvals_status" ON "bhudhi_governance_approvals" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_approvals_subject" ON "bhudhi_governance_approvals" USING btree ("subject_type","subject_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_audit_blueprint_id" ON "bhudhi_governance_audit" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_audit_event_type" ON "bhudhi_governance_audit" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_audit_created_at" ON "bhudhi_governance_audit" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_emergency_blueprint_id" ON "bhudhi_governance_emergency" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_memory_blueprint_id" ON "bhudhi_governance_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_memory_type_key" ON "bhudhi_governance_memory" USING btree ("memory_type","key");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governance_violations_blueprint_id" ON "bhudhi_governance_violations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governor_allocations_blueprint_id" ON "bhudhi_governor_allocations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governor_events_blueprint_id" ON "bhudhi_governor_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governor_health_blueprint_id" ON "bhudhi_governor_health" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governor_history_blueprint_id" ON "bhudhi_governor_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_governor_recovery_blueprint_id" ON "bhudhi_governor_recovery" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_idea_sets_blueprint_id" ON "bhudhi_idea_sets" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_events_blueprint_id" ON "bhudhi_identity_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_growth_profile_id" ON "bhudhi_identity_growth" USING btree ("profile_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_history_profile_id" ON "bhudhi_identity_history" USING btree ("profile_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_profiles_blueprint_id" ON "bhudhi_identity_profiles" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_profiles_user_id" ON "bhudhi_identity_profiles" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_identity_values_profile_id" ON "bhudhi_identity_values" USING btree ("profile_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_incident_logs_blueprint_id" ON "bhudhi_incident_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_infra_capacity_blueprint_id" ON "bhudhi_infra_capacity" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_infra_deployments_blueprint_id" ON "bhudhi_infra_deployments" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_infra_events_blueprint_id" ON "bhudhi_infra_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_infra_health_blueprint_id" ON "bhudhi_infra_health" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_infra_runtime_blueprint_id" ON "bhudhi_infra_runtime" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_investigations_blueprint_id" ON "bhudhi_investigations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_investigations_engine_id" ON "bhudhi_investigations" USING btree ("engine_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_kernel_events_blueprint_id" ON "bhudhi_kernel_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_kernel_events_event_type" ON "bhudhi_kernel_events" USING btree ("event_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_kernel_events_chain_id" ON "bhudhi_kernel_events" USING btree ("chain_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_edges_blueprint_id" ON "bhudhi_memory_edges" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_edges_from" ON "bhudhi_memory_edges" USING btree ("from_node_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_edges_to" ON "bhudhi_memory_edges" USING btree ("to_node_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_bhudhi_memory_edges" ON "bhudhi_memory_edges" USING btree ("blueprint_id","from_node_id","to_node_id","edge_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_nodes_blueprint_id" ON "bhudhi_memory_nodes" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_nodes_node_type" ON "bhudhi_memory_nodes" USING btree ("node_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_bhudhi_memory_nodes_blueprint_type_id" ON "bhudhi_memory_nodes" USING btree ("blueprint_id","node_type","node_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_queries_blueprint_id" ON "bhudhi_memory_queries" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_relationships_blueprint_id" ON "bhudhi_memory_relationships" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_timeline_blueprint_id" ON "bhudhi_memory_timeline" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_memory_timeline_timestamp" ON "bhudhi_memory_timeline" USING btree ("timestamp");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_modules_system" ON "bhudhi_modules" USING btree ("system");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organization_events_org_id" ON "bhudhi_organization_events" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organization_health_org_id" ON "bhudhi_organization_health" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organization_memory_org_id" ON "bhudhi_organization_memory" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organization_roles_org_id" ON "bhudhi_organization_roles" USING btree ("organization_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organization_roles_user_id" ON "bhudhi_organization_roles" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_organizations_blueprint_id" ON "bhudhi_organizations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_permission_history_blueprint_id" ON "bhudhi_permission_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_predictions_blueprint_id" ON "bhudhi_predictions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_protocol_contracts_engines" ON "bhudhi_protocol_contracts" USING btree ("engine_a","engine_b");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_protocol_messages_blueprint_id" ON "bhudhi_protocol_messages" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_protocol_messages_uri" ON "bhudhi_protocol_messages" USING btree ("uri");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_protocol_messages_from_engine" ON "bhudhi_protocol_messages" USING btree ("from_engine");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_protocol_messages_to_engine" ON "bhudhi_protocol_messages" USING btree ("to_engine");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_protocol_routes_pattern" ON "bhudhi_protocol_routes" USING btree ("pattern");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_recommendations_blueprint_id" ON "bhudhi_recommendations" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_recommendations_engine_id" ON "bhudhi_recommendations" USING btree ("engine_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_recovery_records_blueprint_id" ON "bhudhi_recovery_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_reliability_events_blueprint_id" ON "bhudhi_reliability_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_rollback_history_blueprint_id" ON "bhudhi_rollback_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_secret_registry_blueprint_id" ON "bhudhi_secret_registry" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_security_events_blueprint_id" ON "bhudhi_security_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_shared_context_blueprint_id" ON "bhudhi_shared_context" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_signals_blueprint_id" ON "bhudhi_signals" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_simulation_events_run_id" ON "bhudhi_simulation_events" USING btree ("run_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_simulation_memory_blueprint_id" ON "bhudhi_simulation_memory" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_simulation_runs_blueprint_id" ON "bhudhi_simulation_runs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_simulation_scores_run_id" ON "bhudhi_simulation_scores" USING btree ("run_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_simulation_worlds_blueprint_id" ON "bhudhi_simulation_worlds" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_strategic_choices_blueprint_id" ON "bhudhi_strategic_choices" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_system_health_blueprint_id" ON "bhudhi_system_health" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_systems_status" ON "bhudhi_systems" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_team_alignment_team_id" ON "bhudhi_team_alignment" USING btree ("team_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_team_health_team_id" ON "bhudhi_team_health" USING btree ("team_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_team_identity_team_id" ON "bhudhi_team_identity" USING btree ("team_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_team_memory_team_id" ON "bhudhi_team_memory" USING btree ("team_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_teams_blueprint_id" ON "bhudhi_teams" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_temporal_forecasts_blueprint_id" ON "bhudhi_temporal_forecasts" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_temporal_history_blueprint_id" ON "bhudhi_temporal_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_temporal_patterns_blueprint_id" ON "bhudhi_temporal_patterns" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_temporal_timelines_blueprint_id" ON "bhudhi_temporal_timelines" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_temporal_windows_blueprint_id" ON "bhudhi_temporal_windows" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_threat_records_blueprint_id" ON "bhudhi_threat_records" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_trust_profiles_blueprint_id" ON "bhudhi_trust_profiles" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_unified_execution_contexts_execution_id" ON "bhudhi_unified_execution_contexts" USING btree ("execution_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_contexts_blueprint_id" ON "bhudhi_unified_execution_contexts" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_contexts_execution_type" ON "bhudhi_unified_execution_contexts" USING btree ("execution_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_contexts_status" ON "bhudhi_unified_execution_contexts" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_feedback_execution_id" ON "bhudhi_unified_execution_feedback" USING btree ("execution_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_unified_execution_results_execution_id" ON "bhudhi_unified_execution_results" USING btree ("execution_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_results_success" ON "bhudhi_unified_execution_results" USING btree ("success");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_bhudhi_unified_execution_steps_exec_step" ON "bhudhi_unified_execution_steps" USING btree ("execution_id","step_number");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_unified_execution_steps_execution_id" ON "bhudhi_unified_execution_steps" USING btree ("execution_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_entities_blueprint_id" ON "bhudhi_world_entities" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_entities_entity_type" ON "bhudhi_world_entities" USING btree ("entity_type");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_events_blueprint_id" ON "bhudhi_world_events" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_relationships_blueprint_id" ON "bhudhi_world_relationships" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_snapshots_blueprint_id" ON "bhudhi_world_snapshots" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_states_blueprint_id" ON "bhudhi_world_states" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_bhudhi_world_states_entity_id" ON "bhudhi_world_states" USING btree ("entity_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_sequence_history_blueprint_id" ON "blueprint_sequence_history" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_blueprint_sequence_history_sequence_number" ON "blueprint_sequence_history" USING btree ("sequence_number");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_blueprint_sequences_blueprint_id" ON "blueprint_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_blueprint_tier_sequences_blueprint_id" ON "blueprint_tier_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_context_sequences_blueprint_id" ON "context_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_execution_feedback_sequences_blueprint_id" ON "execution_feedback_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_execution_structure_sequences_blueprint_id" ON "execution_structure_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_goal_sequences_blueprint_id" ON "goal_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_master_plan_sequences_blueprint_id" ON "master_plan_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_mini_plan_allocation_history_blueprint" ON "mini_plan_allocation_history" USING btree ("blueprint_id","created_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_mini_plan_sequences_blueprint_id" ON "mini_plan_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_policy_sequences_blueprint_id" ON "policy_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_prediction_scene_sequences_blueprint_id" ON "prediction_scene_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_purpose_sequences_blueprint_id" ON "purpose_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_sequence_flows_blueprint_id" ON "sequence_flows" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_sequence_flows_current" ON "sequence_flows" USING btree ("current_sequence_name");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_signal_condition_sequences_blueprint_id" ON "signal_condition_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_signal_sequences_blueprint_id" ON "signal_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_task_generation_sequences_blueprint_id" ON "task_generation_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_tier_sequence_gates_blueprint_tier" ON "tier_sequence_gates" USING btree ("blueprint_tier");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_tier_sequence_gates_tier_seq_feature" ON "tier_sequence_gates" USING btree ("blueprint_tier","sequence_number","unlocks_feature");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_validation_result_sequences_blueprint_id" ON "validation_result_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_validation_sequences_blueprint_id" ON "validation_sequences" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_adaptation_suggestions_blueprint_id" ON "adaptation_suggestions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_adaptation_suggestions_sequence_number" ON "adaptation_suggestions" USING btree ("sequence_number");--> statement-breakpoint
-CREATE INDEX "idx_growth_execution_patterns_blueprint_id" ON "growth_execution_patterns" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_growth_execution_patterns_pattern_type" ON "growth_execution_patterns" USING btree ("pattern_type");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_growth_execution_patterns_blueprint_type_name" ON "growth_execution_patterns" USING btree ("blueprint_id","pattern_type","pattern_name");--> statement-breakpoint
-CREATE INDEX "idx_interrogation_logs_blueprint_id" ON "interrogation_logs" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_interrogation_logs_sequence_number" ON "interrogation_logs" USING btree ("sequence_number");--> statement-breakpoint
-CREATE INDEX "idx_knowledge_cards_blueprint_id" ON "knowledge_cards" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_knowledge_cards_tier" ON "knowledge_cards" USING btree ("tier");--> statement-breakpoint
-CREATE UNIQUE INDEX "uniq_knowledge_cards_blueprint_title" ON "knowledge_cards" USING btree ("blueprint_id","title");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_emergency_orders_blueprint_id" ON "ultimate_emergency_orders" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_emergency_orders_status" ON "ultimate_emergency_orders" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_emergency_orders_trigger" ON "ultimate_emergency_orders" USING btree ("trigger_event");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_predictions_blueprint_id" ON "ultimate_predictions" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_scenes_blueprint_id" ON "ultimate_scenes" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_validation_checkpoints_blueprint_id" ON "ultimate_validation_checkpoints" USING btree ("blueprint_id");--> statement-breakpoint
-CREATE INDEX "idx_ultimate_validation_checkpoints_recovery" ON "ultimate_validation_checkpoints" USING btree ("recovery_needed");
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_chapters_course_id_academy_courses_id_fk') THEN
+    ALTER TABLE "academy_chapters" ADD CONSTRAINT "academy_chapters_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_concept_mastery_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_concept_mastery" ADD CONSTRAINT "academy_concept_mastery_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_generated_content_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_generated_content" ADD CONSTRAINT "academy_generated_content_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_learning_goals_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_learning_goals" ADD CONSTRAINT "academy_learning_goals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_learning_goals_aligned_with_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "academy_learning_goals" ADD CONSTRAINT "academy_learning_goals_aligned_with_blueprint_id_blueprints_id_fk" FOREIGN KEY ("aligned_with_blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_learning_patterns_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_learning_patterns" ADD CONSTRAINT "academy_learning_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_lesson_attempts_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_lesson_attempts" ADD CONSTRAINT "academy_lesson_attempts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_lesson_attempts_lesson_id_academy_lessons_id_fk') THEN
+    ALTER TABLE "academy_lesson_attempts" ADD CONSTRAINT "academy_lesson_attempts_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_lessons_chapter_id_academy_chapters_id_fk') THEN
+    ALTER TABLE "academy_lessons" ADD CONSTRAINT "academy_lessons_chapter_id_academy_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."academy_chapters"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_practice_attempts_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_practice_attempts" ADD CONSTRAINT "academy_practice_attempts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_practice_attempts_practice_item_id_academy_practice_items_id_fk') THEN
+    ALTER TABLE "academy_practice_attempts" ADD CONSTRAINT "academy_practice_attempts_practice_item_id_academy_practice_items_id_fk" FOREIGN KEY ("practice_item_id") REFERENCES "public"."academy_practice_items"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_practice_items_lesson_id_academy_lessons_id_fk') THEN
+    ALTER TABLE "academy_practice_items" ADD CONSTRAINT "academy_practice_items_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_proof_academy_task_id_academy_tasks_id_fk') THEN
+    ALTER TABLE "academy_proof" ADD CONSTRAINT "academy_proof_academy_task_id_academy_tasks_id_fk" FOREIGN KEY ("academy_task_id") REFERENCES "public"."academy_tasks"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_proof_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_proof" ADD CONSTRAINT "academy_proof_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_retention_data_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_retention_data" ADD CONSTRAINT "academy_retention_data_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_retention_data_lesson_id_academy_lessons_id_fk') THEN
+    ALTER TABLE "academy_retention_data" ADD CONSTRAINT "academy_retention_data_lesson_id_academy_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."academy_lessons"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_roadmap_steps_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_roadmap_steps_learning_goal_id_academy_learning_goals_id_fk') THEN
+    ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_roadmap_steps_course_id_academy_courses_id_fk') THEN
+    ALTER TABLE "academy_roadmap_steps" ADD CONSTRAINT "academy_roadmap_steps_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_student_enrollments_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_student_enrollments" ADD CONSTRAINT "academy_student_enrollments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_student_enrollments_course_id_academy_courses_id_fk') THEN
+    ALTER TABLE "academy_student_enrollments" ADD CONSTRAINT "academy_student_enrollments_course_id_academy_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."academy_courses"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_student_learning_profiles_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_student_learning_profiles" ADD CONSTRAINT "academy_student_learning_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_study_schedules_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_study_schedules" ADD CONSTRAINT "academy_study_schedules_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_study_schedules_learning_goal_id_academy_learning_goals_id_fk') THEN
+    ALTER TABLE "academy_study_schedules" ADD CONSTRAINT "academy_study_schedules_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_study_sessions_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_study_sessions_learning_goal_id_academy_learning_goals_id_fk') THEN
+    ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_learning_goal_id_academy_learning_goals_id_fk" FOREIGN KEY ("learning_goal_id") REFERENCES "public"."academy_learning_goals"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_study_sessions_schedule_id_academy_study_schedules_id_fk') THEN
+    ALTER TABLE "academy_study_sessions" ADD CONSTRAINT "academy_study_sessions_schedule_id_academy_study_schedules_id_fk" FOREIGN KEY ("schedule_id") REFERENCES "public"."academy_study_schedules"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_tasks_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_tasks_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_tasks_order_id_orders_id_fk') THEN
+    ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_tasks_learning_path_id_learning_paths_id_fk') THEN
+    ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_learning_path_id_learning_paths_id_fk" FOREIGN KEY ("learning_path_id") REFERENCES "public"."learning_paths"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_tasks_knowledge_id_knowledge_objects_id_fk') THEN
+    ALTER TABLE "academy_tasks" ADD CONSTRAINT "academy_tasks_knowledge_id_knowledge_objects_id_fk" FOREIGN KEY ("knowledge_id") REFERENCES "public"."knowledge_objects"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'actions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "actions" ADD CONSTRAINT "actions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'actions_project_id_projects_id_fk') THEN
+    ALTER TABLE "actions" ADD CONSTRAINT "actions_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'actions_target_id_targets_id_fk') THEN
+    ALTER TABLE "actions" ADD CONSTRAINT "actions_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'actions_user_id_users_id_fk') THEN
+    ALTER TABLE "actions" ADD CONSTRAINT "actions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'active_feedback_sessions_user_id_users_id_fk') THEN
+    ALTER TABLE "active_feedback_sessions" ADD CONSTRAINT "active_feedback_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'active_feedback_sessions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "active_feedback_sessions" ADD CONSTRAINT "active_feedback_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'agent_conflict_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "agent_conflict_logs" ADD CONSTRAINT "agent_conflict_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavior_events_user_id_users_id_fk') THEN
+    ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavior_events_pattern_id_behavior_patterns_id_fk') THEN
+    ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_pattern_id_behavior_patterns_id_fk" FOREIGN KEY ("pattern_id") REFERENCES "public"."behavior_patterns"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavior_events_feedback_id_feedback_id_fk') THEN
+    ALTER TABLE "behavior_events" ADD CONSTRAINT "behavior_events_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavior_patterns_user_id_users_id_fk') THEN
+    ALTER TABLE "behavior_patterns" ADD CONSTRAINT "behavior_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavior_patterns_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "behavior_patterns" ADD CONSTRAINT "behavior_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'behavioral_insight_records_user_id_users_id_fk') THEN
+    ALTER TABLE "behavioral_insight_records" ADD CONSTRAINT "behavioral_insight_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "bhudhi_logs" ADD CONSTRAINT "bhudhi_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_user_id_users_id_fk') THEN
+    ALTER TABLE "bhudhi_memory" ADD CONSTRAINT "bhudhi_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory" ADD CONSTRAINT "bhudhi_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_usage_budget_user_id_users_id_fk') THEN
+    ALTER TABLE "bhudhi_usage_budget" ADD CONSTRAINT "bhudhi_usage_budget_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blocker_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blocker_logs_message_id_personal_messages_id_fk') THEN
+    ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blocker_logs_related_order_id_orders_id_fk') THEN
+    ALTER TABLE "blocker_logs" ADD CONSTRAINT "blocker_logs_related_order_id_orders_id_fk" FOREIGN KEY ("related_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_framework_signals_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_framework_signals" ADD CONSTRAINT "blueprint_framework_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_health_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_health_records" ADD CONSTRAINT "blueprint_health_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_interpretations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_interpretations" ADD CONSTRAINT "blueprint_interpretations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_members_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_members_user_id_users_id_fk') THEN
+    ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_members_invited_by_users_id_fk') THEN
+    ALTER TABLE "blueprint_members" ADD CONSTRAINT "blueprint_members_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_mutations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_mutations" ADD CONSTRAINT "blueprint_mutations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_policies_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_policies_user_id_users_id_fk') THEN
+    ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_policies_ai_log_id_bhudhi_logs_id_fk') THEN
+    ALTER TABLE "blueprint_policies" ADD CONSTRAINT "blueprint_policies_ai_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("ai_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_tier_migrations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_tier_migrations" ADD CONSTRAINT "blueprint_tier_migrations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_tier_migrations_user_id_users_id_fk') THEN
+    ALTER TABLE "blueprint_tier_migrations" ADD CONSTRAINT "blueprint_tier_migrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_versions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_versions" ADD CONSTRAINT "blueprint_versions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprints_user_id_users_id_fk') THEN
+    ALTER TABLE "blueprints" ADD CONSTRAINT "blueprints_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprints_primary_archetype_id_economic_archetypes_id_fk') THEN
+    ALTER TABLE "blueprints" ADD CONSTRAINT "blueprints_primary_archetype_id_economic_archetypes_id_fk" FOREIGN KEY ("primary_archetype_id") REFERENCES "public"."economic_archetypes"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'burnout_records_user_id_users_id_fk') THEN
+    ALTER TABLE "burnout_records" ADD CONSTRAINT "burnout_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_conflicts_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_conflicts_event_1_id_calendar_events_id_fk') THEN
+    ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_event_1_id_calendar_events_id_fk" FOREIGN KEY ("event_1_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_conflicts_event_2_id_calendar_events_id_fk') THEN
+    ALTER TABLE "calendar_conflicts" ADD CONSTRAINT "calendar_conflicts_event_2_id_calendar_events_id_fk" FOREIGN KEY ("event_2_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_events_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_events" ADD CONSTRAINT "calendar_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_notifications_event_id_calendar_events_id_fk') THEN
+    ALTER TABLE "calendar_notifications" ADD CONSTRAINT "calendar_notifications_event_id_calendar_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_notifications_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_notifications" ADD CONSTRAINT "calendar_notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_time_blocks_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_time_blocks" ADD CONSTRAINT "calendar_time_blocks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_views_preferences_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_views_preferences" ADD CONSTRAINT "calendar_views_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_gap_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_gap_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_gap_logs_order_id_orders_id_fk') THEN
+    ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_gap_logs_learning_path_id_learning_paths_id_fk') THEN
+    ALTER TABLE "capability_gap_logs" ADD CONSTRAINT "capability_gap_logs_learning_path_id_learning_paths_id_fk" FOREIGN KEY ("learning_path_id") REFERENCES "public"."learning_paths"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_history_user_id_users_id_fk') THEN
+    ALTER TABLE "capability_history" ADD CONSTRAINT "capability_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_profiles_user_id_users_id_fk') THEN
+    ALTER TABLE "capability_profiles" ADD CONSTRAINT "capability_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'capability_profiles_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "capability_profiles" ADD CONSTRAINT "capability_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'channel_notification_preferences_user_id_users_id_fk') THEN
+    ALTER TABLE "channel_notification_preferences" ADD CONSTRAINT "channel_notification_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'character_progression_user_id_users_id_fk') THEN
+    ALTER TABLE "character_progression" ADD CONSTRAINT "character_progression_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chat_voice_messages_message_id_personal_messages_id_fk') THEN
+    ALTER TABLE "chat_voice_messages" ADD CONSTRAINT "chat_voice_messages_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chat_voice_messages_user_id_users_id_fk') THEN
+    ALTER TABLE "chat_voice_messages" ADD CONSTRAINT "chat_voice_messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cognitive_load_scores_user_id_users_id_fk') THEN
+    ALTER TABLE "cognitive_load_scores" ADD CONSTRAINT "cognitive_load_scores_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cognitive_load_scores_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "cognitive_load_scores" ADD CONSTRAINT "cognitive_load_scores_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'competitor_intelligence_user_id_users_id_fk') THEN
+    ALTER TABLE "competitor_intelligence" ADD CONSTRAINT "competitor_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'condition_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "condition_records" ADD CONSTRAINT "condition_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'condition_records_user_id_users_id_fk') THEN
+    ALTER TABLE "condition_records" ADD CONSTRAINT "condition_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conditions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "conditions" ADD CONSTRAINT "conditions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conditions_user_id_users_id_fk') THEN
+    ALTER TABLE "conditions" ADD CONSTRAINT "conditions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'conditions_signal_snapshot_id_signal_snapshots_id_fk') THEN
+    ALTER TABLE "conditions" ADD CONSTRAINT "conditions_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'content_guidance_user_id_users_id_fk') THEN
+    ALTER TABLE "content_guidance" ADD CONSTRAINT "content_guidance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'content_guidance_principle_id_principles_id_fk') THEN
+    ALTER TABLE "content_guidance" ADD CONSTRAINT "content_guidance_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'continuous_task_guarantee_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'continuous_task_guarantee_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'continuous_task_guarantee_logs_order_id_orders_id_fk') THEN
+    ALTER TABLE "continuous_task_guarantee_logs" ADD CONSTRAINT "continuous_task_guarantee_logs_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contradiction_records_user_id_users_id_fk') THEN
+    ALTER TABLE "contradiction_records" ADD CONSTRAINT "contradiction_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contradiction_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "contradiction_records" ADD CONSTRAINT "contradiction_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'critic_review_logs_bhudhi_log_id_bhudhi_logs_id_fk') THEN
+    ALTER TABLE "critic_review_logs" ADD CONSTRAINT "critic_review_logs_bhudhi_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("bhudhi_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'critic_review_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "critic_review_logs" ADD CONSTRAINT "critic_review_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'daily_principle_records_user_id_users_id_fk') THEN
+    ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'daily_principle_records_principle_id_principles_id_fk') THEN
+    ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'daily_principle_records_application_id_principle_applications_id_fk') THEN
+    ALTER TABLE "daily_principle_records" ADD CONSTRAINT "daily_principle_records_application_id_principle_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."principle_applications"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'dashboard_intelligence_snapshots_user_id_users_id_fk') THEN
+    ALTER TABLE "dashboard_intelligence_snapshots" ADD CONSTRAINT "dashboard_intelligence_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'debate_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "debate_logs" ADD CONSTRAINT "debate_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'decision_traces_user_id_users_id_fk') THEN
+    ALTER TABLE "decision_traces" ADD CONSTRAINT "decision_traces_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'decision_traces_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "decision_traces" ADD CONSTRAINT "decision_traces_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'do_not_disturb_schedules_user_id_users_id_fk') THEN
+    ALTER TABLE "do_not_disturb_schedules" ADD CONSTRAINT "do_not_disturb_schedules_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'domain_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'domain_history_user_id_users_id_fk') THEN
+    ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'domain_history_trigger_event_id_events_id_fk') THEN
+    ALTER TABLE "domain_history" ADD CONSTRAINT "domain_history_trigger_event_id_events_id_fk" FOREIGN KEY ("trigger_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'eis_call_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'eis_call_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'eis_call_logs_validation_id_validations_id_fk') THEN
+    ALTER TABLE "eis_call_logs" ADD CONSTRAINT "eis_call_logs_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'eis_rate_limits_user_id_users_id_fk') THEN
+    ALTER TABLE "eis_rate_limits" ADD CONSTRAINT "eis_rate_limits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'enforcement_packages_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "enforcement_packages" ADD CONSTRAINT "enforcement_packages_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'enforcement_packages_user_id_users_id_fk') THEN
+    ALTER TABLE "enforcement_packages" ADD CONSTRAINT "enforcement_packages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'escalation_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "escalation_logs" ADD CONSTRAINT "escalation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'escalation_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "escalation_logs" ADD CONSTRAINT "escalation_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'event_logs_event_id_events_id_fk') THEN
+    ALTER TABLE "event_logs" ADD CONSTRAINT "event_logs_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "events" ADD CONSTRAINT "events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_sessions_user_id_users_id_fk') THEN
+    ALTER TABLE "execution_sessions" ADD CONSTRAINT "execution_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_sessions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "execution_sessions" ADD CONSTRAINT "execution_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'external_intelligence_user_id_users_id_fk') THEN
+    ALTER TABLE "external_intelligence" ADD CONSTRAINT "external_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'external_intelligence_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "external_intelligence" ADD CONSTRAINT "external_intelligence_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'external_signals_user_id_users_id_fk') THEN
+    ALTER TABLE "external_signals" ADD CONSTRAINT "external_signals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'external_signals_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "external_signals" ADD CONSTRAINT "external_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'failure_classifications_user_id_users_id_fk') THEN
+    ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'failure_classifications_order_id_orders_id_fk') THEN
+    ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'failure_classifications_feedback_id_feedback_id_fk') THEN
+    ALTER TABLE "failure_classifications" ADD CONSTRAINT "failure_classifications_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fallback_usage_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "fallback_usage_logs" ADD CONSTRAINT "fallback_usage_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fallback_usage_logs_bhudhi_log_id_bhudhi_logs_id_fk') THEN
+    ALTER TABLE "fallback_usage_logs" ADD CONSTRAINT "fallback_usage_logs_bhudhi_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("bhudhi_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'false_progress_flags_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'false_progress_flags_user_id_users_id_fk') THEN
+    ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'false_progress_flags_resolution_task_id_orders_id_fk') THEN
+    ALTER TABLE "false_progress_flags" ADD CONSTRAINT "false_progress_flags_resolution_task_id_orders_id_fk" FOREIGN KEY ("resolution_task_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'feedback_order_id_orders_id_fk') THEN
+    ALTER TABLE "feedback" ADD CONSTRAINT "feedback_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'feedback_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "feedback" ADD CONSTRAINT "feedback_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'feedback_user_id_users_id_fk') THEN
+    ALTER TABLE "feedback" ADD CONSTRAINT "feedback_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_activations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_activations_user_id_users_id_fk') THEN
+    ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_activations_signal_snapshot_id_signal_snapshots_id_fk') THEN
+    ALTER TABLE "framework_activations" ADD CONSTRAINT "framework_activations_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_decisions_activation_id_framework_activations_id_fk') THEN
+    ALTER TABLE "framework_decisions" ADD CONSTRAINT "framework_decisions_activation_id_framework_activations_id_fk" FOREIGN KEY ("activation_id") REFERENCES "public"."framework_activations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_decisions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "framework_decisions" ADD CONSTRAINT "framework_decisions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_signal_snapshots_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "framework_signal_snapshots" ADD CONSTRAINT "framework_signal_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'framework_signal_snapshots_signal_snapshot_id_signal_snapshots_id_fk') THEN
+    ALTER TABLE "framework_signal_snapshots" ADD CONSTRAINT "framework_signal_snapshots_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'governance_queue_user_id_users_id_fk') THEN
+    ALTER TABLE "governance_queue" ADD CONSTRAINT "governance_queue_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'governance_queue_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "governance_queue" ADD CONSTRAINT "governance_queue_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'habit_checkins_habit_id_habits_id_fk') THEN
+    ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_habit_id_habits_id_fk" FOREIGN KEY ("habit_id") REFERENCES "public"."habits"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'habit_checkins_user_id_users_id_fk') THEN
+    ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'habit_checkins_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "habit_checkins" ADD CONSTRAINT "habit_checkins_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'habits_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "habits" ADD CONSTRAINT "habits_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'habits_user_id_users_id_fk') THEN
+    ALTER TABLE "habits" ADD CONSTRAINT "habits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'idempotency_records_event_id_events_id_fk') THEN
+    ALTER TABLE "idempotency_records" ADD CONSTRAINT "idempotency_records_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'identity_history_user_id_users_id_fk') THEN
+    ALTER TABLE "identity_history" ADD CONSTRAINT "identity_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'identity_profiles_user_id_users_id_fk') THEN
+    ALTER TABLE "identity_profiles" ADD CONSTRAINT "identity_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'in_app_notifications_user_id_users_id_fk') THEN
+    ALTER TABLE "in_app_notifications" ADD CONSTRAINT "in_app_notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inactivity_records_user_id_users_id_fk') THEN
+    ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inactivity_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inactivity_records_response_event_id_events_id_fk') THEN
+    ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_response_event_id_events_id_fk" FOREIGN KEY ("response_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inactivity_records_recovery_task_id_orders_id_fk') THEN
+    ALTER TABLE "inactivity_records" ADD CONSTRAINT "inactivity_records_recovery_task_id_orders_id_fk" FOREIGN KEY ("recovery_task_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'knowledge_objects_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "knowledge_objects" ADD CONSTRAINT "knowledge_objects_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'knowledge_objects_user_id_users_id_fk') THEN
+    ALTER TABLE "knowledge_objects" ADD CONSTRAINT "knowledge_objects_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'learning_paths_user_id_users_id_fk') THEN
+    ALTER TABLE "learning_paths" ADD CONSTRAINT "learning_paths_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'learning_paths_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "learning_paths" ADD CONSTRAINT "learning_paths_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'magic_link_tokens_user_id_users_id_fk') THEN
+    ALTER TABLE "magic_link_tokens" ADD CONSTRAINT "magic_link_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'message_attachments_message_id_personal_messages_id_fk') THEN
+    ALTER TABLE "message_attachments" ADD CONSTRAINT "message_attachments_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'message_search_index_user_id_users_id_fk') THEN
+    ALTER TABLE "message_search_index" ADD CONSTRAINT "message_search_index_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'message_search_index_message_id_personal_messages_id_fk') THEN
+    ALTER TABLE "message_search_index" ADD CONSTRAINT "message_search_index_message_id_personal_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."personal_messages"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'milestones_user_id_users_id_fk') THEN
+    ALTER TABLE "milestones" ADD CONSTRAINT "milestones_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'milestones_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "milestones" ADD CONSTRAINT "milestones_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mobile_device_tokens_user_id_users_id_fk') THEN
+    ALTER TABLE "mobile_device_tokens" ADD CONSTRAINT "mobile_device_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mobile_health_metrics_user_id_users_id_fk') THEN
+    ALTER TABLE "mobile_health_metrics" ADD CONSTRAINT "mobile_health_metrics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mobile_sync_log_user_id_users_id_fk') THEN
+    ALTER TABLE "mobile_sync_log" ADD CONSTRAINT "mobile_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mobile_wearable_connections_user_id_users_id_fk') THEN
+    ALTER TABLE "mobile_wearable_connections" ADD CONSTRAINT "mobile_wearable_connections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'morning_reports_user_id_users_id_fk') THEN
+    ALTER TABLE "morning_reports" ADD CONSTRAINT "morning_reports_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'morning_reports_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "morning_reports" ADD CONSTRAINT "morning_reports_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'narrative_intelligence_user_id_users_id_fk') THEN
+    ALTER TABLE "narrative_intelligence" ADD CONSTRAINT "narrative_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notification_delivery_history_user_id_users_id_fk') THEN
+    ALTER TABLE "notification_delivery_history" ADD CONSTRAINT "notification_delivery_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notification_delivery_history_queue_id_notification_delivery_queue_id_fk') THEN
+    ALTER TABLE "notification_delivery_history" ADD CONSTRAINT "notification_delivery_history_queue_id_notification_delivery_queue_id_fk" FOREIGN KEY ("queue_id") REFERENCES "public"."notification_delivery_queue"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notification_delivery_queue_user_id_users_id_fk') THEN
+    ALTER TABLE "notification_delivery_queue" ADD CONSTRAINT "notification_delivery_queue_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notification_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "notification_logs" ADD CONSTRAINT "notification_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'notification_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "notification_logs" ADD CONSTRAINT "notification_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_dependencies_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_dependencies_blocking_order_id_orders_id_fk') THEN
+    ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blocking_order_id_orders_id_fk" FOREIGN KEY ("blocking_order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_dependencies_blocked_order_id_orders_id_fk') THEN
+    ALTER TABLE "order_dependencies" ADD CONSTRAINT "order_dependencies_blocked_order_id_orders_id_fk" FOREIGN KEY ("blocked_order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_knowledge_links_order_id_orders_id_fk') THEN
+    ALTER TABLE "order_knowledge_links" ADD CONSTRAINT "order_knowledge_links_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_knowledge_links_knowledge_id_knowledge_objects_id_fk') THEN
+    ALTER TABLE "order_knowledge_links" ADD CONSTRAINT "order_knowledge_links_knowledge_id_knowledge_objects_id_fk" FOREIGN KEY ("knowledge_id") REFERENCES "public"."knowledge_objects"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_user_id_users_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_action_id_actions_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_action_id_actions_id_fk" FOREIGN KEY ("action_id") REFERENCES "public"."actions"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_plan_id_plans_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_phase_id_phases_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_project_id_projects_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_linked_plan_id_plans_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_plan_id_plans_id_fk" FOREIGN KEY ("linked_plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_linked_season_id_seasons_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_season_id_seasons_id_fk" FOREIGN KEY ("linked_season_id") REFERENCES "public"."seasons"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_linked_target_id_targets_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_target_id_targets_id_fk" FOREIGN KEY ("linked_target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_linked_phase_id_phases_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_phase_id_phases_id_fk" FOREIGN KEY ("linked_phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_linked_project_id_projects_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_linked_project_id_projects_id_fk" FOREIGN KEY ("linked_project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_enforcement_package_id_enforcement_packages_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_enforcement_package_id_enforcement_packages_id_fk" FOREIGN KEY ("enforcement_package_id") REFERENCES "public"."enforcement_packages"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'orders_assigned_member_id_users_id_fk') THEN
+    ALTER TABLE "orders" ADD CONSTRAINT "orders_assigned_member_id_users_id_fk" FOREIGN KEY ("assigned_member_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validation_records_user_id_users_id_fk') THEN
+    ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validation_records_order_id_orders_id_fk') THEN
+    ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validation_records_feedback_id_feedback_id_fk') THEN
+    ALTER TABLE "outcome_validation_records" ADD CONSTRAINT "outcome_validation_records_feedback_id_feedback_id_fk" FOREIGN KEY ("feedback_id") REFERENCES "public"."feedback"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validations_user_id_users_id_fk') THEN
+    ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validations_target_id_targets_id_fk') THEN
+    ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'outcome_validations_real_outcome_id_real_outcomes_id_fk') THEN
+    ALTER TABLE "outcome_validations" ADD CONSTRAINT "outcome_validations_real_outcome_id_real_outcomes_id_fk" FOREIGN KEY ("real_outcome_id") REFERENCES "public"."real_outcomes"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pattern_records_user_id_users_id_fk') THEN
+    ALTER TABLE "pattern_records" ADD CONSTRAINT "pattern_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'personal_messages_user_id_users_id_fk') THEN
+    ALTER TABLE "personal_messages" ADD CONSTRAINT "personal_messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'personal_messages_linked_order_id_orders_id_fk') THEN
+    ALTER TABLE "personal_messages" ADD CONSTRAINT "personal_messages_linked_order_id_orders_id_fk" FOREIGN KEY ("linked_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phase_checkpoints_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phase_checkpoints_phase_id_phases_id_fk') THEN
+    ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phase_checkpoints_user_id_users_id_fk') THEN
+    ALTER TABLE "phase_checkpoints" ADD CONSTRAINT "phase_checkpoints_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phases_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "phases" ADD CONSTRAINT "phases_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phases_target_id_targets_id_fk') THEN
+    ALTER TABLE "phases" ADD CONSTRAINT "phases_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phases_plan_id_plans_id_fk') THEN
+    ALTER TABLE "phases" ADD CONSTRAINT "phases_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phases_user_id_users_id_fk') THEN
+    ALTER TABLE "phases" ADD CONSTRAINT "phases_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pivot_reviews_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pivot_reviews_user_id_users_id_fk') THEN
+    ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pivot_reviews_signal_snapshot_id_signal_snapshots_id_fk') THEN
+    ALTER TABLE "pivot_reviews" ADD CONSTRAINT "pivot_reviews_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'plans_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "plans" ADD CONSTRAINT "plans_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'plans_user_id_users_id_fk') THEN
+    ALTER TABLE "plans" ADD CONSTRAINT "plans_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "prediction_logs" ADD CONSTRAINT "prediction_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "prediction_logs" ADD CONSTRAINT "prediction_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_snapshots_user_id_users_id_fk') THEN
+    ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_snapshots_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_snapshots_signal_snapshot_id_signal_snapshots_id_fk') THEN
+    ALTER TABLE "prediction_snapshots" ADD CONSTRAINT "prediction_snapshots_signal_snapshot_id_signal_snapshots_id_fk" FOREIGN KEY ("signal_snapshot_id") REFERENCES "public"."signal_snapshots"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_applications_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_applications" ADD CONSTRAINT "principle_applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_applications_principle_id_principles_id_fk') THEN
+    ALTER TABLE "principle_applications" ADD CONSTRAINT "principle_applications_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_proof_uploads_application_id_principle_applications_id_fk') THEN
+    ALTER TABLE "principle_proof_uploads" ADD CONSTRAINT "principle_proof_uploads_application_id_principle_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."principle_applications"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_selections_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_selections" ADD CONSTRAINT "principle_selections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_selections_principle_id_principles_id_fk') THEN
+    ALTER TABLE "principle_selections" ADD CONSTRAINT "principle_selections_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_streaks_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_streaks" ADD CONSTRAINT "principle_streaks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'project_dependencies_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'project_dependencies_blocking_project_id_projects_id_fk') THEN
+    ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blocking_project_id_projects_id_fk" FOREIGN KEY ("blocking_project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'project_dependencies_blocked_project_id_projects_id_fk') THEN
+    ALTER TABLE "project_dependencies" ADD CONSTRAINT "project_dependencies_blocked_project_id_projects_id_fk" FOREIGN KEY ("blocked_project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "projects" ADD CONSTRAINT "projects_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_phase_id_phases_id_fk') THEN
+    ALTER TABLE "projects" ADD CONSTRAINT "projects_phase_id_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "public"."phases"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_target_id_targets_id_fk') THEN
+    ALTER TABLE "projects" ADD CONSTRAINT "projects_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_user_id_users_id_fk') THEN
+    ALTER TABLE "projects" ADD CONSTRAINT "projects_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'projects_owner_id_users_id_fk') THEN
+    ALTER TABLE "projects" ADD CONSTRAINT "projects_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'published_content_user_id_users_id_fk') THEN
+    ALTER TABLE "published_content" ADD CONSTRAINT "published_content_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'published_content_principle_id_principles_id_fk') THEN
+    ALTER TABLE "published_content" ADD CONSTRAINT "published_content_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'real_outcomes_user_id_users_id_fk') THEN
+    ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'real_outcomes_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'real_outcomes_target_id_targets_id_fk') THEN
+    ALTER TABLE "real_outcomes" ADD CONSTRAINT "real_outcomes_target_id_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."targets"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reward_events_user_id_users_id_fk') THEN
+    ALTER TABLE "reward_events" ADD CONSTRAINT "reward_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'seasons_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "seasons" ADD CONSTRAINT "seasons_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'seasons_plan_id_plans_id_fk') THEN
+    ALTER TABLE "seasons" ADD CONSTRAINT "seasons_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sessions_user_id_users_id_fk') THEN
+    ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'signal_snapshots_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'signal_snapshots_user_id_users_id_fk') THEN
+    ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'signal_snapshots_causation_event_id_events_id_fk') THEN
+    ALTER TABLE "signal_snapshots" ADD CONSTRAINT "signal_snapshots_causation_event_id_events_id_fk" FOREIGN KEY ("causation_event_id") REFERENCES "public"."events"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'skill_profiles_user_id_users_id_fk') THEN
+    ALTER TABLE "skill_profiles" ADD CONSTRAINT "skill_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'stability_events_user_id_users_id_fk') THEN
+    ALTER TABLE "stability_events" ADD CONSTRAINT "stability_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'state_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "state_memory" ADD CONSTRAINT "state_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'state_memory_user_id_users_id_fk') THEN
+    ALTER TABLE "state_memory" ADD CONSTRAINT "state_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'status_snapshots_user_id_users_id_fk') THEN
+    ALTER TABLE "status_snapshots" ADD CONSTRAINT "status_snapshots_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'strategic_assumptions_user_id_users_id_fk') THEN
+    ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'strategic_assumptions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'strategic_assumptions_validation_id_validations_id_fk') THEN
+    ALTER TABLE "strategic_assumptions" ADD CONSTRAINT "strategic_assumptions_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'strategic_outlook_records_user_id_users_id_fk') THEN
+    ALTER TABLE "strategic_outlook_records" ADD CONSTRAINT "strategic_outlook_records_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'system_health_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "system_health_logs" ADD CONSTRAINT "system_health_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'system_health_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "system_health_logs" ADD CONSTRAINT "system_health_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'targets_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "targets" ADD CONSTRAINT "targets_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'targets_plan_id_plans_id_fk') THEN
+    ALTER TABLE "targets" ADD CONSTRAINT "targets_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'targets_season_id_seasons_id_fk') THEN
+    ALTER TABLE "targets" ADD CONSTRAINT "targets_season_id_seasons_id_fk" FOREIGN KEY ("season_id") REFERENCES "public"."seasons"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'targets_user_id_users_id_fk') THEN
+    ALTER TABLE "targets" ADD CONSTRAINT "targets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'targets_owner_id_users_id_fk') THEN
+    ALTER TABLE "targets" ADD CONSTRAINT "targets_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_log_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_log_user_id_users_id_fk') THEN
+    ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_log_enforcement_package_id_enforcement_packages_id_fk') THEN
+    ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_enforcement_package_id_enforcement_packages_id_fk" FOREIGN KEY ("enforcement_package_id") REFERENCES "public"."enforcement_packages"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_log_ai_log_id_bhudhi_logs_id_fk') THEN
+    ALTER TABLE "task_generation_log" ADD CONSTRAINT "task_generation_log_ai_log_id_bhudhi_logs_id_fk" FOREIGN KEY ("ai_log_id") REFERENCES "public"."bhudhi_logs"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "task_generation_logs" ADD CONSTRAINT "task_generation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "task_generation_logs" ADD CONSTRAINT "task_generation_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trend_intelligence_user_id_users_id_fk') THEN
+    ALTER TABLE "trend_intelligence" ADD CONSTRAINT "trend_intelligence_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_achievements_user_id_users_id_fk') THEN
+    ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_achievements_achievement_id_achievements_id_fk') THEN
+    ALTER TABLE "user_achievements" ADD CONSTRAINT "user_achievements_achievement_id_achievements_id_fk" FOREIGN KEY ("achievement_id") REFERENCES "public"."achievements"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_avatar_user_id_users_id_fk') THEN
+    ALTER TABLE "user_avatar" ADD CONSTRAINT "user_avatar_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_avatar_current_avatar_template_id_avatar_templates_id_fk') THEN
+    ALTER TABLE "user_avatar" ADD CONSTRAINT "user_avatar_current_avatar_template_id_avatar_templates_id_fk" FOREIGN KEY ("current_avatar_template_id") REFERENCES "public"."avatar_templates"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_gamification_profile_user_id_users_id_fk') THEN
+    ALTER TABLE "user_gamification_profile" ADD CONSTRAINT "user_gamification_profile_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_identity_states_user_id_users_id_fk') THEN
+    ALTER TABLE "user_identity_states" ADD CONSTRAINT "user_identity_states_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_identity_states_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "user_identity_states" ADD CONSTRAINT "user_identity_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_levels_user_id_users_id_fk') THEN
+    ALTER TABLE "user_levels" ADD CONSTRAINT "user_levels_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_notification_channels_user_id_users_id_fk') THEN
+    ALTER TABLE "user_notification_channels" ADD CONSTRAINT "user_notification_channels_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_principle_profiles_user_id_users_id_fk') THEN
+    ALTER TABLE "user_principle_profiles" ADD CONSTRAINT "user_principle_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_rewards_user_id_users_id_fk') THEN
+    ALTER TABLE "user_rewards" ADD CONSTRAINT "user_rewards_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_rewards_reward_id_rewards_id_fk') THEN
+    ALTER TABLE "user_rewards" ADD CONSTRAINT "user_rewards_reward_id_rewards_id_fk" FOREIGN KEY ("reward_id") REFERENCES "public"."rewards"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_social_accounts_user_id_users_id_fk') THEN
+    ALTER TABLE "user_social_accounts" ADD CONSTRAINT "user_social_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_streaks_user_id_users_id_fk') THEN
+    ALTER TABLE "user_streaks" ADD CONSTRAINT "user_streaks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_archetype_maps_validation_id_validations_id_fk') THEN
+    ALTER TABLE "validation_archetype_maps" ADD CONSTRAINT "validation_archetype_maps_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_archetype_maps_archetype_id_economic_archetypes_id_fk') THEN
+    ALTER TABLE "validation_archetype_maps" ADD CONSTRAINT "validation_archetype_maps_archetype_id_economic_archetypes_id_fk" FOREIGN KEY ("archetype_id") REFERENCES "public"."economic_archetypes"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_event_logs_validation_id_validations_id_fk') THEN
+    ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_event_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_event_logs_user_id_users_id_fk') THEN
+    ALTER TABLE "validation_event_logs" ADD CONSTRAINT "validation_event_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_memory_user_id_users_id_fk') THEN
+    ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_memory_validation_id_validations_id_fk') THEN
+    ALTER TABLE "validation_memory" ADD CONSTRAINT "validation_memory_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE no action ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "validations" ADD CONSTRAINT "validations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validations_user_id_users_id_fk') THEN
+    ALTER TABLE "validations" ADD CONSTRAINT "validations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verdict_evolution_validation_id_validations_id_fk') THEN
+    ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_validation_id_validations_id_fk" FOREIGN KEY ("validation_id") REFERENCES "public"."validations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verdict_evolution_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verdict_evolution_user_id_users_id_fk') THEN
+    ALTER TABLE "verdict_evolution" ADD CONSTRAINT "verdict_evolution_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'weekly_reviews_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "weekly_reviews" ADD CONSTRAINT "weekly_reviews_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'weekly_reviews_user_id_users_id_fk') THEN
+    ALTER TABLE "weekly_reviews" ADD CONSTRAINT "weekly_reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'world_models_user_id_users_id_fk') THEN
+    ALTER TABLE "world_models" ADD CONSTRAINT "world_models_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'xp_ledger_user_id_users_id_fk') THEN
+    ALTER TABLE "xp_ledger" ADD CONSTRAINT "xp_ledger_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'academy_analytics_user_id_users_id_fk') THEN
+    ALTER TABLE "academy_analytics" ADD CONSTRAINT "academy_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'analytics_insights_user_id_users_id_fk') THEN
+    ALTER TABLE "analytics_insights" ADD CONSTRAINT "analytics_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'content_analytics_user_id_users_id_fk') THEN
+    ALTER TABLE "content_analytics" ADD CONSTRAINT "content_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'content_insights_user_id_users_id_fk') THEN
+    ALTER TABLE "content_insights" ADD CONSTRAINT "content_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_analytics_user_id_users_id_fk') THEN
+    ALTER TABLE "execution_analytics" ADD CONSTRAINT "execution_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_benchmarks_user_id_users_id_fk') THEN
+    ALTER TABLE "execution_benchmarks" ADD CONSTRAINT "execution_benchmarks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_patterns_user_id_users_id_fk') THEN
+    ALTER TABLE "execution_patterns" ADD CONSTRAINT "execution_patterns_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_velocity_user_id_users_id_fk') THEN
+    ALTER TABLE "execution_velocity" ADD CONSTRAINT "execution_velocity_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'failure_analysis_user_id_users_id_fk') THEN
+    ALTER TABLE "failure_analysis" ADD CONSTRAINT "failure_analysis_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'failure_analysis_failed_order_id_orders_id_fk') THEN
+    ALTER TABLE "failure_analysis" ADD CONSTRAINT "failure_analysis_failed_order_id_orders_id_fk" FOREIGN KEY ("failed_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'learning_velocity_analytics_user_id_users_id_fk') THEN
+    ALTER TABLE "learning_velocity_analytics" ADD CONSTRAINT "learning_velocity_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'platform_performance_user_id_users_id_fk') THEN
+    ALTER TABLE "platform_performance" ADD CONSTRAINT "platform_performance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'post_performance_user_id_users_id_fk') THEN
+    ALTER TABLE "post_performance" ADD CONSTRAINT "post_performance_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'post_performance_principle_id_principles_id_fk') THEN
+    ALTER TABLE "post_performance" ADD CONSTRAINT "post_performance_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_analytics_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_analytics" ADD CONSTRAINT "principle_analytics_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_analytics_principle_id_principles_id_fk') THEN
+    ALTER TABLE "principle_analytics" ADD CONSTRAINT "principle_analytics_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_effectiveness_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_effectiveness" ADD CONSTRAINT "principle_effectiveness_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_effectiveness_principle_id_principles_id_fk') THEN
+    ALTER TABLE "principle_effectiveness" ADD CONSTRAINT "principle_effectiveness_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_insights_user_id_users_id_fk') THEN
+    ALTER TABLE "principle_insights" ADD CONSTRAINT "principle_insights_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'principle_insights_principle_id_principles_id_fk') THEN
+    ALTER TABLE "principle_insights" ADD CONSTRAINT "principle_insights_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'productivity_heatmap_user_id_users_id_fk') THEN
+    ALTER TABLE "productivity_heatmap" ADD CONSTRAINT "productivity_heatmap_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'weak_areas_detected_user_id_users_id_fk') THEN
+    ALTER TABLE "weak_areas_detected" ADD CONSTRAINT "weak_areas_detected_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'automation_flows_user_id_users_id_fk') THEN
+    ALTER TABLE "automation_flows" ADD CONSTRAINT "automation_flows_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_conflicts_external_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_conflicts_external" ADD CONSTRAINT "calendar_conflicts_external_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_conflicts_external_torgima_event_id_calendar_events_id_fk') THEN
+    ALTER TABLE "calendar_conflicts_external" ADD CONSTRAINT "calendar_conflicts_external_torgima_event_id_calendar_events_id_fk" FOREIGN KEY ("torgima_event_id") REFERENCES "public"."calendar_events"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_sync_log_user_id_users_id_fk') THEN
+    ALTER TABLE "calendar_sync_log" ADD CONSTRAINT "calendar_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_sync_log_integration_id_external_integrations_id_fk') THEN
+    ALTER TABLE "calendar_sync_log" ADD CONSTRAINT "calendar_sync_log_integration_id_external_integrations_id_fk" FOREIGN KEY ("integration_id") REFERENCES "public"."external_integrations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'engagement_sync_log_social_post_mapping_id_social_post_mappings_id_fk') THEN
+    ALTER TABLE "engagement_sync_log" ADD CONSTRAINT "engagement_sync_log_social_post_mapping_id_social_post_mappings_id_fk" FOREIGN KEY ("social_post_mapping_id") REFERENCES "public"."social_post_mappings"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'external_integrations_user_id_users_id_fk') THEN
+    ALTER TABLE "external_integrations" ADD CONSTRAINT "external_integrations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'health_data_sync_log_user_id_users_id_fk') THEN
+    ALTER TABLE "health_data_sync_log" ADD CONSTRAINT "health_data_sync_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'health_data_sync_log_integration_id_external_integrations_id_fk') THEN
+    ALTER TABLE "health_data_sync_log" ADD CONSTRAINT "health_data_sync_log_integration_id_external_integrations_id_fk" FOREIGN KEY ("integration_id") REFERENCES "public"."external_integrations"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'integration_webhook_logs_webhook_id_integration_webhooks_id_fk') THEN
+    ALTER TABLE "integration_webhook_logs" ADD CONSTRAINT "integration_webhook_logs_webhook_id_integration_webhooks_id_fk" FOREIGN KEY ("webhook_id") REFERENCES "public"."integration_webhooks"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'integration_webhooks_user_id_users_id_fk') THEN
+    ALTER TABLE "integration_webhooks" ADD CONSTRAINT "integration_webhooks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'social_post_mappings_user_id_users_id_fk') THEN
+    ALTER TABLE "social_post_mappings" ADD CONSTRAINT "social_post_mappings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'social_post_mappings_published_content_id_published_content_id_fk') THEN
+    ALTER TABLE "social_post_mappings" ADD CONSTRAINT "social_post_mappings_published_content_id_published_content_id_fk" FOREIGN KEY ("published_content_id") REFERENCES "public"."published_content"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'zapier_connections_user_id_users_id_fk') THEN
+    ALTER TABLE "zapier_connections" ADD CONSTRAINT "zapier_connections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'accountability_pledges_user_id_users_id_fk') THEN
+    ALTER TABLE "accountability_pledges" ADD CONSTRAINT "accountability_pledges_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profile_social_links_user_id_users_id_fk') THEN
+    ALTER TABLE "profile_social_links" ADD CONSTRAINT "profile_social_links_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profile_widgets_user_id_users_id_fk') THEN
+    ALTER TABLE "profile_widgets" ADD CONSTRAINT "profile_widgets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'public_profile_views_user_id_users_id_fk') THEN
+    ALTER TABLE "public_profile_views" ADD CONSTRAINT "public_profile_views_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'public_profile_views_viewer_id_users_id_fk') THEN
+    ALTER TABLE "public_profile_views" ADD CONSTRAINT "public_profile_views_viewer_id_users_id_fk" FOREIGN KEY ("viewer_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shareable_daily_entries_user_id_users_id_fk') THEN
+    ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shareable_daily_entries_principle_id_principles_id_fk') THEN
+    ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_principle_id_principles_id_fk" FOREIGN KEY ("principle_id") REFERENCES "public"."principles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shareable_daily_entries_daily_record_id_daily_principle_records_id_fk') THEN
+    ALTER TABLE "shareable_daily_entries" ADD CONSTRAINT "shareable_daily_entries_daily_record_id_daily_principle_records_id_fk" FOREIGN KEY ("daily_record_id") REFERENCES "public"."daily_principle_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_conflicts_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_conflicts_belief_id_a_bhudhi_belief_records_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_belief_id_a_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id_a") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_conflicts_belief_id_b_bhudhi_belief_records_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_conflicts" ADD CONSTRAINT "bhudhi_belief_conflicts_belief_id_b_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id_b") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_evidence_belief_id_bhudhi_belief_records_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_evidence" ADD CONSTRAINT "bhudhi_belief_evidence_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_history_belief_id_bhudhi_belief_records_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_history" ADD CONSTRAINT "bhudhi_belief_history_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_records" ADD CONSTRAINT "bhudhi_belief_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_belief_truth_belief_id_bhudhi_belief_records_id_fk') THEN
+    ALTER TABLE "bhudhi_belief_truth" ADD CONSTRAINT "bhudhi_belief_truth_belief_id_bhudhi_belief_records_id_fk" FOREIGN KEY ("belief_id") REFERENCES "public"."bhudhi_belief_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilization_events_civilization_id_bhudhi_civilizations_id_fk') THEN
+    ALTER TABLE "bhudhi_civilization_events" ADD CONSTRAINT "bhudhi_civilization_events_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilization_forecasts_civilization_id_bhudhi_civilizations_id_fk') THEN
+    ALTER TABLE "bhudhi_civilization_forecasts" ADD CONSTRAINT "bhudhi_civilization_forecasts_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilization_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_civilization_memory" ADD CONSTRAINT "bhudhi_civilization_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilization_memory_civilization_id_bhudhi_civilizations_id_fk') THEN
+    ALTER TABLE "bhudhi_civilization_memory" ADD CONSTRAINT "bhudhi_civilization_memory_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilization_states_civilization_id_bhudhi_civilizations_id_fk') THEN
+    ALTER TABLE "bhudhi_civilization_states" ADD CONSTRAINT "bhudhi_civilization_states_civilization_id_bhudhi_civilizations_id_fk" FOREIGN KEY ("civilization_id") REFERENCES "public"."bhudhi_civilizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_civilizations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_civilizations" ADD CONSTRAINT "bhudhi_civilizations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_context_states_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_context_states" ADD CONSTRAINT "bhudhi_context_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_decision_forecasts_decision_id_bhudhi_decision_records_id_fk') THEN
+    ALTER TABLE "bhudhi_decision_forecasts" ADD CONSTRAINT "bhudhi_decision_forecasts_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_decision_options_decision_id_bhudhi_decision_records_id_fk') THEN
+    ALTER TABLE "bhudhi_decision_options" ADD CONSTRAINT "bhudhi_decision_options_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_decision_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_decision_records" ADD CONSTRAINT "bhudhi_decision_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_decision_replay_decision_id_bhudhi_decision_records_id_fk') THEN
+    ALTER TABLE "bhudhi_decision_replay" ADD CONSTRAINT "bhudhi_decision_replay_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_decision_scores_decision_id_bhudhi_decision_records_id_fk') THEN
+    ALTER TABLE "bhudhi_decision_scores" ADD CONSTRAINT "bhudhi_decision_scores_decision_id_bhudhi_decision_records_id_fk" FOREIGN KEY ("decision_id") REFERENCES "public"."bhudhi_decision_records"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_economics_forecasts_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_economics_forecasts" ADD CONSTRAINT "bhudhi_economics_forecasts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_economics_logs_session_id_bhudhi_economics_sessions_id_fk') THEN
+    ALTER TABLE "bhudhi_economics_logs" ADD CONSTRAINT "bhudhi_economics_logs_session_id_bhudhi_economics_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."bhudhi_economics_sessions"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_economics_profiles_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_economics_profiles" ADD CONSTRAINT "bhudhi_economics_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_economics_sessions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_economics_sessions" ADD CONSTRAINT "bhudhi_economics_sessions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_engines_system_id_bhudhi_systems_id_fk') THEN
+    ALTER TABLE "bhudhi_engines" ADD CONSTRAINT "bhudhi_engines_system_id_bhudhi_systems_id_fk" FOREIGN KEY ("system_id") REFERENCES "public"."bhudhi_systems"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_execution_contracts_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_execution_contracts" ADD CONSTRAINT "bhudhi_execution_contracts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_execution_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_execution_events" ADD CONSTRAINT "bhudhi_execution_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_execution_plans_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_execution_plans" ADD CONSTRAINT "bhudhi_execution_plans_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_benchmarks_capability_id_bhudhi_expansion_capabilities_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_benchmarks" ADD CONSTRAINT "bhudhi_expansion_benchmarks_capability_id_bhudhi_expansion_capabilities_id_fk" FOREIGN KEY ("capability_id") REFERENCES "public"."bhudhi_expansion_capabilities"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_capabilities_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_capabilities" ADD CONSTRAINT "bhudhi_expansion_capabilities_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_events" ADD CONSTRAINT "bhudhi_expansion_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_events_capability_id_bhudhi_expansion_capabilities_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_events" ADD CONSTRAINT "bhudhi_expansion_events_capability_id_bhudhi_expansion_capabilities_id_fk" FOREIGN KEY ("capability_id") REFERENCES "public"."bhudhi_expansion_capabilities"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_history" ADD CONSTRAINT "bhudhi_expansion_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_expansion_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_expansion_memory" ADD CONSTRAINT "bhudhi_expansion_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_groups_experiment_id_bhudhi_experiments_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_groups" ADD CONSTRAINT "bhudhi_experiment_groups_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_memory_experiment_id_bhudhi_experiments_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_memory" ADD CONSTRAINT "bhudhi_experiment_memory_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_promotions_experiment_id_bhudhi_experiments_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_promotions" ADD CONSTRAINT "bhudhi_experiment_promotions_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_promotions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_promotions" ADD CONSTRAINT "bhudhi_experiment_promotions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_results_experiment_id_bhudhi_experiments_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_results" ADD CONSTRAINT "bhudhi_experiment_results_experiment_id_bhudhi_experiments_id_fk" FOREIGN KEY ("experiment_id") REFERENCES "public"."bhudhi_experiments"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiment_results_group_id_bhudhi_experiment_groups_id_fk') THEN
+    ALTER TABLE "bhudhi_experiment_results" ADD CONSTRAINT "bhudhi_experiment_results_group_id_bhudhi_experiment_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."bhudhi_experiment_groups"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_experiments_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_experiments" ADD CONSTRAINT "bhudhi_experiments_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_external_connections_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_external_connections" ADD CONSTRAINT "bhudhi_external_connections_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_external_data_connection_id_bhudhi_external_connections_id_fk') THEN
+    ALTER TABLE "bhudhi_external_data" ADD CONSTRAINT "bhudhi_external_data_connection_id_bhudhi_external_connections_id_fk" FOREIGN KEY ("connection_id") REFERENCES "public"."bhudhi_external_connections"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_framework_learning_framework_id_bhudhi_frameworks_id_fk') THEN
+    ALTER TABLE "bhudhi_framework_learning" ADD CONSTRAINT "bhudhi_framework_learning_framework_id_bhudhi_frameworks_id_fk" FOREIGN KEY ("framework_id") REFERENCES "public"."bhudhi_frameworks"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governance_approvals_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governance_approvals" ADD CONSTRAINT "bhudhi_governance_approvals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governance_audit_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governance_audit" ADD CONSTRAINT "bhudhi_governance_audit_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governance_emergency_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governance_emergency" ADD CONSTRAINT "bhudhi_governance_emergency_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governance_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governance_memory" ADD CONSTRAINT "bhudhi_governance_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governance_violations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governance_violations" ADD CONSTRAINT "bhudhi_governance_violations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governor_allocations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governor_allocations" ADD CONSTRAINT "bhudhi_governor_allocations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governor_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governor_events" ADD CONSTRAINT "bhudhi_governor_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governor_health_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governor_health" ADD CONSTRAINT "bhudhi_governor_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governor_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governor_history" ADD CONSTRAINT "bhudhi_governor_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_governor_recovery_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_governor_recovery" ADD CONSTRAINT "bhudhi_governor_recovery_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_idea_sets_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_idea_sets" ADD CONSTRAINT "bhudhi_idea_sets_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_events" ADD CONSTRAINT "bhudhi_identity_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_events_profile_id_bhudhi_identity_profiles_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_events" ADD CONSTRAINT "bhudhi_identity_events_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_growth_profile_id_bhudhi_identity_profiles_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_growth" ADD CONSTRAINT "bhudhi_identity_growth_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_history_profile_id_bhudhi_identity_profiles_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_history" ADD CONSTRAINT "bhudhi_identity_history_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_profiles_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_profiles" ADD CONSTRAINT "bhudhi_identity_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_identity_values_profile_id_bhudhi_identity_profiles_id_fk') THEN
+    ALTER TABLE "bhudhi_identity_values" ADD CONSTRAINT "bhudhi_identity_values_profile_id_bhudhi_identity_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."bhudhi_identity_profiles"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_incident_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_incident_logs" ADD CONSTRAINT "bhudhi_incident_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_infra_capacity_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_infra_capacity" ADD CONSTRAINT "bhudhi_infra_capacity_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_infra_deployments_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_infra_deployments" ADD CONSTRAINT "bhudhi_infra_deployments_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_infra_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_infra_events" ADD CONSTRAINT "bhudhi_infra_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_infra_health_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_infra_health" ADD CONSTRAINT "bhudhi_infra_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_infra_runtime_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_infra_runtime" ADD CONSTRAINT "bhudhi_infra_runtime_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_investigations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_investigations" ADD CONSTRAINT "bhudhi_investigations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_investigations_engine_id_bhudhi_engines_id_fk') THEN
+    ALTER TABLE "bhudhi_investigations" ADD CONSTRAINT "bhudhi_investigations_engine_id_bhudhi_engines_id_fk" FOREIGN KEY ("engine_id") REFERENCES "public"."bhudhi_engines"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_kernel_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_kernel_events" ADD CONSTRAINT "bhudhi_kernel_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_edges_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_edges_from_node_id_bhudhi_memory_nodes_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_from_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("from_node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_edges_to_node_id_bhudhi_memory_nodes_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_edges" ADD CONSTRAINT "bhudhi_memory_edges_to_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("to_node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_nodes_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_nodes" ADD CONSTRAINT "bhudhi_memory_nodes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_queries_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_queries" ADD CONSTRAINT "bhudhi_memory_queries_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_relationships_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_relationships_node_id_1_bhudhi_memory_nodes_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_node_id_1_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id_1") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_relationships_node_id_2_bhudhi_memory_nodes_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_relationships" ADD CONSTRAINT "bhudhi_memory_relationships_node_id_2_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id_2") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_timeline_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_timeline" ADD CONSTRAINT "bhudhi_memory_timeline_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_memory_timeline_node_id_bhudhi_memory_nodes_id_fk') THEN
+    ALTER TABLE "bhudhi_memory_timeline" ADD CONSTRAINT "bhudhi_memory_timeline_node_id_bhudhi_memory_nodes_id_fk" FOREIGN KEY ("node_id") REFERENCES "public"."bhudhi_memory_nodes"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organization_events_organization_id_bhudhi_organizations_id_fk') THEN
+    ALTER TABLE "bhudhi_organization_events" ADD CONSTRAINT "bhudhi_organization_events_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organization_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_organization_events" ADD CONSTRAINT "bhudhi_organization_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organization_health_organization_id_bhudhi_organizations_id_fk') THEN
+    ALTER TABLE "bhudhi_organization_health" ADD CONSTRAINT "bhudhi_organization_health_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organization_memory_organization_id_bhudhi_organizations_id_fk') THEN
+    ALTER TABLE "bhudhi_organization_memory" ADD CONSTRAINT "bhudhi_organization_memory_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organization_roles_organization_id_bhudhi_organizations_id_fk') THEN
+    ALTER TABLE "bhudhi_organization_roles" ADD CONSTRAINT "bhudhi_organization_roles_organization_id_bhudhi_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."bhudhi_organizations"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_organizations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_organizations" ADD CONSTRAINT "bhudhi_organizations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_permission_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_permission_history" ADD CONSTRAINT "bhudhi_permission_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_predictions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_predictions" ADD CONSTRAINT "bhudhi_predictions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_protocol_messages_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_protocol_messages" ADD CONSTRAINT "bhudhi_protocol_messages_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_recommendations_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_recommendations" ADD CONSTRAINT "bhudhi_recommendations_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_recommendations_engine_id_bhudhi_engines_id_fk') THEN
+    ALTER TABLE "bhudhi_recommendations" ADD CONSTRAINT "bhudhi_recommendations_engine_id_bhudhi_engines_id_fk" FOREIGN KEY ("engine_id") REFERENCES "public"."bhudhi_engines"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_recovery_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_recovery_records" ADD CONSTRAINT "bhudhi_recovery_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_reliability_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_reliability_events" ADD CONSTRAINT "bhudhi_reliability_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_rollback_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_rollback_history" ADD CONSTRAINT "bhudhi_rollback_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_secret_registry_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_secret_registry" ADD CONSTRAINT "bhudhi_secret_registry_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_security_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_security_events" ADD CONSTRAINT "bhudhi_security_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_shared_context_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_shared_context" ADD CONSTRAINT "bhudhi_shared_context_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_signals_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_signals" ADD CONSTRAINT "bhudhi_signals_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_events_run_id_bhudhi_simulation_runs_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_events" ADD CONSTRAINT "bhudhi_simulation_events_run_id_bhudhi_simulation_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."bhudhi_simulation_runs"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_memory_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_memory" ADD CONSTRAINT "bhudhi_simulation_memory_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_runs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_runs" ADD CONSTRAINT "bhudhi_simulation_runs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_runs_world_id_bhudhi_simulation_worlds_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_runs" ADD CONSTRAINT "bhudhi_simulation_runs_world_id_bhudhi_simulation_worlds_id_fk" FOREIGN KEY ("world_id") REFERENCES "public"."bhudhi_simulation_worlds"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_scores_run_id_bhudhi_simulation_runs_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_scores" ADD CONSTRAINT "bhudhi_simulation_scores_run_id_bhudhi_simulation_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."bhudhi_simulation_runs"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_simulation_worlds_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_simulation_worlds" ADD CONSTRAINT "bhudhi_simulation_worlds_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_strategic_choices_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_strategic_choices" ADD CONSTRAINT "bhudhi_strategic_choices_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_system_health_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_system_health" ADD CONSTRAINT "bhudhi_system_health_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_team_alignment_team_id_bhudhi_teams_id_fk') THEN
+    ALTER TABLE "bhudhi_team_alignment" ADD CONSTRAINT "bhudhi_team_alignment_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_team_health_team_id_bhudhi_teams_id_fk') THEN
+    ALTER TABLE "bhudhi_team_health" ADD CONSTRAINT "bhudhi_team_health_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_team_identity_team_id_bhudhi_teams_id_fk') THEN
+    ALTER TABLE "bhudhi_team_identity" ADD CONSTRAINT "bhudhi_team_identity_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_team_memory_team_id_bhudhi_teams_id_fk') THEN
+    ALTER TABLE "bhudhi_team_memory" ADD CONSTRAINT "bhudhi_team_memory_team_id_bhudhi_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."bhudhi_teams"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_teams_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_teams" ADD CONSTRAINT "bhudhi_teams_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_temporal_forecasts_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_temporal_forecasts" ADD CONSTRAINT "bhudhi_temporal_forecasts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_temporal_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_temporal_history" ADD CONSTRAINT "bhudhi_temporal_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_temporal_patterns_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_temporal_patterns" ADD CONSTRAINT "bhudhi_temporal_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_temporal_timelines_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_temporal_timelines" ADD CONSTRAINT "bhudhi_temporal_timelines_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_temporal_windows_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_temporal_windows" ADD CONSTRAINT "bhudhi_temporal_windows_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_threat_records_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_threat_records" ADD CONSTRAINT "bhudhi_threat_records_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_trust_profiles_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_trust_profiles" ADD CONSTRAINT "bhudhi_trust_profiles_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_unified_execution_contexts_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_unified_execution_contexts" ADD CONSTRAINT "bhudhi_unified_execution_contexts_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_entities_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_world_entities" ADD CONSTRAINT "bhudhi_world_entities_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_events_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_world_events" ADD CONSTRAINT "bhudhi_world_events_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_events_entity_id_bhudhi_world_entities_id_fk') THEN
+    ALTER TABLE "bhudhi_world_events" ADD CONSTRAINT "bhudhi_world_events_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_relationships_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_relationships_from_entity_id_bhudhi_world_entities_id_fk') THEN
+    ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_from_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("from_entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_relationships_to_entity_id_bhudhi_world_entities_id_fk') THEN
+    ALTER TABLE "bhudhi_world_relationships" ADD CONSTRAINT "bhudhi_world_relationships_to_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("to_entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_snapshots_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_world_snapshots" ADD CONSTRAINT "bhudhi_world_snapshots_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_states_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "bhudhi_world_states" ADD CONSTRAINT "bhudhi_world_states_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bhudhi_world_states_entity_id_bhudhi_world_entities_id_fk') THEN
+    ALTER TABLE "bhudhi_world_states" ADD CONSTRAINT "bhudhi_world_states_entity_id_bhudhi_world_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."bhudhi_world_entities"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_sequence_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_sequence_history" ADD CONSTRAINT "blueprint_sequence_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_sequences" ADD CONSTRAINT "blueprint_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'blueprint_tier_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "blueprint_tier_sequences" ADD CONSTRAINT "blueprint_tier_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "context_sequences" ADD CONSTRAINT "context_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_feedback_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "execution_feedback_sequences" ADD CONSTRAINT "execution_feedback_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'execution_structure_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "execution_structure_sequences" ADD CONSTRAINT "execution_structure_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'goal_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "goal_sequences" ADD CONSTRAINT "goal_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'master_plan_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "master_plan_sequences" ADD CONSTRAINT "master_plan_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mini_plan_allocation_history_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "mini_plan_allocation_history" ADD CONSTRAINT "mini_plan_allocation_history_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mini_plan_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "mini_plan_sequences" ADD CONSTRAINT "mini_plan_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'policy_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "policy_sequences" ADD CONSTRAINT "policy_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'prediction_scene_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "prediction_scene_sequences" ADD CONSTRAINT "prediction_scene_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'purpose_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "purpose_sequences" ADD CONSTRAINT "purpose_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sequence_flows_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "sequence_flows" ADD CONSTRAINT "sequence_flows_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'signal_condition_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "signal_condition_sequences" ADD CONSTRAINT "signal_condition_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'signal_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "signal_sequences" ADD CONSTRAINT "signal_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'task_generation_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "task_generation_sequences" ADD CONSTRAINT "task_generation_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_result_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "validation_result_sequences" ADD CONSTRAINT "validation_result_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'validation_sequences_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "validation_sequences" ADD CONSTRAINT "validation_sequences_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'adaptation_suggestions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "adaptation_suggestions" ADD CONSTRAINT "adaptation_suggestions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'growth_execution_patterns_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "growth_execution_patterns" ADD CONSTRAINT "growth_execution_patterns_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'interrogation_logs_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "interrogation_logs" ADD CONSTRAINT "interrogation_logs_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'knowledge_cards_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "knowledge_cards" ADD CONSTRAINT "knowledge_cards_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ultimate_emergency_orders_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "ultimate_emergency_orders" ADD CONSTRAINT "ultimate_emergency_orders_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ultimate_predictions_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "ultimate_predictions" ADD CONSTRAINT "ultimate_predictions_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ultimate_scenes_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "ultimate_scenes" ADD CONSTRAINT "ultimate_scenes_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ultimate_validation_checkpoints_blueprint_id_blueprints_id_fk') THEN
+    ALTER TABLE "ultimate_validation_checkpoints" ADD CONSTRAINT "ultimate_validation_checkpoints_blueprint_id_blueprints_id_fk" FOREIGN KEY ("blueprint_id") REFERENCES "public"."blueprints"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_chapter_course_num" ON "academy_chapters" USING btree ("course_id","chapter_number");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_concept_mastery_user_concept" ON "academy_concept_mastery" USING btree ("user_id","concept_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_lesson_chapter_num" ON "academy_lessons" USING btree ("chapter_id","lesson_number");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_academy_practice_items_lesson" ON "academy_practice_items" USING btree ("lesson_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_academy_proof_task_id" ON "academy_proof" USING btree ("academy_task_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_retention_user_lesson" ON "academy_retention_data" USING btree ("user_id","lesson_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_roadmap_goal_step" ON "academy_roadmap_steps" USING btree ("learning_goal_id","step_number");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_enrollment_user_course" ON "academy_student_enrollments" USING btree ("user_id","course_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_academy_study_sessions_user_date" ON "academy_study_sessions" USING btree ("user_id","session_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_academy_tasks_blueprint_id" ON "academy_tasks" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_academy_tasks_status" ON "academy_tasks" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_actions_blueprint_id" ON "actions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_actions_project_id" ON "actions" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_active_feedback_sessions_blueprint_date" ON "active_feedback_sessions" USING btree ("blueprint_id","session_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_active_feedback_sessions_user_blueprint" ON "active_feedback_sessions" USING btree ("user_id","blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_agent_conflict_logs_user_id" ON "agent_conflict_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavior_events_user_id" ON "behavior_events" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavior_events_pattern_id" ON "behavior_events" USING btree ("pattern_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavior_patterns_user_id" ON "behavior_patterns" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavior_patterns_status" ON "behavior_patterns" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavioral_insights_user_seen" ON "behavioral_insight_records" USING btree ("user_id","seen","dismissed");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_behavioral_insights_created" ON "behavioral_insight_records" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_logs_user_id" ON "bhudhi_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_logs_blueprint_id" ON "bhudhi_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_logs_request_type" ON "bhudhi_logs" USING btree ("request_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_user_id" ON "bhudhi_memory" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_user_type" ON "bhudhi_memory" USING btree ("user_id","memory_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_budget_user_date" ON "bhudhi_usage_budget" USING btree ("user_id","date_utc");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blocker_logs_user_status" ON "blocker_logs" USING btree ("user_id","status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_framework_signals_blueprint" ON "blueprint_framework_signals" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_blueprint_framework_signal" ON "blueprint_framework_signals" USING btree ("blueprint_id","signal_key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_health_records_blueprint_id" ON "blueprint_health_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_interpretations_blueprint_id" ON "blueprint_interpretations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_members_blueprint_id" ON "blueprint_members" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_members_user_id" ON "blueprint_members" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_mutations_blueprint_id" ON "blueprint_mutations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_policies_blueprint_id" ON "blueprint_policies" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_policies_blueprint_active" ON "blueprint_policies" USING btree ("blueprint_id","active");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_tier_migrations_blueprint_id" ON "blueprint_tier_migrations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_versions_blueprint_id" ON "blueprint_versions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprints_user_id" ON "blueprints" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprints_status" ON "blueprints" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_burnout_records_user_created" ON "burnout_records" USING btree ("user_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_calendar_conflicts_user" ON "calendar_conflicts" USING btree ("user_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_calendar_event_user_source" ON "calendar_events" USING btree ("user_id","source_id","source_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_calendar_events_user_start" ON "calendar_events" USING btree ("user_id","start_time");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_calendar_events_user_status" ON "calendar_events" USING btree ("user_id","status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_calendar_notifications_due" ON "calendar_notifications" USING btree ("scheduled_send_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_calendar_time_blocks_user" ON "calendar_time_blocks" USING btree ("user_id","start_time");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_capability_gap_logs_user_resolved" ON "capability_gap_logs" USING btree ("user_id","resolved");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_capability_history_user_id" ON "capability_history" USING btree ("user_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_channel_notification_pref" ON "channel_notification_preferences" USING btree ("user_id","channel_type","notification_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_character_progression_user_id" ON "character_progression" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_cognitive_load_scores_user_id" ON "cognitive_load_scores" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_cognitive_load_scores_blueprint_id" ON "cognitive_load_scores" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_competitor_intelligence_user_created" ON "competitor_intelligence" USING btree ("user_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_competitor_intelligence_expires" ON "competitor_intelligence" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_condition_records_blueprint_id" ON "condition_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_condition_records_blueprint_current" ON "condition_records" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_conditions_blueprint_id" ON "conditions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_conditions_blueprint_current" ON "conditions" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_content_guidance_user_date" ON "content_guidance" USING btree ("user_id","guidance_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_continuous_task_guarantee_logs_user" ON "continuous_task_guarantee_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_contradiction_records_blueprint_id" ON "contradiction_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_contradiction_records_user_id" ON "contradiction_records" USING btree ("user_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_critic_review_logs_bhudhi_log_id" ON "critic_review_logs" USING btree ("bhudhi_log_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_critic_review_logs_user_id" ON "critic_review_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_daily_principle_record_user_date" ON "daily_principle_records" USING btree ("user_id","principle_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_daily_principle_records_user_date" ON "daily_principle_records" USING btree ("user_id","principle_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_dashboard_intelligence_user" ON "dashboard_intelligence_snapshots" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_dead_letter_event_type" ON "dead_letter_events" USING btree ("event_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_dead_letter_resolved" ON "dead_letter_events" USING btree ("resolved");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_debate_logs_user_id" ON "debate_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_decision_traces_blueprint_id" ON "decision_traces" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_decision_traces_decision_type" ON "decision_traces" USING btree ("decision_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_domain_history_blueprint_id" ON "domain_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_domain_history_blueprint_current" ON "domain_history" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_economic_archetypes_number" ON "economic_archetypes" USING btree ("archetype_number");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_eis_call_logs_user_id" ON "eis_call_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_eis_call_logs_created_at" ON "eis_call_logs" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_eis_rate_limits_user_industry" ON "eis_rate_limits" USING btree ("user_id","industry","niche");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_enforcement_packages_blueprint_id" ON "enforcement_packages" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_enforcement_packages_blueprint_current" ON "enforcement_packages" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_escalation_logs_blueprint_id" ON "escalation_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_event_logs_event_id" ON "event_logs" USING btree ("event_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_events_status" ON "events" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_events_event_type" ON "events" USING btree ("event_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_events_blueprint_id" ON "events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_execution_sessions_user_id" ON "execution_sessions" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_execution_sessions_blueprint_id" ON "execution_sessions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_intelligence_blueprint" ON "external_intelligence" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_intelligence_expires" ON "external_intelligence" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_signals_user_id" ON "external_signals" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_signals_blueprint_id" ON "external_signals" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_signals_source_name" ON "external_signals" USING btree ("source_name");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_external_signals_status" ON "external_signals" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_failure_classifications_feedback" ON "failure_classifications" USING btree ("feedback_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_fallback_usage_logs_created_at" ON "fallback_usage_logs" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_false_progress_flags_blueprint_id" ON "false_progress_flags" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_false_progress_flags_resolved" ON "false_progress_flags" USING btree ("resolved");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_feedback_order_id" ON "feedback" USING btree ("order_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_feedback_blueprint_id" ON "feedback" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_feedback_blueprint_created_at" ON "feedback" USING btree ("blueprint_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_feedback_user_id" ON "feedback" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_framework_activations_blueprint_id" ON "framework_activations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_framework_decisions_blueprint_id" ON "framework_decisions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_framework_decisions_status" ON "framework_decisions" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_framework_signal_snapshots_blueprint_id" ON "framework_signal_snapshots" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_governance_queue_blueprint_id" ON "governance_queue" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_governance_queue_status" ON "governance_queue" USING btree ("blueprint_id","status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_habit_checkins_habit_id" ON "habit_checkins" USING btree ("habit_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_habits_blueprint_id" ON "habits" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_idempotency_records_expires_at" ON "idempotency_records" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_idempotency_records_key" ON "idempotency_records" USING btree ("key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_identity_history_user_id" ON "identity_history" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_identity_profiles_user_id" ON "identity_profiles" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_in_app_notifications_user" ON "in_app_notifications" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_inactivity_records_user_id" ON "inactivity_records" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_inactivity_records_blueprint_resolved" ON "inactivity_records" USING btree ("blueprint_id","resolved");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_knowledge_objects_domain" ON "knowledge_objects" USING btree ("domain");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_knowledge_objects_type" ON "knowledge_objects" USING btree ("type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_knowledge_packages_domain_action" ON "knowledge_packages" USING btree ("domain","action_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_learning_paths_user_status" ON "learning_paths" USING btree ("user_id","path_status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_magic_link_tokens_user_id" ON "magic_link_tokens" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_magic_link_tokens_email" ON "magic_link_tokens" USING btree ("email");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_message_search_user" ON "message_search_index" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_milestones_user_id" ON "milestones" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_milestones_blueprint_id" ON "milestones" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mobile_device_token" ON "mobile_device_tokens" USING btree ("user_id","push_token");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mobile_health_day" ON "mobile_health_metrics" USING btree ("user_id","metric_date","source");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mobile_sync_action" ON "mobile_sync_log" USING btree ("user_id","client_action_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mobile_wearable" ON "mobile_wearable_connections" USING btree ("user_id","provider");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_morning_reports_user_id" ON "morning_reports" USING btree ("user_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_morning_reports_user_date" ON "morning_reports" USING btree ("user_id","report_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_narrative_intelligence_user_created" ON "narrative_intelligence" USING btree ("user_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_narrative_intelligence_expires" ON "narrative_intelligence" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_notification_delivery_queue_due" ON "notification_delivery_queue" USING btree ("scheduled_for");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_notification_logs_user_id" ON "notification_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_notification_logs_status" ON "notification_logs" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_notification_logs_type" ON "notification_logs" USING btree ("notification_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_order_dependency" ON "order_dependencies" USING btree ("blocking_order_id","blocked_order_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_order_dependencies_blocked_status" ON "order_dependencies" USING btree ("blocked_order_id","status");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_order_knowledge" ON "order_knowledge_links" USING btree ("order_id","knowledge_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_orders_blueprint_id" ON "orders" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_orders_action_id" ON "orders" USING btree ("action_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_orders_status" ON "orders" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_orders_blueprint_status" ON "orders" USING btree ("blueprint_id","status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_outcome_validation_records_feedback" ON "outcome_validation_records" USING btree ("feedback_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_outcome_validations_blueprint_id" ON "outcome_validations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_outcome_validations_validation_result" ON "outcome_validations" USING btree ("blueprint_id","validation_result");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_pattern_records_user_active" ON "pattern_records" USING btree ("user_id","is_active");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_personal_messages_user_created" ON "personal_messages" USING btree ("user_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_phase_checkpoints_blueprint_id" ON "phase_checkpoints" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_phases_blueprint_id" ON "phases" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_phases_status" ON "phases" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_pivot_reviews_blueprint_id" ON "pivot_reviews" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_pivot_reviews_status" ON "pivot_reviews" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_plans_blueprint_id" ON "plans" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_platform_algorithm_signals_platform" ON "platform_algorithm_signals" USING btree ("platform");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_platform_algorithm_signals_valid_until" ON "platform_algorithm_signals" USING btree ("valid_until");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_prediction_logs_user_id" ON "prediction_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_prediction_snapshots_blueprint" ON "prediction_snapshots" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_principle_application_user_date" ON "principle_applications" USING btree ("user_id","principle_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_principle_applications_user_date" ON "principle_applications" USING btree ("user_id","principle_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_principle_proof_uploads_application" ON "principle_proof_uploads" USING btree ("application_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_principle_selection_user_date" ON "principle_selections" USING btree ("user_id","selected_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_principle_selections_user_date" ON "principle_selections" USING btree ("user_id","selected_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_principles_day_number" ON "principles" USING btree ("day_number");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_project_dependency" ON "project_dependencies" USING btree ("blocking_project_id","blocked_project_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_projects_blueprint_id" ON "projects" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_projects_status" ON "projects" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_real_outcomes_blueprint_id" ON "real_outcomes" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_reward_events_user_id" ON "reward_events" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_reward_events_delivered" ON "reward_events" USING btree ("delivered");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_reward_events_source_event_id" ON "reward_events" USING btree ("source_event_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_reward_events_idempotency" ON "reward_events" USING btree ("idempotency_key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_seasons_blueprint_id" ON "seasons" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_sessions_user_id" ON "sessions" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_sessions_expires_at" ON "sessions" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_signal_snapshots_blueprint_id" ON "signal_snapshots" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_signal_snapshots_blueprint_current" ON "signal_snapshots" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_skill_profiles_user_id" ON "skill_profiles" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_stability_events_user_id" ON "stability_events" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_stability_events_created_at" ON "stability_events" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_state_memory_blueprint_id" ON "state_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_state_memory_blueprint_current" ON "state_memory" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_strategic_assumptions_blueprint_id" ON "strategic_assumptions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_strategic_assumptions_status" ON "strategic_assumptions" USING btree ("monitoring_status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_strategic_outlook_user_generated" ON "strategic_outlook_records" USING btree ("user_id","generated_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_strategic_outlook_expires" ON "strategic_outlook_records" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_system_health_logs_blueprint_id" ON "system_health_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_system_health_logs_check_type" ON "system_health_logs" USING btree ("check_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_system_health_logs_area" ON "system_health_logs" USING btree ("area");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_system_health_records_created_at" ON "system_health_records" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_targets_blueprint_id" ON "targets" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_targets_status" ON "targets" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_task_generation_log_blueprint_id" ON "task_generation_log" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_task_generation_log_trigger" ON "task_generation_log" USING btree ("generation_trigger");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_task_generation_log_idempotency_key" ON "task_generation_log" USING btree ("idempotency_key") WHERE "task_generation_log"."idempotency_key" is not null;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_task_generation_logs_blueprint_id" ON "task_generation_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_task_generation_logs_user_id" ON "task_generation_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_trend_intelligence_user_created" ON "trend_intelligence" USING btree ("user_id","created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_trend_intelligence_expires" ON "trend_intelligence" USING btree ("expires_at");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_achievement" ON "user_achievements" USING btree ("user_id","achievement_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_user_identity_states_user_id" ON "user_identity_states" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_user_identity_states_blueprint_current" ON "user_identity_states" USING btree ("blueprint_id","is_current");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_level" ON "user_levels" USING btree ("user_id","level_number");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_notification_channel" ON "user_notification_channels" USING btree ("user_id","channel_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_user_principle_profiles_slug" ON "user_principle_profiles" USING btree ("profile_url_slug");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_reward" ON "user_rewards" USING btree ("user_id","reward_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_social_platform" ON "user_social_accounts" USING btree ("user_id","platform");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_user_streak_type" ON "user_streaks" USING btree ("user_id","streak_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_archetype_maps_validation_id" ON "validation_archetype_maps" USING btree ("validation_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_event_logs_validation_id" ON "validation_event_logs" USING btree ("validation_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_event_logs_created_at" ON "validation_event_logs" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_memory_user_id" ON "validation_memory" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_memory_goal_hash" ON "validation_memory" USING btree ("goal_hash");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validation_memory_blueprint_id" ON "validation_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_validations_blueprint_id" ON "validations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_validations_contract_id" ON "validations" USING btree ("contract_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_validations_idempotency_key" ON "validations" USING btree ("idempotency_key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_verdict_evolution_blueprint_id" ON "verdict_evolution" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_weekly_reviews_blueprint_id" ON "weekly_reviews" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_world_models_user_id" ON "world_models" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_xp_ledger_user_earned" ON "xp_ledger" USING btree ("user_id","earned_at");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_academy_analytics_user_date" ON "academy_analytics" USING btree ("user_id","metric_date");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_content_analytics_user_date" ON "content_analytics" USING btree ("user_id","metric_date");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_execution_analytics_user_date" ON "execution_analytics" USING btree ("user_id","metric_date");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_execution_benchmark" ON "execution_benchmarks" USING btree ("user_id","metric_name");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_platform_performance" ON "platform_performance" USING btree ("user_id","platform","metric_date");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_post_performance" ON "post_performance" USING btree ("user_id","post_id","platform");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_principle_effectiveness" ON "principle_effectiveness" USING btree ("user_id","principle_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_productivity_heatmap" ON "productivity_heatmap" USING btree ("user_id","day_of_week","hour_of_day");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_external_integrations_user_type" ON "external_integrations" USING btree ("user_id","integration_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_zapier_connections_user_zapier" ON "zapier_connections" USING btree ("user_id","zapier_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_profile_social_links_user_platform" ON "profile_social_links" USING btree ("user_id","platform");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_profile_widgets_user_type" ON "profile_widgets" USING btree ("user_id","widget_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_shareable_daily_entries_user_date" ON "shareable_daily_entries" USING btree ("user_id","entry_date");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_shareable_daily_entries_token" ON "shareable_daily_entries" USING btree ("share_token");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_conflicts_blueprint_id" ON "bhudhi_belief_conflicts" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_evidence_belief_id" ON "bhudhi_belief_evidence" USING btree ("belief_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_history_belief_id" ON "bhudhi_belief_history" USING btree ("belief_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_records_blueprint_id" ON "bhudhi_belief_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_records_state" ON "bhudhi_belief_records" USING btree ("state");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_records_belief_type" ON "bhudhi_belief_records" USING btree ("belief_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_belief_truth_belief_id" ON "bhudhi_belief_truth" USING btree ("belief_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_civilization_events_civilization_id" ON "bhudhi_civilization_events" USING btree ("civilization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_civilization_forecasts_civilization_id" ON "bhudhi_civilization_forecasts" USING btree ("civilization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_civilization_memory_blueprint_id" ON "bhudhi_civilization_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_civilization_states_civilization_id" ON "bhudhi_civilization_states" USING btree ("civilization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_civilizations_blueprint_id" ON "bhudhi_civilizations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_context_states_blueprint_id" ON "bhudhi_context_states" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_forecasts_decision_id" ON "bhudhi_decision_forecasts" USING btree ("decision_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_options_decision_id" ON "bhudhi_decision_options" USING btree ("decision_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_records_blueprint_id" ON "bhudhi_decision_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_records_recommendation_id" ON "bhudhi_decision_records" USING btree ("recommendation_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_records_status" ON "bhudhi_decision_records" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_replay_decision_id" ON "bhudhi_decision_replay" USING btree ("decision_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_decision_scores_decision_id" ON "bhudhi_decision_scores" USING btree ("decision_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_forecasts_user_id" ON "bhudhi_economics_forecasts" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_forecasts_horizon" ON "bhudhi_economics_forecasts" USING btree ("horizon_days");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_logs_user_id" ON "bhudhi_economics_logs" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_logs_session_id" ON "bhudhi_economics_logs" USING btree ("session_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_profiles_user_id" ON "bhudhi_economics_profiles" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_profiles_blueprint_id" ON "bhudhi_economics_profiles" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_sessions_user_id" ON "bhudhi_economics_sessions" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_sessions_blueprint_id" ON "bhudhi_economics_sessions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_economics_sessions_created_at" ON "bhudhi_economics_sessions" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_engine_registry_system" ON "bhudhi_engine_registry" USING btree ("system");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_engines_system_id" ON "bhudhi_engines" USING btree ("system_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_engines_status" ON "bhudhi_engines" USING btree ("status");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_bhudhi_engines_system_name" ON "bhudhi_engines" USING btree ("system_id","name");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_contracts_blueprint_id" ON "bhudhi_execution_contracts" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_contracts_contract_type" ON "bhudhi_execution_contracts" USING btree ("contract_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_contracts_status" ON "bhudhi_execution_contracts" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_events_blueprint_id" ON "bhudhi_execution_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_plans_blueprint_id" ON "bhudhi_execution_plans" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_execution_plans_recommendation_id" ON "bhudhi_execution_plans" USING btree ("recommendation_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_benchmarks_capability_id" ON "bhudhi_expansion_benchmarks" USING btree ("capability_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_capabilities_blueprint_id" ON "bhudhi_expansion_capabilities" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_capabilities_key" ON "bhudhi_expansion_capabilities" USING btree ("capability_key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_events_blueprint_id" ON "bhudhi_expansion_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_history_blueprint_id" ON "bhudhi_expansion_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_expansion_memory_blueprint_id" ON "bhudhi_expansion_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiment_groups_experiment_id" ON "bhudhi_experiment_groups" USING btree ("experiment_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiment_memory_experiment_id" ON "bhudhi_experiment_memory" USING btree ("experiment_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiment_promotions_experiment_id" ON "bhudhi_experiment_promotions" USING btree ("experiment_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiment_results_experiment_id" ON "bhudhi_experiment_results" USING btree ("experiment_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiments_blueprint_id" ON "bhudhi_experiments" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_experiments_status" ON "bhudhi_experiments" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_external_connections_blueprint_id" ON "bhudhi_external_connections" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_external_data_connection_id" ON "bhudhi_external_data" USING btree ("connection_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_framework_learning_framework_id" ON "bhudhi_framework_learning" USING btree ("framework_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_frameworks_status" ON "bhudhi_frameworks" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_approvals_blueprint_id" ON "bhudhi_governance_approvals" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_approvals_status" ON "bhudhi_governance_approvals" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_approvals_subject" ON "bhudhi_governance_approvals" USING btree ("subject_type","subject_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_audit_blueprint_id" ON "bhudhi_governance_audit" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_audit_event_type" ON "bhudhi_governance_audit" USING btree ("event_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_audit_created_at" ON "bhudhi_governance_audit" USING btree ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_emergency_blueprint_id" ON "bhudhi_governance_emergency" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_memory_blueprint_id" ON "bhudhi_governance_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_memory_type_key" ON "bhudhi_governance_memory" USING btree ("memory_type","key");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governance_violations_blueprint_id" ON "bhudhi_governance_violations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governor_allocations_blueprint_id" ON "bhudhi_governor_allocations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governor_events_blueprint_id" ON "bhudhi_governor_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governor_health_blueprint_id" ON "bhudhi_governor_health" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governor_history_blueprint_id" ON "bhudhi_governor_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_governor_recovery_blueprint_id" ON "bhudhi_governor_recovery" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_idea_sets_blueprint_id" ON "bhudhi_idea_sets" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_events_blueprint_id" ON "bhudhi_identity_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_growth_profile_id" ON "bhudhi_identity_growth" USING btree ("profile_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_history_profile_id" ON "bhudhi_identity_history" USING btree ("profile_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_profiles_blueprint_id" ON "bhudhi_identity_profiles" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_profiles_user_id" ON "bhudhi_identity_profiles" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_identity_values_profile_id" ON "bhudhi_identity_values" USING btree ("profile_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_incident_logs_blueprint_id" ON "bhudhi_incident_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_infra_capacity_blueprint_id" ON "bhudhi_infra_capacity" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_infra_deployments_blueprint_id" ON "bhudhi_infra_deployments" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_infra_events_blueprint_id" ON "bhudhi_infra_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_infra_health_blueprint_id" ON "bhudhi_infra_health" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_infra_runtime_blueprint_id" ON "bhudhi_infra_runtime" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_investigations_blueprint_id" ON "bhudhi_investigations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_investigations_engine_id" ON "bhudhi_investigations" USING btree ("engine_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_kernel_events_blueprint_id" ON "bhudhi_kernel_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_kernel_events_event_type" ON "bhudhi_kernel_events" USING btree ("event_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_kernel_events_chain_id" ON "bhudhi_kernel_events" USING btree ("chain_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_edges_blueprint_id" ON "bhudhi_memory_edges" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_edges_from" ON "bhudhi_memory_edges" USING btree ("from_node_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_edges_to" ON "bhudhi_memory_edges" USING btree ("to_node_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_bhudhi_memory_edges" ON "bhudhi_memory_edges" USING btree ("blueprint_id","from_node_id","to_node_id","edge_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_nodes_blueprint_id" ON "bhudhi_memory_nodes" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_nodes_node_type" ON "bhudhi_memory_nodes" USING btree ("node_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_bhudhi_memory_nodes_blueprint_type_id" ON "bhudhi_memory_nodes" USING btree ("blueprint_id","node_type","node_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_queries_blueprint_id" ON "bhudhi_memory_queries" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_relationships_blueprint_id" ON "bhudhi_memory_relationships" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_timeline_blueprint_id" ON "bhudhi_memory_timeline" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_memory_timeline_timestamp" ON "bhudhi_memory_timeline" USING btree ("timestamp");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_modules_system" ON "bhudhi_modules" USING btree ("system");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organization_events_org_id" ON "bhudhi_organization_events" USING btree ("organization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organization_health_org_id" ON "bhudhi_organization_health" USING btree ("organization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organization_memory_org_id" ON "bhudhi_organization_memory" USING btree ("organization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organization_roles_org_id" ON "bhudhi_organization_roles" USING btree ("organization_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organization_roles_user_id" ON "bhudhi_organization_roles" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_organizations_blueprint_id" ON "bhudhi_organizations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_permission_history_blueprint_id" ON "bhudhi_permission_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_predictions_blueprint_id" ON "bhudhi_predictions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_protocol_contracts_engines" ON "bhudhi_protocol_contracts" USING btree ("engine_a","engine_b");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_protocol_messages_blueprint_id" ON "bhudhi_protocol_messages" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_protocol_messages_uri" ON "bhudhi_protocol_messages" USING btree ("uri");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_protocol_messages_from_engine" ON "bhudhi_protocol_messages" USING btree ("from_engine");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_protocol_messages_to_engine" ON "bhudhi_protocol_messages" USING btree ("to_engine");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_protocol_routes_pattern" ON "bhudhi_protocol_routes" USING btree ("pattern");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_recommendations_blueprint_id" ON "bhudhi_recommendations" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_recommendations_engine_id" ON "bhudhi_recommendations" USING btree ("engine_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_recovery_records_blueprint_id" ON "bhudhi_recovery_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_reliability_events_blueprint_id" ON "bhudhi_reliability_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_rollback_history_blueprint_id" ON "bhudhi_rollback_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_secret_registry_blueprint_id" ON "bhudhi_secret_registry" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_security_events_blueprint_id" ON "bhudhi_security_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_shared_context_blueprint_id" ON "bhudhi_shared_context" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_signals_blueprint_id" ON "bhudhi_signals" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_simulation_events_run_id" ON "bhudhi_simulation_events" USING btree ("run_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_simulation_memory_blueprint_id" ON "bhudhi_simulation_memory" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_simulation_runs_blueprint_id" ON "bhudhi_simulation_runs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_simulation_scores_run_id" ON "bhudhi_simulation_scores" USING btree ("run_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_simulation_worlds_blueprint_id" ON "bhudhi_simulation_worlds" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_strategic_choices_blueprint_id" ON "bhudhi_strategic_choices" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_system_health_blueprint_id" ON "bhudhi_system_health" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_systems_status" ON "bhudhi_systems" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_team_alignment_team_id" ON "bhudhi_team_alignment" USING btree ("team_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_team_health_team_id" ON "bhudhi_team_health" USING btree ("team_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_team_identity_team_id" ON "bhudhi_team_identity" USING btree ("team_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_team_memory_team_id" ON "bhudhi_team_memory" USING btree ("team_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_teams_blueprint_id" ON "bhudhi_teams" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_temporal_forecasts_blueprint_id" ON "bhudhi_temporal_forecasts" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_temporal_history_blueprint_id" ON "bhudhi_temporal_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_temporal_patterns_blueprint_id" ON "bhudhi_temporal_patterns" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_temporal_timelines_blueprint_id" ON "bhudhi_temporal_timelines" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_temporal_windows_blueprint_id" ON "bhudhi_temporal_windows" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_threat_records_blueprint_id" ON "bhudhi_threat_records" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_trust_profiles_blueprint_id" ON "bhudhi_trust_profiles" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_contexts_execution_id" ON "bhudhi_unified_execution_contexts" USING btree ("execution_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_contexts_blueprint_id" ON "bhudhi_unified_execution_contexts" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_contexts_execution_type" ON "bhudhi_unified_execution_contexts" USING btree ("execution_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_contexts_status" ON "bhudhi_unified_execution_contexts" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_feedback_execution_id" ON "bhudhi_unified_execution_feedback" USING btree ("execution_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_results_execution_id" ON "bhudhi_unified_execution_results" USING btree ("execution_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_results_success" ON "bhudhi_unified_execution_results" USING btree ("success");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_steps_exec_step" ON "bhudhi_unified_execution_steps" USING btree ("execution_id","step_number");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_unified_execution_steps_execution_id" ON "bhudhi_unified_execution_steps" USING btree ("execution_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_entities_blueprint_id" ON "bhudhi_world_entities" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_entities_entity_type" ON "bhudhi_world_entities" USING btree ("entity_type");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_events_blueprint_id" ON "bhudhi_world_events" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_relationships_blueprint_id" ON "bhudhi_world_relationships" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_snapshots_blueprint_id" ON "bhudhi_world_snapshots" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_states_blueprint_id" ON "bhudhi_world_states" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_bhudhi_world_states_entity_id" ON "bhudhi_world_states" USING btree ("entity_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_sequence_history_blueprint_id" ON "blueprint_sequence_history" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_blueprint_sequence_history_sequence_number" ON "blueprint_sequence_history" USING btree ("sequence_number");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_blueprint_sequences_blueprint_id" ON "blueprint_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_blueprint_tier_sequences_blueprint_id" ON "blueprint_tier_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_context_sequences_blueprint_id" ON "context_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_execution_feedback_sequences_blueprint_id" ON "execution_feedback_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_execution_structure_sequences_blueprint_id" ON "execution_structure_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_goal_sequences_blueprint_id" ON "goal_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_master_plan_sequences_blueprint_id" ON "master_plan_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_mini_plan_allocation_history_blueprint" ON "mini_plan_allocation_history" USING btree ("blueprint_id","created_at");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_mini_plan_sequences_blueprint_id" ON "mini_plan_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_policy_sequences_blueprint_id" ON "policy_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_prediction_scene_sequences_blueprint_id" ON "prediction_scene_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_purpose_sequences_blueprint_id" ON "purpose_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_sequence_flows_blueprint_id" ON "sequence_flows" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_sequence_flows_current" ON "sequence_flows" USING btree ("current_sequence_name");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_signal_condition_sequences_blueprint_id" ON "signal_condition_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_signal_sequences_blueprint_id" ON "signal_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_task_generation_sequences_blueprint_id" ON "task_generation_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_tier_sequence_gates_blueprint_tier" ON "tier_sequence_gates" USING btree ("blueprint_tier");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_tier_sequence_gates_tier_seq_feature" ON "tier_sequence_gates" USING btree ("blueprint_tier","sequence_number","unlocks_feature");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_validation_result_sequences_blueprint_id" ON "validation_result_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_validation_sequences_blueprint_id" ON "validation_sequences" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_adaptation_suggestions_blueprint_id" ON "adaptation_suggestions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_adaptation_suggestions_sequence_number" ON "adaptation_suggestions" USING btree ("sequence_number");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_growth_execution_patterns_blueprint_id" ON "growth_execution_patterns" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_growth_execution_patterns_pattern_type" ON "growth_execution_patterns" USING btree ("pattern_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_growth_execution_patterns_blueprint_type_name" ON "growth_execution_patterns" USING btree ("blueprint_id","pattern_type","pattern_name");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_interrogation_logs_blueprint_id" ON "interrogation_logs" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_interrogation_logs_sequence_number" ON "interrogation_logs" USING btree ("sequence_number");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_knowledge_cards_blueprint_id" ON "knowledge_cards" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_knowledge_cards_tier" ON "knowledge_cards" USING btree ("tier");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "uniq_knowledge_cards_blueprint_title" ON "knowledge_cards" USING btree ("blueprint_id","title");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_emergency_orders_blueprint_id" ON "ultimate_emergency_orders" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_emergency_orders_status" ON "ultimate_emergency_orders" USING btree ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_emergency_orders_trigger" ON "ultimate_emergency_orders" USING btree ("trigger_event");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_predictions_blueprint_id" ON "ultimate_predictions" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_scenes_blueprint_id" ON "ultimate_scenes" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_validation_checkpoints_blueprint_id" ON "ultimate_validation_checkpoints" USING btree ("blueprint_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_ultimate_validation_checkpoints_recovery" ON "ultimate_validation_checkpoints" USING btree ("recovery_needed");
+--> statement-breakpoint
