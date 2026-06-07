@@ -1,55 +1,263 @@
-CREATE TYPE "public"."action_type" AS ENUM('create', 'replicate', 'analyze', 'improve', 'standardize', 'recover', 'test', 'publish', 'validate', 'measure', 'build');--> statement-breakpoint
-CREATE TYPE "public"."ai_mode" AS ENUM('command', 'correction', 'stabilization', 'optimization', 'expansion', 'strategic', 'analytical');--> statement-breakpoint
-CREATE TYPE "public"."behavior_pattern_status" AS ENUM('active', 'resolved', 'ignored', 'monitoring');--> statement-breakpoint
-CREATE TYPE "public"."behavior_pattern_type" AS ENUM('procrastination', 'burnout', 'inconsistency', 'avoidance', 'fake_completion', 'low_reflection', 'blocker_repetition', 'inactivity', 'score_inflation', 'difficulty_ceiling', 'task_type_avoidance', 'recovery_dependence', 'false_progress', 'focus_drift');--> statement-breakpoint
-CREATE TYPE "public"."bhudhi_execution_context" AS ENUM('marketing', 'pr', 'strategy', 'execution', 'analysis');--> statement-breakpoint
-CREATE TYPE "public"."bhudhi_request_type" AS ENUM('goal_validation', 'blueprint_generation', 'policy_generation', 'task_generation', 'task_regeneration', 'feedback_interpretation', 'feedback_interrogation', 'condition_explanation', 'recovery_suggestion', 'academy_content', 'knowledge_generation', 'behavior_analysis', 'dashboard_summary', 'other');--> statement-breakpoint
-CREATE TYPE "public"."bhudhi_trigger_type" AS ENUM('task_generation', 'feedback_interpretation', 'feedback_interrogation', 'goal_structuring', 'validation_analysis', 'condition_explanation', 'state_explanation', 'blocker_classification', 'pattern_summary', 'evidence_summary', 'root_cause_candidates', 'pivot_path_generation', 'academy_content', 'knowledge_update', 'blueprint_generation', 'blueprint_interpretation', 'erector_analysis');--> statement-breakpoint
-CREATE TYPE "public"."blueprint_operational_state" AS ENUM('ACTIVE', 'STALLED', 'DEGRADED', 'RECOVERY', 'COLLAPSED', 'ARCHIVED');--> statement-breakpoint
-CREATE TYPE "public"."blueprint_status" AS ENUM('draft', 'validating', 'awaiting_selection', 'path_selection', 'active', 'paused', 'complete', 'abandoned');--> statement-breakpoint
-CREATE TYPE "public"."capability_level" AS ENUM('beginner', 'operator', 'advanced', 'lead');--> statement-breakpoint
-CREATE TYPE "public"."commitment_level" AS ENUM('low', 'medium', 'high', 'full');--> statement-breakpoint
-CREATE TYPE "public"."condition" AS ENUM('nothingness', 'danger', 'urgency', 'stability', 'power', 'affluence', 'power_change');--> statement-breakpoint
-CREATE TYPE "public"."difficulty" AS ENUM('very_easy', 'easy', 'moderate', 'hard', 'very_hard');--> statement-breakpoint
-CREATE TYPE "public"."domain" AS ENUM('genesis', 'market', 'delivery', 'operations', 'people', 'growth', 'continuity');--> statement-breakpoint
-CREATE TYPE "public"."domain_transition_trigger" AS ENUM('validation_complete', 'blueprint_launched', 'signal_change', 'condition_change', 'strategy_pivot', 'manual_review', 'phase_complete', 'recovery_mode');--> statement-breakpoint
-CREATE TYPE "public"."event_log_result" AS ENUM('success', 'retry', 'failed', 'dead_lettered', 'noop_duplicate');--> statement-breakpoint
-CREATE TYPE "public"."event_status" AS ENUM('pending', 'claimed', 'processed', 'retry_pending', 'dead_lettered', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."fatigue_risk" AS ENUM('low', 'moderate', 'high', 'critical');--> statement-breakpoint
-CREATE TYPE "public"."framework_activation_level" AS ENUM('dormant', 'monitor', 'diagnose', 'recommend', 'enforce');--> statement-breakpoint
-CREATE TYPE "public"."framework_decision_status" AS ENUM('proposed', 'approved', 'rejected', 'applied', 'superseded');--> statement-breakpoint
-CREATE TYPE "public"."framework_name" AS ENUM('governance_risk', 'finmatrix', 'strategycore', 'synergyops', 'talentsync', 'alignment_accountability', 'customervalue', 'omnigrowth', 'adaptive_intelligence', 'knowledgeflow', 'decision_velocity', 'culture_dynamics', 'regeneration_exit', 'clarity_catalyst');--> statement-breakpoint
-CREATE TYPE "public"."generation_mode" AS ENUM('initial', 'post_feedback', 'daily', 'recovery', 'condition_change');--> statement-breakpoint
-CREATE TYPE "public"."generation_trigger" AS ENUM('blueprint_launched', 'feedback_submitted', 'condition_changed', 'task_completed', 'task_blocked', 'user_inactive', 'phase_checkpoint_required', 'academy_gap_detected', 'weekly_review_due', 'habit_check_due', 'dependency_unblocked', 'daily_cycle', 'recovery_triggered', 'manual_regeneration');--> statement-breakpoint
-CREATE TYPE "public"."identity_stage" AS ENUM('starting', 'forming', 'building', 'establishing', 'consolidated', 'transforming');--> statement-breakpoint
-CREATE TYPE "public"."inactivity_threshold" AS ENUM('warning', 'soft', 'hard', 'critical');--> statement-breakpoint
-CREATE TYPE "public"."intelligence_depth" AS ENUM('guided', 'operational', 'strategic');--> statement-breakpoint
-CREATE TYPE "public"."milestone_type" AS ENUM('task_streak', 'phase_complete', 'project_complete', 'target_hit', 'blueprint_complete', 'comeback', 'score_improvement', 'capability_level_up');--> statement-breakpoint
-CREATE TYPE "public"."order_status" AS ENUM('pending', 'active', 'paused', 'blocked', 'needs_feedback', 'needs_proof', 'completed', 'failed', 'skipped', 'cancelled', 'pre_generated');--> statement-breakpoint
-CREATE TYPE "public"."phase_name" AS ENUM('initiation', 'development', 'completion');--> statement-breakpoint
-CREATE TYPE "public"."phase_permission" AS ENUM('restricted', 'blocked', 'normal', 'accelerated');--> statement-breakpoint
-CREATE TYPE "public"."phase_status" AS ENUM('pending', 'active', 'gated', 'blocked', 'complete', 'skipped');--> statement-breakpoint
-CREATE TYPE "public"."plan_status" AS ENUM('pending', 'active', 'complete', 'skipped');--> statement-breakpoint
-CREATE TYPE "public"."project_status" AS ENUM('pending', 'active', 'blocked', 'complete', 'failed', 'skipped');--> statement-breakpoint
-CREATE TYPE "public"."project_type" AS ENUM('setup', 'execution', 'analysis', 'optimization', 'recovery');--> statement-breakpoint
-CREATE TYPE "public"."proof_type" AS ENUM('link', 'file', 'text', 'image', 'none');--> statement-breakpoint
-CREATE TYPE "public"."risk_level" AS ENUM('low', 'medium', 'high', 'critical');--> statement-breakpoint
-CREATE TYPE "public"."season_name" AS ENUM('ignition', 'foundation', 'traction', 'scale');--> statement-breakpoint
-CREATE TYPE "public"."selected_path" AS ENUM('current', 'adjusted', 'alternative');--> statement-breakpoint
-CREATE TYPE "public"."signal_confidence" AS ENUM('insufficient_data', 'low', 'medium', 'high');--> statement-breakpoint
-CREATE TYPE "public"."signal_trend" AS ENUM('rising', 'stable', 'declining', 'recovering', 'volatile');--> statement-breakpoint
-CREATE TYPE "public"."target_adjustment" AS ENUM('reduce', 'maintain', 'expand');--> statement-breakpoint
-CREATE TYPE "public"."target_status" AS ENUM('pending', 'active', 'on_track', 'at_risk', 'complete', 'failed', 'skipped');--> statement-breakpoint
-CREATE TYPE "public"."target_type" AS ENUM('major', 'primary', 'vital', 'operating', 'production', 'conditional');--> statement-breakpoint
-CREATE TYPE "public"."task_type" AS ENUM('execution', 'recovery', 'academy', 'clarification', 'blocker_resolution', 'phase_checkpoint', 'habit', 'review', 'smoke_test');--> statement-breakpoint
-CREATE TYPE "public"."team_role" AS ENUM('owner', 'strategist', 'operator', 'contributor', 'reviewer', 'observer');--> statement-breakpoint
-CREATE TYPE "public"."throughput" AS ENUM('very_low', 'low', 'moderate', 'high', 'very_high');--> statement-breakpoint
-CREATE TYPE "public"."ui_mode" AS ENUM('starter', 'restrictive', 'focused', 'standard', 'expanded', 'strategic', 'transitional');--> statement-breakpoint
-CREATE TYPE "public"."user_mode" AS ENUM('individual', 'team');--> statement-breakpoint
-CREATE TYPE "public"."user_tier" AS ENUM('starter', 'growth', 'ultimate');--> statement-breakpoint
-CREATE TYPE "public"."validation_kind" AS ENUM('legacy', 'intelligence', 'erector', 'readiness', 'path_selection', 'unknown');--> statement-breakpoint
-CREATE TYPE "public"."validation_readiness" AS ENUM('not_ready', 'partial', 'ready_proceed', 'ready_with_adjustment', 'blocked_pivot', 'blocked_reality');--> statement-breakpoint
-CREATE TYPE "public"."validation_verdict" AS ENUM('proceed', 'adjust', 'pivot', 'blocked');--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."action_type" AS ENUM('create', 'replicate', 'analyze', 'improve', 'standardize', 'recover', 'test', 'publish', 'validate', 'measure', 'build');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."ai_mode" AS ENUM('command', 'correction', 'stabilization', 'optimization', 'expansion', 'strategic', 'analytical');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."behavior_pattern_status" AS ENUM('active', 'resolved', 'ignored', 'monitoring');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."behavior_pattern_type" AS ENUM('procrastination', 'burnout', 'inconsistency', 'avoidance', 'fake_completion', 'low_reflection', 'blocker_repetition', 'inactivity', 'score_inflation', 'difficulty_ceiling', 'task_type_avoidance', 'recovery_dependence', 'false_progress', 'focus_drift');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."bhudhi_execution_context" AS ENUM('marketing', 'pr', 'strategy', 'execution', 'analysis');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."bhudhi_request_type" AS ENUM('goal_validation', 'blueprint_generation', 'policy_generation', 'task_generation', 'task_regeneration', 'feedback_interpretation', 'feedback_interrogation', 'condition_explanation', 'recovery_suggestion', 'academy_content', 'knowledge_generation', 'behavior_analysis', 'dashboard_summary', 'other');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."bhudhi_trigger_type" AS ENUM('task_generation', 'feedback_interpretation', 'feedback_interrogation', 'goal_structuring', 'validation_analysis', 'condition_explanation', 'state_explanation', 'blocker_classification', 'pattern_summary', 'evidence_summary', 'root_cause_candidates', 'pivot_path_generation', 'academy_content', 'knowledge_update', 'blueprint_generation', 'blueprint_interpretation', 'erector_analysis');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."blueprint_operational_state" AS ENUM('ACTIVE', 'STALLED', 'DEGRADED', 'RECOVERY', 'COLLAPSED', 'ARCHIVED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."blueprint_status" AS ENUM('draft', 'validating', 'awaiting_selection', 'path_selection', 'active', 'paused', 'complete', 'abandoned');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."capability_level" AS ENUM('beginner', 'operator', 'advanced', 'lead');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."commitment_level" AS ENUM('low', 'medium', 'high', 'full');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."condition" AS ENUM('nothingness', 'danger', 'urgency', 'stability', 'power', 'affluence', 'power_change');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."difficulty" AS ENUM('very_easy', 'easy', 'moderate', 'hard', 'very_hard');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."domain" AS ENUM('genesis', 'market', 'delivery', 'operations', 'people', 'growth', 'continuity');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."domain_transition_trigger" AS ENUM('validation_complete', 'blueprint_launched', 'signal_change', 'condition_change', 'strategy_pivot', 'manual_review', 'phase_complete', 'recovery_mode');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."event_log_result" AS ENUM('success', 'retry', 'failed', 'dead_lettered', 'noop_duplicate');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."event_status" AS ENUM('pending', 'claimed', 'processed', 'retry_pending', 'dead_lettered', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."fatigue_risk" AS ENUM('low', 'moderate', 'high', 'critical');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."framework_activation_level" AS ENUM('dormant', 'monitor', 'diagnose', 'recommend', 'enforce');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."framework_decision_status" AS ENUM('proposed', 'approved', 'rejected', 'applied', 'superseded');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."framework_name" AS ENUM('governance_risk', 'finmatrix', 'strategycore', 'synergyops', 'talentsync', 'alignment_accountability', 'customervalue', 'omnigrowth', 'adaptive_intelligence', 'knowledgeflow', 'decision_velocity', 'culture_dynamics', 'regeneration_exit', 'clarity_catalyst');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."generation_mode" AS ENUM('initial', 'post_feedback', 'daily', 'recovery', 'condition_change');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."generation_trigger" AS ENUM('blueprint_launched', 'feedback_submitted', 'condition_changed', 'task_completed', 'task_blocked', 'user_inactive', 'phase_checkpoint_required', 'academy_gap_detected', 'weekly_review_due', 'habit_check_due', 'dependency_unblocked', 'daily_cycle', 'recovery_triggered', 'manual_regeneration');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."identity_stage" AS ENUM('starting', 'forming', 'building', 'establishing', 'consolidated', 'transforming');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."inactivity_threshold" AS ENUM('warning', 'soft', 'hard', 'critical');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."intelligence_depth" AS ENUM('guided', 'operational', 'strategic');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."milestone_type" AS ENUM('task_streak', 'phase_complete', 'project_complete', 'target_hit', 'blueprint_complete', 'comeback', 'score_improvement', 'capability_level_up');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."order_status" AS ENUM('pending', 'active', 'paused', 'blocked', 'needs_feedback', 'needs_proof', 'completed', 'failed', 'skipped', 'cancelled', 'pre_generated');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."phase_name" AS ENUM('initiation', 'development', 'completion');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."phase_permission" AS ENUM('restricted', 'blocked', 'normal', 'accelerated');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."phase_status" AS ENUM('pending', 'active', 'gated', 'blocked', 'complete', 'skipped');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."plan_status" AS ENUM('pending', 'active', 'complete', 'skipped');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."project_status" AS ENUM('pending', 'active', 'blocked', 'complete', 'failed', 'skipped');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."project_type" AS ENUM('setup', 'execution', 'analysis', 'optimization', 'recovery');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."proof_type" AS ENUM('link', 'file', 'text', 'image', 'none');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."risk_level" AS ENUM('low', 'medium', 'high', 'critical');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."season_name" AS ENUM('ignition', 'foundation', 'traction', 'scale');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."selected_path" AS ENUM('current', 'adjusted', 'alternative');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."signal_confidence" AS ENUM('insufficient_data', 'low', 'medium', 'high');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."signal_trend" AS ENUM('rising', 'stable', 'declining', 'recovering', 'volatile');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."target_adjustment" AS ENUM('reduce', 'maintain', 'expand');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."target_status" AS ENUM('pending', 'active', 'on_track', 'at_risk', 'complete', 'failed', 'skipped');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."target_type" AS ENUM('major', 'primary', 'vital', 'operating', 'production', 'conditional');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."task_type" AS ENUM('execution', 'recovery', 'academy', 'clarification', 'blocker_resolution', 'phase_checkpoint', 'habit', 'review', 'smoke_test');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."team_role" AS ENUM('owner', 'strategist', 'operator', 'contributor', 'reviewer', 'observer');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."throughput" AS ENUM('very_low', 'low', 'moderate', 'high', 'very_high');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."ui_mode" AS ENUM('starter', 'restrictive', 'focused', 'standard', 'expanded', 'strategic', 'transitional');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."user_mode" AS ENUM('individual', 'team');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."user_tier" AS ENUM('starter', 'growth', 'ultimate');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."validation_kind" AS ENUM('legacy', 'intelligence', 'erector', 'readiness', 'path_selection', 'unknown');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."validation_readiness" AS ENUM('not_ready', 'partial', 'ready_proceed', 'ready_with_adjustment', 'blocked_pivot', 'blocked_reality');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."validation_verdict" AS ENUM('proceed', 'adjust', 'pivot', 'blocked');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;--> statement-breakpoint
 CREATE TABLE "academy_chapters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"course_id" uuid NOT NULL,
