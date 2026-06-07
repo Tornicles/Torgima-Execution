@@ -606,7 +606,7 @@ export async function runCompleteSystemDiagnostic(
   }
 
   const padFixes = [
-    { fix: "Set production env vars on Railway/Vercel", file: ".env / platform secrets" },
+    { fix: "Set production env vars on Cloudflare Worker + Pages", file: "Wrangler secrets / Pages env" },
     { fix: "Run pnpm verify:system against production DB", file: "scripts/src/verify-system.ts" },
     { fix: "Run phase-9 e2e execution loop tests", file: "artifacts/api-server/src/tests/e2e/phase9" },
     { fix: "Monitor DLQ via GET /api/health", file: "artifacts/api-server/src/routes/health.ts" },
@@ -645,8 +645,8 @@ export async function runCompleteSystemDiagnostic(
         ? "Magic link + sessions"
         : "UNKNOWN",
       databaseHost: "Supabase Postgres",
-      deploymentApi: "Railway",
-      deploymentFrontend: "Vercel",
+      deploymentApi: "Cloudflare Workers",
+      deploymentFrontend: "Cloudflare Pages",
       packageManager: pkg.packageManager ?? "pnpm",
       engineModuleCount: String(engineFiles.length),
       workerModuleCount: String(workerFiles.length),

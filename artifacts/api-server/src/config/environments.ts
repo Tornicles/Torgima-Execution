@@ -1,3 +1,5 @@
+import { PRODUCTION_BACKEND_URL } from "./production.js";
+
 export type Environment = "development" | "staging" | "production";
 
 export interface EnvironmentConfig {
@@ -35,18 +37,18 @@ function resolveApiUrl(env: Environment): string {
 
   switch (env) {
     case "production":
-      return "https://api.torgima-execution.com";
+      return PRODUCTION_BACKEND_URL;
     case "staging":
-      return "https://staging-api.torgima-execution.com";
+      return "https://api.torgima.com";
     default:
-      return "http://localhost:3000";
+      return "http://localhost:8787";
   }
 }
 
 const DEFAULT_API_URLS: Record<Environment, string> = {
-  development: "http://localhost:3000",
-  staging: "https://staging-api.torgima-execution.com",
-  production: "https://api.torgima-execution.com",
+  development: "http://localhost:8787",
+  staging: "https://api.torgima.com",
+  production: PRODUCTION_BACKEND_URL,
 };
 
 export const environments: Record<Environment, EnvironmentConfig> = {
@@ -111,13 +113,12 @@ export const environments: Record<Environment, EnvironmentConfig> = {
   },
 };
 
-/** Resolve active deployment environment from ENVIRONMENT / NODE_ENV / VERCEL_ENV. */
+/** Resolve active deployment environment from ENVIRONMENT / NODE_ENV. */
 export function resolveEnvironmentName(): Environment {
   const explicit = process.env.ENVIRONMENT?.trim().toLowerCase();
   if (explicit === "development" || explicit === "staging" || explicit === "production") {
     return explicit;
   }
-  if (process.env.VERCEL_ENV === "preview") return "staging";
   if (process.env.NODE_ENV === "production") return "production";
   return "development";
 }

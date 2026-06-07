@@ -15,5 +15,5 @@ export function getDefaultApiBaseUrl(): string {
   if (trimmed !== "") {
     return trimmed;
   }
-  return "http://localhost:3001";
+  return "http://localhost:8787";
 }

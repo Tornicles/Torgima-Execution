@@ -77,7 +77,7 @@ function recordWarning(warnings: string[], message: string, meta?: Record<string
 }
 
 /**
- * Never aborts the HTTP server in production — Railway must keep listening for health/CORS.
+ * Never aborts the HTTP server in production — Worker must keep listening for health/CORS.
  * Set STRICT_STARTUP_PREFLIGHT=true to restore hard-fail behaviour.
  */
 export async function runMigrationPreflight(): Promise<MigrationPreflightResult> {
@@ -127,7 +127,7 @@ export async function runMigrationPreflight(): Promise<MigrationPreflightResult>
   if (pending.length > 0) {
     recordWarning(
       warnings,
-      `Drizzle journal shows unapplied tags: ${pending.join(", ")} (run db:apply-manual on Railway)`,
+      `Drizzle journal shows unapplied tags: ${pending.join(", ")} (run db:apply-manual on Supabase)`,
       { pending, applied, available: entries.length },
     );
   } else {

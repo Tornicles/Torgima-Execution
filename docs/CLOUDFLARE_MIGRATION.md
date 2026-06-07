@@ -1,108 +1,95 @@
-# Torgima → Cloudflare Migration
+# Torgima → Cloudflare production architecture
 
-Infrastructure-only migration: **Cloudflare Pages** (frontend) + **Cloudflare Workers** (API) + **Supabase** (database). Business logic, engines, and schema are unchanged.
+Infrastructure: **Cloudflare Pages** (frontend) + **Cloudflare Workers** (API) + **Supabase** (database/auth) + **Resend** (email) + **Anthropic** (AI).
 
-## Phase 1 — Cloudflare dashboard (manual)
+**Railway and Vercel are deprecated** — not used in active production deploy paths.
 
-Create these **before** first deploy:
+## Production URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend | https://torgima.com |
+| API | https://api.torgima.com |
+| Health | https://api.torgima.com/health |
+
+## Cloudflare dashboard resources
 
 | Resource | Name | Notes |
 |----------|------|--------|
-| **Pages project** | `torgima-frontend` | Connect GitHub repo `artifacts/torgima` build → `dist` |
-| **Worker** | `torgima-api` | Deployed from `artifacts/api-server` |
-| **KV namespace** | `TORGIMA_SESSIONS` | ID in `artifacts/api-server/wrangler.jsonc` (`aa13fb8cb21d44aa965fbcc7cc9ea1f7`) |
-| **Queue** | `torgima-task-queue` | Replaces pg-boss job delivery on Workers |
-| **Hyperdrive** | `torgima-supabase` | Point at Supabase Postgres connection string |
+| **Pages project** | `torgima-execution` | Build: `pnpm build:cloudflare:pages` → `artifacts/torgima/dist` |
+| **Worker** | `torgima` | Route: `api.torgima.com/*` |
+| **KV namespace** | `TORGIMA_SESSIONS` | Binding `SESSIONS` in wrangler |
+| **Queue** (optional) | `torgima-task-queue` | Uncomment in wrangler after creation |
+| **Hyperdrive** (recommended) | `torgima-supabase` | Supabase Postgres connection pooling |
 
-### DNS (Phase 10)
+## DNS
 
 | Host | Target |
 |------|--------|
 | `torgima.com` | Cloudflare Pages |
-| `api.torgima.com` | Worker `torgima-api` |
+| `www.torgima.com` | Cloudflare Pages |
+| `api.torgima.com` | Worker `torgima` |
 
-Set `APP_URL=https://torgima.com` on the Worker.
+## Frontend (Pages)
 
-## Phase 2 — Frontend (Pages)
-
-See **`artifacts/torgima/CLOUDFLARE_PAGES.md`** for exact dashboard fields.
+See **`artifacts/torgima/CLOUDFLARE_PAGES.md`**.
 
 | Field | Value |
 |-------|--------|
+| Project | `torgima-execution` |
 | Build command | `pnpm build:cloudflare:pages` |
-| Build output directory | `artifacts/torgima/dist` |
-| **Deploy command** | **(empty)** — do not use `npx wrangler deploy` |
+| Output | `artifacts/torgima/dist` |
+| Env | `VITE_API_BASE_URL=https://api.torgima.com` |
 
-- Config: `artifacts/torgima/wrangler.jsonc`
-- Manual CLI deploy: `pnpm deploy:cloudflare:pages`
-- Set `VITE_API_BASE_URL=https://api.torgima.com` in Pages env (see `.env.production.example`)
+## API (Workers + Express bridge)
 
-## Phase 3–4 — API (Workers + Express bridge)
+- Entry: `artifacts/api-server/src/worker.ts`
+- Express via `cloudflare:node` + `handleAsNodeRequest`
+- Local dev: `pnpm exec wrangler dev` (port 8787)
 
-- Entry: `artifacts/api-server/src/worker.ts` — wraps existing Express `app.ts` via `cloudflare:node:http`
-- No per-route Hono rewrite required for v1; `src/lib/honoCompat.ts` is available for incremental migration
-- Local dev: `pnpm -F @workspace/api-server dev:worker`
+## Sessions (KV)
 
-## Phase 5 — Sessions (KV)
+When `SESSIONS` KV binding is present, magic-link verify dual-writes KV + `sessions` table.
 
-When `SESSIONS` KV binding is present:
+## Database (Supabase)
 
-- Magic-link verify still uses `AuthService` logic
-- Session token is dual-written to KV + `sessions` table
-- `validateSession` reads KV first on Workers
+- Worker secret: `DATABASE_URL`
+- Optional Hyperdrive binding for connection pooling
+- Migrations: `pnpm db:migrate` + `pnpm db:apply-manual`
 
-Cookie: `SameSite=Lax` on Cloudflare runtime.
+## Worker secrets
 
-## Phase 6 — Database (Supabase + Hyperdrive)
+```bash
+wrangler secret put DATABASE_URL
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put RESEND_API_KEY
+wrangler secret put EMAIL_FROM
+wrangler secret put INTERNAL_AUTH_SECRET
+wrangler secret put NOTIFICATION_UNSUBSCRIBE_SECRET
+```
 
-- Use **Hyperdrive** binding `HYPERDRIVE` in `wrangler.jsonc`
-- `bindCloudflareEnv()` sets `process.env.DATABASE_URL` from Hyperdrive
-- Existing `@workspace/db` Drizzle queries unchanged
+## CI/CD
 
-## Phase 7 — Queues (pg-boss replacement)
-
-- Producer: `lib/cloudflare-queue.ts` — `getBoss().send()` → `TASK_QUEUE.send()`
-- Consumer: `src/queues/handler.ts` — dispatches to existing worker handlers
-- Node/Railway: pg-boss unchanged when `TORGIMA_RUNTIME` is not `cloudflare`
-
-Cron triggers in `wrangler.jsonc` cover scheduled jobs that previously used pg-boss cron:
-
-| Cron | Job |
-|------|-----|
-| `0 2 * * *` | Session cleanup |
-| `*/30 * * * *` | Inactivity scan |
-| `0 3 * * *` | Pattern daily scan |
-| `*/10 * * * *` | State integrity sweep |
-| `* * * * *` | Event dispatch poll |
-
-`src/schedulers/cloudflare-cron.ts` enqueues these onto `torgima-task-queue`; `worker.scheduled()` is the Cloudflare entrypoint.
-
-Provision + deploy locally: `pnpm provision:cloudflare` (requires `wrangler login` or `CLOUDFLARE_API_TOKEN`).
-
-Queues are created automatically by `scripts/ensure-cloudflare-queues.mjs` (also run before `deploy:cloudflare:api` and `deploy:cloudflare:worker`).
-
-### Workers Builds (dashboard)
-
-If the Worker is connected to GitHub via **Workers Builds**, set:
-
-| Field | Value |
-|-------|--------|
-| Build command | `pnpm run build` |
-| Deploy command | `pnpm run deploy` |
-
-Do **not** use bare `npx wrangler deploy` — deploy fails when `torgima-task-queue` / `torgima-task-queue-dlq` have not been created yet.
-
-## Phase 8 — CI/CD
-
-- `.github/workflows/deploy-cloudflare.yml` — build, migrate, deploy Worker + Pages
-- Keep `.github/workflows/ci.yml` for PR validation
+`.github/workflows/deploy-cloudflare.yml` — build, migrate, deploy Worker + Pages.
 
 ### GitHub secrets
 
 | Secret | Purpose |
 |--------|---------|
 | `CLOUDFLARE_API_TOKEN` | Deploy Workers + Pages |
-| `DATABASE_URL` | `pnpm db:migrate` in CI |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID |
+| `DATABASE_URL` | Migrations + Worker |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role |
+| `ANTHROPIC_API_KEY` | Bhudhi AI |
+| `RESEND_API_KEY` | Magic link email |
+| `EMAIL_FROM` | Sender address |
+| `INTERNAL_AUTH_SECRET` | Internal routes |
+| `NOTIFICATION_UNSUBSCRIBE_SECRET` | Unsubscribe tokens |
 
 ### GitHub variables
 
@@ -110,22 +97,18 @@ Do **not** use bare `npx wrangler deploy` — deploy fails when `torgima-task-qu
 |----------|---------|
 | `VITE_API_BASE_URL` | `https://api.torgima.com` |
 
-## Phase 9 — Worker secrets
+## Queues / cron
 
-```bash
-cd artifacts/api-server
-wrangler secret put DATABASE_URL      # fallback if Hyperdrive not used
-wrangler secret put ANTHROPIC_API_KEY
-wrangler secret put RESEND_API_KEY
-wrangler secret put INTERNAL_API_SECRET
-wrangler secret put NEXTAUTH_SECRET
-wrangler secret put APP_URL
-```
+Cron triggers in `wrangler.jsonc` cover scheduled jobs. Optional `torgima-task-queue` replaces pg-boss on Workers.
+
+Node local dev: pg-boss unchanged when `TORGIMA_RUNTIME` is not `cloudflare`.
+
+## Debug routes (no secrets exposed)
+
+- `GET /api/debug/cloudflare-env`
+- `GET /api/debug/routes`
+- `GET /api/debug/blueprint-launch-health`
 
 ## Rollback
 
-Railway + Vercel configs remain in git history. To rollback:
-
-1. Re-point DNS to Vercel/Railway
-2. Restore `artifacts/torgima/src/config/api.ts` production URL
-3. Deploy via previous pipelines
+Previous Railway/Vercel configs remain in git history only. To rollback, re-point DNS and restore from a prior commit — **not recommended**; prefer Cloudflare rollback in dashboard.

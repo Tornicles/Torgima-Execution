@@ -1,6 +1,6 @@
 # Cloudflare Pages — dashboard settings
 
-Use these values in **Workers & Pages → torgima-frontend → Settings → Builds**.
+Use these values in **Workers & Pages → torgima-execution → Settings → Builds**.
 
 ## Required settings
 

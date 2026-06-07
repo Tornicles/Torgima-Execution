@@ -42,7 +42,7 @@ export default function LoginPage() {
       }
       if (err instanceof TypeError) {
         setError(
-          "Network error — the API may be unreachable or CORS blocked the request. Check Railway is running and responds at the production API host.",
+          "Network error — the API may be unreachable or CORS blocked the request. Confirm https://api.torgima.com/health responds and Cloudflare Pages uses VITE_API_BASE_URL=https://api.torgima.com.",
         );
         return;
       }

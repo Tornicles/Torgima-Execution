@@ -1,28 +1,24 @@
 # Prompt 15 Production Runbook
 
-Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. This repo is a Vite SPA plus a long-running Express API/workers service, so the deployment flow adapts the prompt's Next.js examples to the actual architecture.
+Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Production runs on **Cloudflare Pages** (frontend) and **Cloudflare Workers** (API). Railway and Vercel are deprecated.
 
 ## Pre-Deployment Checklist
 
-- Branch: production deploys from `main`; verify with `git branch --show-current` and the Vercel production branch setting.
-- Node: `.node-version` is present at repo root and pins `22.13.0`.
-- Build order: root `vercel.json` builds `@workspace/api-client-react` before `@workspace/torgima`.
-- Environment: production hosts have `NODE_ENV=production`, `APP_VERSION=phase1`, and no test data generator enabled.
-- Database: use an alphanumeric-only Supabase password in connection URLs to avoid URL parsing failures.
-- Schema: run Drizzle schema sync and manual SQL scripts against production before first boot.
-- Platform references: production TypeScript paths must not depend on local-only URLs or development-only APIs.
-- Fallbacks: Bhudhi fallback tests must pass with `ANTHROPIC_API_KEY` removed.
-- pg-boss: `PGBOSS_DATABASE_URL` may be set separately; otherwise workers use `DATABASE_URL`.
-- Health: `/api/health` must return either `healthy` or `degraded` with database, Bhudhi, workers, and signals checks.
+- Branch: production deploys from `main`; verify GitHub Actions **Deploy to Cloudflare** succeeded.
+- Node: `22` (see root `package.json` engines).
+- Build: `pnpm build:cloudflare:pages` for frontend; Worker deploy via `artifacts/api-server/wrangler.toml`.
+- Environment: Worker has `NODE_ENV=production`, `TORGIMA_RUNTIME=cloudflare`, `APP_URL=https://torgima.com`.
+- Database: Supabase via `DATABASE_URL` on Worker; run `pnpm db:migrate` + `pnpm db:apply-manual` before launch.
+- Health: `GET https://api.torgima.com/health` must return JSON with status checks (not generic 500).
 
 ## Required Production Environment
 
-### Frontend (Vercel)
+### Frontend (Cloudflare Pages — project `torgima-execution`)
 
 - `VITE_API_BASE_URL=https://api.torgima.com`
 - `VITE_APP_VERSION=phase1`
 
-### API + Workers
+### API (Cloudflare Worker — `torgima`)
 
 - `DATABASE_URL`
 - `DIRECT_URL`
@@ -56,7 +52,7 @@ Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Thi
    pnpm -F @workspace/db verify
    ```
 
-   `db:migrate:prod` runs Drizzle migrations from the committed `migrations/` folder. Do not use `drizzle-kit push` or ad hoc SQL patch scripts in production. On Railway, confirm `DATABASE_URL` points at the same Supabase Postgres instance used by the API and set `DIRECT_URL` for direct migration access if the pooled URL blocks DDL.
+   `db:migrate:prod` runs Drizzle migrations from the committed `migrations/` folder. Do not use `drizzle-kit push` or ad hoc SQL patch scripts in production. Confirm `DATABASE_URL` (GitHub secret / Worker secret) points at the same Supabase Postgres instance used by the API. Set `DIRECT_URL` for direct migration access if the pooled URL blocks DDL.
 
 3. Build locally:
 
@@ -66,24 +62,27 @@ Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Thi
    pnpm -F @workspace/api-server exec vitest run src/tests/unit/bhudhi/phase11-prompt.test.ts src/tests/unit/bhudhi/phase12-prompt.test.ts src/tests/unit/bhudhi/phase13-prompt.test.ts src/tests/unit/bhudhi/phase14-prompt.test.ts src/tests/unit/bhudhi/phase15-prompt.test.ts
    ```
 
-4. Deploy frontend:
+4. Deploy (preferred — CI):
+
+   Push to `main` or run **Deploy to Cloudflare** workflow manually. It runs migrations, deploys Worker `torgima`, and Pages project `torgima-execution`.
+
+5. Deploy manually (if needed):
 
    ```bash
-   vercel --prod
+   pnpm run build:cloudflare:pages
+   pnpm run deploy:cloudflare:pages
+   pnpm --filter @workspace/api-server exec wrangler deploy
    ```
 
-5. Deploy API/workers on the long-running Node host:
-
-   ```bash
-   pnpm --filter @workspace/api-server build
-   pnpm --filter @workspace/api-server start
-   ```
+   Set Worker secrets via `wrangler secret put` before manual deploy (see `docs/CLOUDFLARE_MIGRATION.md`).
 
 6. Post-deployment verification:
 
    ```bash
    curl -fsS https://torgima.com
+   curl -fsS https://api.torgima.com/health
    curl -fsS https://api.torgima.com/api/health
+   curl -fsS https://api.torgima.com/api/debug/blueprint-launch-health
    curl -I https://torgima.com/og-image.png
    ```
 
@@ -115,8 +114,8 @@ External monitoring should ping this endpoint every 5 minutes and alert on conse
 
 ## Monitoring Setup
 
-- Vercel Analytics: enable for the public SPA; alert when P95 page load or API proxy timing exceeds 5 seconds.
-- API health: monitor `/api/health` every 5 minutes; alert on 2 consecutive degraded responses.
+- Cloudflare Pages analytics: enable for the public SPA; alert when P95 page load exceeds 5 seconds.
+- API health: monitor `GET https://api.torgima.com/health` and `GET /api/health` every 5 minutes; alert on 2 consecutive degraded responses.
 - Blueprint launch: after each migration, run a staging smoke test for validation -> launch -> dashboard and confirm `POST /api/blueprints/:id/activate` creates plans, targets, phases, projects, actions, orders, `signal_snapshots`, `conditions`, `enforcement_packages`, and `state_memory`.
 - System health: `SystemHealthEngine` runs through production schedulers and records DLQ size, fallback rate, stale users, and signal lag.
 - Error tracking: configure Sentry or equivalent for API unhandled errors, rejected Bhudhi outputs, and failed worker jobs.

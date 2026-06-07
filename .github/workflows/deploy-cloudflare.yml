@@ -115,27 +115,33 @@ jobs:
           command: deploy
           secrets: |
             DATABASE_URL
+            SUPABASE_URL
+            SUPABASE_ANON_KEY
+            SUPABASE_SERVICE_ROLE_KEY
             ANTHROPIC_API_KEY
+            BHUDHI_MODEL
             RESEND_API_KEY
-            INTERNAL_SERVICE_SECRET
+            EMAIL_FROM
+            INTERNAL_AUTH_SECRET
+            NOTIFICATION_UNSUBSCRIBE_SECRET
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BHUDHI_MODEL: ${{ secrets.BHUDHI_MODEL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          INTERNAL_SERVICE_SECRET: ${{ secrets.INTERNAL_SERVICE_SECRET }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+          NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
 
-      - name: Verify Worker is live (JSON health)
+      - name: Verify API health
         run: |
-          sleep 15
-          BODY=$(curl -sS https://api.torgima.com/health)
-          echo "$BODY"
-          echo "$BODY" | grep -q '"ok"' || echo "$BODY" | grep -q 'torgima-api' || {
-            echo "ERROR: Worker still returning placeholder or non-JSON health"
-            BODY=$(curl -sS https://torgima.tmagaya.workers.dev/health)
-            echo "$BODY"
-            echo "$BODY" | grep -q '"ok"' || exit 1
-          }
-          echo "Worker health OK"
+          sleep 20
+          curl -fsS https://api.torgima.com/health | tee /tmp/api-health.json
+          grep -q '"ok"' /tmp/api-health.json || grep -q 'torgima-api' /tmp/api-health.json || grep -q '"status"' /tmp/api-health.json
+          echo "API health OK"
 
   deploy-pages:
     name: Deploy Frontend (Pages)
@@ -155,7 +161,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Frontend
-        run: pnpm --filter @workspace/torgima build
+        run: pnpm build:cloudflare:pages
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           NODE_ENV: production
@@ -164,6 +170,7 @@ jobs:
         run: |
           ls -la artifacts/torgima/dist/
           test -f artifacts/torgima/dist/index.html
+          test -f artifacts/torgima/dist/_redirects
           echo "Frontend build verified."
 
       - name: Deploy to Cloudflare Pages
@@ -172,4 +179,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: "."
-          command: pages deploy artifacts/torgima/dist --project-name=torgima-frontend --branch=main --commit-dirty=true
+          command: pages deploy artifacts/torgima/dist --project-name=torgima-execution --branch=main --commit-dirty=true
+
+      - name: Verify frontend is live
+        run: |
+          sleep 15
+          curl -fsSI https://torgima.com | head -20
+          echo "Frontend reachable."

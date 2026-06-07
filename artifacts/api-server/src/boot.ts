@@ -22,7 +22,7 @@ async function maybeApplyManualMigrations(): Promise<void> {
   try {
     const { spawn } = await import("node:child_process");
     const { logger } = await import("./lib/logger.js");
-    const root = process.env.RAILWAY_PROJECT_ROOT ?? process.cwd();
+    const root = process.cwd();
     await new Promise<void>((resolve, reject) => {
       const child = spawn("pnpm", ["db:apply-manual"], {
         cwd: root,

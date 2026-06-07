@@ -13,15 +13,16 @@ describe("CORS allowlist", () => {
     process.env.NODE_ENV = "production";
   });
 
-  it("allows production SPA origins (torgima.com + Vercel transition)", () => {
+  it("allows production SPA origins (torgima.com + Pages preview)", () => {
     expect(isAllowedOrigin("https://torgima.com")).toBe(true);
-    expect(isAllowedOrigin("https://torgima-execution.vercel.app")).toBe(true);
+    expect(isAllowedOrigin("https://www.torgima.com")).toBe(true);
+    expect(isAllowedOrigin("https://torgima-execution.pages.dev")).toBe(true);
     expect(getAllowedOrigins()).toContain("https://torgima.com");
-    expect(getAllowedOrigins()).toContain("https://torgima-execution.vercel.app");
+    expect(getAllowedOrigins()).toContain("https://torgima-execution.pages.dev");
   });
 
-  it("rejects preview and unknown origins in production", () => {
-    expect(isAllowedOrigin("https://torgima-git-main-tornicles.vercel.app")).toBe(false);
+  it("rejects unknown origins in production", () => {
+    expect(isAllowedOrigin("https://torgima-execution.vercel.app")).toBe(false);
     expect(isAllowedOrigin("https://evil.example")).toBe(false);
   });
 });
@@ -39,6 +40,7 @@ describe("CORS allowlist (development)", () => {
 
   it("allows localhost in development", () => {
     expect(isAllowedOrigin("http://localhost:5173")).toBe(true);
+    expect(isAllowedOrigin("http://127.0.0.1:5173")).toBe(true);
   });
 });
 
@@ -62,7 +64,7 @@ describe("createCorsMiddleware", () => {
   it("sets ACAO and credentials for an allowed origin on GET", () => {
     const middleware = createCorsMiddleware();
     const req = {
-      headers: { origin: "https://torgima-execution.vercel.app" },
+      headers: { origin: "https://torgima-execution.pages.dev" },
       method: "GET",
     } as unknown as Request;
     const res = makeRes();
@@ -71,7 +73,7 @@ describe("createCorsMiddleware", () => {
     expect(next).toHaveBeenCalled();
     expect(res.setHeader).toHaveBeenCalledWith(
       "Access-Control-Allow-Origin",
-      "https://torgima-execution.vercel.app",
+      "https://torgima-execution.pages.dev",
     );
     expect(res.setHeader).toHaveBeenCalledWith("Access-Control-Allow-Credentials", "true");
   });
@@ -79,7 +81,7 @@ describe("createCorsMiddleware", () => {
   it("responds 204 immediately for OPTIONS preflight and includes all required headers", () => {
     const middleware = createCorsMiddleware();
     const req = {
-      headers: { origin: "https://torgima-execution.vercel.app" },
+      headers: { origin: "https://torgima-execution.pages.dev" },
       method: "OPTIONS",
     } as unknown as Request;
     const res = makeRes();
@@ -90,7 +92,7 @@ describe("createCorsMiddleware", () => {
     expect(res.statusCode).toBe(204);
     expect(res.setHeader).toHaveBeenCalledWith(
       "Access-Control-Allow-Origin",
-      "https://torgima-execution.vercel.app",
+      "https://torgima-execution.pages.dev",
     );
     expect(res.setHeader).toHaveBeenCalledWith(
       "Access-Control-Allow-Methods",

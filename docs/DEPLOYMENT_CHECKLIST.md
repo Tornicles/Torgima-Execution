@@ -1,6 +1,6 @@
 # Bhudhi Launch Deployment Checklist
 
-Use this checklist before and after cutting over Bhudhi 2.0 to production. See also [`DEPLOYMENT.md`](./DEPLOYMENT.md) for platform split (Vercel SPA + Railway API).
+Use this checklist before and after cutting over Bhudhi 2.0 to production. See also [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the Cloudflare Pages + Worker architecture.
 
 ## Pre-launch (1 week before)
 
@@ -37,8 +37,8 @@ Use this checklist before and after cutting over Bhudhi 2.0 to production. See a
 
 - [ ] Database scaled appropriately
 - [ ] Cache configured (staging/production feature flags)
-- [ ] CDN configured (Vercel for SPA)
-- [ ] API on long-running Node host (not Vercel serverless)
+- [ ] CDN configured (Cloudflare Pages for SPA)
+- [ ] API on Cloudflare Worker (`torgima`) at `https://api.torgima.com`
 - [ ] Auto-scaling configured on API host
 - [ ] Health checks active (`GET /api/health`, `GET /api/bhudhi/monitoring/health`)
 - [ ] Monitoring active

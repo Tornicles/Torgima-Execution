@@ -46,7 +46,7 @@ async function tableExists(table: string): Promise<boolean> {
 }
 
 function repoPath(...parts: string[]): string {
-  const root = process.env.RAILWAY_PROJECT_ROOT ?? process.cwd();
+  const root = process.cwd();
   return resolve(root, ...parts);
 }
 

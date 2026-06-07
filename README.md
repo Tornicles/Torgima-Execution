@@ -1,20 +1,24 @@
 # Torgima Execution
 
-pnpm monorepo: **SPA** (`artifacts/torgima`) + **Express API + workers** (`artifacts/api-server`).
+pnpm monorepo: **SPA** (`artifacts/torgima`) + **Express API on Cloudflare Workers** (`artifacts/api-server`).
 
-## Deployments (don’t duplicate Vercel)
+## Production architecture
 
-| What | Where | Vercel project |
-|------|--------|----------------|
-| Frontend SPA | [**Vercel**](https://vercel.com) | **Exactly one** project (e.g. `torgima-execution`), repo root |
-| REST API + pg-boss + dispatcher | **Railway** / Fly / Render / VM | **Do not** add a second Vercel app for the API — it will fail and clutter GitHub with red checks. |
+| Layer | Platform | URL |
+|-------|----------|-----|
+| Frontend | **Cloudflare Pages** (`torgima-execution`) | https://torgima.com |
+| API | **Cloudflare Worker** (`torgima`) | https://api.torgima.com |
+| Database / Auth | **Supabase** | via `DATABASE_URL` |
+| Email | **Resend** | `RESEND_API_KEY` |
+| AI | **Anthropic** | `ANTHROPIC_API_KEY` |
 
-Detailed steps, env vars, and pitfalls: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
-Prompt 15 production handoff checklist, monitoring, backups, and Phase 2 thresholds: **[docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)**.
+**Railway and Vercel are deprecated** for production — not used in active deploy paths.
+
+Full guide: **[docs/CLOUDFLARE_MIGRATION.md](docs/CLOUDFLARE_MIGRATION.md)** · **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** · **[docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)**
 
 ## Local quick start
 
-Requires Node ≥ 22 and pnpm ≥ 11 (see root `package.json` `engines`).
+Requires Node ≥ 22 and pnpm ≥ 11.
 
 ```bash
 pnpm install
@@ -22,11 +26,15 @@ pnpm run typecheck
 pnpm run build
 ```
 
-- API: configure `DATABASE_URL` then `pnpm --filter @workspace/api-server dev` (see `artifacts/api-server/.env.example`).
-- SPA: `pnpm --filter @workspace/torgima dev`.
+- **API (Workers dev):** `pnpm exec wrangler dev` or `pnpm -F @workspace/api-server dev:worker`
+- **API (Node):** configure `DATABASE_URL` then `pnpm start:api`
+- **SPA:** `pnpm -F @workspace/torgima dev` (set `VITE_API_BASE_URL=http://localhost:8787` for wrangler dev)
 
-## CI
+## CI / deploy
 
-GitHub Actions **CI** (`.github/workflows/ci.yml`): `pnpm install --frozen-lockfile`, then `pnpm run typecheck` and `pnpm run build` on pushes and PRs to `main`.
+- **CI:** `.github/workflows/ci.yml` — typecheck, build, tests
+- **Production deploy:** `.github/workflows/deploy-cloudflare.yml` — migrations, Worker, Pages
 
-`pnpm-workspace.yaml` sets **`strictDepBuilds: false`** so non-interactive CI does not exit with an error when a dependency wants build-script approval (use **`pnpm approve-builds`** locally to expand **`allowBuilds`** over time).
+Required GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL`, Supabase keys, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `INTERNAL_AUTH_SECRET`, etc.
+
+GitHub variable: `VITE_API_BASE_URL=https://api.torgima.com`

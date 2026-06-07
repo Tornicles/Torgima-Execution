@@ -5,7 +5,7 @@
  * Requires production credentials (NOT localhost):
  *   DATABASE_URL or TORGIMA_PRODUCTION_DATABASE_URL — Supabase pooler URL
  *   DIRECT_URL — optional, for DDL checks
- *   TORGIMA_API_BASE_URL — default Railway production API
+ *   TORGIMA_API_BASE_URL — default Cloudflare Worker production API
  *   INTERNAL_AUTH_SECRET — for internal route tests (G-4, C-5)
  *   TEST_USER_EMAIL — default phase9-prod-acceptance@torgima.test
  *
@@ -30,7 +30,7 @@ dotenv.config({ path: join(root, ".env") });
 
 const API_BASE =
   process.env.TORGIMA_API_BASE_URL?.replace(/\/$/, "") ||
-  "https://workspaceapi-server-production-63b3.up.railway.app";
+  "https://api.torgima.com";
 const INTERNAL_SECRET =
   process.env.INTERNAL_AUTH_SECRET?.trim() ||
   process.env.INTERNAL_SERVICE_SECRET?.trim() ||
@@ -214,7 +214,7 @@ async function main() {
   record(
     "G",
     "G-3",
-    "Railway deployment completes without crash",
+    "Cloudflare Worker deployment completes without crash",
     deployAlive,
     `http=${health.status} status=${health.body?.status ?? "?"}`,
   );

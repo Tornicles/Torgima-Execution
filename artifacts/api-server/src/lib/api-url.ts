@@ -2,7 +2,7 @@ import { PRODUCTION_BACKEND_URL } from "../config/production.js";
 import { resolveAppUrl } from "./app-url.js";
 
 /**
- * Public API origin (Railway) for top-level verify navigation from the SPA callback.
+ * Public API origin (Cloudflare Worker) for top-level verify navigation from the SPA callback.
  */
 export function resolveApiPublicUrl(): string {
   const override =
@@ -21,7 +21,7 @@ export function resolveApiPublicUrl(): string {
 }
 
 /**
- * Link in sign-in emails — always the Vercel SPA callback (APP_URL / FRONTEND_URL).
+ * Link in sign-in emails — SPA callback on Cloudflare Pages (APP_URL / FRONTEND_URL).
  * Example: https://torgima.com/auth/callback?token=...&email=...
  */
 export function buildMagicLinkVerifyUrl(token: string, email: string): string {

@@ -118,7 +118,7 @@ function mapInfrastructureFailure(err: unknown): {
         status: 503,
         code: "SERVICE_UNAVAILABLE",
         message:
-          "Cannot reach the database (network). On Railway, confirm DATABASE_URL is set to your Postgres connection string (pooler URLs often need ?sslmode=require for remote hosts).",
+          "Cannot reach the database (network). On Cloudflare Workers, confirm DATABASE_URL or Hyperdrive is set and Supabase accepts connections.",
         retryable: true,
       };
     }
@@ -131,7 +131,7 @@ function mapInfrastructureFailure(err: unknown): {
           status: 503,
           code: "SERVICE_UNAVAILABLE",
           message:
-            "Database rejected the connection or credentials. Double-check DATABASE_URL on the API host and that the database accepts connections from Railway.",
+            "Database rejected the connection or credentials. Double-check DATABASE_URL on the Cloudflare Worker and that Supabase accepts connections.",
           retryable: true,
         };
       }
@@ -183,7 +183,7 @@ function mapInfrastructureFailure(err: unknown): {
       status: 503,
       code: "SERVICE_UNAVAILABLE",
       message:
-        "Sign-in service cannot talk to the database. Fix DATABASE_URL / SSL on Railway, redeploy the API, then try again.",
+        "Sign-in service cannot talk to the database. Fix DATABASE_URL / Hyperdrive on the Cloudflare Worker, redeploy, then try again.",
       retryable: true,
     };
   }

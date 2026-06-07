@@ -1,9 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import {
-  PRODUCTION_FRONTEND_URL,
-  TRANSITIONAL_BACKEND_URL,
-  TRANSITIONAL_FRONTEND_URL,
-} from "../config/production.js";
+import { PRODUCTION_FRONTEND_URL, TRANSITIONAL_FRONTEND_URL } from "../config/production.js";
 import { logger } from "./logger.js";
 
 const ALLOW_METHODS = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
@@ -11,21 +7,21 @@ const ALLOW_HEADERS =
   "Content-Type,Authorization,x-internal-auth,x-internal-token,x-expected-state-version,idempotency-key,Cookie";
 const MAX_AGE = "86400";
 
-/** Production browser origins — Pages, custom domain, and legacy hosts. */
+/** Production browser origins — custom domain + Pages preview. */
 const ALLOWED_ORIGINS = [
   PRODUCTION_FRONTEND_URL,
   "https://www.torgima.com",
-  "https://torgima-execution.vercel.app",
-  TRANSITIONAL_BACKEND_URL,
   TRANSITIONAL_FRONTEND_URL,
 ];
 
 function devOrigins(): string[] {
   return [
     PRODUCTION_FRONTEND_URL,
+    "https://www.torgima.com",
+    TRANSITIONAL_FRONTEND_URL,
     `http://localhost:${process.env.FRONTEND_DEV_PORT ?? "5173"}`,
+    `http://127.0.0.1:${process.env.FRONTEND_DEV_PORT ?? "5173"}`,
     `http://localhost:${process.env.APP_DEV_PORT ?? "3000"}`,
-    "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
   ];
 }

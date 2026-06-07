@@ -34,7 +34,7 @@ function buildEnvAndBindingChecks(): Record<string, HealthCheckDetail> {
     "DATABASE_URL",
     "ANTHROPIC_API_KEY",
     "RESEND_API_KEY",
-    "INTERNAL_SERVICE_SECRET",
+    "INTERNAL_AUTH_SECRET",
   ] as const;
 
   const missingVars: string[] = [];

@@ -365,11 +365,18 @@ router.get("/v1/debug/complete-diagnostic", async (req, res) => {
 router.get("/debug/cloudflare-env", (_req, res) => {
   const keys = [
     "DATABASE_URL",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
     "APP_URL",
+    "FRONTEND_URL",
     "ANTHROPIC_API_KEY",
+    "BHUDHI_MODEL",
     "RESEND_API_KEY",
-    "INTERNAL_SERVICE_SECRET",
+    "EMAIL_FROM",
     "INTERNAL_AUTH_SECRET",
+    "INTERNAL_SERVICE_SECRET",
+    "NOTIFICATION_UNSUBSCRIBE_SECRET",
     "TORGIMA_RUNTIME",
     "NODE_ENV",
   ] as const;
@@ -381,6 +388,7 @@ router.get("/debug/cloudflare-env", (_req, res) => {
   success(res, {
     ok: true,
     runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
+    kv_sessions: globalThis.__TORGIMA_SESSIONS_KV__ ? "bound" : "missing",
     env,
   });
 });
@@ -410,17 +418,30 @@ router.get("/debug/routes", (_req, res) => {
 /**
  * GET /api/debug/blueprint-launch-health — launch prerequisites (no secrets).
  */
-router.get("/debug/blueprint-launch-health", (_req, res) => {
+router.get("/debug/blueprint-launch-health", async (_req, res) => {
+  let databaseConnected = false;
+  let databaseError: string | null = null;
+  if (process.env.DATABASE_URL?.trim()) {
+    try {
+      const { checkDatabaseConnection } = await import("./health.js");
+      await checkDatabaseConnection();
+      databaseConnected = true;
+    } catch (err) {
+      databaseError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   success(res, {
     ok: true,
     launch_route: "POST /api/v1/validations/:id/launch",
-    database: process.env.DATABASE_URL?.trim() ? "present" : "missing",
-    anthropic: process.env.ANTHROPIC_API_KEY?.trim() ? "present" : "missing",
-    internal_auth:
-      process.env.INTERNAL_SERVICE_SECRET?.trim() ||
-      process.env.INTERNAL_AUTH_SECRET?.trim()
-        ? "present"
-        : "missing",
+    database_configured: Boolean(process.env.DATABASE_URL?.trim()),
+    database_connected: databaseConnected,
+    database_error: databaseError,
+    auth_available: Boolean(
+      process.env.INTERNAL_AUTH_SECRET?.trim() || process.env.INTERNAL_SERVICE_SECRET?.trim(),
+    ),
+    anthropic_configured: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+    resend_configured: Boolean(process.env.RESEND_API_KEY?.trim()),
     runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
   });
 });
