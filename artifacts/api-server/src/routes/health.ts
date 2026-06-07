@@ -1,12 +1,106 @@
 import { Router, type IRouter } from "express";
+import { sql } from "drizzle-orm";
 import { HealthCheckResponse } from "@workspace/api-zod";
-import { pool } from "@workspace/db";
+import { getDb, pool } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 
 const router: IRouter = Router();
+
+type HealthCheckDetail = { ok: boolean; detail: string };
+
+async function healthQuery<T extends Record<string, unknown>>(
+  queryText: string,
+): Promise<T[]> {
+  if (isCloudflareRuntime()) {
+    const result = await getDb().execute(sql.raw(queryText));
+    const rows = (result as { rows?: T[] }).rows ?? (result as unknown as T[]);
+    return Array.isArray(rows) ? rows : [];
+  }
+  const result = await pool.query(queryText);
+  return result.rows as T[];
+}
+
+function envValue(key: string): string | undefined {
+  const value = process.env[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function buildEnvAndBindingChecks(): Record<string, HealthCheckDetail> {
+  const requiredEnvVars = [
+    "DATABASE_URL",
+    "ANTHROPIC_API_KEY",
+    "RESEND_API_KEY",
+    "INTERNAL_SERVICE_SECRET",
+  ] as const;
+
+  const missingVars: string[] = [];
+  const presentVars: string[] = [];
+
+  for (const key of requiredEnvVars) {
+    if (envValue(key)) {
+      presentVars.push(key);
+    } else {
+      missingVars.push(key);
+    }
+  }
+
+  const dbUrl = envValue("DATABASE_URL") ?? "";
+  const databaseUrl: HealthCheckDetail = !dbUrl
+    ? { ok: false, detail: "DATABASE_URL is not set" }
+    : dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")
+      ? { ok: true, detail: `postgres URL present (${dbUrl.substring(0, 30)}...)` }
+      : {
+          ok: false,
+          detail: `DATABASE_URL format invalid: starts with ${dbUrl.substring(0, 20)}`,
+        };
+
+  const kv = globalThis.__TORGIMA_SESSIONS_KV__;
+  const kvCheck: HealthCheckDetail = kv
+    ? { ok: true, detail: "SESSIONS KV binding present" }
+    : { ok: false, detail: "SESSIONS KV binding not found in env" };
+
+  return {
+    env_vars:
+      missingVars.length === 0
+        ? { ok: true, detail: `All ${presentVars.length} required vars present` }
+        : { ok: false, detail: `Missing: ${missingVars.join(", ")}` },
+    database_url: databaseUrl,
+    anthropic: envValue("ANTHROPIC_API_KEY")
+      ? { ok: true, detail: "ANTHROPIC_API_KEY present" }
+      : { ok: false, detail: "ANTHROPIC_API_KEY not set" },
+    resend: envValue("RESEND_API_KEY")
+      ? { ok: true, detail: "RESEND_API_KEY present" }
+      : { ok: false, detail: "RESEND_API_KEY not set" },
+    kv: kvCheck,
+    runtime: {
+      ok: true,
+      detail: `${isCloudflareRuntime() ? "cloudflare-workers" : "node"} | ${new Date().toISOString()}`,
+    },
+  };
+}
+
+async function verifyKvReadWrite(): Promise<HealthCheckDetail> {
+  const kv = globalThis.__TORGIMA_SESSIONS_KV__;
+  if (!kv) {
+    return { ok: false, detail: "SESSIONS KV binding not found in env" };
+  }
+  try {
+    await kv.put("__health_check__", "ok", { expirationTtl: 60 });
+    const val = await kv.get("__health_check__");
+    return val === "ok"
+      ? { ok: true, detail: "KV read/write succeeded" }
+      : { ok: false, detail: `KV write succeeded but read returned: ${val}` };
+  } catch (err) {
+    return {
+      ok: false,
+      detail: `KV error: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
 
 export type ProductionHealthCheck = "ok" | "error";
 
@@ -29,7 +123,7 @@ export interface ProductionHealthResponse {
 }
 
 export async function checkDatabaseConnection(): Promise<void> {
-  await pool.query("SELECT 1");
+  await healthQuery("SELECT 1 AS ping");
 }
 
 export async function checkBhudhiAPIAvailability(): Promise<void> {
@@ -40,25 +134,30 @@ export async function checkBhudhiAPIAvailability(): Promise<void> {
 }
 
 export async function checkPgBossWorkers(): Promise<void> {
-  const result = await pool.query("SELECT to_regclass('pgboss.job') AS job_table");
-  if (!result.rows[0]?.job_table) {
+  if (isCloudflareRuntime()) {
+    return;
+  }
+  const rows = await healthQuery<{ job_table: string | null }>(
+    "SELECT to_regclass('pgboss.job') AS job_table",
+  );
+  if (!rows[0]?.job_table) {
     throw new Error("pg-boss job table not found");
   }
 }
 
 export async function checkSignalEngineRecency(maxAgeHours = 48): Promise<number | null> {
-  const activeResult = await pool.query<{ count: string }>(
+  const activeRows = await healthQuery<{ count: number | string }>(
     `SELECT COUNT(*)::int AS count FROM blueprints WHERE active = true AND status = 'active'`,
   );
-  const activeBlueprints = Number(activeResult.rows[0]?.count ?? 0);
+  const activeBlueprints = Number(activeRows[0]?.count ?? 0);
   if (activeBlueprints === 0) {
     return null;
   }
 
-  const result = await pool.query<{ latest: Date | null }>(
+  const signalRows = await healthQuery<{ latest: Date | string | null }>(
     "SELECT MAX(created_at) AS latest FROM signal_snapshots",
   );
-  const latest = result.rows[0]?.latest;
+  const latest = signalRows[0]?.latest;
   if (!latest) {
     throw new Error("no signal snapshots while active blueprints exist");
   }
@@ -72,18 +171,28 @@ export async function checkSignalEngineRecency(maxAgeHours = 48): Promise<number
 
 async function collectProductionMetrics(): Promise<ProductionHealthResponse["metrics"]> {
   const [pendingR, dlR, healthR, signalR] = await Promise.all([
-    pool.query("SELECT COUNT(*)::int AS c FROM events WHERE status = 'pending'").catch(() => null),
-    pool.query("SELECT COUNT(*)::int AS c FROM dead_letter_events WHERE resolved = false").catch(() => null),
-    pool.query("SELECT COUNT(*)::int AS c FROM system_health_records WHERE health_score < 0.7").catch(() => null),
-    pool.query<{ latest: Date | null }>("SELECT MAX(created_at) AS latest FROM signal_snapshots").catch(() => null),
+    healthQuery<{ c: number | string }>(
+      "SELECT COUNT(*)::int AS c FROM events WHERE status = 'pending'",
+    ).catch(() => null),
+    healthQuery<{ c: number | string }>(
+      "SELECT COUNT(*)::int AS c FROM dead_letter_events WHERE resolved = false",
+    ).catch(() => null),
+    healthQuery<{ c: number | string }>(
+      "SELECT COUNT(*)::int AS c FROM system_health_records WHERE health_score < 0.7",
+    ).catch(() => null),
+    healthQuery<{ latest: Date | string | null }>(
+      "SELECT MAX(created_at) AS latest FROM signal_snapshots",
+    ).catch(() => null),
   ]);
 
-  const latest = signalR?.rows[0]?.latest;
+  const latest = signalR?.[0]?.latest;
   return {
-    pendingEvents: pendingR ? Number(pendingR.rows[0]?.c ?? 0) : null,
-    deadLetters: dlR ? Number(dlR.rows[0]?.c ?? 0) : null,
-    healthIssues: healthR ? Number(healthR.rows[0]?.c ?? 0) : null,
-    latestSignalAgeHours: latest ? Number(((Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000)).toFixed(2)) : null,
+    pendingEvents: pendingR ? Number(pendingR[0]?.c ?? 0) : null,
+    deadLetters: dlR ? Number(dlR[0]?.c ?? 0) : null,
+    healthIssues: healthR ? Number(healthR[0]?.c ?? 0) : null,
+    latestSignalAgeHours: latest
+      ? Number(((Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000)).toFixed(2))
+      : null,
   };
 }
 
@@ -105,12 +214,82 @@ export async function buildProductionHealthResponse(): Promise<ProductionHealthR
     checks.database === "ok" && checks.bhudhi === "ok" && checks.workers === "ok";
   const healthy = coreOk && checks.signals === "ok";
 
+  let metrics: ProductionHealthResponse["metrics"] = {
+    pendingEvents: null,
+    deadLetters: null,
+    healthIssues: null,
+    latestSignalAgeHours: null,
+  };
+  try {
+    metrics = await collectProductionMetrics();
+  } catch {
+    /* metrics are optional when DB is unavailable */
+  }
+
   return {
     status: healthy ? "healthy" : "degraded",
     timestamp: new Date().toISOString(),
     checks,
     version: process.env.APP_VERSION ?? process.env.NEXT_PUBLIC_APP_VERSION ?? "phase1",
-    metrics: await collectProductionMetrics(),
+    metrics,
+  };
+}
+
+function settledDetail(result: PromiseSettledResult<unknown>, label: string): HealthCheckDetail {
+  if (result.status === "fulfilled") {
+    return { ok: true, detail: `${label} succeeded` };
+  }
+  const reason = result.reason;
+  return {
+    ok: false,
+    detail: `${label} failed: ${reason instanceof Error ? reason.message : String(reason)}`,
+  };
+}
+
+async function buildTransparentHealthPayload(): Promise<{
+  results: ProductionHealthResponse;
+  checks: Record<string, HealthCheckDetail>;
+  failing: Array<{ check: string; detail: string }>;
+  httpStatus: number;
+}> {
+  const checks: Record<string, HealthCheckDetail> = buildEnvAndBindingChecks();
+
+  const healthChecks = await Promise.allSettled([
+    checkDatabaseConnection(),
+    checkBhudhiAPIAvailability(),
+    checkPgBossWorkers(),
+    checkSignalEngineRecency(),
+  ]);
+
+  checks.database = settledDetail(healthChecks[0]!, "Database connection");
+  checks.bhudhi = settledDetail(healthChecks[1]!, "Bhudhi API availability");
+  checks.workers = isCloudflareRuntime()
+    ? { ok: true, detail: "Cloudflare Workers runtime (pg-boss not used)" }
+    : settledDetail(healthChecks[2]!, "pg-boss workers");
+  checks.signals = settledDetail(healthChecks[3]!, "Signal engine recency");
+
+  checks.kv = await verifyKvReadWrite();
+
+  const results = await buildProductionHealthResponse();
+  const criticalChecks = ["database", "database_url", "env_vars"];
+  const criticalFailed = criticalChecks.filter((key) => !checks[key]?.ok);
+  const allOk = Object.values(checks).every((entry) => entry.ok);
+  const status = allOk
+    ? "healthy"
+    : criticalFailed.length > 0
+      ? "critical"
+      : results.status;
+
+  const httpStatus =
+    status === "healthy" ? 200 : status === "critical" ? 503 : results.status === "healthy" ? 200 : 503;
+
+  return {
+    results: { ...results, status: status === "healthy" ? "healthy" : "degraded" },
+    checks,
+    failing: Object.entries(checks)
+      .filter(([, entry]) => !entry.ok)
+      .map(([check, entry]) => ({ check, detail: entry.detail })),
+    httpStatus,
   };
 }
 
@@ -120,12 +299,36 @@ router.get("/healthz", (_req, res) => {
 });
 
 // Prompt 15 — production monitoring probe for external uptime checks.
-router.get("/health", async (req, res) => {
+router.get("/health", async (_req, res) => {
   try {
-    const results = await buildProductionHealthResponse();
-    res.status(results.status === "healthy" ? 200 : 503).json(results);
+    const { results, checks, failing, httpStatus } = await buildTransparentHealthPayload();
+    const criticalFailed = ["database", "database_url", "env_vars"].some((key) => !checks[key]?.ok);
+
+    // Prompt 15 contract: res.status(results.status === "healthy" ? 200 : 503).json(results);
+    res.status(httpStatus).json({
+      ...results,
+      ok: !criticalFailed,
+      runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
+      checkDetails: checks,
+      failing,
+    });
   } catch (err) {
-    handleError(req, res, err);
+    const message = err instanceof Error ? err.message : String(err);
+    const checks = buildEnvAndBindingChecks();
+    res.status(503).json({
+      ok: false,
+      status: "critical",
+      timestamp: new Date().toISOString(),
+      runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
+      error: message,
+      checkDetails: checks,
+      failing: [
+        { check: "handler", detail: message },
+        ...Object.entries(checks)
+          .filter(([, entry]) => !entry.ok)
+          .map(([check, entry]) => ({ check, detail: entry.detail })),
+      ],
+    });
   }
 });
 
