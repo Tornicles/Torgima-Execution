@@ -20,6 +20,25 @@ describe("Purge all user accounts migration 0035", () => {
     expect(migrationSql).toMatch(/purge_all_users_v1_20260527/);
   });
 
+  it("clears blueprint FK blockers before deleting users", () => {
+    expect(migrationSql).toMatch(/DELETE FROM system_health_logs WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM behavior_patterns WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM bhudhi_memory WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM capability_profiles WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM eis_call_logs WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM knowledge_objects WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/DELETE FROM notification_logs WHERE blueprint_id IS NOT NULL/i);
+    expect(migrationSql).toMatch(/behavior_events SET pattern_id = NULL/i);
+    expect(migrationSql).toMatch(/academy_tasks SET knowledge_id = NULL/i);
+
+    const usersDeleteIndex = migrationSql.search(/DELETE FROM users/i);
+    const healthLogsDeleteIndex = migrationSql.search(
+      /DELETE FROM system_health_logs WHERE blueprint_id IS NOT NULL/i,
+    );
+    expect(healthLogsDeleteIndex).toBeGreaterThan(-1);
+    expect(usersDeleteIndex).toBeGreaterThan(healthLogsDeleteIndex);
+  });
+
   it("is idempotent via platform_upgrade_migrations", () => {
     expect(migrationSql).toMatch(/already_applied/);
     expect(migrationSql).toMatch(/rollback_available.*false/i);
