@@ -8899,6 +8899,8 @@ CREATE INDEX IF NOT EXISTS "idx_task_generation_log_blueprint_id" ON "task_gener
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_task_generation_log_trigger" ON "task_generation_log" USING btree ("generation_trigger");
 --> statement-breakpoint
+ALTER TABLE "task_generation_log" ADD COLUMN IF NOT EXISTS "idempotency_key" text;
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_task_generation_log_idempotency_key" ON "task_generation_log" USING btree ("idempotency_key") WHERE "task_generation_log"."idempotency_key" is not null;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_task_generation_logs_blueprint_id" ON "task_generation_logs" USING btree ("blueprint_id");
@@ -8941,7 +8943,11 @@ CREATE INDEX IF NOT EXISTS "idx_validation_memory_blueprint_id" ON "validation_m
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_validations_blueprint_id" ON "validations" USING btree ("blueprint_id");
 --> statement-breakpoint
+ALTER TABLE "validations" ADD COLUMN IF NOT EXISTS "contract_id" uuid DEFAULT gen_random_uuid();
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_validations_contract_id" ON "validations" USING btree ("contract_id");
+--> statement-breakpoint
+ALTER TABLE "validations" ADD COLUMN IF NOT EXISTS "idempotency_key" text;
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_validations_idempotency_key" ON "validations" USING btree ("idempotency_key");
 --> statement-breakpoint

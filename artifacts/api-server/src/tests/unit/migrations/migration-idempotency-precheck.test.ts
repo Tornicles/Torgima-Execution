@@ -21,5 +21,8 @@ describe("Migration idempotency precheck", () => {
     expect(sql.match(/WHEN duplicate_object THEN NULL/g) ?? []).toHaveLength(52);
     expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS "academy_chapters"/);
     expect(sql).toMatch(/pg_constraint WHERE conname = 'academy_chapters_course_id_academy_courses_id_fk'/);
+    expect(sql).toMatch(
+      /ALTER TABLE "task_generation_log" ADD COLUMN IF NOT EXISTS "idempotency_key" text[\s\S]*idx_task_generation_log_idempotency_key/,
+    );
   });
 });
