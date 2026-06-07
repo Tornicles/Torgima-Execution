@@ -35,6 +35,22 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(wrangler).not.toContain("REPLACE_WITH_TORGIMA_SESSIONS_KV_ID");
   });
 
+  it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
+    const wrangler = readRepo("artifacts/api-server/wrangler.toml");
+    const ensureScript = readRepo("scripts/ensure-cloudflare-queues.mjs");
+    const queueAdapter = readRepo("artifacts/api-server/src/lib/cloudflare-queue.ts");
+    const cronBridge = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
+
+    expect(wrangler).toContain("# binding = \"TASK_QUEUE\"");
+    expect(wrangler).toContain("torgima-task-queue");
+    expect(ensureScript).toContain("workerRequiresQueueBinding");
+    expect(ensureScript).toMatch(/invalid queue settings/i);
+    expect(ensureScript).toContain("queue_name");
+    expect(ensureScript).toContain("Queue provisioning skipped or already configured");
+    expect(queueAdapter).toContain("No queue binding — run handler in-process");
+    expect(cronBridge).toContain("Ran inline (no TASK_QUEUE binding)");
+  });
+
   it("registers cron workers in the queue consumer", () => {
     const handler = readRepo("artifacts/api-server/src/queues/handler.ts");
     expect(handler).toContain("SessionCleanupWorker");

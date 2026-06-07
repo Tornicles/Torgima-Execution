@@ -104,10 +104,11 @@ jobs:
           echo "Worker entry src/worker.ts present; Wrangler bundles TypeScript at deploy."
 
       - name: Ensure Cloudflare Queues
-        run: pnpm run ensure:cloudflare:queues
+        run: pnpm run ensure:cloudflare:queues -- --soft
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          QUEUES_OPTIONAL: "1"
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
