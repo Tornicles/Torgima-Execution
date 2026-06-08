@@ -157,7 +157,8 @@ async function main() {
 
   console.log(`[cf:secrets] Target Worker: ${workerName}`);
   console.log(`[cf:secrets] Config: artifacts/api-server/wrangler.toml`);
-  console.log("[cf:secrets] Secrets are never written to disk or echoed.\n");
+  console.log("[cf:secrets] Secrets are never written to disk or echoed.");
+  console.log("[cf:secrets] DATABASE_URL: use Supabase transaction pooler (*.pooler.supabase.com:6543).\n");
 
   console.log("[cf:secrets] Plaintext vars (set in wrangler.toml [vars], not via secret put):");
   for (const [key, value] of Object.entries(WORKER_PLAINTEXT_VARS)) {

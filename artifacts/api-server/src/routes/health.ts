@@ -52,11 +52,8 @@ function buildEnvAndBindingChecks(): Record<string, HealthCheckDetail> {
   const databaseUrl: HealthCheckDetail = !dbUrl
     ? { ok: false, detail: "DATABASE_URL is not set" }
     : dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")
-      ? { ok: true, detail: `postgres URL present (${dbUrl.substring(0, 30)}...)` }
-      : {
-          ok: false,
-          detail: `DATABASE_URL format invalid: starts with ${dbUrl.substring(0, 20)}`,
-        };
+      ? { ok: true, detail: "postgres URL present" }
+      : { ok: false, detail: "DATABASE_URL format invalid (expected postgresql:// or postgres://)" };
 
   const kv = globalThis.__TORGIMA_SESSIONS_KV__;
   const kvCheck: HealthCheckDetail = kv
