@@ -143,13 +143,20 @@ jobs:
       - name: Verify API health
         run: |
           sleep 20
-          curl -fsS https://api.torgima.com/health | tee /tmp/api-health.json
+          curl -fsS \
+            -H "User-Agent: GitHubActions-CI" \
+            https://api.torgima.com/health | tee /tmp/api-health.json
           grep -q '"ok"' /tmp/api-health.json
           echo "API health OK"
 
       - name: Optional debug env probe (non-blocking)
+        env:
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
         run: |
-          curl -fsS https://api.torgima.com/api/debug/cloudflare-env || true
+          curl -fsS \
+            -H "User-Agent: GitHubActions-CI" \
+            -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
+            https://api.torgima.com/api/debug/cloudflare-env || true
           echo "Debug probe complete (failures do not block deploy)"
 
   deploy-pages:
