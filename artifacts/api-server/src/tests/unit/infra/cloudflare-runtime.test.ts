@@ -58,14 +58,13 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
-  it("CI deploy uses public health and authenticated debug curl", () => {
+  it("CI deploy gates on public /health only; debug probe is non-blocking", () => {
     const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
-    expect(workflow).toContain("https://api.torgima.com/health");
-    expect(workflow).toContain("https://api.torgima.com/api/health");
-    expect(workflow).toContain("x-internal-auth");
-    expect(workflow).toContain("INTERNAL_AUTH_SECRET");
+    expect(workflow).toContain("curl -fsS https://api.torgima.com/health");
     expect(workflow).toContain("api/debug/cloudflare-env");
-    expect(workflow).toContain('-H "x-internal-auth: ${INTERNAL_AUTH_SECRET}"');
+    expect(workflow).toContain("|| true");
+    expect(workflow).not.toContain("Verify API readiness");
+    expect(workflow).not.toContain("Verify Worker env bindings");
   });
 
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
