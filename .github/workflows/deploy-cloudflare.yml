@@ -140,13 +140,39 @@ jobs:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
 
-      - name: Verify API health
+      - name: Verify API health (diagnostic)
         run: |
+          set -euo pipefail
+          URL="https://api.torgima.com/health"
+          echo "URL checked: ${URL}"
           sleep 20
-          curl -fsS \
+
+          # Use -i/-sS (not -f) so we can capture 403 bodies/headers.
+          curl -i -sS \
             -H "User-Agent: GitHubActions-CI" \
-            https://api.torgima.com/health | tee /tmp/api-health.json
-          grep -q '"ok"' /tmp/api-health.json
+            "${URL}" > /tmp/api-health.raw
+
+          STATUS_LINE="$(head -n 1 /tmp/api-health.raw || true)"
+          STATUS_CODE="$(echo "${STATUS_LINE}" | awk '{print $2}' || true)"
+          echo "Status line: ${STATUS_LINE}"
+          echo "Status code: ${STATUS_CODE:-unknown}"
+
+          echo "Response headers (selected):"
+          grep -iE '^(server:|cf-ray:|cf-cache-status:|content-type:|x-request-id:|x-robots-tag:|cf-mitigated:|location:)' /tmp/api-health.raw || true
+
+          echo "Response body (first 40 lines):"
+          awk 'BEGIN{inbody=0} /^\r?$/{inbody=1; next} { if(inbody) print }' /tmp/api-health.raw | head -n 40 || true
+
+          # Determine likely source without guessing.
+          if grep -qiE '^cf-ray:' /tmp/api-health.raw; then
+            echo "Source: Cloudflare edge (cf-ray present)"
+          else
+            echo "Source: App/Worker (no cf-ray header detected)"
+          fi
+
+          # Gate deploy on a healthy 200 with JSON ok:true
+          test "${STATUS_CODE}" = "200"
+          awk 'BEGIN{inbody=0} /^\r?$/{inbody=1; next} { if(inbody) print }' /tmp/api-health.raw | grep -q '"ok"[[:space:]]*:[[:space:]]*true'
           echo "API health OK"
 
       - name: Optional debug env probe (non-blocking)
