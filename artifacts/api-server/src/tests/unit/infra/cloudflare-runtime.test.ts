@@ -57,6 +57,14 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
+  it("CI deploy uses public health endpoints only (no unauthenticated debug curl)", () => {
+    const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
+    expect(workflow).toContain("https://api.torgima.com/health");
+    expect(workflow).toContain("https://api.torgima.com/api/health");
+    expect(workflow).not.toContain("api/debug/cloudflare-env");
+    expect(workflow).not.toMatch(/curl -fsS https:\/\/api\.torgima\.com\/api\/debug\//);
+  });
+
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const ensureScript = readRepo("scripts/ensure-cloudflare-queues.mjs");

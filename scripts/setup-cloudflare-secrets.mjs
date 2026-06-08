@@ -227,8 +227,10 @@ async function main() {
   }
 
   console.log(`\n[cf:secrets] Done — stored: ${stored}, skipped: ${skipped}, failed: ${failed}`);
-  console.log("[cf:secrets] Verify (no values shown):");
-  console.log("  curl https://api.torgima.com/api/debug/cloudflare-env");
+  console.log("[cf:secrets] Verify (public, no values shown):");
+  console.log("  curl https://api.torgima.com/health");
+  console.log("  curl https://api.torgima.com/api/health");
+  console.log("[cf:secrets] Protected debug routes require x-internal-auth (never log the secret).");
   console.log("[cf:secrets] Redeploy if needed: pnpm run deploy:cloudflare:api");
 
   process.exit(failed > 0 ? 1 : 0);
