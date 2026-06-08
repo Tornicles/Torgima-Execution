@@ -69,6 +69,17 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(workflow).toContain("|| true");
   });
 
+  it("provisions WAF skip rule for GitHub Actions CI health probe", () => {
+    const script = readRepo("scripts/ensure-cloudflare-waf-ci-skip.mjs");
+    const pkg = readRepo("package.json");
+    expect(pkg).toContain("ensure:cloudflare:waf-ci-skip");
+    expect(script).toContain("http_request_sbfm");
+    expect(script).toContain("GitHubActions-CI");
+    expect(script).toContain("api.torgima.com");
+    expect(script).toContain("/health");
+    expect(script).toContain('action: "skip"');
+  });
+
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const ensureScript = readRepo("scripts/ensure-cloudflare-queues.mjs");

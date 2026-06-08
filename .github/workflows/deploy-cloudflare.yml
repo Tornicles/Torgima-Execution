@@ -140,6 +140,13 @@ jobs:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
 
+      - name: Ensure WAF skip for CI health probe
+        run: pnpm run ensure:cloudflare:waf-ci-skip -- --soft
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: torgima.com
+
       - name: Verify API health (diagnostic)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

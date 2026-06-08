@@ -54,6 +54,7 @@
     "deploy:cloudflare:pages": "pnpm exec wrangler pages deploy artifacts/torgima/dist --project-name=torgima-execution",
     "cf:secrets:worker": "node scripts/setup-cloudflare-secrets.mjs",
     "ensure:cloudflare:queues": "node scripts/ensure-cloudflare-queues.mjs",
+    "ensure:cloudflare:waf-ci-skip": "node scripts/ensure-cloudflare-waf-ci-skip.mjs",
     "deploy:cloudflare:api": "node scripts/ensure-cloudflare-queues.mjs --soft && pnpm exec wrangler deploy --config artifacts/api-server/wrangler.toml",
     "deploy:cloudflare:worker": "pnpm run deploy:cloudflare:api",
     "provision:cloudflare": "node scripts/provision-cloudflare.mjs",
