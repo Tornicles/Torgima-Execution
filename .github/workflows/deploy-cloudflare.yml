@@ -140,22 +140,37 @@ jobs:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
 
-      - name: Verify API health
+      - name: Verify API health (public)
         run: |
           sleep 20
-          curl -fsS https://api.torgima.com/health | tee /tmp/api-health.json
-          grep -q '"ok"' /tmp/api-health.json || grep -q 'torgima-api' /tmp/api-health.json
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS https://api.torgima.com/health -o /tmp/api-health.json; then
+              break
+            fi
+            echo "Health check attempt ${attempt} failed — retrying in 10s"
+            sleep 10
+          done
+          grep -q '"ok"' /tmp/api-health.json
           echo "API liveness OK"
 
       - name: Verify API readiness (public /api/health)
         run: |
-          # Public deploy check only — do not curl protected /api/debug/* without x-internal-auth.
-          curl -sS -o /tmp/api-health-deep.json -w "HTTP %{http_code}\n" https://api.torgima.com/api/health
-          grep -q '"env_vars"' /tmp/api-health-deep.json
-          grep -q 'All 4 required vars present' /tmp/api-health-deep.json
-          grep -q 'postgres URL present' /tmp/api-health-deep.json
-          grep -q '"runtime":"cloudflare-workers"' /tmp/api-health-deep.json
-          echo "Worker env bindings verified via public /api/health"
+          curl -fsS https://api.torgima.com/api/health -o /tmp/api-health-deep.json
+          grep -q '"status"' /tmp/api-health-deep.json
+          grep -q '"runtime"' /tmp/api-health-deep.json
+          echo "API readiness OK"
+
+      - name: Verify Worker env bindings (authenticated debug)
+        env:
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+        run: |
+          curl -fsS \
+            -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
+            https://api.torgima.com/api/debug/cloudflare-env \
+            -o /tmp/cf-env.json
+          grep -q '"DATABASE_URL".*"present"' /tmp/cf-env.json
+          grep -q '"RESEND_API_KEY".*"present"' /tmp/cf-env.json
+          echo "Worker env bindings OK"
 
   deploy-pages:
     name: Deploy Frontend (Pages)

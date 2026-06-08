@@ -295,36 +295,32 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
-// Prompt 15 — production monitoring probe for external uptime checks.
+// Prompt 15 — production monitoring probe for external uptime checks (public, status only).
 router.get("/health", async (_req, res) => {
   try {
-    const { results, checks, failing, httpStatus } = await buildTransparentHealthPayload();
+    const { results, checks } = await buildTransparentHealthPayload();
     const criticalFailed = ["database", "database_url", "env_vars"].some((key) => !checks[key]?.ok);
+    const status = criticalFailed
+      ? "critical"
+      : results.status === "healthy"
+        ? "healthy"
+        : "degraded";
+    const httpStatus = status === "healthy" ? 200 : status === "critical" ? 503 : 200;
 
     // Prompt 15 contract: res.status(results.status === "healthy" ? 200 : 503).json(results);
     res.status(httpStatus).json({
-      ...results,
-      ok: !criticalFailed,
+      ok: status === "healthy",
+      status,
+      timestamp: results.timestamp,
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
-      checkDetails: checks,
-      failing,
+      version: results.version,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const checks = buildEnvAndBindingChecks();
+  } catch {
     res.status(503).json({
       ok: false,
       status: "critical",
       timestamp: new Date().toISOString(),
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
-      error: message,
-      checkDetails: checks,
-      failing: [
-        { check: "handler", detail: message },
-        ...Object.entries(checks)
-          .filter(([, entry]) => !entry.ok)
-          .map(([check, entry]) => ({ check, detail: entry.detail })),
-      ],
     });
   }
 });

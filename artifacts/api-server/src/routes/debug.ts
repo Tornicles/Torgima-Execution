@@ -12,7 +12,7 @@ import {
   enforcementPackages,
 } from "@workspace/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { requireAuth } from "../lib/auth.js";
+import { requireAuth, withAuth } from "../lib/auth.js";
 import { success, handleError } from "../lib/utils.js";
 import { logger } from "../lib/logger.js";
 import { BlueprintStatus, EventStatus, OrderStatus } from "@workspace/state-machine";
@@ -21,6 +21,9 @@ import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuarantee
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
 
 const router = Router();
+
+/** Deploy diagnostics under /api/debug/* — internal auth only (x-internal-auth). */
+router.use("/debug", withAuth("INTERNAL_SERVICE"));
 
 /**
  * GET /api/v1/debug/system-state — BHUDHI deploy diagnostic (counts + active blueprint).
@@ -393,7 +396,7 @@ router.get("/debug/cloudflare-env", (_req, res) => {
 });
 
 /**
- * GET /api/debug/routes — deploy smoke list (public).
+ * GET /api/debug/routes — deploy smoke list (internal auth required).
  */
 router.get("/debug/routes", (_req, res) => {
   success(res, {

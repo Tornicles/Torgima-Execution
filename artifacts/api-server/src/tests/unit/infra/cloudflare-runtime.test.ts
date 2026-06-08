@@ -49,6 +49,7 @@ describe("Cloudflare Workers runtime bridge", () => {
     const debug = readRepo("artifacts/api-server/src/routes/debug.ts");
     const runtime = readRepo("artifacts/api-server/src/lib/cloudflare-runtime.ts");
     expect(debug).toContain("/debug/cloudflare-env");
+    expect(debug).toContain('router.use("/debug", withAuth("INTERNAL_SERVICE"))');
     expect(debug).toContain('"present"');
     expect(debug).toContain('"missing"');
     expect(debug).not.toContain("process.env.DATABASE_URL,");
@@ -57,12 +58,14 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
-  it("CI deploy uses public health endpoints only (no unauthenticated debug curl)", () => {
+  it("CI deploy uses public health and authenticated debug curl", () => {
     const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
     expect(workflow).toContain("https://api.torgima.com/health");
     expect(workflow).toContain("https://api.torgima.com/api/health");
-    expect(workflow).not.toContain("api/debug/cloudflare-env");
-    expect(workflow).not.toMatch(/curl -fsS https:\/\/api\.torgima\.com\/api\/debug\//);
+    expect(workflow).toContain("x-internal-auth");
+    expect(workflow).toContain("INTERNAL_AUTH_SECRET");
+    expect(workflow).toContain("api/debug/cloudflare-env");
+    expect(workflow).toContain('-H "x-internal-auth: ${INTERNAL_AUTH_SECRET}"');
   });
 
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
