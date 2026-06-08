@@ -4,6 +4,7 @@
  */
 
 import type { Hyperdrive, KVNamespace, Queue } from "@cloudflare/workers-types";
+import { resetWorkerDbCache } from "@workspace/db";
 
 export type TorgimaWorkerEnv = {
   NODE_ENV?: string;
@@ -38,15 +39,27 @@ export function isCloudflareRuntime(): boolean {
   return process.env.TORGIMA_RUNTIME === "cloudflare";
 }
 
+let lastBoundDatabaseUrl: string | undefined;
+
 export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
-  // NODE_ENV / TORGIMA_RUNTIME come from wrangler [vars] as compile-time defines — do not assign.
+  if (typeof env.NODE_ENV === "string" && env.NODE_ENV.trim()) {
+    process.env.NODE_ENV = env.NODE_ENV.trim();
+  }
+  if (typeof env.TORGIMA_RUNTIME === "string" && env.TORGIMA_RUNTIME.trim()) {
+    process.env.TORGIMA_RUNTIME = env.TORGIMA_RUNTIME.trim();
+  }
   process.env.START_WORKERS = "false";
+
+  const previousDbUrl = process.env.DATABASE_URL;
+  let nextDbUrl: string | undefined;
 
   if (env.HYPERDRIVE) {
     globalThis.__TORGIMA_HYPERDRIVE__ = env.HYPERDRIVE;
-    process.env.DATABASE_URL = env.HYPERDRIVE.connectionString;
-  } else if (typeof env.DATABASE_URL === "string") {
-    process.env.DATABASE_URL = env.DATABASE_URL;
+    nextDbUrl = env.HYPERDRIVE.connectionString;
+    process.env.DATABASE_URL = nextDbUrl;
+  } else if (typeof env.DATABASE_URL === "string" && env.DATABASE_URL.trim()) {
+    nextDbUrl = env.DATABASE_URL.trim();
+    process.env.DATABASE_URL = nextDbUrl;
   }
 
   if (env.SESSIONS) {
@@ -85,5 +98,10 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     if (typeof value === "string" && value.trim()) {
       process.env[key] = value;
     }
+  }
+
+  if (nextDbUrl && nextDbUrl !== previousDbUrl && nextDbUrl !== lastBoundDatabaseUrl) {
+    lastBoundDatabaseUrl = nextDbUrl;
+    resetWorkerDbCache();
   }
 }

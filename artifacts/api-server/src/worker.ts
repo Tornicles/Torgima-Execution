@@ -55,10 +55,12 @@ export default {
   },
 
   async queue(batch: MessageBatch<TorgimaQueueMessage>, env: TorgimaWorkerEnv): Promise<void> {
+    bindCloudflareEnv(env);
     await handleQueueBatch(batch, env);
   },
 
   async scheduled(controller: ScheduledController, env: TorgimaWorkerEnv): Promise<void> {
+    bindCloudflareEnv(env);
     await handleCloudflareCron(controller, env);
   },
 };

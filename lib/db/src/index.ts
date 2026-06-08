@@ -27,12 +27,28 @@ function getConnectionString(): string {
   return connectionString;
 }
 
-function withPoolerParams(url: string): string {
-  if (/pgbouncer=true|pooler\.supabase\.com|:6543/.test(url)) {
-    return url;
+/** Supabase + serverless: transaction pooler (6543), pgbouncer, no prepared statements. */
+export function normalizeWorkerDatabaseUrl(connectionString: string): string {
+  let url = stripSslModeFromConnectionString(connectionString.trim());
+  try {
+    const parsed = new URL(url.replace(/^postgresql:/i, "postgres:"));
+    if (parsed.hostname.includes("pooler.supabase.com") && (!parsed.port || parsed.port === "5432")) {
+      parsed.port = "6543";
+    }
+    if (!parsed.searchParams.has("pgbouncer")) {
+      parsed.searchParams.set("pgbouncer", "true");
+    }
+    if (!parsed.searchParams.has("connection_limit")) {
+      parsed.searchParams.set("connection_limit", "1");
+    }
+    url = parsed.toString().replace(/^postgres:/i, "postgresql:");
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    if (!/pgbouncer=true/.test(url)) {
+      url = `${url}${sep}pgbouncer=true&connection_limit=1`;
+    }
   }
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}pgbouncer=true&connection_limit=1`;
+  return url;
 }
 
 export function getPool(): pg.Pool {
@@ -56,18 +72,33 @@ export function getPool(): pg.Pool {
   return poolInstance;
 }
 
+/** Clear cached clients when Worker env bindings change (e.g. DATABASE_URL secret added). */
+export function resetWorkerDbCache(): void {
+  if (postgresJsClient) {
+    void postgresJsClient.end({ timeout: 1 }).catch(() => undefined);
+  }
+  postgresJsClient = null;
+  dbInstance = null;
+  poolInstance = null;
+}
+
 export function getDb(): DbInstance {
   if (!dbInstance) {
     const connectionString = getConnectionString();
 
     if (isCloudflareWorkerRuntime()) {
-      const workerUrl = withPoolerParams(connectionString);
+      const workerUrl = normalizeWorkerDatabaseUrl(connectionString);
+      const sslConfig = resolvePgSsl(connectionString);
       postgresJsClient = postgres(workerUrl, {
         max: 1,
         idle_timeout: 20,
-        connect_timeout: 10,
+        connect_timeout: 15,
         prepare: false,
-        ssl: resolvePgSsl(connectionString) ? "require" : false,
+        ssl: sslConfig
+          ? typeof sslConfig === "object"
+            ? sslConfig
+            : "require"
+          : false,
       });
       dbInstance = drizzlePostgresJs(postgresJsClient, { schema }) as unknown as DbInstance;
     } else {

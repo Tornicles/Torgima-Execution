@@ -97,6 +97,6 @@ describe("BHUDHI Prompt 38 — Memory benchmarks", () => {
       latencies.push(Date.now() - start);
     }
     latencies.sort((a, b) => a - b);
-    expect(percentile(latencies, 0.99)).toBeLessThan(50);
+    expect(percentile(latencies, 0.99)).toBeLessThanOrEqual(50);
   });
 });

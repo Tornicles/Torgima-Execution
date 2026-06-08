@@ -368,28 +368,27 @@ router.get("/debug/cloudflare-env", (_req, res) => {
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    "APP_URL",
-    "FRONTEND_URL",
     "ANTHROPIC_API_KEY",
-    "BHUDHI_MODEL",
     "RESEND_API_KEY",
     "EMAIL_FROM",
     "INTERNAL_AUTH_SECRET",
-    "INTERNAL_SERVICE_SECRET",
     "NOTIFICATION_UNSUBSCRIBE_SECRET",
-    "TORGIMA_RUNTIME",
     "NODE_ENV",
+    "TORGIMA_RUNTIME",
+    "APP_URL",
+    "FRONTEND_URL",
   ] as const;
   const env: Record<string, "present" | "missing"> = {};
   for (const key of keys) {
     const val = process.env[key];
     env[key] = typeof val === "string" && val.trim() ? "present" : "missing";
   }
+  const allRequiredPresent = keys.every((key) => env[key] === "present");
   success(res, {
-    ok: true,
+    ok: allRequiredPresent,
+    env,
     runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
     kv_sessions: globalThis.__TORGIMA_SESSIONS_KV__ ? "bound" : "missing",
-    env,
   });
 });
 

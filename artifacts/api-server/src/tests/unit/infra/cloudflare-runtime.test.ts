@@ -35,6 +35,28 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(wrangler).not.toContain("REPLACE_WITH_TORGIMA_SESSIONS_KV_ID");
   });
 
+  it("documents secure Worker secret setup script", () => {
+    const script = readRepo("scripts/setup-cloudflare-secrets.mjs");
+    const pkg = readRepo("package.json");
+    expect(pkg).toContain("cf:secrets:worker");
+    expect(script).toContain("wrangler secret put");
+    expect(script).toContain("DATABASE_URL");
+    expect(script).toContain("input hidden");
+    expect(script).not.toMatch(/writeFileSync|createWriteStream/);
+  });
+
+  it("exposes cloudflare-env diagnostic without leaking values", () => {
+    const debug = readRepo("artifacts/api-server/src/routes/debug.ts");
+    const runtime = readRepo("artifacts/api-server/src/lib/cloudflare-runtime.ts");
+    expect(debug).toContain("/debug/cloudflare-env");
+    expect(debug).toContain('"present"');
+    expect(debug).toContain('"missing"');
+    expect(debug).not.toContain("process.env.DATABASE_URL,");
+    expect(runtime).toContain("bindCloudflareEnv");
+    expect(runtime).toContain("DATABASE_URL");
+    expect(runtime).toContain("RESEND_API_KEY");
+  });
+
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const ensureScript = readRepo("scripts/ensure-cloudflare-queues.mjs");

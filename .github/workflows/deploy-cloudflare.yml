@@ -147,6 +147,13 @@ jobs:
           grep -q '"ok"' /tmp/api-health.json || grep -q 'torgima-api' /tmp/api-health.json || grep -q '"status"' /tmp/api-health.json
           echo "API health OK"
 
+      - name: Verify Worker env bindings (present/missing only)
+        run: |
+          curl -fsS https://api.torgima.com/api/debug/cloudflare-env | tee /tmp/cf-env.json
+          grep -q '"DATABASE_URL".*"present"' /tmp/cf-env.json
+          grep -q '"RESEND_API_KEY".*"present"' /tmp/cf-env.json || echo "WARN: RESEND_API_KEY missing — magic link email may fail"
+          echo "Worker env diagnostic OK"
+
   deploy-pages:
     name: Deploy Frontend (Pages)
     needs: ci
