@@ -11,9 +11,52 @@ import { SESSION_COOKIE_NAME } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { resolveAppUrl } from "../lib/app-url.js";
 import {
+  bindCloudflareEnv,
+  isCloudflareRuntime,
+  type TorgimaWorkerEnv,
+} from "../lib/cloudflare-runtime.js";
+import {
   magicLinkHourlyLimit,
   magicLinkVerifyLimit,
 } from "../middleware/apiRateLimit.js";
+
+type MagicLinkRequest = Request & { env?: TorgimaWorkerEnv };
+
+/** Worker bindings (c.env) — not process.env — for magic-link secrets on Cloudflare. */
+function magicLinkWorkerContext(req: Request): { env: TorgimaWorkerEnv } {
+  const reqEnv = (req as MagicLinkRequest).env;
+  if (reqEnv) return { env: reqEnv };
+  return {
+    env: {
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+      APP_URL: process.env.APP_URL,
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      INTERNAL_AUTH_SECRET: process.env.INTERNAL_AUTH_SECRET,
+      DATABASE_URL: process.env.DATABASE_URL,
+    },
+  };
+}
+
+function bindMagicLinkWorkerSecrets(c: { env: TorgimaWorkerEnv }): void {
+  if (!isCloudflareRuntime()) return;
+  const payload: TorgimaWorkerEnv = {};
+  if (typeof c.env.RESEND_API_KEY === "string" && c.env.RESEND_API_KEY.trim()) {
+    payload.RESEND_API_KEY = c.env.RESEND_API_KEY.trim();
+  }
+  if (typeof c.env.APP_URL === "string" && c.env.APP_URL.trim()) {
+    payload.APP_URL = c.env.APP_URL.trim();
+  }
+  if (typeof c.env.EMAIL_FROM === "string" && c.env.EMAIL_FROM.trim()) {
+    payload.EMAIL_FROM = c.env.EMAIL_FROM.trim();
+  }
+  if (typeof c.env.INTERNAL_AUTH_SECRET === "string" && c.env.INTERNAL_AUTH_SECRET.trim()) {
+    payload.INTERNAL_AUTH_SECRET = c.env.INTERNAL_AUTH_SECRET.trim();
+  }
+  if (typeof c.env.DATABASE_URL === "string" && c.env.DATABASE_URL.trim()) {
+    payload.DATABASE_URL = c.env.DATABASE_URL.trim();
+  }
+  bindCloudflareEnv(payload);
+}
 
 const router = Router();
 
@@ -144,6 +187,9 @@ router.post("/magic-link/send", handleSendMagicLink);
 
 async function handleSendMagicLink(req: Request, res: Response): Promise<void> {
   try {
+    const c = magicLinkWorkerContext(req);
+    bindMagicLinkWorkerSecrets(c);
+
     const schema = z.object({ email: z.email() });
     const result = schema.safeParse(req.body);
     if (!result.success) {
