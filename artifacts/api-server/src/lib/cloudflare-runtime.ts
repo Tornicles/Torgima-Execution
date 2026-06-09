@@ -74,6 +74,7 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
 
   const passthrough = [
     "EVENT_DISPATCH_CRON_BATCH_SIZE",
+    "EVENT_DISPATCH_CRON_ENABLED",
     "APP_URL",
     "FRONTEND_URL",
     "SUPABASE_URL",

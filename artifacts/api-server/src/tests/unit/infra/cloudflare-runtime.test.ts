@@ -126,15 +126,18 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(dbIndex).toContain("drizzle-orm/postgres-js");
   });
 
-  it("limits event_dispatch_poll cron to one event per invocation", () => {
+  it("limits event_dispatch_poll cron to subrequest-safe single-event dispatch", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const dispatcher = readRepo("artifacts/api-server/src/services/EventDispatcher.ts");
     const worker = readRepo("artifacts/api-server/src/workers/EventDispatcherWorker.ts");
+    const cronBridge = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
 
     expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "1"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "false"');
     expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 1");
-    expect(worker).toContain("getCronDispatchBatchSize");
-    expect(worker).not.toContain("MAX_EVENTS_PER_CRON_TICK = 5");
+    expect(dispatcher).toContain("dispatchPendingEventsForCron");
+    expect(worker).toContain("dispatchPendingEventsForCron");
+    expect(cronBridge).toContain("runEventDispatchPollSafe");
   });
 
   it("registers cron workers in the queue consumer", () => {

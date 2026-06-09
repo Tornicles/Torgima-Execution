@@ -27,6 +27,21 @@ async function runCronJobInline(queue: string, cron: string): Promise<void> {
   });
 }
 
+async function runEventDispatchPollSafe(): Promise<void> {
+  const { dispatchPendingEventsForCron, isEventDispatchCronEnabled } = await import(
+    "../services/EventDispatcher.js"
+  );
+  if (!isEventDispatchCronEnabled()) {
+    logger.info({ queue: EVENT_DISPATCH_POLL_QUEUE }, "[Cron] event_dispatch_poll skipped — disabled");
+    return;
+  }
+  const dispatched = await dispatchPendingEventsForCron();
+  logger.info(
+    { queue: EVENT_DISPATCH_POLL_QUEUE, dispatched },
+    "[Cron] event_dispatch_poll completed (subrequest-safe)",
+  );
+}
+
 export async function handleCloudflareCron(
   controller: ScheduledController,
   env: TorgimaWorkerEnv,
@@ -40,6 +55,38 @@ export async function handleCloudflareCron(
   }
 
   logger.info({ cron: controller.cron, queue }, "[Cron] Started");
+
+  if (queue === EVENT_DISPATCH_POLL_QUEUE) {
+    const binding = env.TASK_QUEUE;
+    if (!binding) {
+      try {
+        await runEventDispatchPollSafe();
+      } catch (err) {
+        logger.error(
+          {
+            cron: controller.cron,
+            queue,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          "[Cron] event_dispatch_poll failed",
+        );
+      }
+      return;
+    }
+
+    const { isEventDispatchCronEnabled } = await import("../services/EventDispatcher.js");
+    if (!isEventDispatchCronEnabled()) {
+      logger.info({ cron: controller.cron, queue }, "[Cron] event_dispatch_poll skipped — disabled");
+      return;
+    }
+
+    await binding.send({
+      queue,
+      payload: { trigger: "cloudflare_cron", cron: controller.cron },
+    });
+    logger.info({ cron: controller.cron, queue }, "[Cron] Enqueued event_dispatch_poll");
+    return;
+  }
 
   const binding = env.TASK_QUEUE;
   if (!binding) {

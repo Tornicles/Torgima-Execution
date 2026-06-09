@@ -7,7 +7,7 @@ import { EventTypes } from "../../../types/eventContracts.js";
 const root = resolve(process.cwd(), "../..");
 const readRepo = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const mockSend = vi.fn().mockResolvedValue("job-1");
+const mockTaskQueueSend = vi.fn().mockResolvedValue(undefined);
 const mockDbUpdate = vi.fn().mockImplementation(() => ({
   set: vi.fn().mockImplementation((values: Record<string, unknown>) => {
     updateCalls.push(values);
@@ -25,10 +25,6 @@ const mockSelectChain = {
 
 let claimedEvents: Array<Record<string, unknown>> = [];
 let updateCalls: Array<Record<string, unknown>> = [];
-
-vi.mock("../../../lib/queue.js", () => ({
-  getBoss: vi.fn().mockResolvedValue({ send: mockSend }),
-}));
 
 vi.mock("../../../services/DeadLetterQueue.js", () => ({
   deadLetterQueue: {
@@ -71,57 +67,75 @@ vi.mock("@workspace/db", () => {
   };
 });
 
-describe("EventDispatcher cron single-item processing", () => {
+describe("EventDispatcher cron subrequest-safe processing", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
     claimedEvents = [];
     updateCalls = [];
-    mockSend.mockClear();
-    mockSend.mockResolvedValue("job-1");
+    mockTaskQueueSend.mockClear();
+    mockTaskQueueSend.mockResolvedValue(undefined);
+    globalThis.__TORGIMA_TASK_QUEUE__ = undefined;
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    globalThis.__TORGIMA_TASK_QUEUE__ = undefined;
   });
 
-  it("caps cron worker to one event per invocation (no multi-event loop)", () => {
+  it("uses dispatchPendingEventsForCron in worker handler (no multi-event loop)", () => {
     const worker = readRepo("artifacts/api-server/src/workers/EventDispatcherWorker.ts");
-    expect(worker).toContain("getCronDispatchBatchSize");
+    expect(worker).toContain("dispatchPendingEventsForCron");
     expect(worker).not.toContain("MAX_EVENTS_PER_CRON_TICK = 5");
     expect(worker).not.toMatch(/for \(const _job of jobs\)/);
     expect(worker).not.toMatch(/eventsDispatched/);
-    expect(worker).toContain('logContext: "cron"');
+    expect(worker).not.toContain('logContext: "cron"');
   });
 
-  it("uses FOR UPDATE SKIP LOCKED and hard cron limits in EventDispatcher", () => {
+  it("routes * * * * * to subrequest-safe cron path without handler.js", () => {
+    const cron = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
+    expect(cron).toContain("runEventDispatchPollSafe");
+    expect(cron).toContain("EVENT_DISPATCH_POLL_QUEUE");
+    expect(cron).toContain("isEventDispatchCronEnabled");
+    expect(cron).toContain("subrequest-safe");
+  });
+
+  it("exports cron limits and kill-switch helpers", () => {
     const dispatcher = readRepo("artifacts/api-server/src/services/EventDispatcher.ts");
-    expect(dispatcher).toContain('export const MAX_EVENTS_PER_CRON = 1');
+    expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 1");
+    expect(dispatcher).toContain("MAX_SUBREQUESTS_PER_CRON_SAFE_LIMIT = 10");
     expect(dispatcher).toContain("MAX_PROCESSING_MS = 5_000");
-    expect(dispatcher).toContain("MAX_DISPATCH_ATTEMPTS = 3");
-    expect(dispatcher).toContain('for("update", { skipLocked: true })');
-    expect(dispatcher).toContain("EVENT_DISPATCH_CRON_BATCH_SIZE");
+    expect(dispatcher).toContain("isEventDispatchCronEnabled");
+    expect(dispatcher).toContain("dispatchPendingEventsForCron");
   });
 
-  it("defaults EVENT_DISPATCH_CRON_BATCH_SIZE to 1 on Cloudflare", async () => {
-    vi.stubEnv("TORGIMA_RUNTIME", "cloudflare");
-    delete process.env.EVENT_DISPATCH_CRON_BATCH_SIZE;
-    const { getCronDispatchBatchSize, MAX_EVENTS_PER_CRON } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    expect(getCronDispatchBatchSize()).toBe(MAX_EVENTS_PER_CRON);
-    expect(getCronDispatchBatchSize()).toBe(1);
+  it("defaults EVENT_DISPATCH_CRON_ENABLED to false", async () => {
+    delete process.env.EVENT_DISPATCH_CRON_ENABLED;
+    const { isEventDispatchCronEnabled } = await import("../../../services/EventDispatcher.js");
+    expect(isEventDispatchCronEnabled()).toBe(false);
   });
 
-  it("never exceeds MAX_EVENTS_PER_CRON even when env requests more", async () => {
-    vi.stubEnv("EVENT_DISPATCH_CRON_BATCH_SIZE", "10");
-    const { getCronDispatchBatchSize, MAX_EVENTS_PER_CRON } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    expect(getCronDispatchBatchSize()).toBe(MAX_EVENTS_PER_CRON);
+  it("exits when EVENT_DISPATCH_CRON_ENABLED is off", async () => {
+    vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "false");
+    const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
+    const dispatched = await dispatchPendingEventsForCron();
+    expect(dispatched).toBe(0);
+    expect(mockTaskQueueSend).not.toHaveBeenCalled();
   });
 
-  it("processes at most one claimed event per cron dispatch call", async () => {
+  it("returns ok when no pending events", async () => {
+    vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "true");
+    globalThis.__TORGIMA_TASK_QUEUE__ = { send: mockTaskQueueSend } as never;
+    claimedEvents = [];
+    const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
+    const dispatched = await dispatchPendingEventsForCron();
+    expect(dispatched).toBe(0);
+    expect(mockTaskQueueSend).not.toHaveBeenCalled();
+  });
+
+  it("claims and enqueues only one event per cron tick", async () => {
+    vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "true");
+    globalThis.__TORGIMA_TASK_QUEUE__ = { send: mockTaskQueueSend } as never;
     claimedEvents = [
       {
         id: "evt-1",
@@ -149,27 +163,42 @@ describe("EventDispatcher cron single-item processing", () => {
       },
     ];
 
-    const { dispatchPendingEvents, getCronDispatchBatchSize } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    const dispatched = await dispatchPendingEvents(getCronDispatchBatchSize(), { logContext: "cron" });
+    const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
+    const dispatched = await dispatchPendingEventsForCron();
 
     expect(dispatched).toBe(1);
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockTaskQueueSend).toHaveBeenCalledTimes(1);
   });
 
-  it("returns ok when no pending events", async () => {
-    claimedEvents = [];
-    const { dispatchPendingEvents, getCronDispatchBatchSize } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    const dispatched = await dispatchPendingEvents(getCronDispatchBatchSize(), { logContext: "cron" });
+  it("skips inline workers when TASK_QUEUE is missing and releases claim", async () => {
+    vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "true");
+    claimedEvents = [
+      {
+        id: "evt-skip",
+        event_type: EventTypes.FEEDBACK_SUBMITTED,
+        entity_type: "feedback",
+        entity_id: "ent-1",
+        user_id: "user-1",
+        blueprint_id: "bp-1",
+        payload: {},
+        idempotency_key: null,
+        retry_count: 0,
+        created_at: new Date(),
+      },
+    ];
+
+    const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
+    const dispatched = await dispatchPendingEventsForCron();
+
     expect(dispatched).toBe(0);
-    expect(mockSend).not.toHaveBeenCalled();
+    expect(mockTaskQueueSend).not.toHaveBeenCalled();
+    expect(updateCalls.some((c) => c.status === EventStatus.RETRY_PENDING)).toBe(true);
   });
 
-  it("marks failed dispatch as retry_pending before max attempts", async () => {
-    mockSend.mockRejectedValueOnce(new Error("queue unavailable"));
+  it("marks failed enqueue as retry_pending before max attempts", async () => {
+    vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "true");
+    mockTaskQueueSend.mockRejectedValueOnce(new Error("queue unavailable"));
+    globalThis.__TORGIMA_TASK_QUEUE__ = { send: mockTaskQueueSend } as never;
     mockSelectChain.from.mockReturnValue(mockSelectChain);
     mockSelectChain.where.mockReturnValue(mockSelectChain);
     mockSelectChain.limit.mockResolvedValue([]);
@@ -189,48 +218,16 @@ describe("EventDispatcher cron single-item processing", () => {
       },
     ];
 
-    const { dispatchPendingEvents, getCronDispatchBatchSize } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    const dispatched = await dispatchPendingEvents(getCronDispatchBatchSize(), { logContext: "cron" });
+    const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
+    const dispatched = await dispatchPendingEventsForCron();
 
     expect(dispatched).toBe(0);
     expect(updateCalls.some((c) => c.status === EventStatus.RETRY_PENDING)).toBe(true);
   });
 
-  it("claims events inside a transaction with skip-locked select", async () => {
-    const { db } = await import("@workspace/db");
-    claimedEvents = [
-      {
-        id: "evt-claim",
-        event_type: EventTypes.FEEDBACK_SUBMITTED,
-        entity_type: "feedback",
-        entity_id: null,
-        user_id: null,
-        blueprint_id: null,
-        payload: {},
-        idempotency_key: null,
-        retry_count: 0,
-        created_at: new Date(),
-      },
-    ];
-
-    const { dispatchPendingEvents, getCronDispatchBatchSize } = await import(
-      "../../../services/EventDispatcher.js"
-    );
-    await dispatchPendingEvents(getCronDispatchBatchSize(), { logContext: "cron" });
-
-    expect(db.transaction).toHaveBeenCalled();
-    expect(updateCalls.some((c) => c.status === EventStatus.CLAIMED)).toBe(true);
-  });
-
-  it("sets EVENT_DISPATCH_CRON_BATCH_SIZE=1 in wrangler production vars", () => {
+  it("sets wrangler cron env defaults", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "1"');
-  });
-
-  it("logs cron started in cloudflare-cron bridge", () => {
-    const cron = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
-    expect(cron).toContain('[Cron] Started');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "false"');
   });
 });

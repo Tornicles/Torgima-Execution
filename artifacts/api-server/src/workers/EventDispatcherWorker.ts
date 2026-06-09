@@ -1,7 +1,7 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import {
   dispatchPendingEvents,
-  getCronDispatchBatchSize,
+  dispatchPendingEventsForCron,
   DISPATCH_BATCH_SIZE,
 } from "../services/EventDispatcher.js";
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
@@ -14,7 +14,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let pollInFlight = false;
 
 function nodePollBatchSize(): number {
-  return isCloudflareRuntime() ? getCronDispatchBatchSize() : DISPATCH_BATCH_SIZE;
+  return isCloudflareRuntime() ? 1 : DISPATCH_BATCH_SIZE;
 }
 
 async function pollOnce(batchSize: number): Promise<number> {
@@ -32,9 +32,8 @@ workerRegistry.register({
   queue: EVENT_DISPATCH_POLL_QUEUE,
   options: { localConcurrency: 1, pollingIntervalSeconds: 1 },
   handler: async (_jobs) => {
-    const batchSize = getCronDispatchBatchSize();
-    logger.info({ batchSize, queue: EVENT_DISPATCH_POLL_QUEUE }, "[EventDispatcherWorker] Cron dispatch started");
-    await dispatchPendingEvents(batchSize, { logContext: "cron" });
+    logger.info({ queue: EVENT_DISPATCH_POLL_QUEUE }, "[EventDispatcherWorker] Cron dispatch started");
+    await dispatchPendingEventsForCron();
   },
 });
 
