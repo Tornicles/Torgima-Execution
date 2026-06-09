@@ -29,7 +29,8 @@ describe("Prompt 15 — Production deployment readiness", () => {
     expect(health).toContain("bhudhi: ProductionHealthCheck");
     expect(health).toContain("workers: ProductionHealthCheck");
     expect(health).toContain("signals: ProductionHealthCheck");
-    expect(health).toContain("res.status(results.status === \"healthy\" ? 200 : 503).json(results)");
+    expect(health).toContain("buildTransparentHealthPayload");
+    expect(health).toContain("res.status(httpStatus).json({");
   });
 
   it("TEST 3: production onboarding smoke test is included in handoff", () => {
