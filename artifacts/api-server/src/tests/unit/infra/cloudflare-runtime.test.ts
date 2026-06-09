@@ -27,6 +27,7 @@ describe("Cloudflare Workers runtime bridge", () => {
     const worker = readRepo("artifacts/api-server/src/worker.ts");
     expect(worker).toContain("async scheduled(");
     expect(worker).toContain("handleCloudflareCron");
+    expect(worker).toContain("bindCloudflareEnv(env)");
   });
 
   it("binds TORGIMA_SESSIONS KV namespace in wrangler", () => {
@@ -58,26 +59,33 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
-  it("CI deploy health gate handles Cloudflare WAF challenge with API fallback", () => {
+  it("CI deploy verifies Worker via workers.dev (bypasses zone WAF)", () => {
     const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
-    expect(workflow).toContain("https://api.torgima.com/health");
-    expect(workflow).toContain("User-Agent: GitHubActions-CI");
-    expect(workflow).toContain("cf-mitigated");
-    expect(workflow).toContain("Cloudflare WAF managed challenge");
+    expect(workflow).toContain("workers.dev");
+    expect(workflow).toContain("GitHub-Actions-Deploy-Verify");
+    expect(workflow).not.toContain("https://api.torgima.com/health");
     expect(workflow).toContain("workers/scripts/torgima");
-    expect(workflow).toContain("api/debug/cloudflare-env");
-    expect(workflow).toContain("|| true");
+    expect(workflow).toContain("verify-connections");
+    expect(workflow).toContain("verify:deploy:connections");
   });
 
-  it("provisions WAF skip rule for GitHub Actions CI health probe", () => {
+  it("provisions WAF skip rule for health endpoints and GitHub Actions", () => {
     const script = readRepo("scripts/ensure-cloudflare-waf-ci-skip.mjs");
     const pkg = readRepo("package.json");
     expect(pkg).toContain("ensure:cloudflare:waf-ci-skip");
     expect(script).toContain("http_request_sbfm");
-    expect(script).toContain("GitHubActions-CI");
-    expect(script).toContain("api.torgima.com");
-    expect(script).toContain("/health");
+    expect(script).toContain("GitHub-Actions");
+    expect(script).toContain("/api/health");
+    expect(script).toContain("/healthz");
     expect(script).toContain('action: "skip"');
+  });
+
+  it("/api/health returns transparent per-check diagnostics", () => {
+    const health = readRepo("artifacts/api-server/src/routes/health.ts");
+    expect(health).toContain("runHealthCheck");
+    expect(health).toContain("checks,");
+    expect(health).toContain("failing");
+    expect(health).toContain("HEALTH_CHECK_TIMEOUT_MS");
   });
 
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {

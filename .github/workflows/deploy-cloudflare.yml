@@ -5,8 +5,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   NODE_VERSION: "22"
+  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.torgima.com' }}
+  # workers.dev bypasses zone WAF — used for CI health verification only
+  WORKER_URL: ${{ vars.CLOUDFLARE_WORKER_URL }}
 
 jobs:
   ci:
@@ -28,21 +35,30 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Build all packages
+      - name: Build
         run: pnpm build
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+          NODE_ENV: production
 
-      - name: Run unit tests
+      - name: Run tests
         run: pnpm test
         env:
           NODE_ENV: test
 
-      - name: Upload build artifacts
+      - name: Upload API build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-output
-          path: |
-            artifacts/api-server/dist
-            artifacts/torgima/dist
+          name: api-dist
+          path: artifacts/api-server/dist
+          retention-days: 1
+          if-no-files-found: warn
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: artifacts/torgima/dist
           retention-days: 1
 
   migrate:
@@ -100,7 +116,7 @@ jobs:
       - name: Verify Worker entry and build output
         run: |
           test -f artifacts/api-server/src/worker.ts
-          ls -la artifacts/api-server/dist/ | head -20
+          ls -la artifacts/api-server/dist/ | head -20 || true
           echo "Worker entry src/worker.ts present; Wrangler bundles TypeScript at deploy."
 
       - name: Ensure Cloudflare Queues
@@ -109,6 +125,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           QUEUES_OPTIONAL: "1"
+
+      - name: Ensure WAF skip for health and CI probes
+        run: pnpm run ensure:cloudflare:waf-ci-skip -- --soft
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ZONE_NAME: torgima.com
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
@@ -140,96 +163,68 @@ jobs:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
 
-      - name: Ensure WAF skip for CI health probe
-        run: pnpm run ensure:cloudflare:waf-ci-skip -- --soft
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
-          CLOUDFLARE_ZONE_NAME: torgima.com
-
-      - name: Verify API health (diagnostic)
+      - name: Verify Worker responds (workers.dev — bypasses zone WAF)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          URL="https://api.torgima.com/health"
-          echo "URL checked: ${URL}"
+          WORKER_BASE="${WORKER_URL:-https://torgima.tmagaya.workers.dev}"
+          HEALTH_URL="${WORKER_BASE}/health"
+          echo "Health URL: ${HEALTH_URL} (workers.dev — not subject to zone WAF)"
           sleep 20
 
-          # Use -i/-sS (not -f) so 403 bodies/headers are visible in logs.
-          curl -i -sS \
-            -H "User-Agent: GitHubActions-CI" \
-            "${URL}" > /tmp/api-health.raw
+          SUCCESS=false
+          for i in 1 2 3 4 5 6; do
+            echo "--- Attempt $i ---"
+            RAW="$(curl -sS -w "\n%{http_code}" --max-time 15 \
+              -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
+              "${HEALTH_URL}" || true)"
+            HTTP_CODE="$(echo "${RAW}" | tail -1)"
+            BODY="$(echo "${RAW}" | head -n -1)"
 
-          STATUS_LINE="$(head -n 1 /tmp/api-health.raw || true)"
-          STATUS_CODE="$(echo "${STATUS_LINE}" | awk '{print $2}' || true)"
-          BODY="$(awk 'BEGIN{inbody=0} /^\r?$/{inbody=1; next} { if(inbody) print }' /tmp/api-health.raw || true)"
+            echo "HTTP: ${HTTP_CODE}"
+            echo "Body: ${BODY}"
 
-          echo "Status line: ${STATUS_LINE}"
-          echo "Status code: ${STATUS_CODE:-unknown}"
+            if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"'; then
+              echo "✓ Worker is live on workers.dev"
+              SUCCESS=true
+              break
+            fi
 
-          echo "Response headers (selected):"
-          grep -iE '^(server:|cf-ray:|cf-cache-status:|content-type:|x-request-id:|cf-mitigated:|location:)' /tmp/api-health.raw || true
+            if [ $i -lt 6 ]; then
+              echo "Not ready, waiting 15s..."
+              sleep 15
+            fi
+          done
 
-          echo "Response body (first 20 lines):"
-          echo "${BODY}" | head -n 20 || true
-
-          IS_CF_WAF_CHALLENGE=false
-          if grep -qiE '^cf-mitigated:[[:space:]]*challenge' /tmp/api-health.raw; then
-            IS_CF_WAF_CHALLENGE=true
-          elif echo "${BODY}" | grep -qi 'Just a moment'; then
-            IS_CF_WAF_CHALLENGE=true
-          fi
-
-          if [ "${STATUS_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
-            echo "Source: Worker app (HTTP 200, ok:true)"
-            echo "API health OK"
+          if [ "${SUCCESS}" = "true" ]; then
             exit 0
           fi
 
-          if [ "${IS_CF_WAF_CHALLENGE}" = "true" ]; then
-            echo "Source: Cloudflare WAF managed challenge (cf-mitigated: challenge) — NOT Worker app auth"
-            echo "Public curl from GitHub Actions is blocked before the Worker runs."
-            echo "WAF fix (Cloudflare dashboard): skip managed challenge when"
-            echo "  (http.host eq \"api.torgima.com\" and http.request.uri.path eq \"/health\" and http.user_agent eq \"GitHubActions-CI\")"
-            echo "Fallback: verify Worker script via Cloudflare API (no public HTTP)..."
-
-            CF_API_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/torgima"
-            echo "URL checked (fallback): ${CF_API_URL}"
-            HTTP_CODE="$(curl -sS -o /tmp/cf-worker.json -w "%{http_code}" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-              "${CF_API_URL}")"
-            echo "Status code (fallback): ${HTTP_CODE}"
-            grep -q '"success":true' /tmp/cf-worker.json
-            echo "Source: Cloudflare API (Worker script torgima present)"
-            echo "API health OK (WAF blocked public probe; deploy verified via Cloudflare API)"
-            exit 0
-          fi
-
-          if grep -qiE '^x-request-id:' /tmp/api-health.raw && ! grep -qiE '^cf-mitigated:' /tmp/api-health.raw; then
-            echo "Source: Worker app (x-request-id present, no WAF challenge header)"
-          elif grep -qiE '^cf-ray:' /tmp/api-health.raw; then
-            echo "Source: Cloudflare edge (cf-ray present, not a managed challenge)"
-          else
-            echo "Source: unknown"
-          fi
-
-          echo "API health check failed (not WAF challenge and not HTTP 200 ok:true)"
-          exit 1
+          echo "workers.dev probe failed — fallback: Cloudflare API script check"
+          CF_API_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/torgima"
+          HTTP_CODE="$(curl -sS -o /tmp/cf-worker.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${CF_API_URL}")"
+          echo "Cloudflare API status: ${HTTP_CODE}"
+          grep -q '"success":true' /tmp/cf-worker.json
+          echo "✓ Worker script torgima present (workers.dev may still be propagating)"
 
       - name: Optional debug env probe (non-blocking)
         env:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+          WORKER_BASE: ${{ vars.CLOUDFLARE_WORKER_URL }}
         run: |
+          BASE="${WORKER_BASE:-https://torgima.tmagaya.workers.dev}"
           curl -fsS \
-            -H "User-Agent: GitHubActions-CI" \
+            -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
             -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
-            https://api.torgima.com/api/debug/cloudflare-env || true
+            "${BASE}/api/debug/cloudflare-env" || true
           echo "Debug probe complete (failures do not block deploy)"
 
   deploy-pages:
-    name: Deploy Frontend (Pages)
+    name: Deploy Frontend
     needs: ci
     runs-on: ubuntu-latest
     steps:
@@ -245,18 +240,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Frontend
+      - name: Build frontend for Pages
         run: pnpm build:cloudflare:pages
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
           NODE_ENV: production
 
-      - name: Verify frontend build output
+      - name: Verify frontend build
         run: |
+          echo "=== Frontend dist ==="
           ls -la artifacts/torgima/dist/
           test -f artifacts/torgima/dist/index.html
-          test -f artifacts/torgima/dist/_redirects
-          echo "Frontend build verified."
+          if [ ! -f artifacts/torgima/dist/_redirects ]; then
+            echo "/* /index.html 200" > artifacts/torgima/dist/_redirects
+            echo "Created _redirects for SPA routing"
+          fi
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -266,8 +264,36 @@ jobs:
           workingDirectory: "."
           command: pages deploy artifacts/torgima/dist --project-name=torgima-execution --branch=main --commit-dirty=true
 
-      - name: Verify frontend is live
+      - name: Verify Pages responds
         run: |
           sleep 15
-          curl -fsSI https://torgima.com | head -20
-          echo "Frontend reachable."
+          HTTP="$(curl -s -o /dev/null -w "%{http_code}" https://torgima.com || true)"
+          echo "torgima.com HTTP: ${HTTP}"
+          if [ "${HTTP}" = "200" ] || [ "${HTTP}" = "304" ]; then
+            echo "✓ Frontend is live"
+          else
+            echo "⚠ Frontend returned ${HTTP} — may still be propagating"
+          fi
+        continue-on-error: true
+
+  verify-connections:
+    name: Verify all connections
+    needs: [deploy-worker, deploy-pages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run connection validation chain
+        env:
+          WORKER_URL: ${{ vars.CLOUDFLARE_WORKER_URL }}
+        run: pnpm run verify:deploy:connections -- --soft

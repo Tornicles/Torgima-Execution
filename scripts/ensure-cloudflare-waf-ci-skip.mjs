@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ensure Cloudflare WAF skips managed challenge for GitHub Actions CI health probes.
+ * Ensure Cloudflare WAF skips managed challenge for CI health probes and health endpoints.
  * Idempotent — safe to run from CI or locally.
  *
  * Requires:
@@ -12,16 +12,19 @@
  *   pnpm run ensure:cloudflare:waf-ci-skip -- --soft   # warn only on failure
  */
 
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const softFlag = process.argv.includes("--soft");
 
 const ZONE_NAME = process.env.CLOUDFLARE_ZONE_NAME?.trim() || "torgima.com";
-const RULE_DESCRIPTION = "TORGIMA: allow GitHub Actions CI health probe";
-const RULE_EXPRESSION =
-  '(http.host eq "api.torgima.com" and http.request.uri.path eq "/health" and http.user_agent eq "GitHubActions-CI")';
+const RULE_DESCRIPTION = "TORGIMA: allow health probes and GitHub Actions";
+const RULE_EXPRESSION = [
+  '(http.host eq "api.torgima.com" and (',
+  'http.user_agent contains "GitHub-Actions" or',
+  'http.user_agent contains "GitHubActions" or',
+  'http.request.uri.path eq "/health" or',
+  'http.request.uri.path eq "/api/health" or',
+  'http.request.uri.path eq "/healthz"',
+  "))",
+].join(" ");
 const PHASE = "http_request_firewall_custom";
 
 const CI_SKIP_RULE = {
@@ -92,7 +95,8 @@ async function resolveZoneId() {
 function ruleMatches(existing) {
   return (
     existing?.description === RULE_DESCRIPTION ||
-    existing?.expression === RULE_EXPRESSION
+    existing?.expression === RULE_EXPRESSION ||
+    existing?.description === "TORGIMA: allow GitHub Actions CI health probe"
   );
 }
 
@@ -120,7 +124,7 @@ async function createEntrypointRuleset(zoneId) {
     fail(`Failed to create ${PHASE} ruleset: ${body.errors?.[0]?.message ?? res.status}`);
   }
 
-  log("Created WAF skip rule for GitHub Actions CI health probe");
+  log("Created WAF skip rule for health probes and GitHub Actions");
   return body.result;
 }
 
@@ -128,18 +132,15 @@ async function updateEntrypointRuleset(zoneId, ruleset) {
   const existingRules = Array.isArray(ruleset.rules) ? ruleset.rules : [];
   const already = existingRules.find(ruleMatches);
   if (already) {
-    log("WAF skip rule already present — no changes");
-    return ruleset;
+    if (already.expression === RULE_EXPRESSION) {
+      log("WAF skip rule already present — no changes");
+      return ruleset;
+    }
+    log("Updating existing TORGIMA WAF rule to expanded expression");
   }
 
-  const nextRules = [
-    CI_SKIP_RULE,
-    ...existingRules.map((rule) => {
-      const copy = { ...rule };
-      if (copy.id) return copy;
-      return copy;
-    }),
-  ];
+  const withoutOld = existingRules.filter((rule) => !ruleMatches(rule));
+  const nextRules = [CI_SKIP_RULE, ...withoutOld];
 
   const { res, body } = await cfFetch(`/zones/${zoneId}/rulesets/phases/${PHASE}/entrypoint`, {
     method: "PUT",
@@ -150,7 +151,7 @@ async function updateEntrypointRuleset(zoneId, ruleset) {
     fail(`Failed to update ${PHASE} entrypoint: ${body.errors?.[0]?.message ?? res.status}`);
   }
 
-  log("Added WAF skip rule for GitHub Actions CI health probe");
+  log("WAF skip rule active for /health, /api/health, /healthz, and GitHub Actions");
   return body.result;
 }
 

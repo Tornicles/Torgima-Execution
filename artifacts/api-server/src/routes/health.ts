@@ -12,6 +12,31 @@ const router: IRouter = Router();
 
 type HealthCheckDetail = { ok: boolean; detail: string };
 
+const HEALTH_CHECK_TIMEOUT_MS = 8000;
+
+async function runHealthCheck(
+  name: string,
+  fn: () => Promise<string>,
+): Promise<HealthCheckDetail> {
+  try {
+    const detail = await Promise.race([
+      fn(),
+      new Promise<string>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`${name} timed out after ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`)),
+          HEALTH_CHECK_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+    return { ok: true, detail };
+  } catch (err) {
+    return {
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 async function healthQuery<T extends Record<string, unknown>>(
   queryText: string,
 ): Promise<T[]> {
@@ -232,53 +257,91 @@ export async function buildProductionHealthResponse(): Promise<ProductionHealthR
   };
 }
 
-function settledDetail(result: PromiseSettledResult<unknown>, label: string): HealthCheckDetail {
-  if (result.status === "fulfilled") {
-    return { ok: true, detail: `${label} succeeded` };
-  }
-  const reason = result.reason;
-  return {
-    ok: false,
-    detail: `${label} failed: ${reason instanceof Error ? reason.message : String(reason)}`,
-  };
-}
-
 async function buildTransparentHealthPayload(): Promise<{
   results: ProductionHealthResponse;
   checks: Record<string, HealthCheckDetail>;
   failing: Array<{ check: string; detail: string }>;
   httpStatus: number;
+  status: "healthy" | "degraded" | "critical";
 }> {
-  const checks: Record<string, HealthCheckDetail> = buildEnvAndBindingChecks();
+  const checks: Record<string, HealthCheckDetail> = {};
 
-  const healthChecks = await Promise.allSettled([
-    checkDatabaseConnection(),
-    checkBhudhiAPIAvailability(),
-    checkPgBossWorkers(),
-    checkSignalEngineRecency(),
-  ]);
+  checks.runtime = await runHealthCheck("runtime", async () => {
+    return `${isCloudflareRuntime() ? "cloudflare-workers" : "node"} | ${new Date().toISOString()}`;
+  });
 
-  checks.database = settledDetail(healthChecks[0]!, "Database connection");
-  checks.bhudhi = settledDetail(healthChecks[1]!, "Bhudhi API availability");
+  checks.env_vars = await runHealthCheck("env_vars", async () => {
+    const required = [
+      "DATABASE_URL",
+      "ANTHROPIC_API_KEY",
+      "RESEND_API_KEY",
+      "INTERNAL_AUTH_SECRET",
+    ] as const;
+    const missing = required.filter((key) => !envValue(key));
+    if (missing.length > 0) {
+      throw new Error(`Missing secrets: ${missing.join(", ")}`);
+    }
+    return `All ${required.length} secrets present`;
+  });
+
+  const envChecks = buildEnvAndBindingChecks();
+  checks.database_url = envChecks.database_url;
+  checks.anthropic = envChecks.anthropic;
+  checks.resend = envChecks.resend;
+
+  checks.database = await runHealthCheck("database", async () => {
+    if (!envValue("DATABASE_URL")) throw new Error("DATABASE_URL not set");
+    await checkDatabaseConnection();
+    return "Connected — SELECT 1 OK";
+  });
+
+  checks.bhudhi = await runHealthCheck("bhudhi", async () => {
+    await checkBhudhiAPIAvailability();
+    return "ANTHROPIC_API_KEY available";
+  });
+
   checks.workers = isCloudflareRuntime()
     ? { ok: true, detail: "Cloudflare Workers runtime (pg-boss not used)" }
-    : settledDetail(healthChecks[2]!, "pg-boss workers");
-  checks.signals = settledDetail(healthChecks[3]!, "Signal engine recency");
+    : await runHealthCheck("workers", async () => {
+        await checkPgBossWorkers();
+        return "pg-boss workers OK";
+      });
+
+  checks.signals = await runHealthCheck("signals", async () => {
+    const age = await checkSignalEngineRecency();
+    return age == null ? "No active blueprints — skipped" : `Latest signal ${age.toFixed(1)}h ago`;
+  });
 
   checks.kv = await verifyKvReadWrite();
 
-  const results = await buildProductionHealthResponse();
+  let results: ProductionHealthResponse;
+  try {
+    results = await buildProductionHealthResponse();
+  } catch {
+    results = {
+      status: "degraded",
+      timestamp: new Date().toISOString(),
+      checks: { database: "error", bhudhi: "error", workers: "error", signals: "error" },
+      version: process.env.APP_VERSION ?? "phase1",
+      metrics: {
+        pendingEvents: null,
+        deadLetters: null,
+        healthIssues: null,
+        latestSignalAgeHours: null,
+      },
+    };
+  }
+
   const criticalChecks = ["database", "database_url", "env_vars"];
   const criticalFailed = criticalChecks.filter((key) => !checks[key]?.ok);
   const allOk = Object.values(checks).every((entry) => entry.ok);
-  const status = allOk
+  const status: "healthy" | "degraded" | "critical" = allOk
     ? "healthy"
     : criticalFailed.length > 0
       ? "critical"
-      : results.status;
+      : "degraded";
 
-  const httpStatus =
-    status === "healthy" ? 200 : status === "critical" ? 503 : results.status === "healthy" ? 200 : 503;
+  const httpStatus = status === "critical" ? 503 : 200;
 
   return {
     results: { ...results, status: status === "healthy" ? "healthy" : "degraded" },
@@ -287,6 +350,7 @@ async function buildTransparentHealthPayload(): Promise<{
       .filter(([, entry]) => !entry.ok)
       .map(([check, entry]) => ({ check, detail: entry.detail })),
     httpStatus,
+    status,
   };
 }
 
@@ -295,32 +359,33 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
-// Prompt 15 — production monitoring probe for external uptime checks (public, status only).
+// GET /api/health — transparent per-check diagnostics; no single check can crash the route.
 router.get("/health", async (_req, res) => {
   try {
-    const { results, checks } = await buildTransparentHealthPayload();
-    const criticalFailed = ["database", "database_url", "env_vars"].some((key) => !checks[key]?.ok);
-    const status = criticalFailed
-      ? "critical"
-      : results.status === "healthy"
-        ? "healthy"
-        : "degraded";
-    const httpStatus = status === "healthy" ? 200 : status === "critical" ? 503 : 200;
-
-    // Prompt 15 contract: res.status(results.status === "healthy" ? 200 : 503).json(results);
+    const { results, checks, failing, httpStatus, status } = await buildTransparentHealthPayload();
     res.status(httpStatus).json({
       ok: status === "healthy",
       status,
       timestamp: results.timestamp,
+      service: "torgima-api",
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
       version: results.version,
+      checks,
+      ...(failing.length > 0 ? { failing } : {}),
     });
-  } catch {
+  } catch (err) {
     res.status(503).json({
       ok: false,
       status: "critical",
       timestamp: new Date().toISOString(),
+      service: "torgima-api",
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
+      checks: {
+        route: {
+          ok: false,
+          detail: err instanceof Error ? err.message : "health handler error",
+        },
+      },
     });
   }
 });

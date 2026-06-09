@@ -104,4 +104,11 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     lastBoundDatabaseUrl = nextDbUrl;
     resetWorkerDbCache();
   }
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      "[cloudflare-runtime] Env bound. DATABASE_URL present:",
+      Boolean(env.DATABASE_URL || env.HYPERDRIVE),
+    );
+  }
 }
