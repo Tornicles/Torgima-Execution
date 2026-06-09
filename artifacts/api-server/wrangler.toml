@@ -19,6 +19,7 @@ head_sampling_rate = 1
 [vars]
 NODE_ENV = "production"
 TORGIMA_RUNTIME = "cloudflare"
+EVENT_DISPATCH_CRON_BATCH_SIZE = "1"
 APP_URL = "https://torgima.com"
 FRONTEND_URL = "https://torgima.com"
 

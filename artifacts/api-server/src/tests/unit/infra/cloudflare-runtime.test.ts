@@ -112,6 +112,17 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(cronBridge).toContain("Ran inline (no TASK_QUEUE binding)");
   });
 
+  it("limits event_dispatch_poll cron to one event per invocation", () => {
+    const wrangler = readRepo("artifacts/api-server/wrangler.toml");
+    const dispatcher = readRepo("artifacts/api-server/src/services/EventDispatcher.ts");
+    const worker = readRepo("artifacts/api-server/src/workers/EventDispatcherWorker.ts");
+
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "1"');
+    expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 1");
+    expect(worker).toContain("getCronDispatchBatchSize");
+    expect(worker).not.toContain("MAX_EVENTS_PER_CRON_TICK = 5");
+  });
+
   it("registers cron workers in the queue consumer", () => {
     const handler = readRepo("artifacts/api-server/src/queues/handler.ts");
     expect(handler).toContain("SessionCleanupWorker");

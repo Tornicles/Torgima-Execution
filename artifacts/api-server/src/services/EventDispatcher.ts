@@ -3,14 +3,22 @@ import { events, eventLogs } from "@workspace/db";
 import { eq, and, lte, inArray, or } from "drizzle-orm";
 import { getBoss } from "../lib/queue.js";
 import { logger } from "../lib/logger.js";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { EventStatus } from "@workspace/state-machine";
 import { EVENT_QUEUE_MAP, TERMINAL_EVENT_TYPES, EventTypes } from "../types/eventContracts.js";
 import { claimDeadlineFromNow } from "../engines/events/StuckEventDetector.js";
 import { getNextRunAfter } from "../engines/events/RetryPolicy.js";
 import { deadLetterQueue } from "./DeadLetterQueue.js";
 
-const DISPATCH_BATCH_SIZE = 50;
-const MAX_DISPATCH_ATTEMPTS = 3;
+export const DISPATCH_BATCH_SIZE = 50;
+
+/** Hard cap for Cloudflare cron invocations (Worker subrequest budget). */
+export const MAX_EVENTS_PER_CRON = 1;
+
+/** Stop dispatch work before Worker subrequest/time limits are hit. */
+export const MAX_PROCESSING_MS = 5_000;
+
+export const MAX_DISPATCH_ATTEMPTS = 3;
 
 const PRIORITY_EVENT_TYPES = new Set<string>([
   EventTypes.FEEDBACK_SUBMITTED,
@@ -18,9 +26,39 @@ const PRIORITY_EVENT_TYPES = new Set<string>([
   EventTypes.CONDITION_EVALUATED,
 ]);
 
-export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Promise<number> {
-  const limit = Math.max(1, Math.min(batchSize, DISPATCH_BATCH_SIZE));
-  // Claim a batch of PENDING events atomically
+export type DispatchPendingOptions = {
+  /** Cron polls log at info; API/inline callers stay quieter. */
+  logContext?: "cron" | "default";
+};
+
+/** Reads EVENT_DISPATCH_CRON_BATCH_SIZE; defaults to 1 (Cloudflare production). */
+export function getCronDispatchBatchSize(): number {
+  const raw = process.env.EVENT_DISPATCH_CRON_BATCH_SIZE;
+  const parsed = raw !== undefined && raw.trim() !== "" ? Number.parseInt(raw, 10) : NaN;
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(parsed, MAX_EVENTS_PER_CRON);
+  }
+  if (isCloudflareRuntime()) {
+    return MAX_EVENTS_PER_CRON;
+  }
+  return MAX_EVENTS_PER_CRON;
+}
+
+function resolveBatchSize(batchSize?: number): number {
+  if (batchSize !== undefined) {
+    return Math.max(1, Math.min(batchSize, DISPATCH_BATCH_SIZE));
+  }
+  return DISPATCH_BATCH_SIZE;
+}
+
+export async function dispatchPendingEvents(
+  batchSize?: number,
+  options: DispatchPendingOptions = {},
+): Promise<number> {
+  const limit = resolveBatchSize(batchSize);
+  const logContext = options.logContext ?? "default";
+  const startedAt = Date.now();
+
   const pendingEvents = await db.transaction(async (tx) => {
     const now = new Date();
     const pending = await tx
@@ -36,7 +74,8 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
         ),
       )
       .orderBy(events.created_at)
-      .limit(limit);
+      .limit(limit)
+      .for("update", { skipLocked: true });
 
     if (pending.length === 0) return [];
 
@@ -57,30 +96,58 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
     return pending;
   });
 
-  if (pendingEvents.length === 0) return 0;
+  if (pendingEvents.length === 0) {
+    if (logContext === "cron") {
+      logger.info("[EventDispatcher] Skipped — no pending event");
+    }
+    return 0;
+  }
 
   const boss = await getBoss();
   let dispatched = 0;
 
   for (const event of pendingEvents) {
+    if (Date.now() - startedAt >= MAX_PROCESSING_MS) {
+      logger.warn(
+        { elapsedMs: Date.now() - startedAt, limitMs: MAX_PROCESSING_MS },
+        "[EventDispatcher] Stopped — processing time limit",
+      );
+      break;
+    }
+
+    logger.info(
+      { eventId: event.id, eventType: event.event_type },
+      "[EventDispatcher] Claimed event",
+    );
+
     const queueName = EVENT_QUEUE_MAP[event.event_type];
 
     if (!queueName) {
       if (TERMINAL_EVENT_TYPES.has(event.event_type)) {
-        // Audit-only event — mark processed quietly.
         await markEventProcessed(event.id, "success");
+        if (logContext === "cron") {
+          logger.info(
+            { eventId: event.id, eventType: event.event_type, result: "processed" },
+            "[EventDispatcher] Terminal event marked processed",
+          );
+        }
       } else {
         logger.warn(
           { eventType: event.event_type, eventId: event.id },
           "[EventDispatcher] No queue mapping for event type",
         );
         await markEventProcessed(event.id, "noop_duplicate");
+        if (logContext === "cron") {
+          logger.info(
+            { eventId: event.id, eventType: event.event_type, result: "noop" },
+            "[EventDispatcher] Unmapped event marked noop",
+          );
+        }
       }
       continue;
     }
 
     try {
-      // Idempotency check — skip if already successfully processed
       if (event.idempotency_key) {
         const [existing] = await db
           .select({ id: eventLogs.id })
@@ -89,6 +156,12 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
           .limit(1);
         if (existing) {
           await markEventProcessed(event.id, "noop_duplicate");
+          if (logContext === "cron") {
+            logger.info(
+              { eventId: event.id, eventType: event.event_type, result: "noop_duplicate" },
+              "[EventDispatcher] Duplicate skipped",
+            );
+          }
           continue;
         }
       }
@@ -114,14 +187,21 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
         .catch(() => null);
 
       dispatched++;
-      logger.debug(
-        { eventId: event.id, queue: queueName },
-        "[EventDispatcher] Event dispatched to queue",
-      );
+      if (logContext === "cron") {
+        logger.info(
+          { eventId: event.id, eventType: event.event_type, queue: queueName, result: "success" },
+          "[EventDispatcher] Event dispatched",
+        );
+      } else {
+        logger.debug(
+          { eventId: event.id, queue: queueName },
+          "[EventDispatcher] Event dispatched to queue",
+        );
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error(
-        { eventId: event.id, error: errMsg },
+        { eventId: event.id, eventType: event.event_type, error: errMsg },
         "[EventDispatcher] Failed to dispatch event",
       );
 
@@ -148,6 +228,12 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
             dispatchFailures: nextRetry,
           })
           .catch(() => null);
+        if (logContext === "cron") {
+          logger.info(
+            { eventId: event.id, eventType: event.event_type, result: "failed", attempts: nextRetry },
+            "[EventDispatcher] Event moved to dead letter",
+          );
+        }
       } else {
         await db
           .update(events)
@@ -158,6 +244,12 @@ export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Pr
           })
           .where(eq(events.id, event.id))
           .catch(() => null);
+        if (logContext === "cron") {
+          logger.info(
+            { eventId: event.id, eventType: event.event_type, result: "retry_pending", attempts: nextRetry },
+            "[EventDispatcher] Event scheduled for retry",
+          );
+        }
       }
     }
   }

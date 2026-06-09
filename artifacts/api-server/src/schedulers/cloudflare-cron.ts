@@ -39,6 +39,8 @@ export async function handleCloudflareCron(
     return;
   }
 
+  logger.info({ cron: controller.cron, queue }, "[Cron] Started");
+
   const binding = env.TASK_QUEUE;
   if (!binding) {
     try {
