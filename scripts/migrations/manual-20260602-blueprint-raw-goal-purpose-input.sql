@@ -1,4 +1,4 @@
--- Production repair: blueprint erector refinement columns (Railway 42703 raw_goal_input).
+-- Production repair: blueprint erector refinement columns (42703 raw_goal_input).
 -- Additive only — safe to re-run (IF NOT EXISTS).
 
 ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS raw_goal_input text;

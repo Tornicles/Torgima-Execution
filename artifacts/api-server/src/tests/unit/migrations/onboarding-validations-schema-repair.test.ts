@@ -10,7 +10,7 @@ const manualSql = readFileSync(
   "utf8",
 );
 
-describe("Railway onboarding schema repair migration", () => {
+describe("Onboarding validations schema repair migration", () => {
   it("adds validations contract_id validation_kind payload_version", () => {
     expect(manualSql).toMatch(/validations ADD COLUMN IF NOT EXISTS contract_id/i);
     expect(manualSql).toMatch(/validations ADD COLUMN IF NOT EXISTS validation_kind/i);

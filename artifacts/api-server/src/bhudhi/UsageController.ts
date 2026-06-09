@@ -23,7 +23,7 @@ const TRIGGER_MAX_TOKENS: Record<string, number> = {
   INACTIVITY_RESTART: 400,
 };
 
-/** Minimum daily AI call cap (Erector validation uses many Bhudhi/web-search calls). Override on Railway: BHUDHI_DAILY_CAP=200 */
+/** Minimum daily AI call cap (Erector validation uses many Bhudhi/web-search calls). Override via Worker secret: BHUDHI_DAILY_CAP=200 */
 const BHUDHI_DAILY_CAP = parseInt(process.env.BHUDHI_DAILY_CAP ?? "200", 10);
 
 const DAILY_CAPS: Record<string, { maxCalls: number; maxCostCents: number }> = {

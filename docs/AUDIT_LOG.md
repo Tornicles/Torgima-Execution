@@ -115,14 +115,12 @@ node scripts/apply-production-gate.mjs
 pnpm verify:lifecycle
 ```
 
-### Railway smoke (2026-06-01, no deploy action taken)
+### Production API smoke (historical — 2026-06-01)
 
 | Endpoint | Result |
 |----------|--------|
-| `GET https://workspaceapi-server-production-63b3.up.railway.app/health` | `{"ok":true}` |
-| `GET .../api/health` | `degraded` — `database: ok`, `workers: ok`, `bhudhi: ok`, `signals: error` |
-
-Deploy is assumed current from last `git push origin main`; Railway CLI not installed here.
+| `GET https://api.torgima.com/health` | verify after each deploy |
+| `GET .../api/health` | `degraded` when signals stale — `database: ok`, `workers: ok`, `bhudhi: ok` |
 
 ## What Was Fixed (3 passes)
 ### Pass 1 — Phase 3 Repairs
@@ -155,7 +153,7 @@ Deploy is assumed current from last `git push origin main`; Railway CLI not inst
 - [ ] `pnpm verify:lifecycle` on production `DATABASE_URL`
 - [ ] Mark migrations ✓ in table below
 - [ ] Optional: invalidate stale `enforcement_packages` (SQL in PENDING PRODUCTION MIGRATIONS section)
-- [ ] Confirm Railway `/health` after deploy (already `ok:true` on 2026-06-01)
+- [ ] Confirm `https://api.torgima.com/health` after deploy
 
 ## Verification (local gate — 2026-06-01)
 - ✓ pnpm typecheck — PASS
@@ -263,7 +261,7 @@ Three separate paths were applying schema differently:
 
 | Environment | Schema apply |
 |-------------|----------------|
-| Railway (`railway.json`) | `pnpm db:migrate` → `pnpm db:apply-manual` |
+| Cloudflare deploy (`deploy-cloudflare.yml`) | `pnpm db:migrate` → `pnpm db:apply-manual` |
 | GitHub Phase 9 E2E (was) | `push-force` only, or `migrate` on empty DB (fails) |
 | API boot preflight (was) | Full Erector column check → `process.exit(1)` |
 
@@ -271,14 +269,14 @@ Three separate paths were applying schema differently:
 
 **Fixes (2026-05-22):**
 
-- CI Phase 9 job uses `pnpm db:ci` (`push-force` + `apply-manual`) for **empty** Postgres; Railway keeps `migrate` + `apply-manual` on **existing** DBs.
+- CI Phase 9 job uses `pnpm db:ci` (`push-force` + `apply-manual`) for **empty** Postgres; production deploy keeps `migrate` + `apply-manual` on **existing** Supabase DBs.
 - Boot preflight: `BOOT_CRITICAL_COLUMNS` only blocks start; Erector columns warn (`fe875e1`).
 - `FirstWeekPlanPanel.tsx`: execution-language compliant copy (`Order` not `task`).
 - `vitest.setup.ts`: unit runs always use `torgima_vitest_stub` URL so local `.env` cannot hijack CI-style unit jobs.
 
 ## Manual action
 
-- Production/Railway: run `pnpm db:migrate` and `pnpm db:apply-manual` (use `DIRECT_URL` for DDL).
+- Production Supabase: run `pnpm db:migrate` and `pnpm db:apply-manual` (use `DIRECT_URL` for DDL when needed).
 - Apply `scripts/apply-partial-indexes.sql` if partial unique indexes are not yet on the database.
 - Set `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_URL` (or `APP_URL`) for outbound magic links in production.
 

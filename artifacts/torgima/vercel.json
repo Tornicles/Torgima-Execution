@@ -1,8 +1,0 @@
-{
-  "_deprecated": "Vercel is not used for production. Deploy via Cloudflare Pages (torgima-execution). See docs/CLOUDFLARE_MIGRATION.md.",
-  "buildCommand": "echo 'DEPRECATED: use pnpm build:cloudflare:pages' && exit 1",
-  "outputDirectory": "dist",
-  "installCommand": "pnpm install",
-  "framework": "vite",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}

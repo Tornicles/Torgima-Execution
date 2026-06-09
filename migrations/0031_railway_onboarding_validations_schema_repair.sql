@@ -1,3 +1,4 @@
+-- historical migration filename only — not an active Railway dependency
 -- Drizzle-tracked mirror of manual-20260603-railway-onboarding-validations-schema-repair.sql
 DO $$ BEGIN
   CREATE TYPE "validation_kind" AS ENUM (

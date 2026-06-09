@@ -1,6 +1,6 @@
 # TORGIMA Complete System Diagnostic Report
 
-> **Historical snapshot (2026-05-27).** Production architecture has migrated to **Cloudflare Pages** (frontend) and **Cloudflare Worker** (API). Vercel and Railway are deprecated. See `docs/CLOUDFLARE_MIGRATION.md`.
+> **Historical snapshot (2026-05-27).** Production architecture is **Cloudflare Pages** (frontend) and **Cloudflare Worker** (API). Railway/Vercel deploy configs have been removed. See `docs/CLOUDFLARE_MIGRATION.md`.
 
 Generated: 2026-05-27T22:51:30.480Z
 
@@ -73,7 +73,7 @@ Generated: 2026-05-27T22:51:30.480Z
 
 ## PART I — Top 20 Fixes
 
-1. Set production env vars on Railway/Vercel — `.env / platform secrets`
+1. Set production Worker secrets and Pages vars — see `docs/DEPLOYMENT.md`
 2. Run pnpm verify:system against production DB — `scripts/src/verify-system.ts`
 3. Run phase-9 e2e execution loop tests — `artifacts/api-server/src/tests/e2e/phase9`
 4. Monitor DLQ via GET /api/health — `artifacts/api-server/src/routes/health.ts`

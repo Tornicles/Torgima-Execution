@@ -15,6 +15,7 @@ import {
   isCloudflareRuntime,
   type TorgimaWorkerEnv,
 } from "../lib/cloudflare-runtime.js";
+import { bindWorkerDatabaseUrl } from "@workspace/db";
 import {
   magicLinkHourlyLimit,
   magicLinkVerifyLimit,
@@ -54,6 +55,7 @@ function bindMagicLinkWorkerSecrets(c: { env: TorgimaWorkerEnv }): void {
   }
   if (typeof c.env.DATABASE_URL === "string" && c.env.DATABASE_URL.trim()) {
     payload.DATABASE_URL = c.env.DATABASE_URL.trim();
+    bindWorkerDatabaseUrl(payload.DATABASE_URL);
   }
   bindCloudflareEnv(payload);
 }
@@ -63,7 +65,7 @@ const router = Router();
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
 const prod = process.env["NODE_ENV"] === "production";
 
-// Cross-origin Pages (pages.dev) + Worker (workers.dev): cookie must be None+Secure.
+// Cross-origin SPA (torgima.com) + API (api.torgima.com): cookie must be None+Secure in production.
 const sessionCookieOptions = {
   httpOnly: true,
   secure: prod,

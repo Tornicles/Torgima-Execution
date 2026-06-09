@@ -1,4 +1,4 @@
--- Manual Railway run: delete ALL user accounts and cascaded projects/blueprints/orders.
+-- Manual production run: delete ALL user accounts and cascaded projects/blueprints/orders.
 -- IRREVERSIBLE. Mirror of migrations/0035_purge_all_user_accounts.sql
 
 DO $$

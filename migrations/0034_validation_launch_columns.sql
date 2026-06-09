@@ -1,4 +1,5 @@
--- Validation launch + results columns (idempotent Railway repair)
+-- historical migration filename only — not an active Railway dependency
+-- Validation launch + results columns (idempotent production repair)
 ALTER TABLE validations ADD COLUMN IF NOT EXISTS is_finalized boolean DEFAULT false;
 --> statement-breakpoint
 ALTER TABLE validations ADD COLUMN IF NOT EXISTS finalized_at timestamptz;

@@ -105,7 +105,7 @@ async function buildAll() {
       "electron",
     ],
     sourcemap: "linked",
-    // Do not bundle pino worker threads (breaks on Railway). Production uses stdout JSON via logger.ts.
+    // Do not bundle pino worker threads (breaks on Cloudflare Workers). Production uses stdout JSON via logger.ts.
     // Make sure packages that are cjs only (e.g. express) but are bundled continue to work in our esm output file
     banner: {
       js: `import { createRequire as __bannerCrReq } from 'node:module';

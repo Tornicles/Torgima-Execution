@@ -18,7 +18,7 @@ export function stripSslModeFromConnectionString(connectionString: string): stri
 }
 
 /**
- * Configure node-postgres TLS for hosted Postgres (Railway, Supabase, Neon, …).
+ * Configure node-postgres TLS for hosted Postgres (Supabase, Neon, …).
  * Local/docker sockets stay off TLS unless sslmode=require is present.
  */
 export function resolvePgSsl(connectionString: string): boolean | { rejectUnauthorized: boolean } {
@@ -41,9 +41,7 @@ export function resolvePgSsl(connectionString: string): boolean | { rejectUnauth
   const localLoopback =
     host === "localhost" || host === "127.0.0.1" || host === "::1";
 
-  const internalKubernetes =
-    host.endsWith(".railway.internal") ||
-    host.endsWith(".svc.cluster.local");
+  const internalKubernetes = host.endsWith(".svc.cluster.local");
 
   /** Typical compose service name (`postgres`, `db`) — no TLS inside the bridge network. */
   const plainServiceName = !host.includes(".");
@@ -59,7 +57,6 @@ export function resolvePgSsl(connectionString: string): boolean | { rejectUnauth
     requiresSslMode ||
     lower.includes("supabase") ||
     lower.includes("neon.tech") ||
-    lower.includes(".railway.app") ||
     lower.includes("render.com") ||
     lower.includes(".fly.dev") ||
     lower.includes("cockroachlabs.cloud") ||

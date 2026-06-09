@@ -1,5 +1,6 @@
--- Railway production repair: onboarding + validation schema drift (idempotent).
--- Applies columns from Drizzle 0001 + manual migrations that may never have run on Railway.
+-- historical migration filename only — not an active Railway dependency
+-- Production repair: onboarding + validation schema drift (idempotent).
+-- Applies columns from Drizzle 0001 + manual migrations that may not have run on older DBs.
 
 -- ── Enums (safe create) ─────────────────────────────────────────────────────
 DO $$ BEGIN

@@ -1,4 +1,4 @@
--- Continuous execution loop: idempotent column backfill (safe on Railway/Supabase).
+-- Continuous execution loop: idempotent column backfill (safe on Supabase).
 -- Most columns already exist in lib/db schema; this fills gaps on older databases.
 
 ALTER TABLE feedback

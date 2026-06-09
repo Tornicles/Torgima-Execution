@@ -2,7 +2,7 @@
 /**
  * Apply migration 0005_add_failure_classifications and record in drizzle.__drizzle_migrations.
  * Usage: pnpm -F @workspace/api-server exec tsx ../../scripts/apply-migration-0005.mjs
- * Uses DATABASE_URL or DIRECT_URL from .env.local / .env (set to Railway production before run).
+ * Uses DATABASE_URL or DIRECT_URL from .env.local / .env (Supabase production before run).
  */
 import dotenv from "dotenv";
 import { readFileSync, createHash } from "node:fs";

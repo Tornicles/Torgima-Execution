@@ -121,10 +121,10 @@
 - `pnpm test:phase9:production`
 
 ### Not automated in CI (by design)
-- 37 production checks require live Railway + Supabase + `INTERNAL_AUTH_SECRET` + active test blueprint.
+- 37 production checks require live Cloudflare Worker + Supabase + `INTERNAL_AUTH_SECRET` + active test blueprint.
 
 ### Production smoke (pre-push)
-- Railway `/health` and `/api/health` — core checks OK; signal recency skipped when no active blueprints.
+- `https://api.torgima.com/health` and `/api/health` — core checks OK; signal recency skipped when no active blueprints.
 - Phase 1–8 routes were **not** on deployed `main` until this commit.
 
 ---
@@ -140,7 +140,7 @@
 ## Recommended post-deploy
 
 1. `pnpm db:migrate:prod` and `pnpm db:apply-manual` on Supabase.
-2. Set Railway env: `INTERNAL_AUTH_SECRET`, `DATABASE_URL`, `DIRECT_URL`, `ANTHROPIC_API_KEY`.
+2. Set Worker secrets: `INTERNAL_AUTH_SECRET`, `DATABASE_URL`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`.
 3. Seed or activate test user: `phase9-prod-acceptance@torgima.test`.
 4. Run `pnpm test:phase9:production` with `.env.production.local`.
 5. Triage DLQ backlog via `GET /api/v1/internal/events/dead-letter`.

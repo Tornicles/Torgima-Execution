@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Railway-safe API start — resolves dist path from monorepo root or api-server package root.
+ * Local Node API start — resolves dist path from monorepo root or api-server package root.
  */
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";

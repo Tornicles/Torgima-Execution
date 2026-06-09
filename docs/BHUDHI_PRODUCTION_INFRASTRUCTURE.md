@@ -15,8 +15,6 @@ Production-grade deployment, monitoring, rate limiting, and backup for Bhudhi 2.
 | Rate limit | In-memory (optional `REDIS_URL` reserved) |
 | Logging | Pino (`artifacts/api-server/src/lib/logger.ts`) |
 
-**Deprecated:** Vercel frontend deploy, Railway API deploy.
-
 ## Certification (Prompt 38)
 
 ```bash

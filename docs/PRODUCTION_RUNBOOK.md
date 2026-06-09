@@ -1,6 +1,6 @@
 # Prompt 15 Production Runbook
 
-Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Production runs on **Cloudflare Pages** (frontend) and **Cloudflare Workers** (API). Railway and Vercel are deprecated.
+Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Production runs on **Cloudflare Pages** (frontend) and **Cloudflare Workers** (API). Cloudflare + Supabase only.
 
 ## Pre-Deployment Checklist
 
@@ -10,7 +10,7 @@ Prompt 15 is the production deployment and handoff pass for Torgima Phase 1. Pro
 - Environment: Worker has `NODE_ENV=production`, `TORGIMA_RUNTIME=cloudflare`, `APP_URL=https://torgima.com`.
 - Database: Supabase via `DATABASE_URL` on Worker; run `pnpm db:migrate` + `pnpm db:apply-manual` before launch.
 - Health: `GET https://api.torgima.com/health` must return JSON with status checks (not generic 500).
-- **Platform references:** production code and config must point at the approved Cloudflare architecture — frontend `https://torgima.com`, API `https://api.torgima.com`, Worker route `api.torgima.com/*`, Supabase for database/auth, Resend for email, Anthropic for AI, KV `SESSIONS` for sessions. Do not use Railway, Vercel, or `workers.dev` as public production targets.
+- **Platform references:** production code and config must point at the approved Cloudflare architecture — frontend `https://torgima.com`, API `https://api.torgima.com`, Worker route `api.torgima.com/*`, Supabase for database/auth, Resend for email, Anthropic for AI, KV `SESSIONS` for sessions. `workers.dev` is CI health probes only, not a public API URL.
 - **Fallbacks:** Bhudhi fallback tests must pass with `ANTHROPIC_API_KEY` removed.
 - **pg-boss:** on long-running Node hosts, `PGBOSS_DATABASE_URL` may be set separately; otherwise pg-boss uses `DATABASE_URL`. Production Cloudflare Worker does not run pg-boss — use Worker cron triggers and optional Cloudflare Queues (`torgima-task-queue`) instead.
 - **Worker schedulers:** verify wrangler cron triggers are deployed; alert if the overnight cycle does not complete within 2 hours of schedule.
@@ -31,9 +31,7 @@ Before every production promotion, confirm:
 - Supabase is the production database/auth source (`DATABASE_URL`, Supabase keys).
 - Resend is the production email provider (`RESEND_API_KEY`, `EMAIL_FROM`).
 - Anthropic is the production AI provider (`ANTHROPIC_API_KEY`).
-- Railway must not be used in active production deploy paths.
-- Vercel must not be used as the production frontend after Cloudflare Pages migration.
-- `workers.dev` must not be the public production API (internal/debug only if explicitly documented).
+- `workers.dev` must not be the public production API (CI health probes only).
 
 ## Required Production Environment
 

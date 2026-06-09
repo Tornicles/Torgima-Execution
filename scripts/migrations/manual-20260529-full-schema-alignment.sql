@@ -1,5 +1,5 @@
 -- Full production schema alignment (idempotent).
--- Adds launch-chain and execution columns expected by Drizzle but often missing on Railway/Supabase.
+-- Adds launch-chain and execution columns expected by Drizzle but often missing on Supabase.
 -- Complements manual-20260603-railway-onboarding-validations-schema-repair.sql
 
 DO $$ BEGIN

@@ -1,4 +1,4 @@
--- Manual mirror of migrations/0034_validation_launch_columns.sql (Railway)
+-- Manual mirror of migrations/0034_validation_launch_columns.sql
 ALTER TABLE validations ADD COLUMN IF NOT EXISTS is_finalized boolean DEFAULT false;
 ALTER TABLE validations ADD COLUMN IF NOT EXISTS finalized_at timestamptz;
 ALTER TABLE validations ADD COLUMN IF NOT EXISTS handoff_package jsonb;

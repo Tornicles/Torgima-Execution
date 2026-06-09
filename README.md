@@ -12,7 +12,7 @@ pnpm monorepo: **SPA** (`artifacts/torgima`) + **Express API on Cloudflare Worke
 | Email | **Resend** | `RESEND_API_KEY` |
 | AI | **Anthropic** | `ANTHROPIC_API_KEY` |
 
-**Railway and Vercel are deprecated** for production — not used in active deploy paths.
+Production is **Cloudflare + Supabase only**. Railway and Vercel are not part of the deploy path.
 
 Full guide: **[docs/CLOUDFLARE_MIGRATION.md](docs/CLOUDFLARE_MIGRATION.md)** · **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** · **[docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)**
 

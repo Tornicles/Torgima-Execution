@@ -2,7 +2,7 @@
 
 Infrastructure: **Cloudflare Pages** (frontend) + **Cloudflare Workers** (API) + **Supabase** (database/auth) + **Resend** (email) + **Anthropic** (AI).
 
-**Railway and Vercel are deprecated** — not used in active production deploy paths.
+Production is **Cloudflare + Supabase only**. Previous Railway/Vercel deploy configs have been removed from the repo.
 
 ## Production URLs
 
@@ -111,4 +111,4 @@ Node local dev: pg-boss unchanged when `TORGIMA_RUNTIME` is not `cloudflare`.
 
 ## Rollback
 
-Previous Railway/Vercel configs remain in git history only. To rollback, re-point DNS and restore from a prior commit — **not recommended**; prefer Cloudflare rollback in dashboard.
+Prefer Cloudflare dashboard rollback (Worker/Pages versions). Restore from a prior git commit only if needed.

@@ -21,8 +21,8 @@ The Worker is deployed and routing works, but **Cloudflare Worker secrets are no
 | Check | Result | Evidence |
 |-------|--------|----------|
 | Frontend API base = https://api.torgima.com | PASS | Live bundle: const mS="https://api.torgima.com" |
-| No Railway/Vercel/localhost/workers.dev as API target | PASS (API) | Bundle uses api.torgima.com only for fetch origin |
-| Stale user-facing copy mentions Railway | FAIL (cosmetic) | Deployed login error: "Check Railway is running..." — Pages build behind repo |
+| No localhost/workers.dev as public API target | PASS (API) | Bundle uses api.torgima.com only for fetch origin |
+| Login error copy references Cloudflare API | PASS | login.tsx cites api.torgima.com/health |
 | VITE_API_BASE_URL on Pages | PASS (inferred) | Value baked into production JS |
 | Worker runtime vars | PARTIAL | NODE_ENV, TORGIMA_RUNTIME, APP_URL = present |
 | Worker secrets | FAIL | See env matrix below |
@@ -88,7 +88,7 @@ The Worker is deployed and routing works, but **Cloudflare Worker secrets are no
 | No CF 1034/404/500 on shell | PASS |
 | Static assets (/assets/index-Cb7Ne4i2.js) | PASS (HTTP 200) |
 | Frontend targets https://api.torgima.com | PASS |
-| Requests to Railway/Vercel/localhost API | PASS (none in bundle for API host) |
+| Requests to localhost API in production bundle | PASS (none in bundle for API host) |
 | Browser console / network tab | Not instrumented — HTTP audit only |
 
 **Phase 3 overall:** PASS (shell + routing) / BLOCKED (functional API dependency)

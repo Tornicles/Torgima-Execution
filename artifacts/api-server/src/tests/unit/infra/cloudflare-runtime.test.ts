@@ -112,6 +112,12 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(cronBridge).toContain("Ran inline (no TASK_QUEUE binding)");
   });
 
+  it("does not ship Railway or Vercel deploy configs", () => {
+    expect(() => readRepo("artifacts/api-server/railway.json")).toThrow();
+    expect(() => readRepo("vercel.json")).toThrow();
+    expect(() => readRepo("artifacts/torgima/vercel.json")).toThrow();
+  });
+
   it("binds Worker DATABASE_URL into postgres-js client", () => {
     const runtime = readRepo("artifacts/api-server/src/lib/cloudflare-runtime.ts");
     const dbIndex = readRepo("lib/db/src/index.ts");

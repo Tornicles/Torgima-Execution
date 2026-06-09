@@ -10,8 +10,6 @@
 | Email | Resend | `RESEND_API_KEY` |
 | AI | Anthropic | `ANTHROPIC_API_KEY` |
 
-**Deprecated (not used in production):** Railway, Vercel.
-
 See also: [CLOUDFLARE_MIGRATION.md](./CLOUDFLARE_MIGRATION.md), [PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md), [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
 
 ---
@@ -110,8 +108,6 @@ Configured in `artifacts/api-server/src/lib/cors.ts` and `APP_URL` / `FRONTEND_U
 | `www.torgima.com` | Cloudflare Pages custom domain |
 | `api.torgima.com` | Worker route `api.torgima.com/*` |
 
-Do not point production DNS to Railway or Vercel.
-
 ---
 
 ## GitHub Actions
@@ -152,8 +148,3 @@ pnpm -F @workspace/torgima dev  # SPA on :5173
 
 Set `VITE_API_BASE_URL=http://localhost:8787` in `artifacts/torgima/.env.local`.
 
----
-
-## Legacy platforms
-
-Railway (`artifacts/api-server/railway.json`) and Vercel configs remain in git history for reference only. **Do not deploy production to them.**
