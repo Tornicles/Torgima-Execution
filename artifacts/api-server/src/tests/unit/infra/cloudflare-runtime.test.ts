@@ -112,6 +112,14 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(cronBridge).toContain("Ran inline (no TASK_QUEUE binding)");
   });
 
+  it("binds Worker DATABASE_URL into postgres-js client", () => {
+    const runtime = readRepo("artifacts/api-server/src/lib/cloudflare-runtime.ts");
+    const dbIndex = readRepo("lib/db/src/index.ts");
+    expect(runtime).toContain("bindWorkerDatabaseUrl");
+    expect(dbIndex).toContain("bindWorkerDatabaseUrl");
+    expect(dbIndex).toContain("drizzle-orm/postgres-js");
+  });
+
   it("limits event_dispatch_poll cron to one event per invocation", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
     const dispatcher = readRepo("artifacts/api-server/src/services/EventDispatcher.ts");

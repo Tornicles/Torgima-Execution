@@ -15,6 +15,7 @@ let poolInstance: pg.Pool | null = null;
 let postgresJsClient: ReturnType<typeof postgres> | null = null;
 let dbInstance: DbInstance | null = null;
 let workerBoundDatabaseUrl: string | undefined;
+let workerPoolAdapter: pg.Pool | null = null;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -25,14 +26,14 @@ function isCloudflareWorkerRuntime(): boolean {
   return process.env.TORGIMA_RUNTIME === "cloudflare";
 }
 
-/** Bind Worker c.env.DATABASE_URL — not a persistent pool; refreshes client when URL changes. */
+/** Bind Worker c.env.DATABASE_URL — refreshes postgres-js client when URL changes. */
 export function bindWorkerDatabaseUrl(url: string | undefined): void {
   const trimmed = typeof url === "string" ? url.trim() : "";
   if (!trimmed) return;
-  globalThis.__TORGIMA_WORKER_DATABASE_URL__ = trimmed;
   if (workerBoundDatabaseUrl !== trimmed) {
     resetWorkerDbCache();
     workerBoundDatabaseUrl = trimmed;
+    globalThis.__TORGIMA_WORKER_DATABASE_URL__ = trimmed;
   }
 }
 
@@ -70,9 +71,69 @@ export function normalizeWorkerDatabaseUrl(connectionString: string): string {
   return url;
 }
 
+function resolveWorkerPostgresSsl(connectionString: string): "require" | { rejectUnauthorized: boolean } {
+  const sslConfig = resolvePgSsl(connectionString);
+  if (!sslConfig) return "require";
+  if (sslConfig === true) return "require";
+  return sslConfig;
+}
+
+function createWorkerPostgresClient(connectionString: string): ReturnType<typeof postgres> {
+  const workerUrl = normalizeWorkerDatabaseUrl(connectionString);
+  return postgres(workerUrl, {
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: false,
+    ssl: resolveWorkerPostgresSsl(connectionString),
+  });
+}
+
+function createWorkerPoolAdapter(client: ReturnType<typeof postgres>): pg.Pool {
+  const adapter = {
+    query: async (
+      queryText: string,
+      values?: unknown[],
+    ): Promise<pg.QueryResult<pg.QueryResultRow>> => {
+      const rows = values?.length
+        ? await client.unsafe(queryText, values as never[])
+        : await client.unsafe(queryText);
+      return {
+        rows: rows as pg.QueryResultRow[],
+        rowCount: rows.length,
+        command: "",
+        oid: 0,
+        fields: [],
+      };
+    },
+    end: async () => {
+      await client.end({ timeout: 1 });
+    },
+    on: () => adapter,
+  };
+  return adapter as unknown as pg.Pool;
+}
+
+/** Clear cached clients when Worker env bindings change (e.g. DATABASE_URL secret added). */
+export function resetWorkerDbCache(): void {
+  if (postgresJsClient) {
+    void postgresJsClient.end({ timeout: 1 }).catch(() => undefined);
+  }
+  postgresJsClient = null;
+  dbInstance = null;
+  poolInstance = null;
+  workerPoolAdapter = null;
+}
+
 export function getPool(): pg.Pool {
   if (isCloudflareWorkerRuntime()) {
-    throw new Error("[DB] pg.Pool is not available on Cloudflare Workers — use getDb()");
+    if (!postgresJsClient || !workerPoolAdapter) {
+      bindWorkerDatabaseUrl(process.env.DATABASE_URL);
+      const connectionString = getConnectionString();
+      postgresJsClient = createWorkerPostgresClient(connectionString);
+      workerPoolAdapter = createWorkerPoolAdapter(postgresJsClient);
+    }
+    return workerPoolAdapter;
   }
   if (!poolInstance) {
     const connectionString = getConnectionString();
@@ -91,17 +152,6 @@ export function getPool(): pg.Pool {
   return poolInstance;
 }
 
-/** Clear cached clients when Worker env bindings change (e.g. DATABASE_URL secret added). */
-export function resetWorkerDbCache(): void {
-  if (postgresJsClient) {
-    void postgresJsClient.end({ timeout: 1 }).catch(() => undefined);
-  }
-  postgresJsClient = null;
-  dbInstance = null;
-  poolInstance = null;
-  workerBoundDatabaseUrl = undefined;
-}
-
 export function getDb(): DbInstance {
   if (isCloudflareWorkerRuntime()) {
     bindWorkerDatabaseUrl(process.env.DATABASE_URL);
@@ -109,22 +159,12 @@ export function getDb(): DbInstance {
     if (dbInstance && workerBoundDatabaseUrl === connectionString) {
       return dbInstance;
     }
-    resetWorkerDbCache();
-    workerBoundDatabaseUrl = connectionString;
 
-    const workerUrl = normalizeWorkerDatabaseUrl(connectionString);
-    const sslConfig = resolvePgSsl(connectionString);
-    postgresJsClient = postgres(workerUrl, {
-      max: 1,
-      idle_timeout: 0,
-      connect_timeout: 15,
-      prepare: false,
-      ssl: sslConfig
-        ? typeof sslConfig === "object"
-          ? sslConfig
-          : "require"
-        : false,
-    });
+    if (postgresJsClient) {
+      void postgresJsClient.end({ timeout: 1 }).catch(() => undefined);
+    }
+    postgresJsClient = createWorkerPostgresClient(connectionString);
+    workerPoolAdapter = createWorkerPoolAdapter(postgresJsClient);
     dbInstance = drizzlePostgresJs(postgresJsClient, { schema }) as unknown as DbInstance;
     return dbInstance;
   }
@@ -135,7 +175,7 @@ export function getDb(): DbInstance {
   return dbInstance;
 }
 
-/** Lazy pool — Node/Railway only. */
+/** Lazy pool — postgres-js adapter on Workers, node-postgres elsewhere. */
 export const pool = new Proxy({} as pg.Pool, {
   get(_target, prop, receiver) {
     const value = Reflect.get(getPool(), prop, receiver);

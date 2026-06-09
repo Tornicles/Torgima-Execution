@@ -4,7 +4,7 @@
  */
 
 import type { Hyperdrive, KVNamespace, Queue } from "@cloudflare/workers-types";
-import { resetWorkerDbCache } from "@workspace/db";
+import { bindWorkerDatabaseUrl, resetWorkerDbCache } from "@workspace/db";
 
 export type TorgimaWorkerEnv = {
   NODE_ENV?: string;
@@ -101,9 +101,12 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     }
   }
 
-  if (nextDbUrl && nextDbUrl !== previousDbUrl && nextDbUrl !== lastBoundDatabaseUrl) {
-    lastBoundDatabaseUrl = nextDbUrl;
-    resetWorkerDbCache();
+  if (nextDbUrl) {
+    if (nextDbUrl !== previousDbUrl && nextDbUrl !== lastBoundDatabaseUrl) {
+      lastBoundDatabaseUrl = nextDbUrl;
+      resetWorkerDbCache();
+    }
+    bindWorkerDatabaseUrl(nextDbUrl);
   }
 
   if (process.env.NODE_ENV !== "production") {
