@@ -7,6 +7,7 @@ import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
+import { extractInternalToken, getInternalAuthSecret } from "../lib/security/internalAuth.js";
 
 const router: IRouter = Router();
 
@@ -360,7 +361,28 @@ router.get("/healthz", (_req, res) => {
 });
 
 // GET /api/health — transparent per-check diagnostics; no single check can crash the route.
-router.get("/health", async (_req, res) => {
+// Egress guard: in the production Worker, unauthenticated callers (bots, uptime
+// monitors, browsers) get a database-free liveness response. Full per-check
+// diagnostics (which query the database) require the internal auth token.
+router.get("/health", async (req, res) => {
+  const secret = getInternalAuthSecret();
+  const token = extractInternalToken(req);
+  const isInternal = secret.length > 0 && token === secret;
+  const isProductionWorker =
+    isCloudflareRuntime() && process.env.NODE_ENV === "production";
+
+  if (isProductionWorker && !isInternal) {
+    res.status(200).json({
+      ok: true,
+      status: "operational",
+      timestamp: new Date().toISOString(),
+      service: "torgima-api",
+      runtime: "cloudflare-workers",
+      version: process.env.APP_VERSION ?? "phase1",
+    });
+    return;
+  }
+
   try {
     const { results, checks, failing, httpStatus, status } = await buildTransparentHealthPayload();
     res.status(httpStatus).json({

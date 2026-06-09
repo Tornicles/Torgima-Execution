@@ -65,31 +65,67 @@ jobs:
     name: Run database migrations
     needs: ci
     runs-on: ubuntu-latest
+    outputs:
+      migrations-ran: ${{ steps.check-changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # need previous commit to diff migration files
+
+      # Egress guard: only connect to the production database when migration
+      # files actually changed (or on a manual run). Avoids hammering Supabase
+      # on every push when no schema change happened.
+      - name: Check if migration files changed
+        id: check-changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null \
+            | grep -E "(^|/)migrations/|\.sql$|db:migrate|apply-manual" \
+            | wc -l)
+          TRIGGER="${{ github.event_name }}"
+          if [ "$CHANGED" -gt "0" ] || [ "$TRIGGER" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Migration files changed or manual trigger — running migrations"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No migration files changed — skipping migrations (no DB egress)"
+          fi
 
       - uses: pnpm/action-setup@v4
+        if: steps.check-changes.outputs.changed == 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.check-changes.outputs.changed == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.check-changes.outputs.changed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Migration idempotency precheck
+        if: steps.check-changes.outputs.changed == 'true'
         run: pnpm db:migration-precheck
 
       - name: Run Drizzle migrations
+        if: steps.check-changes.outputs.changed == 'true'
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run manual migrations
+        if: steps.check-changes.outputs.changed == 'true'
         run: pnpm db:apply-manual
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Migration summary
+        run: |
+          if [ "${{ steps.check-changes.outputs.changed }}" = "true" ]; then
+            echo "Migrations ran (migration files changed or manual trigger)"
+          else
+            echo "Migrations skipped — no migration files changed, zero DB egress"
+          fi
 
   deploy-worker:
     name: Deploy API Worker

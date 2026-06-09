@@ -82,10 +82,18 @@ async function main() {
     if (res.status !== 200 && res.status !== 503) {
       throw new Error(`HTTP ${res.status}`);
     }
-    if (typeof body !== "object" || !body.checks) {
-      throw new Error("missing checks object");
+    if (typeof body !== "object" || body === null) {
+      throw new Error("non-JSON body");
     }
-    log(`  status=${body.status} checks=${Object.keys(body.checks).length}`);
+    // Public/unauthenticated callers get a database-free liveness response
+    // (no `checks`); internal callers with the token get full diagnostics.
+    if (body.checks) {
+      log(`  status=${body.status} checks=${Object.keys(body.checks).length}`);
+    } else if (body.ok === true) {
+      log(`  status=${body.status ?? "operational"} (db-free liveness)`);
+    } else {
+      throw new Error("unexpected /api/health body");
+    }
   });
 
   await check("Auth /api/auth/session", async () => {
