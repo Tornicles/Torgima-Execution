@@ -10,6 +10,7 @@ import {
   requireExplicitIdempotencyKey,
 } from "../lib/route-helpers.js";
 import { dispatchPendingEvents } from "../services/EventDispatcher.js";
+import { invalidateDashboardCache } from "../services/DashboardService.js";
 import { buildTaskExecutionView } from "../lib/taskExecutionView.js";
 import { db, blueprints } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -275,6 +276,10 @@ router.post("/orders/:id/feedback", async (req, res) => {
     if (!result.requiresInterrogation) {
       await dispatchPendingEvents().catch(() => null);
     }
+
+    // Task feedback changes execution state — drop the cached dashboard so the
+    // next poll recomputes immediately instead of serving a stale projection.
+    invalidateDashboardCache(auth.userId);
 
     success(
       res,

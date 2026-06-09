@@ -11,6 +11,9 @@ import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
 import { securityHeadersMiddleware } from "./middleware/securityHeaders.js";
 import { apiRateLimitMiddleware } from "./middleware/apiRateLimit.js";
 
+/** Requests slower than this are flagged for egress/perf review (metadata only). */
+const SLOW_REQUEST_MS = 3_000;
+
 async function attachRequestLogging(app: Express): Promise<void> {
   if (isCloudflareRuntime()) {
     app.use((req, res, next) => {
@@ -18,6 +21,7 @@ async function attachRequestLogging(app: Express): Promise<void> {
       res.on("finish", () => {
         const path = req.url?.split("?")[0] ?? req.path;
         if (path === "/health" || path === "/healthz") return;
+        const durationMs = Date.now() - started;
         logger.info(
           {
             type: "request",
@@ -25,12 +29,27 @@ async function attachRequestLogging(app: Express): Promise<void> {
             method: req.method,
             url: path,
             status: res.statusCode,
-            durationMs: Date.now() - started,
+            durationMs,
             ip: req.headers["cf-connecting-ip"] ?? req.ip,
             country: req.headers["cf-ipcountry"],
           },
           "request",
         );
+        // Egress/perf signal: flag slow handlers (likely many DB round-trips).
+        // Metadata only — never logs request/response payloads.
+        if (durationMs > SLOW_REQUEST_MS) {
+          logger.warn(
+            {
+              type: "slow_request",
+              requestId: res.locals.requestId,
+              method: req.method,
+              url: path,
+              status: res.statusCode,
+              durationMs,
+            },
+            "slow_request",
+          );
+        }
       });
       next();
     });

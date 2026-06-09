@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger.js";
+import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { getUser } from "./AuthService.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { OrderService } from "./OrderService.js";
@@ -145,8 +146,7 @@ async function buildNoActiveBlueprintDashboardState(userId: string) {
   };
 }
 
-export const DashboardService = {
-  async getDashboardState(userId: string) {
+async function computeDashboardState(userId: string) {
     logger.info({ userId }, "DashboardService.getDashboardState");
 
     const userBlueprints = await BlueprintService.list(userId);
@@ -977,5 +977,67 @@ export const DashboardService = {
       externalIntelligenceFreshness,
       homePanels,
     };
+}
+
+type DashboardStateResult = Awaited<ReturnType<typeof computeDashboardState>>;
+
+/**
+ * Short-TTL per-user cache for the dashboard projection. The dashboard is the
+ * hottest endpoint (the client polls it every few seconds in the background per
+ * tab) and each call runs dozens of database queries plus AI calls. Caching the
+ * projection for a few seconds collapses that into one computation per window —
+ * a large Supabase egress reduction — while staying within the existing
+ * eventually-consistent UX model (pendingSync polling + worker stateVersion bumps).
+ *
+ * Default: enabled only in the production Worker (5s). Disabled in node/tests
+ * unless DASHBOARD_CACHE_TTL_MS is set, so repeated post-mutation reads in tests
+ * always see fresh data. Set DASHBOARD_CACHE_TTL_MS=0 to disable in production.
+ */
+const dashboardCache = new Map<string, { value: DashboardStateResult; expiresAt: number }>();
+
+function dashboardCacheTtlMs(): number {
+  const raw = process.env.DASHBOARD_CACHE_TTL_MS;
+  if (raw !== undefined && raw.trim() !== "") {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+  return isCloudflareRuntime() ? 5_000 : 0;
+}
+
+function getCachedDashboard(userId: string): DashboardStateResult | undefined {
+  if (dashboardCacheTtlMs() <= 0) return undefined;
+  const hit = dashboardCache.get(userId);
+  if (hit && Date.now() < hit.expiresAt) return hit.value;
+  if (hit) dashboardCache.delete(userId);
+  return undefined;
+}
+
+function setCachedDashboard(userId: string, value: DashboardStateResult): void {
+  const ttl = dashboardCacheTtlMs();
+  if (ttl <= 0) return;
+  dashboardCache.set(userId, { value, expiresAt: Date.now() + ttl });
+  if (dashboardCache.size > 5_000) {
+    const now = Date.now();
+    for (const [key, entry] of dashboardCache) {
+      if (now >= entry.expiresAt) dashboardCache.delete(key);
+    }
+  }
+}
+
+/** Clears a user's cached dashboard projection after a state-changing mutation. */
+export function invalidateDashboardCache(userId: string): void {
+  dashboardCache.delete(userId);
+}
+
+export const DashboardService = {
+  async getDashboardState(userId: string): Promise<DashboardStateResult> {
+    const cached = getCachedDashboard(userId);
+    if (cached !== undefined) {
+      logger.info({ userId, cache: "hit" }, "DashboardService.getDashboardState");
+      return cached;
+    }
+    const result = await computeDashboardState(userId);
+    setCachedDashboard(userId, result);
+    return result;
   },
 };
