@@ -18,7 +18,8 @@ const PRIORITY_EVENT_TYPES = new Set<string>([
   EventTypes.CONDITION_EVALUATED,
 ]);
 
-export async function dispatchPendingEvents(): Promise<number> {
+export async function dispatchPendingEvents(batchSize = DISPATCH_BATCH_SIZE): Promise<number> {
+  const limit = Math.max(1, Math.min(batchSize, DISPATCH_BATCH_SIZE));
   // Claim a batch of PENDING events atomically
   const pendingEvents = await db.transaction(async (tx) => {
     const now = new Date();
@@ -35,7 +36,7 @@ export async function dispatchPendingEvents(): Promise<number> {
         ),
       )
       .orderBy(events.created_at)
-      .limit(DISPATCH_BATCH_SIZE);
+      .limit(limit);
 
     if (pending.length === 0) return [];
 

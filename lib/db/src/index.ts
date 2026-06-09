@@ -14,13 +14,32 @@ type DbInstance = ReturnType<typeof drizzleNodePg<typeof schema>>;
 let poolInstance: pg.Pool | null = null;
 let postgresJsClient: ReturnType<typeof postgres> | null = null;
 let dbInstance: DbInstance | null = null;
+let workerBoundDatabaseUrl: string | undefined;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __TORGIMA_WORKER_DATABASE_URL__: string | undefined;
+}
 
 function isCloudflareWorkerRuntime(): boolean {
   return process.env.TORGIMA_RUNTIME === "cloudflare";
 }
 
+/** Bind Worker c.env.DATABASE_URL — not a persistent pool; refreshes client when URL changes. */
+export function bindWorkerDatabaseUrl(url: string | undefined): void {
+  const trimmed = typeof url === "string" ? url.trim() : "";
+  if (!trimmed) return;
+  globalThis.__TORGIMA_WORKER_DATABASE_URL__ = trimmed;
+  if (workerBoundDatabaseUrl !== trimmed) {
+    resetWorkerDbCache();
+    workerBoundDatabaseUrl = trimmed;
+  }
+}
+
 function getConnectionString(): string {
-  const connectionString = process.env.DATABASE_URL?.trim();
+  const connectionString =
+    globalThis.__TORGIMA_WORKER_DATABASE_URL__?.trim() ||
+    process.env.DATABASE_URL?.trim();
   if (!connectionString) {
     throw new Error("[DB] DATABASE_URL is not set");
   }
@@ -80,30 +99,38 @@ export function resetWorkerDbCache(): void {
   postgresJsClient = null;
   dbInstance = null;
   poolInstance = null;
+  workerBoundDatabaseUrl = undefined;
 }
 
 export function getDb(): DbInstance {
-  if (!dbInstance) {
+  if (isCloudflareWorkerRuntime()) {
+    bindWorkerDatabaseUrl(process.env.DATABASE_URL);
     const connectionString = getConnectionString();
-
-    if (isCloudflareWorkerRuntime()) {
-      const workerUrl = normalizeWorkerDatabaseUrl(connectionString);
-      const sslConfig = resolvePgSsl(connectionString);
-      postgresJsClient = postgres(workerUrl, {
-        max: 1,
-        idle_timeout: 20,
-        connect_timeout: 15,
-        prepare: false,
-        ssl: sslConfig
-          ? typeof sslConfig === "object"
-            ? sslConfig
-            : "require"
-          : false,
-      });
-      dbInstance = drizzlePostgresJs(postgresJsClient, { schema }) as unknown as DbInstance;
-    } else {
-      dbInstance = drizzleNodePg(getPool(), { schema });
+    if (dbInstance && workerBoundDatabaseUrl === connectionString) {
+      return dbInstance;
     }
+    resetWorkerDbCache();
+    workerBoundDatabaseUrl = connectionString;
+
+    const workerUrl = normalizeWorkerDatabaseUrl(connectionString);
+    const sslConfig = resolvePgSsl(connectionString);
+    postgresJsClient = postgres(workerUrl, {
+      max: 1,
+      idle_timeout: 0,
+      connect_timeout: 15,
+      prepare: false,
+      ssl: sslConfig
+        ? typeof sslConfig === "object"
+          ? sslConfig
+          : "require"
+        : false,
+    });
+    dbInstance = drizzlePostgresJs(postgresJsClient, { schema }) as unknown as DbInstance;
+    return dbInstance;
+  }
+
+  if (!dbInstance) {
+    dbInstance = drizzleNodePg(getPool(), { schema });
   }
   return dbInstance;
 }
