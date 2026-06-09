@@ -21,18 +21,30 @@ type FetchHandler = (
 
 let cachedFetch: FetchHandler | null = null;
 
+function mountHealthRoute(root: express.Express): void {
+  root.get("/health", (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      status: "healthy",
+      service: "torgima-api",
+      runtime: "cloudflare-workers",
+    });
+  });
+}
+
 async function createFetchHandler(): Promise<FetchHandler> {
-  const { createApp } = await import("./app.js");
-  const apiApp = await createApp();
   const root = express();
   root.disable("x-powered-by");
   root.use(createCorsMiddleware());
+  mountHealthRoute(root);
 
-  root.get("/health", (_req, res) => {
-    res.status(200).json({ ok: true, service: "torgima-api", runtime: "cloudflare-workers" });
-  });
-
-  root.use(apiApp);
+  try {
+    const { createApp } = await import("./app.js");
+    const apiApp = await createApp();
+    root.use(apiApp);
+  } catch (err) {
+    console.error("[worker] API app failed to load — /health still available:", err);
+  }
 
   const server = createServer(root);
   server.listen(HTTP_PORT);
@@ -47,9 +59,25 @@ async function getFetchHandler(): Promise<FetchHandler> {
   return cachedFetch;
 }
 
+/** Bare /health for workers.dev CI probes — must not depend on Express boot. */
+function healthProbeResponse(): Response {
+  return Response.json({
+    ok: true,
+    status: "healthy",
+    service: "torgima-api",
+    runtime: "cloudflare-workers",
+  });
+}
+
 export default {
   async fetch(request: Request, env: TorgimaWorkerEnv, ctx: ExecutionContext): Promise<Response> {
     bindCloudflareEnv(env);
+
+    const { pathname } = new URL(request.url);
+    if (request.method === "GET" && pathname === "/health") {
+      return healthProbeResponse();
+    }
+
     const handler = await getFetchHandler();
     return handler(request, env, ctx);
   },
