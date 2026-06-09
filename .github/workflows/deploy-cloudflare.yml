@@ -208,8 +208,12 @@ jobs:
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             "${CF_API_URL}")"
           echo "Cloudflare API status: ${HTTP_CODE}"
-          grep -q '"success":true' /tmp/cf-worker.json
-          echo "✓ Worker script torgima present (workers.dev may still be propagating)"
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "✓ Worker script torgima present (workers.dev may still be propagating)"
+            exit 0
+          fi
+          echo "✗ Worker deploy verification failed (workers.dev probe and Cloudflare API check)"
+          exit 1
 
       - name: Optional debug env probe (non-blocking)
         env:
