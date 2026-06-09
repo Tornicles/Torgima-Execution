@@ -69,6 +69,13 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(workflow).toContain("verify:deploy:connections");
   });
 
+  it("resolves empty WORKER_URL to workers.dev default in connection script", () => {
+    const script = readRepo("scripts/verify-deploy-connections.mjs");
+    expect(script).toContain("resolveWorkerUrl");
+    expect(script).toContain("trimmed || DEFAULT_WORKER_URL");
+    expect(script).not.toMatch(/WORKER_URL\s*\?\?/);
+  });
+
   it("provisions WAF skip rule for health endpoints and GitHub Actions", () => {
     const script = readRepo("scripts/ensure-cloudflare-waf-ci-skip.mjs");
     const pkg = readRepo("package.json");
@@ -76,7 +83,8 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(script).toContain("http_request_sbfm");
     expect(script).toContain("GitHub-Actions");
     expect(script).toContain("/api/health");
-    expect(script).toContain("/healthz");
+    expect(script).toContain('eq "/api/healthz"');
+    expect(script).not.toMatch(/uri\.path eq "\/healthz"/);
     expect(script).toContain('action: "skip"');
   });
 

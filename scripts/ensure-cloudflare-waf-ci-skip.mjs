@@ -22,7 +22,7 @@ const RULE_EXPRESSION = [
   'http.user_agent contains "GitHubActions" or',
   'http.request.uri.path eq "/health" or',
   'http.request.uri.path eq "/api/health" or',
-  'http.request.uri.path eq "/healthz"',
+  'http.request.uri.path eq "/api/healthz"',
   "))",
 ].join(" ");
 const PHASE = "http_request_firewall_custom";

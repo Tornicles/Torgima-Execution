@@ -9,7 +9,15 @@
  */
 
 const softFlag = process.argv.includes("--soft");
-const WORKER = (process.env.WORKER_URL ?? "https://torgima.tmagaya.workers.dev").replace(/\/$/, "");
+const DEFAULT_WORKER_URL = "https://torgima.tmagaya.workers.dev";
+
+/** GHA unset vars are empty strings — ?? does not fall back for those. */
+function resolveWorkerUrl(raw) {
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  return (trimmed || DEFAULT_WORKER_URL).replace(/\/$/, "");
+}
+
+const WORKER = resolveWorkerUrl(process.env.WORKER_URL);
 const UA = "GitHub-Actions-Deploy-Verify/1.0";
 
 function log(msg) {
