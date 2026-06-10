@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-09T21:58:41.489Z",
-  "routeCount": 698,
+  "generatedAt": "2026-06-10T05:12:59.476Z",
+  "routeCount": 700,
   "routes": [
     {
       "method": "GET",
@@ -1734,6 +1734,11 @@
     },
     {
       "method": "GET",
+      "path": "/debug/db-target",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
       "path": "/debug/routes",
       "file": "debug.ts"
     },
@@ -2848,6 +2853,11 @@
       "file": "auth.ts"
     },
     {
+      "method": "POST",
+      "path": "/sign-out",
+      "file": "auth.ts"
+    },
+    {
       "method": "GET",
       "path": "/signals/current",
       "file": "signals.ts"
@@ -3493,5 +3503,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 676
+  "openApiPathCount": 678
 }
