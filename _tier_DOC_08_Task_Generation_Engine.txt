@@ -1,0 +1,1187 @@
+﻿TORGIMA
+INDIVIDUAL EXECUTION SYSTEM
+
+DOCUMENT 08 OF 32
+Task Generation Engine Specification
+Converting Blueprint Position + Signal State Into the Next Correct Task
+Phase 1 â€” Individual System
+
+1. Document Purpose
+
+This document defines the Task Generation Engine â€” the system that produces the next correct task for the user to execute. The engine reads the blueprint execution position, the enforcement package constraints, the user's capability profile, relevant knowledge objects, and generates tasks with complete content: instruction, expected output, definition of done, proof requirements, and why it matters.
+
+Every task the user ever sees in Torgima is produced by this engine. It never produces a task that violates the enforcement package. It always produces tasks that are positioned correctly in the blueprint chain. If Bhudhi is available, it enriches the task content. If Bhudhi is unavailable, the engine falls back to template-based generation.
+
+The task generation engine has one absolute rule: it must always produce at least one task when called. If it cannot generate a normal execution task, it generates a recovery, clarification, or academy task. It never returns empty. The ContinuousTaskGuarantee acts as the final safety net after this engine.
+
+2. Generation Context â€” What the Engine Reads
+
+Before generating any task, the engine loads the full execution context. This is the complete picture of where the user is and what constraints apply.
+
+2.1 Context Loading
+// Complete context loaded before any task is generated
+export interface TaskGenerationContext {
+  // Blueprint chain position
+  blueprint:    { id: string; goal: string; purpose?: string; current_domain?: string };
+  plan:         { id: string; name: string } | null;
+  season:       { id: string; name: string } | null;
+  target:       { id: string; name: string; type: string; metric?: string;
+                  target_value?: number; current_value: number; progress: number } | null;
+  phase:        { id: string; name: string; status: string } | null;
+  project:      { id: string; name: string; type: string } | null;
+  next_action:  { id: string; name: string; type: string;
+                  knowledge_category?: string } | null;
+
+  // Constraints from enforcement package
+  enforcement: {
+    task_limits:        { min: number; max: number };
+    difficulty_cap:     string;
+    allowed_actions:    string[];
+    blocked_actions:    string[];
+    ai_mode:            string;
+    recovery_required:  boolean;
+    feature_permissions: Record&lt;string, boolean&gt;;
+  };
+
+  // Capability profile
+  capability: {
+    level:           string;
+    consistency:     number;
+    execution_quality: number;
+    current_streak:  number;
+  };
+
+  // Relevant knowledge objects
+  knowledge_objects: Array&lt;{
+    id: string; title: string; content: string;
+    type: string; action_type?: string;
+  }&gt;;
+
+  // Recent task history (for duplicate detection)
+  recent_task_hashes: string[];
+
+  // Generation metadata
+  generation_trigger: string;
+  generation_mode:    string;
+  enforcement_package_id: string;
+}
+
+2.2 Context Loading Implementation
+async function loadGenerationContext(
+  blueprint_id: string,
+  user_id:      string,
+  enforcement_package_id: string,
+  generation_trigger: string,
+  generation_mode:    string,
+): Promise&lt;TaskGenerationContext&gt; {
+
+  const [blueprint, pkg, capability] = await Promise.all([
+    prisma.blueprint.findUnique({
+      where: { id: blueprint_id },
+      include: {
+        current_plan:  { select: { id:true, name:true } },
+        current_phase: { select: { id:true, name:true, status:true } },
+      },
+    }),
+    prisma.enforcementPackage.findFirst({
+      where: { id: enforcement_package_id },
+    }),
+    prisma.capabilityProfile.findFirst({
+      where: { user_id },
+      select: { level:true, consistency:true, execution_quality:true, current_streak_days:true },
+    }),
+  ]);
+
+  if (!blueprint) throw new TorgimaError("BLUEPRINT_NOT_FOUND", "Blueprint not found");
+  if (!pkg) throw new TorgimaError("NO_ENFORCEMENT_PACKAGE", "Enforcement package not found");
+
+  // Find current target and phase
+  const current_target = await prisma.target.findFirst({
+    where: { blueprint_id, status: { in: ["active","on_track","at_risk"] } },
+    orderBy: { order_index: "asc" },
+  });
+
+  const current_phase = blueprint.current_phase_id
+    ? await prisma.phase.findUnique({ where: { id: blueprint.current_phase_id } })
+    : null;
+
+  // Find current project
+  const current_project = await prisma.project.findFirst({
+    where: {
+      blueprint_id,
+      phase_id: current_phase?.id,
+      status: { in: ["active","pending"] },
+    },
+    orderBy: { order_index: "asc" },
+  });
+
+  // Find next action to execute
+  const next_action = current_project
+    ? await prisma.action.findFirst({
+        where: {
+          project_id: current_project.id,
+          status: "pending",
+          type: { in: (pkg.allowed_actions as string[]) },
+        },
+        orderBy: { order_index: "asc" },
+      })
+    : null;
+
+  // Load relevant knowledge objects
+  const knowledge_objects = await prisma.knowledgeObject.findMany({
+    where: {
+      AND: [
+        { OR: [{ blueprint_id }, { is_global: true }] },
+        { OR: [
+          { domain: blueprint.current_domain as any ?? undefined },
+          { domain: null },
+        ]},
+        { applicable_level: { in: [capability?.level ?? "beginner","all"] } },
+        { active: true },
+      ],
+    },
+    take: 5,
+  });
+
+  // Load recent task content hashes for duplicate detection
+  const recent_orders = await prisma.order.findMany({
+    where: { blueprint_id, user_id, created_at: { gte: new Date(Date.now() - 7*86400000) } },
+    select: { content_hash: true },
+    take: 20,
+  });
+
+  const task_limits = pkg.task_limits as { min: number; max: number };
+
+  return {
+    blueprint:   { id: blueprint.id, goal: blueprint.goal, purpose: blueprint.purpose ?? undefined, current_domain: blueprint.current_domain ?? undefined },
+    plan:        blueprint.current_plan ?? null,
+    season:      null, // loaded from blueprint.current_season if needed
+    target:      current_target ?? null,
+    phase:       current_phase ?? null,
+    project:     current_project ?? null,
+    next_action: next_action ?? null,
+    enforcement: {
+      task_limits,
+      difficulty_cap:      pkg.difficulty_cap,
+      allowed_actions:     pkg.allowed_actions as string[],
+      blocked_actions:     pkg.blocked_actions as string[],
+      ai_mode:             pkg.ai_mode ?? "command",
+      recovery_required:   (pkg.override_flags as any)?.force_recovery ?? false,
+      feature_permissions: pkg.feature_permissions as Record&lt;string, boolean&gt;,
+    },
+    capability: {
+      level:             capability?.level ?? "beginner",
+      consistency:       capability?.consistency ?? 0,
+      execution_quality: capability?.execution_quality ?? 0,
+      current_streak:    capability?.current_streak_days ?? 0,
+    },
+    knowledge_objects,
+    recent_task_hashes: recent_orders.map(o=&gt;o.content_hash).filter(Boolean) as string[],
+    generation_trigger,
+    generation_mode,
+    enforcement_package_id,
+  };
+}
+
+
+3. Task Type Selection
+
+Before generating task content, the engine determines which task type to generate. The task type determines the structure, content requirements, and proof requirements of the task.
+
+3.1 Task Type Decision Tree
+// Task type selection priority
+// Each condition is evaluated in order. First match wins.
+//
+// 1. Recovery mode (generation_mode = "recovery") â†’ recovery task
+// 2. Recovery required by enforcement (force_recovery flag)  â†’ include recovery task
+// 3. Academy gap detected                                     â†’ academy task
+// 4. Phase checkpoint due                                     â†’ phase_checkpoint task
+// 5. Weekly review due                                        â†’ review task
+// 6. Habit checkin due                                        â†’ habit task
+// 7. Active blocker exists                                    â†’ blocker_resolution task
+// 8. Clarification mode (no action in blueprint)             â†’ clarification task
+// 9. Normal execution                                         â†’ execution task
+
+3.2 Task Type Properties
+Task Type
+When Generated
+Proof Required
+Key Properties
+execution
+Normal blueprint progression
+Varies
+Positioned in blueprint chain. Ties to action type.
+recovery
+Recovery mode or force_recovery
+No
+Very easy difficulty. Restarting focus only.
+academy
+Knowledge gap detected
+Yes
+Blocks execution if blocks_execution=true.
+clarification
+No next action in blueprint
+No
+Goal-level reflection. Produces plan.
+blocker_resolution
+Active blocked task exists
+No
+Names and resolves the specific blocker.
+phase_checkpoint
+Phase gate criteria met
+Yes
+Requires evidence summary and outcomes.
+habit
+Habit due (daily/weekly)
+No
+Reinforces execution habits.
+review
+Weekly review due
+No
+Wins, failures, patterns, next focus.
+
+3.3 Task Type Selection Function
+async function selectTaskType(
+  ctx: TaskGenerationContext,
+  blueprint_id: string,
+  user_id: string,
+): Promise&lt;string[]&gt; {
+  const types: string[] = [];
+
+  // Recovery mode â€” only recovery tasks
+  if (ctx.generation_mode === "recovery") {
+    return ["recovery"];
+  }
+
+  // Recovery required by escalation
+  if (ctx.enforcement.recovery_required) {
+    types.push("recovery");
+  }
+
+  // Phase checkpoint due
+  if (ctx.phase?.status === "gated" || await isPhaseCheckpointDue(blueprint_id, ctx.phase?.id)) {
+    types.push("phase_checkpoint");
+    return types; // Phase checkpoint takes priority over execution
+  }
+
+  // Weekly review due (Monday within 48h of week start)
+  if (await isWeeklyReviewDue(blueprint_id, user_id)) {
+    types.push("review");
+  }
+
+  // Active blocker
+  const blocked = await prisma.order.findFirst({
+    where: { blueprint_id, user_id, status: "blocked" },
+  });
+  if (blocked) {
+    types.push("blocker_resolution");
+  }
+
+  // Academy gap
+  const academy = await prisma.academyTask.findFirst({
+    where: { blueprint_id, user_id, status: "pending", blocks_execution: true },
+  });
+  if (academy) {
+    types.push("academy");
+    return types; // Academy that blocks execution takes priority
+  }
+
+  // Execution â€” normal path
+  if (ctx.next_action) {
+    types.push("execution");
+  } else {
+    // No action available â€” clarification needed
+    types.push("clarification");
+  }
+
+  return types;
+}
+
+// Helpers
+async function isPhaseCheckpointDue(blueprint_id: string, phase_id?: string): Promise&lt;boolean&gt; {
+  if (!phase_id) return false;
+  const phase = await prisma.phase.findUnique({ where: { id: phase_id } });
+  return phase?.status === "gated";
+}
+
+async function isWeeklyReviewDue(blueprint_id: string, user_id: string): Promise&lt;boolean&gt; {
+  const lastReview = await prisma.weeklyReview.findFirst({
+    where: { blueprint_id, user_id },
+    orderBy: { created_at: "desc" },
+  });
+  if (!lastReview) return false;
+  const daysSince = (Date.now() - lastReview.created_at.getTime()) / 86400000;
+  return daysSince &gt;= 7;
+}
+
+
+4. Difficulty Selection
+
+The difficulty of each task is selected within the bounds set by the enforcement package's difficulty_cap. The engine uses the user's capability level, the action type, the blueprint position, and generation mode to determine the ideal difficulty.
+
+4.1 Difficulty Selection Logic
+const DIFFICULTY_ORDER = ["very_easy","easy","moderate","hard","very_hard"];
+
+function selectDifficulty(params: {
+  difficulty_cap:    string;
+  capability_level:  string;
+  action_type?:      string;
+  generation_mode:   string;
+  current_streak:    number;
+  is_first_in_phase: boolean;
+}): string {
+  const cap_idx = DIFFICULTY_ORDER.indexOf(params.difficulty_cap);
+
+  // Recovery and initial modes always start easy
+  if (params.generation_mode === "recovery" || params.generation_mode === "initial") {
+    return DIFFICULTY_ORDER[Math.min(1, cap_idx)] ?? "easy"; // easy or cap, whichever lower
+  }
+
+  // First task in a new phase starts one step below cap
+  if (params.is_first_in_phase) {
+    return DIFFICULTY_ORDER[Math.max(0, cap_idx - 1)] ?? "easy";
+  }
+
+  // High-impact action types (analyze, improve, standardize) use full cap
+  const hard_action_types = ["analyze","improve","standardize","build"];
+  if (params.action_type && hard_action_types.includes(params.action_type)) {
+    return params.difficulty_cap; // Full cap
+  }
+
+  // Streak bonus: after 7+ consecutive days, allow full cap
+  if (params.current_streak &gt;= 7) {
+    return params.difficulty_cap;
+  }
+
+  // Default: one level below cap for normal execution
+  const default_idx = Math.max(0, cap_idx - 1);
+  return DIFFICULTY_ORDER[default_idx] ?? "moderate";
+}
+
+5. Task Value Scoring
+
+Every generated task receives a value score (0â€“10) that represents its strategic importance. This score is stored on the order and is used by the ContinuousTaskGuarantee and the dashboard to surface the highest-value tasks first.
+
+5.1 Value Score Calculation
+function calculateTaskValueScore(params: {
+  action_type:      string;
+  blueprint_position: {
+    is_blocking_next_phase: boolean;
+    target_progress: number;    // 0-1
+    phase_name:      string;
+  };
+  difficulty:       string;
+  task_type:        string;
+  generation_mode:  string;
+  capability_level: string;
+  time_estimate_minutes?: number;
+  is_critical_path: boolean;
+  knowledge_required: boolean;
+  is_blocking_blocker: boolean;
+  target_at_risk: boolean;
+  streak_at_risk: boolean;
+  conditions: {
+  completion_rate: number; weighted_score: number;
+  };
+  }): number {
+
+  let score = 5.0; // Baseline
+
+  // Action type contribution (0â€“2)
+  const action_scores: Record&lt;string, number&gt; = {
+    create:     1.0, replicate: 0.8, analyze:    1.5,
+    improve:    1.5, standardize: 1.8, recover:  0.5,
+    test:       1.2, publish:    1.8, validate:  1.2,
+    measure:    1.3, build:      1.8,
+  };
+  score += action_scores[params.action_type] ?? 1.0;
+
+  // Blueprint position (0â€“1.5)
+  if (params.blueprint_position.is_blocking_next_phase) score += 1.5;
+  if (params.blueprint_position.target_progress &gt;= 0.8) score += 0.5;
+
+  // Criticality flags (0â€“2)
+  if (params.is_critical_path) score += 1.0;
+  if (params.target_at_risk) score += 1.0;
+  if (params.is_blocking_blocker) score += 0.5;
+  if (params.streak_at_risk) score += 0.5;
+
+  // Difficulty contribution (0â€“1)
+  const diff_scores: Record&lt;string, number&gt; = {
+    very_easy: 0.0, easy: 0.2, moderate: 0.4, hard: 0.7, very_hard: 1.0,
+  };
+  score += diff_scores[params.difficulty] ?? 0.4;
+
+  // Knowledge required adds value (+0.5)
+  if (params.knowledge_required) score += 0.5;
+
+  // Cap at 10
+  return Math.min(score, 10.0);
+}
+
+
+6. Task Content Structure
+
+Every task produced by the engine must include all six required content fields. These are non-negotiable â€” a task missing any field is invalid and cannot be stored.
+
+6.1 Required Task Fields
+Field
+Required
+What It Contains
+title
+Yes
+Short, actionable headline. Maximum 120 characters. Verb-first.
+instruction
+Yes
+Exactly what the user should do. Step-by-step where appropriate. No vague language.
+expected_output
+Yes
+What a completed execution of this task looks like. Concrete and specific.
+definition_of_done
+Yes
+The exact criteria that determine this task is complete. Binary â€” either met or not.
+why_it_matters
+Yes
+Why this task matters to the goal and the current phase. Maximum 2 sentences.
+time_estimate_minutes
+No
+Honest estimate in minutes. Based on difficulty and action type.
+proof_required + proof_type + proof_description
+Conditional
+Required for hard/very_hard tasks and for publish/validate/build action types.
+
+6.2 Content Quality Rules
+Titles must start with a verb: Write, Build, Analyze, Test, Review, Create, Define, Launch.
+Instructions must be specific to the user's goal, current project, and action â€” not generic advice.
+Definition of done must be a binary condition â€” either it is met or it is not. No partial credit in the definition.
+Why it matters must reference the goal or target â€” not just say "this is important".
+Expected output must name a real artifact: a document, a list, a message sent, a file, a measurement, a decision made.
+Proof is required when: action type is publish, validate, or build; difficulty is hard or very_hard; task type is phase_checkpoint.
+
+7. Bhudhi Integration for Task Content
+
+When Bhudhi is available (ai_enabled feature flag = true), the engine sends the task context to Bhudhi and receives enriched task content. If Bhudhi is unavailable or times out, the engine uses template-based generation as fallback.
+
+7.1 Bhudhi Input Contract for Task Generation
+// Input sent to Bhudhi for task generation
+// Bhudhi receives the execution context and returns task content
+export interface BhudhiTaskGenerationInput {
+  trigger_type:  "task_generation";  // Required Bhudhi trigger
+  execution_context: string;          // marketing|pr|strategy|execution|analysis
+
+  blueprint: {
+    goal:        string;
+    purpose?:    string;
+    domain?:     string;
+  };
+  current_position: {
+    plan?:        string;
+    target?:      string;
+    phase?:       string;
+    project?:     string;
+    action_type?: string;
+    action_name?: string;
+  };
+  constraints: {
+    difficulty:       string;
+    task_type:        string;
+    allowed_actions:  string[];
+    time_estimate?:   number;
+    proof_required:   boolean;
+    proof_type?:      string;
+  };
+  capability: {
+    level:            string;
+    current_streak:   number;
+    consistency:      number;
+  };
+  knowledge_context?: Array&lt;{
+    title:   string;
+    content: string;
+    type:    string;
+  }&gt;;
+  ai_mode:    string;  // command|correction|stabilization|optimization|expansion|strategic
+  condition:  string;
+}
+
+7.2 Bhudhi Output Contract
+// Output returned by Bhudhi for task generation
+// Must conform to {type, status, data, meta} envelope
+export interface BhudhiTaskGenerationOutput {
+  type:   "task_generation";
+  status: "success" | "fallback";
+  data: {
+    title:              string;
+    instruction:        string;
+    expected_output:    string;
+    definition_of_done: string;
+    why_it_matters:     string;
+    time_estimate_minutes?: number;
+    proof_required:     boolean;
+    proof_type?:        string;
+    proof_description?: string;
+  };
+  meta: {
+    model:            string;
+    used_knowledge:   boolean;
+    used_fallback:    boolean;
+    generation_notes: string;
+  };
+}
+
+7.3 Bhudhi Call with Timeout and Fallback
+// Bhudhi integration with 5-second timeout and fallback
+async function generateWithBhudhi(
+  ctx: TaskGenerationContext,
+  task_type: string,
+  difficulty: string,
+): Promise&lt;{ content: TaskContent; used_bhudhi: boolean }&gt; {
+
+  const ai_enabled = await prisma.featureFlag.findUnique({
+    where: { feature_name: "ai_enabled" },
+    select: { enabled: true },
+  });
+
+  if (!ai_enabled?.enabled) {
+    return { content: generateTemplate(ctx, task_type, difficulty), used_bhudhi: false };
+  }
+
+  const input: BhudhiTaskGenerationInput = buildBhudhiInput(ctx, task_type, difficulty);
+
+  try {
+    const response = await Promise.race([
+      callBhudhi(input),
+      new Promise&lt;never&gt;((_, reject) =&gt;
+        setTimeout(() =&gt; reject(new Error("Bhudhi timeout")), 5000)
+      ),
+    ]);
+
+    const output = response as BhudhiTaskGenerationOutput;
+
+    // Validate Bhudhi output
+    if (!validateBhudhiOutput(output)) {
+      logger.warn("[TaskEngine] Bhudhi output invalid â€” using template", { task_type });
+      return { content: generateTemplate(ctx, task_type, difficulty), used_bhudhi: false };
+    }
+
+    return { content: output.data, used_bhudhi: true };
+
+  } catch (err) {
+    logger.warn("[TaskEngine] Bhudhi failed â€” using template fallback", {
+      error: (err as Error).message, task_type,
+    });
+    return { content: generateTemplate(ctx, task_type, difficulty), used_bhudhi: false };
+  }
+}
+
+async function callBhudhi(input: BhudhiTaskGenerationInput): Promise&lt;BhudhiTaskGenerationOutput&gt; {
+  // Calls src/bhudhi/BhudhiCore.ts â€” defined in Document 12
+  const { BhudhiCore } = await import("@/bhudhi/BhudhiCore");
+  const core = new BhudhiCore();
+  return core.execute({ trigger_type: "task_generation", payload: input }) as Promise&lt;BhudhiTaskGenerationOutput&gt;;
+}
+
+
+8. Template-Based Task Generation
+
+When Bhudhi is unavailable, the engine generates task content using structured templates. Templates are specific to action type, task type, and blueprint position. They are not generic â€” they incorporate the user's goal, current project, and phase context.
+
+8.1 Template Structure
+interface TaskContent {
+  title:              string;
+  instruction:        string;
+  expected_output:    string;
+  definition_of_done: string;
+  why_it_matters:     string;
+  time_estimate_minutes?: number;
+  proof_required:     boolean;
+  proof_type?:        string;
+  proof_description?: string;
+}
+
+function generateTemplate(
+  ctx: TaskGenerationContext,
+  task_type: string,
+  difficulty: string,
+): TaskContent {
+
+  const goal    = ctx.blueprint.goal;
+  const project = ctx.project?.name ?? "current project";
+  const phase   = ctx.phase?.name   ?? "current phase";
+  const target  = ctx.target?.name  ?? "your target";
+  const action  = ctx.next_action;
+
+  // Task type templates
+  const templates: Record&lt;string, () =&gt; TaskContent&gt; = {
+
+    execution: () =&gt; {
+      const action_templates: Record&lt;string, () =&gt; TaskContent&gt; = {
+        create: () =&gt; ({
+          title: `Create: ${action?.name ?? "Next Output"}`,
+          instruction: `For your goal "${goal}" and project "${project}", create the next output item. Focus on making it concrete and usable, not perfect. Start with the minimum viable version.`,
+          expected_output: `A completed, usable artifact or deliverable for the "${project}" project.`,
+          definition_of_done: `The output exists in a form that can be shown, used, or built upon.`,
+          why_it_matters: `Creating output advances "${target}" directly. Nothing else counts until something exists.`,
+          time_estimate_minutes: difficulty === "very_easy" ? 20 : difficulty === "easy" ? 40 : difficulty === "moderate" ? 60 : 90,
+          proof_required: difficulty === "hard" || difficulty === "very_hard",
+          proof_type: "text",
+          proof_description: "Describe or link to what you created.",
+        }),
+        analyze: () =&gt; ({
+          title: `Analyze: ${action?.name ?? "Current Situation"}`,
+          instruction: `Analyze the current state of "${project}" for your goal "${goal}". Identify what is working, what is not, and what needs to change. Write your analysis â€” do not keep it in your head.`,
+          expected_output: `A written analysis with three sections: (1) what is working, (2) what is failing, (3) specific next adjustment.`,
+          definition_of_done: `All three sections are completed in writing with specific examples.`,
+          why_it_matters: `Analysis without output changes nothing. This analysis must produce a specific action.`,
+          time_estimate_minutes: 30,
+          proof_required: false,
+        }),
+        replicate: () =&gt; ({
+          title: `Replicate: ${action?.name ?? "Proven Method"}`,
+          instruction: `Replicate the approach that is working for "${project}". Identify the exact steps of what worked, then repeat them in a new context or at higher volume.`,
+          expected_output: `Documented replication of the working approach with specific numbers or output.`,
+          definition_of_done: `Replication is completed and the output is measurable.`,
+          why_it_matters: `Replication at scale is how "${target}" is reached faster.`,
+          time_estimate_minutes: 45,
+          proof_required: false,
+        }),
+        improve: () =&gt; ({
+          title: `Improve: ${action?.name ?? "Current Process"}`,
+          instruction: `Identify the single most impactful improvement to make to "${project}" right now. Do not try to fix everything. Fix one thing completely.`,
+          expected_output: `One specific improvement implemented and documented.`,
+          definition_of_done: `The improvement is applied and the result is measured against the previous state.`,
+          why_it_matters: `Systematic improvement compounds. One improvement today builds on tomorrow.`,
+          time_estimate_minutes: 50,
+          proof_required: false,
+        }),
+        publish: () =&gt; ({
+          title: `Publish: ${action?.name ?? "Ready Output"}`,
+          instruction: `Publish or deliver the output of "${project}" to your target audience or channel. Publish means the output is now external and visible to someone other than you.`,
+          expected_output: `Published output accessible to the intended audience.`,
+          definition_of_done: `The output is publicly accessible or delivered to at least one external person.`,
+          why_it_matters: `Unpublished work produces no real-world signal. Publishing creates the feedback loop needed for "${goal}".`,
+          time_estimate_minutes: 30,
+          proof_required: true,
+          proof_type: "link",
+          proof_description: "Paste the URL or describe where the output was published.",
+        }),
+        validate: () =&gt; ({
+          title: `Validate: ${action?.name ?? "Core Assumption"}`,
+          instruction: `Validate the core assumption behind "${project}". Define the assumption first in writing. Then design the minimum test that would confirm or refute it. Run the test.`,
+          expected_output: `Assumption stated, test run, result recorded.`,
+          definition_of_done: `The assumption has been tested with real-world input from at least one external person.`,
+          why_it_matters: `Unvalidated assumptions cost time. One validated assumption saves weeks.`,
+          time_estimate_minutes: 60,
+          proof_required: true,
+          proof_type: "text",
+          proof_description: "Describe the assumption, the test, and the result.",
+        }),
+        measure: () =&gt; ({
+          title: `Measure: ${action?.name ?? "Current Results"}`,
+          instruction: `Measure the current results of "${project}". Record the numbers. Compare to your target: ${ctx.target?.metric ? `"${ctx.target.metric}" â€” target: ${ctx.target.target_value} ${ctx.target.unit ?? ""}` : "your defined metric"}. Do not estimate â€” measure.`,
+          expected_output: `Current measurement recorded with specific numbers.`,
+          definition_of_done: `Numbers are recorded and compared to the target.`,
+          why_it_matters: `You cannot improve what you do not measure. This measurement tells the system what is actually happening.`,
+          time_estimate_minutes: 20,
+          proof_required: false,
+        }),
+        build: () =&gt; ({
+          title: `Build: ${action?.name ?? "Next Component"}`,
+          instruction: `Build the next component or feature of "${project}". Define what you are building before you start. Complete it to the point where it can be used or tested.`,
+          expected_output: `A built, functional component or feature.`,
+          definition_of_done: `The built item can be demonstrated, tested, or used by another person.`,
+          why_it_matters: `Building creates the reality needed to achieve "${goal}".`,
+          time_estimate_minutes: difficulty === "hard" ? 90 : difficulty === "very_hard" ? 120 : 60,
+          proof_required: true,
+          proof_type: "link",
+          proof_description: "Link to the built item or describe it with specific details.",
+        }),
+      };
+      return (action_templates[action?.type ?? "create"] ?? action_templates.create)();
+    },
+
+    recovery: () =&gt; ({
+      title: "Restart Your Execution",
+      instruction: "Do not try to catch up. Start from right now. Choose one small concrete action toward your goal and complete it completely. Then submit honest feedback.",
+      expected_output: "One task fully completed with honest feedback submitted.",
+      definition_of_done: "Feedback submitted with a reflection that explains what actually happened.",
+      why_it_matters: "Consistent return beats catching up. One completion today is worth more than five completions planned.",
+      time_estimate_minutes: 20,
+      proof_required: false,
+    }),
+
+    clarification: () =&gt; ({
+      title: "Clarify Your Next Direction",
+      instruction: `Your goal: "${goal}". Write the next concrete action you should take. Be specific: what will you do, how long will it take, and how will you know it is done?`,
+      expected_output: "A written next-action plan with specific details.",
+      definition_of_done: "Plan is written and contains: action, time estimate, completion criteria.",
+      why_it_matters: "Without clarity on the next step, all effort scatters.",
+      time_estimate_minutes: 15,
+      proof_required: false,
+    }),
+
+    blocker_resolution: () =&gt; ({
+      title: "Resolve Your Blocker",
+      instruction: "Name the exact thing blocking you. Classify it: skill gap, resource gap, dependency, or decision gap. For each: skill = define what you need to learn. Resource = find the minimum viable resource. Dependency = define what you are waiting for. Decision = make the decision now.",
+      expected_output: "Blocker named, classified, and at least one resolution action taken.",
+      definition_of_done: "The blocker is named in writing and one action has been taken or a specific help request has been made.",
+      why_it_matters: "Unresolved blockers compound. Naming them precisely is the first step to removing them.",
+      time_estimate_minutes: 20,
+      proof_required: false,
+    }),
+
+    phase_checkpoint: () =&gt; ({
+      title: `Phase Checkpoint: ${phase}`,
+      instruction: "You have reached a phase gate. To advance, complete this checkpoint: (1) List the outcomes you achieved in this phase. (2) Provide evidence for each outcome. (3) Name what blocked you. (4) State any risks for the next phase.",
+      expected_output: "Completed phase checkpoint with all four sections.",
+      definition_of_done: "All four sections completed and submitted. Evidence provided for each outcome claim.",
+      why_it_matters: "Phase advancement requires verified completion, not assumed completion.",
+      time_estimate_minutes: 30,
+      proof_required: true,
+      proof_type: "text",
+      proof_description: "Provide evidence for each outcome listed.",
+    }),
+
+    review: () =&gt; ({
+      title: "Weekly Execution Review",
+      instruction: "Complete your weekly review. Answer four questions: (1) What were your three biggest wins this week? (2) What failed or did not happen? (3) What patterns are you noticing in your execution? (4) What is your single priority for next week?",
+      expected_output: "All four questions answered in writing.",
+      definition_of_done: "All four sections completed. Each section contains specific content â€” not general statements.",
+      why_it_matters: "Weekly review is how execution intelligence is built. Without it, the same mistakes repeat.",
+      time_estimate_minutes: 20,
+      proof_required: false,
+    }),
+
+    habit: () =&gt; ({
+      title: "Habit Checkin",
+      instruction: "Complete your scheduled habit checkin. Rate your completion this period, note any observations about your consistency, and identify one adjustment for the next period.",
+      expected_output: "Habit rating submitted with one observation.",
+      definition_of_done: "Rating submitted and observation recorded.",
+      why_it_matters: "Habits are the infrastructure of consistent execution.",
+      time_estimate_minutes: 5,
+      proof_required: false,
+    }),
+  };
+
+  const template = templates[task_type] ?? templates.clarification;
+  return template();
+}
+
+
+9. Content Hash and Duplicate Detection
+
+Every generated task gets a content_hash based on its key content fields. This hash is checked against recent tasks before storing to prevent duplicate tasks from appearing in the user's queue.
+
+import { createHash } from "crypto";
+
+function generateContentHash(content: TaskContent, blueprint_position: {
+  action_id?: string; project_id?: string; phase_id?: string;
+}): string {
+  const hashInput = [
+    content.title,
+    content.instruction.substring(0, 100), // First 100 chars
+    blueprint_position.action_id ?? "",
+    blueprint_position.project_id ?? "",
+  ].join("|");
+
+  return createHash("sha256").update(hashInput).digest("hex").substring(0, 16);
+}
+
+function isDuplicateTask(hash: string, recent_hashes: string[]): boolean {
+  return recent_hashes.includes(hash);
+}
+
+// If duplicate detected:
+// - Shift blueprint position to next action
+// - Regenerate content for the new action
+// - If still duplicate after 3 attempts: generate clarification task
+
+
+10. Full TaskGenerationEngine Implementation
+
+// src/engines/task/TaskGenerationEngine.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { TaskGenerationError } from "@/lib/errors";
+
+export interface GenerationInput {
+  blueprint_id:           string;
+  user_id:                string;
+  enforcement_package_id: string;
+  generation_trigger:     string;
+  generation_mode:        string;
+}
+
+export interface GenerationResult {
+  orders_generated: number;
+  order_ids:        string[];
+  used_bhudhi:      boolean;
+  used_fallback:    boolean;
+}
+
+export class TaskGenerationEngine {
+
+  async generate(input: GenerationInput): Promise&lt;GenerationResult&gt; {
+    const { blueprint_id, user_id, enforcement_package_id,
+      generation_trigger, generation_mode } = input;
+
+    logger.info("[TaskEngine] Generating tasks", {
+      blueprint_id, trigger: generation_trigger, mode: generation_mode,
+    });
+
+    // 1. Load full generation context
+    const ctx = await loadGenerationContext(
+      blueprint_id, user_id, enforcement_package_id,
+      generation_trigger, generation_mode,
+    );
+
+    // 2. Determine how many tasks to generate
+    const task_count = this.selectTaskCount(ctx.enforcement.task_limits, ctx.capability.current_streak);
+
+    // 3. Determine task types needed
+    const task_types = await selectTaskType(ctx, blueprint_id, user_id);
+
+    // 4. Generate each task
+    const generated_orders: string[] = [];
+    let used_bhudhi = false;
+    let used_fallback = false;
+
+    for (let i = 0; i &lt; Math.min(task_count, task_types.length + 1); i++) {
+      const task_type = task_types[i] ?? "execution";
+
+      // Select difficulty for this task
+      const is_first_in_phase = i === 0 && generation_mode === "initial";
+      const difficulty = selectDifficulty({
+        difficulty_cap:    ctx.enforcement.difficulty_cap,
+        capability_level:  ctx.capability.level,
+        action_type:       ctx.next_action?.type,
+        generation_mode,
+        current_streak:    ctx.capability.current_streak,
+        is_first_in_phase,
+      });
+
+      // Generate content (Bhudhi or template)
+      const { content, used_bhudhi: bhudhi_used } = await generateWithBhudhi(
+        ctx, task_type, difficulty,
+      );
+      if (bhudhi_used) used_bhudhi = true;
+      else used_fallback = true;
+
+      // Generate content hash for duplicate detection
+      const hash = generateContentHash(content, {
+        action_id:  ctx.next_action?.id,
+        project_id: ctx.project?.id,
+        phase_id:   ctx.phase?.id,
+      });
+
+      // Skip if duplicate
+      if (isDuplicateTask(hash, ctx.recent_task_hashes)) {
+        logger.info("[TaskEngine] Duplicate task skipped", { hash });
+        used_fallback = true;
+        continue;
+      }
+
+      // Calculate value score
+      const value_score = calculateTaskValueScore({
+        action_type: task_type === "execution" ? (ctx.next_action?.type ?? "create") : task_type,
+        blueprint_position: {
+          is_blocking_next_phase: ctx.phase?.status === "gated",
+          target_progress: ctx.target ? ctx.target.progress / 100 : 0,
+          phase_name: ctx.phase?.name ?? "initiation",
+        },
+        difficulty,
+        task_type,
+        generation_mode,
+        capability_level: ctx.capability.level,
+        time_estimate_minutes: content.time_estimate_minutes,
+        is_critical_path: ctx.next_action?.knowledge_category === "sop",
+        knowledge_required: ctx.knowledge_objects.length &gt; 0,
+        is_blocking_blocker: task_type === "blocker_resolution",
+        target_at_risk: ctx.target?.progress !== undefined && ctx.target.progress &lt; 30,
+        streak_at_risk: ctx.capability.current_streak === 1,
+        conditions: { completion_rate: 0.5, weighted_score: 5 },
+      });
+
+      // Store order in transaction
+      const order = await prisma.$transaction(async (tx) =&gt; {
+        const o = await tx.order.create({
+          data: {
+            blueprint_id,
+            user_id,
+            action_id:              ctx.next_action?.id,
+            linked_plan_id:         ctx.plan?.id,
+            linked_target_id:       ctx.target?.id,
+            linked_phase_id:        ctx.phase?.id,
+            linked_project_id:      ctx.project?.id,
+            task_type:              task_type as any,
+            title:                  content.title,
+            instruction:            content.instruction,
+            expected_output:        content.expected_output,
+            definition_of_done:     content.definition_of_done,
+            why_it_matters:         content.why_it_matters,
+            time_estimate_minutes:  content.time_estimate_minutes,
+            proof_required:         content.proof_required,
+            proof_type:             content.proof_type as any,
+            proof_description:      content.proof_description,
+            difficulty:             difficulty as any,
+            priority:               Math.round(value_score),
+            value_score,
+            domain:                 ctx.blueprint.current_domain as any,
+            content_hash:           hash,
+            condition_at_generation: (await prisma.conditionRecord.findFirst({
+              where: { blueprint_id, is_current: true }, select: { condition: true }
+            }))?.condition ?? "unknown",
+            domain_at_generation:    ctx.blueprint.current_domain ?? "unknown",
+            enforcement_package_id,
+            generation_reason: `${generation_trigger} â€” ${generation_mode} â€” ${task_type}`,
+            status: "pending",
+          },
+        });
+
+        // Link knowledge objects
+        if (ctx.knowledge_objects.length &gt; 0) {
+          await Promise.all(ctx.knowledge_objects.slice(0,3).map(k =&gt;
+            tx.orderKnowledgeLink.create({
+              data: { order_id: o.id, knowledge_id: k.id, injection_type: "implicit" },
+            }).catch(() =&gt; null) // Ignore duplicate link errors
+          ));
+        }
+
+        return o;
+      });
+
+      generated_orders.push(order.id);
+      ctx.recent_task_hashes.push(hash); // Prevent same hash in this batch
+    }
+
+    // 5. Store task generation log
+    await prisma.taskGenerationLog.create({
+      data: {
+        blueprint_id, user_id,
+        generation_trigger: generation_trigger as any,
+        generation_mode:    generation_mode as any,
+        condition_at_generation: (await prisma.conditionRecord.findFirst({
+          where: { blueprint_id, is_current: true }, select: { condition: true },
+        }))?.condition ?? "unknown",
+        enforcement_package_id,
+        capability_level:   ctx.capability.level,
+        domain_at_generation: ctx.blueprint.current_domain ?? "unknown",
+        input_json:  { task_types, task_count, blueprint_position: { plan: ctx.plan?.name, phase: ctx.phase?.name } },
+        orders_generated: generated_orders.length,
+        order_ids:        generated_orders,
+        generation_notes: `${used_bhudhi ? "Bhudhi" : "Template"} generation. Types: ${task_types.join(",")}`,
+        used_fallback,
+        ai_used: used_bhudhi,
+      },
+    });
+
+    logger.info("[TaskEngine] Generation complete", {
+      blueprint_id, orders_generated: generated_orders.length, used_bhudhi,
+    });
+
+    return {
+      orders_generated: generated_orders.length,
+      order_ids:        generated_orders,
+      used_bhudhi,
+      used_fallback,
+    };
+  }
+
+  private selectTaskCount(
+    task_limits: { min: number; max: number },
+    current_streak: number,
+  ): number {
+    // Start at minimum, add based on streak
+    const streak_bonus = Math.floor(current_streak / 5); // +1 per 5-day streak
+    const target = Math.min(task_limits.min + streak_bonus, task_limits.max);
+    return target;
+  }
+}
+
+
+11. Blueprint Position Advancement
+
+After a task is generated for an action, the engine may need to mark that action as active. When a task tied to an action is completed, the action advances to complete and the next action becomes active. This progression is handled by the BlueprintEngine, not the TaskGenerationEngine â€” the task engine only reads position, never writes it.
+
+The TaskGenerationEngine ONLY reads blueprint position. It never modifies plan, target, phase, project, or action status. Blueprint position is advanced by the BlueprintEngine, which is triggered by phase_checkpoint events and feedback completion events.
+
+11.1 Position Fallback When Blueprint Position Is Empty
+If the engine cannot find a current project or action â€” because all projects in the phase are complete â€” it generates a clarification task and triggers a blueprint position check event.
+
+// No active action found â€” check if all projects complete
+if (!ctx.next_action && !ctx.project) {
+  const incomplete_projects = await prisma.project.count({
+    where: { blueprint_id, status: { in: ["pending","active"] } },
+  });
+
+  if (incomplete_projects === 0) {
+    // All projects complete â€” emit phase_checkpoint_required
+    await emitEvent({
+      event_type:  "phase_checkpoint_required",
+      entity_type: "blueprint", entity_id: blueprint_id,
+      user_id, blueprint_id, payload: {},
+    });
+  }
+
+  // Still generate a clarification task while checkpoint is evaluated
+  task_types = ["clarification"];
+}
+
+
+12. Generation Modes
+
+The generation_mode field determines how the engine approaches task generation. Each mode has specific behaviour differences.
+
+Mode
+Behaviour
+initial
+First tasks for a newly launched blueprint. Always starts with easy difficulty. Task count = min (1â€“2). Generates only execution or clarification tasks.
+post_feedback
+Standard mode. Called after every feedback submission. Full task type selection. Full difficulty selection. Normal task count.
+daily
+Called by daily cycle worker. Ensures user always has tasks at start of day. Only generates if active_task_count &lt; task_limits.min.
+recovery
+Forced recovery mode. Only generates recovery tasks. Max 1 task. Always very_easy difficulty.
+condition_change
+Called when condition changes by 2+ levels. Regenerates task set. Clears old pending tasks that no longer fit the new difficulty_cap.
+
+12.1 Condition Change Mode â€” Task Cleanup
+// When condition_change mode is triggered:
+// Old pending tasks that exceed the new difficulty_cap must be cancelled
+// New tasks are generated within the new constraints
+
+async function clearInvalidTasks(blueprint_id: string, user_id: string, difficulty_cap: string) {
+  const DIFFICULTY_ORDER = ["very_easy","easy","moderate","hard","very_hard"];
+  const cap_idx = DIFFICULTY_ORDER.indexOf(difficulty_cap);
+
+  // Find pending tasks that exceed the new cap
+  const invalid_tasks = await prisma.order.findMany({
+    where: {
+      blueprint_id, user_id, status: "pending",
+      difficulty: { in: DIFFICULTY_ORDER.slice(cap_idx + 1) as any[] },
+    },
+    select: { id: true },
+  });
+
+  if (invalid_tasks.length &gt; 0) {
+    await prisma.order.updateMany({
+      where: { id: { in: invalid_tasks.map(t =&gt; t.id) } },
+      data:  { status: "cancelled" },
+    });
+
+    logger.info("[TaskEngine] Cancelled tasks exceeding new difficulty cap", {
+      blueprint_id, cancelled: invalid_tasks.length, new_cap: difficulty_cap,
+    });
+  }
+}
+
+
+13. Verification Checklist
+
+#
+Check
+Status
+1
+TaskGenerationEngine.ts created at correct path
+â˜ Pass
+2
+Context loading correctly reads blueprint chain (plan, target, phase, project, action)
+â˜ Pass
+3
+Engine reads enforcement_package for task_limits, difficulty_cap, allowed_actions
+â˜ Pass
+4
+Task type selection returns recovery when generation_mode = recovery
+â˜ Pass
+5
+Task type selection returns phase_checkpoint when phase.status = gated
+â˜ Pass
+6
+Task type selection returns execution when next_action exists and no special conditions
+â˜ Pass
+7
+Difficulty selection returns very_easy in recovery mode
+â˜ Pass
+8
+Difficulty selection respects difficulty_cap from enforcement package
+â˜ Pass
+9
+Value score is calculated and stored on every order
+â˜ Pass
+10
+Bhudhi is called when ai_enabled = true
+â˜ Pass
+11
+Template generation fires when Bhudhi times out after 5 seconds
+â˜ Pass
+12
+Duplicate task is skipped when content_hash matches a recent task
+â˜ Pass
+13
+Knowledge objects are linked to orders via order_knowledge_links
+â˜ Pass
+14
+task_generation_log is created after every generation run
+â˜ Pass
+15
+All six required content fields are present on every generated order
+â˜ Pass
+16
+proof_required is true for hard/very_hard execution tasks
+â˜ Pass
+17
+condition_change mode cancels invalid difficulty tasks before generating new ones
+â˜ Pass
+18
+Phase checkpoint due triggers phase_checkpoint task type
+â˜ Pass
+19
+Initial mode generates easy tasks only
+â˜ Pass
+20
+Weekly review due generates review task type
+â˜ Pass
+21
+Task count respects enforcement package task_limits.max
+â˜ Pass
+22
+npm run typecheck passes with zero errors
+â˜ Pass
+
+14. Connections to Other Documents
+
+Document
+Title
+Connection
+Doc 04
+Execution Loop Engine
+TaskGenerationWorker calls this engine after enforcement_package_requested
+Doc 07
+Control Engine & Enforcement
+Reads task_limits, difficulty_cap, allowed_actions from enforcement package
+Doc 09
+Continuous Task Guarantee
+ContinuousTaskGuarantee runs after this engine to ensure at least one task exists
+Doc 10
+Feedback Processing Engine
+Feedback completion triggers task generation via the event chain
+Doc 12
+Bhudhi Architecture
+Bhudhi is called from this engine for task content enrichment â€” full contract in Doc 12
+Doc 13
+Bhudhi Memory System
+Bhudhi memory informs task content based on user patterns â€” loaded in Doc 13
+Doc 21
+Pattern Learning Engine
+Detected patterns (procrastination, burnout) modify task type selection here
+Doc 24
+API Routes
+GET /api/tasks returns pending orders created by this engine
+Doc 31
+Loop Testing
+End-to-end test validates that generation produces correct task types per mode
+
+
+END OF DOCUMENT 08 â€” TASK GENERATION ENGINE SPECIFICATION
+Next: Document 09 â€” Continuous Task Guarantee Engine Specification
+

@@ -1,0 +1,1039 @@
+﻿TORGIMA
+INDIVIDUAL EXECUTION SYSTEM
+
+DOCUMENT 04 OF 32
+Execution Loop Engine Specification
+The Core Feedback Cycle â€” Never Stops, Never Goes Empty
+Phase 1 â€” Individual System
+
+1. Document Purpose
+
+This document defines the Execution Loop Engine â€” the central, continuously running cycle that converts user feedback into the next correct task. This is the most critical engine in Torgima. Everything else depends on this loop running correctly, reliably, and without gaps.
+
+The loop has one absolute rule: if a blueprint is active and the project is not complete, the system must always have a task ready for the user. The loop never goes empty. If normal task generation is blocked, the system generates a recovery, clarification, or academy task instead.
+
+This document covers the full loop architecture, the event chain, every engine in the chain, the worker system, transaction rules, error handling, and the continuous task guarantee. Documents 05 through 10 each cover individual engines in deeper detail.
+
+2. Loop Architecture
+
+The execution loop is a continuous event-driven chain. Every step produces an event. Every event triggers the next step. The chain never terminates while a blueprint is active.
+
+2.1 The Core Loop â€” Event Chain
+// THE EXECUTION LOOP
+//
+// 1. User submits feedback on completed task
+//    â†“ FeedbackProcessingEngine validates + stores + emits feedback_submitted
+//    â†“ FeedbackWorker picks up feedback_submitted
+//    â†“ Emits signal_recalculation_requested
+//
+// 2. SignalCalculationEngine recalculates rolling 7-day signal
+//    â†“ Stores new signal_snapshot (is_current=true)
+//    â†“ Emits signal_updated
+//    â†“ Emits condition_evaluation_requested
+//
+// 3. ConditionEvaluationEngine evaluates condition rule matrix
+//    â†“ Stores new conditions row (is_current=true)
+//    â†“ Updates state_memory (closes old, opens new)
+//    â†“ Emits condition_changed OR condition_confirmed
+//    â†“ Emits enforcement_package_requested
+//
+// 4. EnforcementPackageGenerator builds package from condition
+//    â†“ Stores new enforcement_packages row (is_current=true)
+//    â†“ Emits enforcement_package_created
+//    â†“ Emits task_generation_requested
+//
+// 5. TaskGenerationEngine generates next valid tasks
+//    â†“ Stores orders in DB
+//    â†“ Stores task_generation_log
+//    â†“ Emits task_generated per order
+//
+// 6. ContinuousTaskGuarantee confirms tasks exist
+//    â†“ If 0 tasks: generates fallback task
+//    â†“ Emits dashboard_refresh_requested
+//
+// 7. Dashboard updates â€” user sees next task
+//    â†“ User works on task
+//    â†“ User submits feedback â†’ loop restarts from step 1
+
+The full loop must complete â€” from feedback_submitted to task_generated â€” in under 5 seconds for all tiers. Target is under 2.5 seconds at p50. If Bhudhi times out, generate a template task immediately and update it asynchronously.
+
+2.2 All Loop Entry Points
+Trigger
+Entry Point
+Generation Mode
+Feedback submitted
+FeedbackProcessingEngine
+post_feedback
+Blueprint launched
+TaskGenerationEngine directly
+initial
+Inactivity detected
+TaskGenerationEngine (recovery)
+recovery
+Task blocked by user
+TaskGenerationEngine
+post_feedback
+Daily cycle (midnight)
+TaskGenerationEngine
+daily
+Condition changed externally
+ControlEngine
+condition_change
+Manual regeneration
+TaskGenerationEngine
+manual_regeneration
+
+2.3 Engine Files
+Engine
+File
+Spec In
+FeedbackProcessingEngine
+src/engines/execution-loop/FeedbackProcessingEngine.ts
+Doc 04 + Doc 10
+SignalCalculationEngine
+src/engines/execution-loop/SignalCalculationEngine.ts
+Doc 04 + Doc 05
+ConditionEvaluationEngine
+src/engines/execution-loop/ConditionEvaluationEngine.ts
+Doc 04 + Doc 06
+ControlEngine
+src/engines/execution-loop/ControlEngine.ts
+Doc 04 + Doc 07
+EnforcementPackageGenerator
+src/engines/execution-loop/EnforcementPackageGenerator.ts
+Doc 04 + Doc 07
+TaskGenerationEngine
+src/engines/task/TaskGenerationEngine.ts
+Doc 04 + Doc 08
+ContinuousTaskGuarantee
+src/engines/execution-loop/ContinuousTaskGuarantee.ts
+Doc 04 â€” full spec
+InactivityDetectionEngine
+src/engines/execution-loop/InactivityDetectionEngine.ts
+Doc 04 â€” full spec
+
+
+3. Event System
+
+The event system is the nervous system of the execution loop. Every state change emits an event to the events table. Workers pick up pending events and process them. Failed events retry 3 times then move to dead_letter_events.
+
+3.1 Idempotency Key Pattern
+Every event must include an idempotency_key to prevent duplicate processing. The UNIQUE constraint on this column ensures duplicate events fail silently without breaking the caller.
+
+// Format: [event_type]:[entity_id]:[unix_ms]
+// Example: feedback_submitted:ord_abc123:1704067200000
+
+// Idempotent event creation â€” safe to call multiple times
+export async function emitEvent(params: {
+  event_type:    string;
+  entity_type:   string;
+  entity_id:     string;
+  user_id:       string;
+  blueprint_id:  string;
+  payload?:      Record&lt;string, unknown&gt;;
+  process_after?: Date;
+}) {
+  const key = `${params.event_type}:${params.entity_id}:${Date.now()}`;
+  try {
+    await prisma.event.create({
+      data: {
+        ...params,
+        payload:         params.payload ?? {},
+        idempotency_key: key,
+        process_after:   params.process_after ?? new Date(),
+        status:          "pending",
+      },
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("Unique constraint")) {
+      return; // Duplicate â€” safe to ignore
+    }
+    throw err;
+  }
+}
+
+3.2 Worker Registry
+// src/workers/WorkerRegistry.ts
+import { queue } from "@/lib/queue";
+import { handleFeedbackSubmitted } from "./FeedbackWorker";
+import { handleSignalUpdate } from "./SignalWorker";
+import { handleConditionEvaluation, handleEnforcementRequest } from "./ConditionWorker";
+import { handleTaskGeneration } from "./TaskGenerationWorker";
+import { handleInactivity } from "./InactivityWorker";
+import { handleIdentity } from "./IdentityWorker";
+import { handleMilestone } from "./MilestoneWorker";
+import { handleHealthCheck } from "./SystemHealthWorker";
+
+export async function registerWorkers() {
+  await queue.start();
+
+  // Core loop workers
+  await queue.work("feedback_submitted",              {teamSize:5,teamConcurrency:2}, handleFeedbackSubmitted);
+  await queue.work("signal_recalculation_requested", {teamSize:5,teamConcurrency:2}, handleSignalUpdate);
+  await queue.work("condition_evaluation_requested", {teamSize:5,teamConcurrency:2}, handleConditionEvaluation);
+  await queue.work("enforcement_package_requested",  {teamSize:5,teamConcurrency:2}, handleEnforcementRequest);
+  await queue.work("task_generation_requested",      {teamSize:5,teamConcurrency:2}, handleTaskGeneration);
+
+  // Support workers
+  await queue.work("inactivity_detected",   {teamSize:2,teamConcurrency:1}, handleInactivity);
+  await queue.work("identity_reinforcement", {teamSize:3,teamConcurrency:1}, handleIdentity);
+  await queue.work("milestone_check",        {teamSize:3,teamConcurrency:1}, handleMilestone);
+  await queue.work("system_health_check",    {teamSize:1,teamConcurrency:1}, handleHealthCheck);
+
+  // Scheduled jobs
+  await queue.schedule("daily_task_cycle",    "0 0 * * *",   {});  // midnight UTC
+  await queue.schedule("inactivity_scan",     "0 * * * *",   {});  // hourly
+  await queue.schedule("system_health_check", "*/5 * * * *", {});  // every 5 min
+
+  console.log("[WorkerRegistry] All workers registered");
+}
+
+3.3 Dead Letter Queue Handler
+// Called by pg-boss when a job exhausts all retries
+export async function handleEventFailure(job: any, error: Error) {
+  await prisma.deadLetterEvent.create({
+    data: {
+      original_event_id: job.id,
+      event_type:        job.data.event_type ?? "unknown",
+      blueprint_id:      job.data.blueprint_id,
+      user_id:           job.data.user_id,
+      payload:           job.data,
+      failure_reason:    error.message,
+      retry_count:       job.retryCount ?? 0,
+      last_error:        error.stack ?? error.message,
+    },
+  });
+
+  const critical = ["feedback_submitted","task_generation_requested","signal_recalculation_requested"];
+  if (critical.includes(job.data.event_type)) {
+    await triggerDegradedMode(job.data.blueprint_id, error.message);
+  }
+}
+
+async function triggerDegradedMode(blueprint_id: string, reason: string) {
+  await prisma.systemHealthLog.create({
+    data: {
+      blueprint_id,
+      check_type:      "degraded_mode_trigger",
+      status:          "critical",
+      details_json:    { reason },
+      issues_detected: [`Degraded mode: ${reason}`],
+    },
+  });
+}
+
+
+4. FeedbackProcessingEngine
+
+The FeedbackProcessingEngine is the entry point to the execution loop. It validates feedback, calculates confidence weighting, detects gaming signals, stores the feedback, updates the order status, and emits the feedback_submitted event â€” all inside one transaction.
+
+4.1 Validation Rules
+Validation
+Rule
+Order ownership
+order.user_id must match input.user_id
+Order state
+Status must be active, paused, or needs_feedback
+Score range
+Must be integer 0â€“10 inclusive
+Reflection minimum
+Must be at least 10 characters after trim
+Proof requirement
+If order.proof_required = true, proof_json must be present
+Blocker consistency
+If had_blocker = true, blocker_type must be provided
+
+4.2 Confidence Calculation Rules
+Signal
+Weight Deduction
+Result
+Reflection &lt; 30 characters
+-0.20
+Reduce weighted score
+Score &gt;= 9 AND reflection &lt; 50 chars
+-0.30 + flag
+Flag for gaming, interrogation
+Score = 10 AND reflection &lt; 100 chars
+-0.20
+Reduce weighted score
+completion=completed AND score &lt;= 2
+-0.20
+Inconsistent â€” reduce weight
+Feedback &gt; 12 hours after task start
+-10% on final score
+Late penalty applied
+confidence_weight &lt; 0.5
+Clamp to 0.3 minimum
+Always some weight preserved
+
+4.3 Full Implementation
+// src/engines/execution-loop/FeedbackProcessingEngine.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { TorgimaError } from "@/lib/errors";
+import type { FeedbackCompletion, Difficulty } from "@prisma/client";
+
+export interface FeedbackInput {
+  order_id:         string;
+  user_id:          string;
+  blueprint_id:     string;
+  completion:       FeedbackCompletion;
+  score:            number;
+  difficulty_felt:  Difficulty;
+  reflection:       string;
+  proof_json?:      Record&lt;string, unknown&gt;;
+  had_blocker:      boolean;
+  blocker_type?:    string;
+  blocker_details?: string;
+}
+
+export class FeedbackProcessingEngine {
+
+  async process(input: FeedbackInput) {
+    // 1. Load and validate order
+    const order = await prisma.order.findFirst({
+      where: { id: input.order_id, user_id: input.user_id, blueprint_id: input.blueprint_id },
+    });
+    if (!order) throw new TorgimaError("ORDER_NOT_FOUND", "Order not found");
+    if (!["active","paused","needs_feedback"].includes(order.status))
+      throw new TorgimaError("INVALID_ORDER_STATE", `Cannot receive feedback in state ${order.status}`);
+    if (input.score &lt; 0 || input.score &gt; 10)
+      throw new TorgimaError("INVALID_SCORE", "Score must be 0â€“10");
+    if (input.reflection.trim().length &lt; 10)
+      throw new TorgimaError("REFLECTION_TOO_SHORT", "Reflection must be at least 10 characters");
+    if (order.proof_required && !input.proof_json)
+      throw new TorgimaError("PROOF_REQUIRED", "This task requires proof of completion");
+
+    // 2. Confidence calculation
+    let weight = 1.0; let flagged = false; let gaming_reason: string | undefined;
+    const ref = input.reflection.trim();
+    if (ref.length &lt; 30)  weight -= 0.20;
+    if (input.score &gt;= 9 && ref.length &lt; 50) { weight -= 0.30; flagged = true; gaming_reason = "High score with weak reflection"; }
+    if (input.score === 10 && ref.length &lt; 100) weight -= 0.20;
+    if (input.completion === "completed" && input.score &lt;= 2) weight -= 0.20;
+    weight = Math.max(0.3, weight);
+    const weighted_score_base = input.score * weight;
+
+    // 3. Late penalty
+    const hours_after = order.started_at ? (Date.now() - order.started_at.getTime()) / 3600000 : 0;
+    const late = hours_after &gt; 12;
+    const weighted_score = late ? weighted_score_base * 0.9 : weighted_score_base;
+
+    // 4. Confidence label
+    const confidence = weight &gt;= 0.9 ? "high" : weight &gt;= 0.7 ? "medium" : "low";
+
+    // 5. Interrogation assessment
+    const needs_interrogation = confidence === "low";
+    const interrogation_question = needs_interrogation
+      ? (input.score &gt;= 8
+          ? "Your reflection was brief. What specifically did you produce that justifies this score?"
+          : "Your reflection was brief. What was the actual output of this task?")
+      : undefined;
+
+    // 6. Transaction: store feedback + update order + emit event
+    const result = await prisma.$transaction(async (tx) =&gt; {
+      const feedback = await tx.feedback.create({
+        data: {
+          order_id: input.order_id, user_id: input.user_id, blueprint_id: input.blueprint_id,
+          completion: input.completion, score: input.score, difficulty_felt: input.difficulty_felt,
+          reflection: ref, proof_json: input.proof_json ?? {}, had_blocker: input.had_blocker,
+          blocker_type: input.blocker_type, blocker_details: input.blocker_details,
+          confidence, confidence_weight: weight, weighted_score,
+          validation_status: needs_interrogation ? "needs_interrogation" : "accepted",
+          interrogation_question, flagged_for_gaming: flagged, gaming_reason,
+          submitted_hours_after_completion: hours_after, late_penalty_applied: late,
+        },
+      });
+
+      const new_status = input.completion === "failed" ? "failed"
+        : input.completion === "skipped" ? "skipped" : "completed";
+
+      await tx.order.update({ where: { id: input.order_id },
+        data: { status: new_status, finished_at: new Date(), output_summary: ref.substring(0, 500) } });
+
+      const event = await tx.event.create({ data: {
+        event_type: "feedback_submitted", entity_type: "feedback", entity_id: feedback.id,
+        user_id: input.user_id, blueprint_id: input.blueprint_id,
+        idempotency_key: `feedback_submitted:${feedback.id}:${Date.now()}`,
+        payload: { feedback_id: feedback.id, order_id: input.order_id,
+          weighted_score, confidence, requires_interrogation: needs_interrogation },
+        status: "pending",
+      } });
+
+      return { feedback, event };
+    });
+
+    logger.info("[FeedbackEngine] Feedback processed", { feedback_id: result.feedback.id });
+    return {
+      feedback_id: result.feedback.id, weighted_score, confidence,
+      requires_interrogation: needs_interrogation, interrogation_question, event_id: result.event.id,
+    };
+  }
+}
+
+
+5. FeedbackWorker â€” Bridge to Signal Chain
+
+The FeedbackWorker handles the feedback_submitted event. Its only job is to route the event to the next step in the chain. If interrogation is required, it pauses the chain until the interrogation is answered. If interrogation is not required, it immediately emits signal_recalculation_requested.
+
+// src/workers/FeedbackWorker.ts
+import { emitEvent } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+import type PgBoss from "pg-boss";
+
+export async function handleFeedbackSubmitted(job: PgBoss.Job&lt;{
+  feedback_id: string; order_id: string; blueprint_id: string;
+  user_id: string; weighted_score: number; confidence: string;
+  requires_interrogation: boolean;
+}&gt;) {
+  const { blueprint_id, user_id, feedback_id, requires_interrogation } = job.data;
+
+  if (requires_interrogation) {
+    // Chain paused â€” signal triggered after interrogation_answered event
+    logger.info("[FeedbackWorker] Interrogation required â€” chain paused", { feedback_id });
+    return;
+  }
+
+  // Continue chain
+  await emitEvent({
+    event_type:  "signal_recalculation_requested",
+    entity_type: "blueprint", entity_id: blueprint_id,
+    user_id, blueprint_id,
+    payload: { trigger_feedback_id: feedback_id },
+  });
+
+  logger.info("[FeedbackWorker] Signal recalculation requested", { blueprint_id });
+}
+
+// When interrogation is answered â€” resume chain
+export async function handleInterrogationAnswered(job: PgBoss.Job&lt;{
+  feedback_id: string; blueprint_id: string; user_id: string; answer: string;
+}&gt;) {
+  const { feedback_id, blueprint_id, user_id, answer } = job.data;
+
+  // Store interrogation answer
+  await prisma.feedback.update({
+    where: { id: feedback_id },
+    data: { interrogation_answer: answer, validation_status: "interrogated" },
+  });
+
+  // Resume chain
+  await emitEvent({
+    event_type:  "signal_recalculation_requested",
+    entity_type: "blueprint", entity_id: blueprint_id,
+    user_id, blueprint_id,
+    payload: { trigger_feedback_id: feedback_id, interrogation_completed: true },
+  });
+}
+
+
+6. SignalCalculationEngine â€” Integration
+
+The SignalCalculationEngine reads all feedback within a rolling 7-day window, calculates the signal metrics, assigns a condition, stores the snapshot, and emits condition_evaluation_requested. Full calculation logic is specified in Document 05.
+
+6.1 Condition Assignment Rule Matrix
+Condition
+Completion Rate
+Weighted Score
+Additional Rules
+nothingness
+&lt; 0.10 or no data
+&lt; 2.0
+Fewer than 3 tasks in window
+danger
+&lt; 0.30
+&lt; 4.0
+Declining trend OR momentum &lt;= 0
+urgency
+0.30 â€“ 0.50
+4.0 â€“ 5.5
+Flat or declining trend
+stability
+0.50 â€“ 0.70
+5.5 â€“ 7.0
+Stable or recovering trend
+power
+0.70 â€“ 0.85
+7.0 â€“ 8.5
+Rising trend AND momentum &gt;= 3
+affluence
+&gt; 0.85
+&gt; 8.5
+Rising trend AND momentum &gt;= 7
+power_change
+Any
+Any
+Condition changed 2+ levels in 24 hours
+
+6.2 Signal Worker
+// src/workers/SignalWorker.ts
+import { SignalCalculationEngine } from "@/engines/execution-loop/SignalCalculationEngine";
+import { emitEvent } from "@/lib/utils";
+import type PgBoss from "pg-boss";
+
+const signalEngine = new SignalCalculationEngine();
+
+export async function handleSignalUpdate(job: PgBoss.Job&lt;{
+  blueprint_id: string; user_id: string; trigger_feedback_id: string;
+}&gt;) {
+  const { blueprint_id, user_id, trigger_feedback_id } = job.data;
+
+  const snapshot = await signalEngine.calculate({ blueprint_id, user_id, trigger_feedback_id });
+
+  await emitEvent({
+    event_type:  "condition_evaluation_requested",
+    entity_type: "signal_snapshot", entity_id: snapshot.id,
+    user_id, blueprint_id,
+    payload: {
+      signal_snapshot_id: snapshot.id, condition: snapshot.condition,
+      completion_rate: snapshot.completion_rate, weighted_score: snapshot.weighted_score,
+      momentum: snapshot.momentum, trend: snapshot.trend, confidence: snapshot.confidence,
+    },
+  });
+}
+
+
+7. ConditionEvaluationEngine + EnforcementPackageGenerator â€” Integration
+
+The ConditionEvaluationEngine applies the rule matrix, stores the condition, and manages state memory. The EnforcementPackageGenerator then produces the enforcement package that controls all downstream behaviour. Full specifications are in Documents 06 and 07.
+
+7.1 Condition Worker
+// src/workers/ConditionWorker.ts
+import { ConditionEvaluationEngine } from "@/engines/execution-loop/ConditionEvaluationEngine";
+import { EnforcementPackageGenerator } from "@/engines/execution-loop/EnforcementPackageGenerator";
+import { emitEvent } from "@/lib/utils";
+import type PgBoss from "pg-boss";
+
+const conditionEngine = new ConditionEvaluationEngine();
+const enforcementGenerator = new EnforcementPackageGenerator();
+
+export async function handleConditionEvaluation(job: PgBoss.Job&lt;{
+  signal_snapshot_id: string; blueprint_id: string; user_id: string;
+  condition: string; completion_rate: number; weighted_score: number;
+  momentum: number; trend: string; confidence: string;
+}&gt;) {
+  const { signal_snapshot_id, blueprint_id, user_id } = job.data;
+
+  const result = await conditionEngine.evaluate({ signal_snapshot_id, blueprint_id, user_id, signal: job.data });
+
+  await emitEvent({
+    event_type:  "enforcement_package_requested",
+    entity_type: "condition", entity_id: result.condition_id,
+    user_id, blueprint_id,
+    payload: { condition_id: result.condition_id, condition: result.condition, condition_changed: result.changed },
+  });
+}
+
+export async function handleEnforcementRequest(job: PgBoss.Job&lt;{
+  condition_id: string; condition: string; blueprint_id: string;
+  user_id: string; condition_changed: boolean;
+}&gt;) {
+  const { condition_id, condition, blueprint_id, user_id } = job.data;
+
+  const pkg = await enforcementGenerator.generate({ condition_id, condition, blueprint_id, user_id });
+
+  await emitEvent({
+    event_type:  "task_generation_requested",
+    entity_type: "enforcement_package", entity_id: pkg.id,
+    user_id, blueprint_id,
+    payload: {
+      enforcement_package_id: pkg.id, condition,
+      task_limits: pkg.task_limits, difficulty_cap: pkg.difficulty_cap,
+      generation_trigger: "feedback_submitted", generation_mode: "post_feedback",
+    },
+  });
+}
+
+
+8. ContinuousTaskGuarantee
+
+The ContinuousTaskGuarantee is the last safety net in the execution loop. It runs after every task generation attempt. If the user has zero pending tasks and the blueprint is active, it generates a fallback task automatically. This rule is unconditional.
+
+Rule: An active blueprint with an incomplete project MUST always have at least one pending task. The guarantee enforces this without exception. It cannot be disabled.
+
+8.1 Fallback Task Selection Logic
+// Fallback type selection priority
+// 1. Blocked task exists       â†’ blocker_resolution task
+// 2. Academy required           â†’ academy task
+// 3. Inactivity detected        â†’ recovery task
+// 4. Default                    â†’ clarification task
+
+// Fallback task properties â€” always very_easy, priority 10
+// Instruction is specific to the fallback type
+// Cannot require proof
+// Cannot require Bhudhi â€” must be template-based
+
+8.2 Full Implementation
+// src/engines/execution-loop/ContinuousTaskGuarantee.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+
+export class ContinuousTaskGuarantee {
+
+  async ensure(params: {
+    blueprint_id: string; user_id: string;
+    enforcement_package_id: string;
+    tasks_generated: number; order_ids: string[];
+  }) {
+
+    // Check if newly generated tasks are actually in DB as pending
+    if (params.order_ids.length &gt; 0) {
+      const confirmed = await prisma.order.count({
+        where: { id: { in: params.order_ids }, status: "pending" },
+      });
+      if (confirmed &gt; 0) return { order_ids: params.order_ids, used_fallback: false };
+    }
+
+    // Check for any existing pending tasks
+    const existing = await prisma.order.findMany({
+      where: { blueprint_id: params.blueprint_id, user_id: params.user_id, status: "pending" },
+      select: { id: true }, take: 5,
+    });
+    if (existing.length &gt; 0) return { order_ids: existing.map(o =&gt; o.id), used_fallback: false };
+
+    // Check blueprint completion
+    const bp = await prisma.blueprint.findUnique({
+      where: { id: params.blueprint_id }, select: { status: true, goal: true, current_condition: true },
+    });
+    if (bp?.status === "complete" || bp?.status === "abandoned") {
+      return { order_ids: [], used_fallback: false };
+    }
+
+    // FALLBACK â€” must generate a task
+    logger.warn("[Guarantee] No tasks â€” generating fallback", { blueprint_id: params.blueprint_id });
+
+    const fallback_type = await this.selectFallbackType(params.blueprint_id, params.user_id);
+    const task = await this.createFallbackTask(params, fallback_type, bp);
+
+    return { order_ids: [task.id], used_fallback: true, fallback_type };
+  }
+
+  private async selectFallbackType(blueprint_id: string, user_id: string) {
+    const blocked = await prisma.order.findFirst({ where: { blueprint_id, user_id, status: "blocked" } });
+    if (blocked) return "blocker_resolution";
+
+    const academy = await prisma.academyTask.findFirst({
+      where: { blueprint_id, user_id, status: "pending", blocks_execution: true },
+    });
+    if (academy) return "academy";
+
+    const inactive = await prisma.inactivityRecord.findFirst({
+      where: { blueprint_id, user_id, resolved: false },
+    });
+    if (inactive) return "recovery";
+
+    return "clarification";
+  }
+
+  private async createFallbackTask(params: any, type: string, bp: any) {
+    const templates: Record&lt;string, any&gt; = {
+      blocker_resolution: {
+        title: "Resolve Your Current Blocker",
+        instruction: "Name the exact blocker. Classify it: skill gap, resource gap, dependency, or decision gap. Then take the minimum action required to remove it or request help.",
+        expected_output: "Blocker named and one resolution action attempted.",
+        definition_of_done: "Blocker is described in writing and resolution attempted.",
+        why_it_matters: "Unresolved blockers stop all forward progress.",
+      },
+      academy: {
+        title: "Complete Required Learning Task",
+        instruction: "You have a learning requirement before execution can continue. Review and complete the academy task assigned to you.",
+        expected_output: "Evidence that the learning activity was completed.",
+        definition_of_done: "Academy task submitted with proof.",
+        why_it_matters: "This knowledge gap must be addressed before safe execution.",
+      },
+      recovery: {
+        title: "Restart Your Execution â€” One Task",
+        instruction: "Do not try to catch up. Start from right now. Your only job is to complete this one task and submit honest feedback.",
+        expected_output: "This task marked complete with honest feedback.",
+        definition_of_done: "Feedback submitted.",
+        why_it_matters: "One completion restarts your momentum. Catching up is a trap.",
+      },
+      clarification: {
+        title: "Clarify Your Next Direction",
+        instruction: `Review your goal: "${bp?.goal ?? "your active goal"}". Write the very next concrete action, why it matters, and how you will know it is done.`,
+        expected_output: "Written next-action plan with clear completion criteria.",
+        definition_of_done: "Plan written and submitted as task output.",
+        why_it_matters: "Without clarity on the next step, no execution is possible.",
+      },
+    };
+
+    const content = templates[type] ?? templates.clarification;
+
+    return prisma.order.create({
+      data: {
+        blueprint_id:           params.blueprint_id,
+        user_id:                params.user_id,
+        task_type:              type as any,
+        title:                  content.title,
+        instruction:            content.instruction,
+        expected_output:        content.expected_output,
+        definition_of_done:     content.definition_of_done,
+        why_it_matters:         content.why_it_matters,
+        difficulty:             "very_easy",
+        priority:               10,
+        proof_required:         false,
+        enforcement_package_id: params.enforcement_package_id,
+        condition_at_generation: bp?.current_condition ?? "unknown",
+        generation_reason:      `Guarantee fallback â€” ${type}`,
+        status:                 "pending",
+      },
+    });
+  }
+}
+
+
+9. InactivityDetectionEngine
+
+The InactivityDetectionEngine runs on a scheduled hourly scan via pg-boss. It detects when a user has not submitted feedback or started a task within threshold periods, creates an InactivityRecord, and triggers the appropriate response.
+
+9.1 Inactivity Thresholds and Responses
+Level
+Inactive Hours
+Response
+Task Generated
+warning
+24 hours
+Notification only
+No
+soft
+48 hours
+Recovery task generated
+Yes â€” very_easy
+hard
+72 hours
+Workload reduced + recovery task
+Yes â€” very_easy, 1 task only
+critical
+168 hours (7 days)
+Loop restart protocol
+Yes â€” restart task only
+
+9.2 Full Implementation
+// src/engines/execution-loop/InactivityDetectionEngine.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { emitEvent } from "@/lib/utils";
+
+export class InactivityDetectionEngine {
+
+  async scan() {
+    const activeBlueprints = await prisma.blueprint.findMany({
+      where: { active: true, status: "active" }, select: { id: true, user_id: true },
+    });
+
+    for (const bp of activeBlueprints) {
+      await this.checkBlueprint(bp.id, bp.user_id).catch(err =&gt;
+        logger.error("[InactivityEngine] Check failed", { blueprint_id: bp.id, error: err.message })
+      );
+    }
+  }
+
+  private async checkBlueprint(blueprint_id: string, user_id: string) {
+    const [lastFeedback, lastTaskStart] = await Promise.all([
+      prisma.feedback.findFirst({ where: { blueprint_id, user_id }, orderBy: { created_at: "desc" }, select: { created_at: true } }),
+      prisma.order.findFirst({ where: { blueprint_id, user_id, started_at: { not: null } }, orderBy: { started_at: "desc" }, select: { started_at: true } }),
+    ]);
+
+    const dates = [lastFeedback?.created_at, lastTaskStart?.started_at].filter(Boolean) as Date[];
+    if (dates.length === 0) return;
+
+    const lastActivity = dates.reduce((a, b) =&gt; a.getTime() &gt; b.getTime() ? a : b);
+    const hoursInactive = (Date.now() - lastActivity.getTime()) / 3600000;
+
+    const threshold = hoursInactive &gt;= 168 ? "critical" : hoursInactive &gt;= 72 ? "hard"
+      : hoursInactive &gt;= 48 ? "soft" : hoursInactive &gt;= 24 ? "warning" : null;
+
+    if (!threshold) return;
+
+    // Avoid duplicate records at same threshold
+    const exists = await prisma.inactivityRecord.findFirst({
+      where: { blueprint_id, user_id, resolved: false, threshold_breached: threshold },
+    });
+    if (exists) return;
+
+    const record = await prisma.inactivityRecord.create({
+      data: {
+        blueprint_id, user_id, last_activity_at: lastActivity,
+        inactivity_hours: hoursInactive, inactivity_days: hoursInactive / 24,
+        threshold_breached: threshold,
+        response_triggered: threshold === "warning" ? "notification" : "task_generated",
+      },
+    });
+
+    await emitEvent({
+      event_type: "inactivity_detected", entity_type: "inactivity_record",
+      entity_id: record.id, user_id, blueprint_id,
+      payload: { threshold, inactivity_hours: hoursInactive, record_id: record.id },
+    });
+
+    logger.warn("[InactivityEngine] Inactivity detected", { blueprint_id, threshold, hours: Math.round(hoursInactive) });
+  }
+}
+
+// Inactivity Worker
+export async function handleInactivity(job: any) {
+  const { blueprint_id, user_id, threshold, record_id } = job.data;
+
+  if (threshold === "warning") return; // Notification only
+
+  const enforcement = await prisma.enforcementPackage.findFirst({
+    where: { blueprint_id, is_current: true }, select: { id: true },
+  });
+  if (!enforcement) return;
+
+  await emitEvent({
+    event_type: "task_generation_requested", entity_type: "inactivity_record",
+    entity_id: record_id, user_id, blueprint_id,
+    payload: {
+      enforcement_package_id: enforcement.id, condition: "recovery",
+      task_limits: { min: 1, max: 1 }, difficulty_cap: "very_easy",
+      generation_trigger: "user_inactive", generation_mode: "recovery",
+    },
+  });
+}
+
+
+10. Blueprint Launch â€” Loop Initialization
+
+The loop is initialized when the user launches their blueprint. This creates all initial state rows in one transaction and emits the blueprint_launched event, which triggers initial task generation.
+
+// src/engines/blueprint/BlueprintEngine.ts â€” launch method
+
+export async function launchBlueprint(blueprint_id: string, user_id: string) {
+  const blueprint = await prisma.blueprint.findFirst({
+    where: { id: blueprint_id, user_id, status: "path_selection" },
+    select: { id: true, current_domain: true, goal: true },
+  });
+  if (!blueprint) throw new TorgimaError("INVALID_STATE", "Blueprint not ready to launch");
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 7 * 24 * 3600000);
+
+  await prisma.$transaction(async (tx) =&gt; {
+    // Activate blueprint
+    await tx.blueprint.update({ where: { id: blueprint_id },
+      data: { status: "active", active: true, launched_at: now } });
+
+    // Initial signal snapshot â€” nothingness
+    const signal = await tx.signalSnapshot.create({ data: {
+      blueprint_id, user_id, window_start: windowStart, window_end: now,
+      completion_rate: 0, weighted_score: 0, momentum: 0,
+      condition: "nothingness", confidence: "insufficient_data", is_current: true,
+    } });
+
+    // Initial condition
+    const condition = await tx.conditionRecord.create({ data: {
+      blueprint_id, signal_snapshot_id: signal.id,
+      condition: "nothingness", task_limit_min: 1, task_limit_max: 2,
+      difficulty_cap: "easy", is_current: true,
+    } });
+
+    // Initial enforcement package
+    const pkg = await tx.enforcementPackage.create({ data: {
+      blueprint_id, condition_id: condition.id, signal_snapshot_id: signal.id,
+      condition: "nothingness", task_limits: { min: 1, max: 2 },
+      difficulty_cap: "easy", ai_mode: "command", ui_mode: "starter", is_current: true,
+    } });
+
+    // Initial state memory
+    await tx.stateMemory.create({ data: {
+      blueprint_id, user_id, condition: "nothingness", entered_at: now, is_current: true,
+    } });
+
+    // Initial domain history
+    await tx.domainHistory.create({ data: {
+      blueprint_id, user_id, domain: blueprint.current_domain ?? "genesis",
+      transition_trigger: "blueprint_launched", is_current: true, entered_at: now,
+    } });
+
+    // Emit blueprint_launched event â†’ triggers initial task generation
+    await tx.event.create({ data: {
+      event_type: "blueprint_launched", entity_type: "blueprint", entity_id: blueprint_id,
+      user_id, blueprint_id,
+      idempotency_key: `blueprint_launched:${blueprint_id}:${Date.now()}`,
+      payload: {
+        enforcement_package_id: pkg.id, generation_trigger: "blueprint_launched",
+        generation_mode: "initial", condition: "nothingness",
+        task_limits: { min: 1, max: 2 }, difficulty_cap: "easy",
+      },
+      status: "pending",
+    } });
+  });
+
+  logger.info("[BlueprintEngine] Loop initialized", { blueprint_id });
+}
+
+
+11. Performance Targets
+
+Operation
+Target p50
+Target p95
+Max Allowed
+Feedback stored + event emitted
+&lt; 200ms
+&lt; 500ms
+1s
+Signal calculated + stored
+&lt; 300ms
+&lt; 700ms
+1.5s
+Condition evaluated + stored
+&lt; 150ms
+&lt; 400ms
+800ms
+Enforcement package generated
+&lt; 100ms
+&lt; 300ms
+600ms
+Task generation (Bhudhi enabled)
+&lt; 1.5s
+&lt; 3s
+5s
+Task generation (template fallback)
+&lt; 200ms
+&lt; 500ms
+1s
+Full loop: feedback â†’ task visible
+&lt; 2.5s
+&lt; 5s
+8s
+
+If Bhudhi exceeds 3 seconds, fall back to a template-based task immediately. Run Bhudhi generation in background. Update the task content when Bhudhi responds. Never block the user waiting for AI.
+
+12. Error Handling
+
+Engine
+Failure Type
+Response
+FeedbackProcessingEngine
+Validation error
+Return error to user â€” do not emit event
+FeedbackProcessingEngine
+DB write error
+Retry 3x â€” then dead letter â€” log error
+SignalCalculationEngine
+Insufficient data
+Use nothingness â€” continue chain
+SignalCalculationEngine
+Calculation error
+Use previous signal â€” log warning â€” continue
+ConditionEvaluationEngine
+Rule error
+Use stability â€” log error â€” continue
+EnforcementPackageGenerator
+Any error
+Use default stability package â€” continue
+TaskGenerationEngine
+Bhudhi timeout
+Template fallback â€” continue â€” update async
+TaskGenerationEngine
+0 tasks produced
+ContinuousTaskGuarantee fires â€” mandatory
+ContinuousTaskGuarantee
+DB error on fallback
+Log critical â€” system_health_log alert
+
+13. Verification Checklist
+
+#
+Test
+Status
+1
+WorkerRegistry registers all workers without errors on server start
+â˜ Pass
+2
+Feedback submission creates row in feedback table
+â˜ Pass
+3
+Feedback submission creates feedback_submitted event in events table
+â˜ Pass
+4
+FeedbackWorker emits signal_recalculation_requested after non-interrogation feedback
+â˜ Pass
+5
+Low-confidence feedback sets requires_interrogation=true and pauses chain
+â˜ Pass
+6
+Answering interrogation resumes the chain and emits signal_recalculation_requested
+â˜ Pass
+7
+SignalWorker creates signal_snapshot with is_current=true
+â˜ Pass
+8
+Previous signal_snapshot has is_current=false after new one is created
+â˜ Pass
+9
+ConditionWorker creates conditions row and updates state_memory correctly
+â˜ Pass
+10
+EnforcementPackage created with is_current=true and previous set false
+â˜ Pass
+11
+TaskGenerationWorker creates at least one pending order
+â˜ Pass
+12
+ContinuousTaskGuarantee does NOT fire when tasks exist
+â˜ Pass
+13
+ContinuousTaskGuarantee generates fallback when tasks = 0
+â˜ Pass
+14
+Duplicate feedback idempotency_key is silently ignored
+â˜ Pass
+15
+Reflection under 10 characters returns REFLECTION_TOO_SHORT error
+â˜ Pass
+16
+InactivityDetectionEngine creates inactivity_record at 48h threshold
+â˜ Pass
+17
+InactivityWorker emits task_generation_requested for soft+ thresholds
+â˜ Pass
+18
+Blueprint launch creates all initial state rows in one transaction
+â˜ Pass
+19
+Failed event after 3 retries appears in dead_letter_events
+â˜ Pass
+20
+Full loop completes feedback â†’ task_generated in under 8 seconds
+â˜ Pass
+
+14. Connections to Other Documents
+
+Document
+Title
+What It Adds to This Loop
+Doc 05
+Signal Calculation Engine
+Full SignalCalculationEngine â€” window management, metric calculation, trend detection, confidence scoring
+Doc 06
+Condition Evaluation Engine
+Full ConditionEvaluationEngine â€” rule matrix implementation, state memory management, escalation logic
+Doc 07
+Control Engine & Enforcement
+Full EnforcementPackageGenerator â€” per-condition rules, feature permissions, AI mode, UI mode selection
+Doc 08
+Task Generation Engine
+Full TaskGenerationEngine â€” blueprint position reading, Bhudhi prompt routing, task content structure
+Doc 09
+Continuous Task Guarantee
+Extended guarantee â€” phase checkpoint tasks, weekly review tasks, habit check tasks
+Doc 10
+Feedback Processing Engine
+Deep feedback â€” interrogation flow, gaming detection sequence, proof validation, blocker processing
+Doc 12
+Bhudhi Architecture
+Bhudhi integration into TaskGenerationEngine â€” trigger routing, context selection, output validation
+Doc 24
+API Routes
+POST /api/feedback and POST /api/tasks/[id]/complete that call FeedbackProcessingEngine
+Doc 31
+Loop Testing
+End-to-end test suite that runs the full chain and asserts all state transitions
+
+
+END OF DOCUMENT 04 â€” EXECUTION LOOP ENGINE SPECIFICATION
+Next: Document 05 â€” Signal Calculation Engine Specification
+

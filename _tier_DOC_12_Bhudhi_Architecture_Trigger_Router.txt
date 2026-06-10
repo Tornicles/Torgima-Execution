@@ -1,0 +1,526 @@
+﻿
+TORGIMA
+INDIVIDUAL EXECUTION SYSTEM
+DOCUMENT 12 OF 37
+Bhudhi Architecture & Trigger Router
+Controlled Intelligence Invocation, Context Routing, Output Validation, and System Boundaries
+Phase 1 â€” Individual System
+1. Document Purpose
+This document defines the Bhudhi Architecture and Trigger Router for Torgima Phase 1. Bhudhi is the controlled intelligence layer that interprets system state, structures user input, drafts allowed outputs, and assists execution without becoming the authority of the system.
+The Trigger Router determines when Bhudhi is allowed to run, which Bhudhi mode is used, what context is provided, what output schema is required, and which validation checks must pass before the output can be used. Bhudhi must never be called casually from random API routes, frontend components, or engines. Every invocation must be routed, typed, logged, validated, and bounded by the Control Engine.
+Rule: Bhudhi is never an uncontrolled assistant. Bhudhi is a system service that can only operate through approved triggers, approved context packets, approved prompt contracts, and approved output validators.
+2. Core Law
+Bhudhi interprets and structures execution. It does not govern execution.
+Bhudhi cannot decide condition, override enforcement, create unauthorized tasks, change database state directly, approve invalid proof, bypass permissions, or mutate the blueprint without a system-approved mutation path. Its output is advisory or structured until another engine validates and applies it.
+3. Architecture Position
+// Bhudhi position inside Torgima//// System Engine or API Route//   -&gt; TriggerRouter receives approved trigger//   -&gt; Router loads context packet//   -&gt; Router selects Bhudhi mode + prompt contract//   -&gt; BhudhiProvider executes model call//   -&gt; OutputValidator checks schema + rules//   -&gt; BhudhiLog stores request/response/usage//   -&gt; Calling engine receives validated structured output//   -&gt; Calling engine decides whether/how to apply result
+Layer
+Responsibility
+Owns
+Trigger Router
+Controls whether Bhudhi may run.
+Trigger eligibility, mode selection, routing.
+Context Builder
+Builds minimal safe context packet.
+State snapshot, order context, user input, constraints.
+Prompt Contract
+Defines instruction and output schema.
+Prompt template, required JSON shape, forbidden behavior.
+Provider Adapter
+Calls model provider.
+Model selection, timeout, usage capture.
+Output Validator
+Checks output before use.
+Schema validation, rule validation, safety boundaries.
+Bhudhi Log
+Stores trace and cost data.
+Request metadata, response, tokens, status.
+4. What Bhudhi Owns
+Interpreting user text inside approved system context.
+Drafting task titles, task instructions, feedback clarification, recovery language, and explanations.
+Classifying user input into predefined categories when routed by an engine.
+Summarizing system state in user-facing language.
+Suggesting structured outputs that must be validated before use.
+Reducing cognitive load by making next actions clearer.
+Supporting execution continuity without overriding control rules.
+5. What Bhudhi Does Not Own
+It does not calculate signals.
+It does not determine conditions.
+It does not create enforcement packages.
+It does not approve or reject permissions.
+It does not write directly to database tables other than BhudhiLog/BhudhiMemory through approved services.
+It does not mark tasks complete or proof valid.
+It does not bypass task generation, feedback validation, dependency checks, or state integrity rules.
+It does not invent hidden product behavior outside the current specification.
+6. Trigger Router Responsibilities
+Receive a typed Bhudhi trigger from an approved system source.
+Confirm the trigger is allowed for the user's current condition and enforcement package.
+Select the correct Bhudhi mode and prompt contract.
+Build the smallest sufficient context packet.
+Reject triggers with missing context, stale state, or forbidden purpose.
+Route the call to the provider adapter with timeout and usage limits.
+Run output validation before returning anything to the caller.
+Write BhudhiLog for every attempted invocation.
+7. Approved Trigger Sources
+Source
+Allowed Trigger Examples
+Forbidden Trigger Examples
+TaskGenerationEngine
+Draft task wording, clarification task, academy task.
+Create task outside enforcement package.
+FeedbackProcessingEngine
+Classify blocker text, draft clarification prompt.
+Approve missing proof.
+InactivityDetectionEngine
+Draft restart language, summarize inactivity pattern.
+Change severity threshold.
+Dashboard/API
+Explain current state, summarize next task.
+Run freeform system mutation.
+Onboarding
+Clean goal input, structure purpose, identify missing fields.
+Approve invalid blueprint without validation.
+Outcome Validation
+Summarize claimed outcome or evidence.
+Declare outcome true without validator.
+Admin/Internal Worker
+Repair wording, summarize logs.
+Bypass auth/session checks.
+8. Trigger Types
+Trigger Type
+Purpose
+Output Type
+GOAL_STRUCTURING
+Turn raw goal/purpose input into clean structured fields.
+structured_goal
+TASK_DRAFTING
+Draft title, instructions, and proof wording for approved task.
+task_copy
+FEEDBACK_CLASSIFICATION
+Classify user feedback, blocker, or friction notes.
+classification
+CLARIFICATION_PROMPT
+Ask precise missing-information question.
+clarification_request
+RECOVERY_COPY
+Write calm restart/recovery guidance.
+user_message
+STATE_EXPLANATION
+Explain condition, signal, or dashboard state.
+state_explanation
+OUTCOME_EVIDENCE_SUMMARY
+Summarize evidence submitted for outcome validation.
+evidence_summary
+ACADEMY_SUPPORT
+Explain learning task or capability gap.
+academy_instruction
+ROOT_CAUSE_ASSIST
+Suggest likely failure categories from approved data.
+root_cause_candidates
+9. Bhudhi Modes
+Mode
+Description
+Allowed In Phase 1
+INTERPRET
+Read user/system input and classify meaning.
+Yes
+STRUCTURE
+Return normalized fields from raw input.
+Yes
+DRAFT
+Create user-facing copy inside fixed constraints.
+Yes
+EXPLAIN
+Explain current system state without changing it.
+Yes
+SUGGEST
+Suggest candidate options for validator/engine review.
+Limited
+DECIDE
+Make final system decision.
+No
+MUTATE
+Directly change system state.
+No
+OVERRIDE
+Bypass control or permission rules.
+No
+10. Context Packet Contract
+Bhudhi receives only the minimum context required for the trigger. The context packet must be built by the Context Builder, not by ad hoc route logic.
+export interface BhudhiContextPacket {  userId: string;  blueprintId?: string;  triggerType: BhudhiTriggerType;  bhudhiMode: BhudhiMode;  stateVersion: number;  condition?: "NOTHINGNESS" | "DANGER" | "STABLE" | "GROWTH";  enforcementPackageId?: string;  allowedActions: string[];  forbiddenActions: string[];  currentOrder?: {    id: string;    type: string;    difficulty: string;    proofType: string;    status: string;  };  userInput?: string;  systemFacts: Record&lt;string, unknown&gt;;  outputContractName: string;  maxTokens: number;}
+11. Context Minimization Rules
+Do not pass full user history unless the trigger explicitly requires it.
+Do not pass raw private notes when a summarized field is sufficient.
+Do not pass secrets, tokens, credentials, or internal environment variables.
+Do not pass database records that are unrelated to the active trigger.
+Always pass allowedActions and forbiddenActions.
+Always pass stateVersion so stale outputs can be rejected.
+Always pass outputContractName so the validator knows the required schema.
+12. Router Eligibility Checks
+Check
+Question
+Failure Result
+Source
+Is the caller an approved engine/API route?
+Reject trigger.
+Trigger Type
+Is this trigger type registered?
+Reject trigger.
+Condition
+Is this trigger allowed under current condition?
+Reject or downgrade mode.
+Enforcement
+Does active package allow this AI use?
+Reject or use deterministic fallback.
+State Version
+Is context current?
+Reject stale trigger.
+Budget
+Is token/cost budget available?
+Reject or fallback.
+Rate Limit
+Is user/system under limit?
+Reject or queue.
+Output Contract
+Does a validator exist for this output type?
+Reject trigger.
+13. Routing Flow
+Caller submits a typed BhudhiTriggerRequest.
+Trigger Router authenticates the source and trigger purpose.
+Router loads current state version, condition, enforcement package, and trigger registry entry.
+Router checks eligibility, budget, rate limit, and output contract availability.
+Context Builder creates minimal context packet.
+Prompt Contract Builder combines system instruction, context, and output schema.
+Provider Adapter executes the call with timeout and max token limit.
+Output Validator parses and validates schema and rule compliance.
+BhudhiLog records status, usage, latency, prompt contract, and output hash.
+Validated output is returned to the calling engine.
+14. Trigger Request Contract
+export interface BhudhiTriggerRequest {  sourceEngine:    | "TASK_GENERATION"    | "FEEDBACK_PROCESSING"    | "INACTIVITY_DETECTION"    | "DASHBOARD"    | "ONBOARDING"    | "OUTCOME_VALIDATION"    | "INTERNAL_WORKER";  triggerType: BhudhiTriggerType;  userId: string;  blueprintId?: string;  orderId?: string;  causationEventId?: string;  requestedMode: BhudhiMode;  stateVersion: number;  input?: string;  idempotencyKey: string;}
+15. Output Envelope Contract
+export interface BhudhiValidatedOutput&lt;T&gt; {  ok: boolean;  bhudhiLogId: string;  triggerType: BhudhiTriggerType;  outputType: string;  data?: T;  validationErrors?: string[];  safeFallbackUsed: boolean;  stateVersion: number;  usage: {    inputTokens: number;    outputTokens: number;    totalCostCents?: number;    latencyMs: number;  };}
+16. Database Tables Used
+Table
+Read/Write
+Usage
+User
+Read
+Verify user exists, status, tier, and AI eligibility.
+Blueprint
+Read
+Load active blueprint state and state version.
+Order
+Read
+Load current order context when relevant.
+Feedback
+Read
+Load feedback text for classification triggers.
+ConditionRecord
+Read
+Restrict mode and copy based on condition.
+EnforcementPackage
+Read
+Apply allowed/forbidden actions.
+CapabilityProfile
+Read
+Support academy and task explanation context.
+BhudhiLog
+Write
+Store every request, status, usage, and output metadata.
+BhudhiMemory
+Read/Write
+Read/write only when memory rules permit.
+Event
+Read/Write
+Tie Bhudhi calls to causation and downstream flows.
+EventLog
+Write
+Record trigger router processing result.
+SystemHealthLog
+Write
+Record repeated AI failures or budget exhaustion.
+17. BhudhiLog Requirements
+Field
+Required
+Purpose
+user_id
+Yes
+Trace user-level AI usage.
+trigger_type
+Yes
+Know why Bhudhi was called.
+source_engine
+Yes
+Identify caller.
+prompt_contract_name
+Yes
+Trace exact contract used.
+context_hash
+Yes
+Audit context without storing excessive raw data.
+state_version
+Yes
+Reject stale output usage.
+status
+Yes
+success, validation_failed, provider_failed, fallback_used.
+input_tokens/output_tokens
+Yes
+Usage and cost tracking.
+latency_ms
+Yes
+Performance monitoring.
+output_hash
+Yes
+Trace result integrity.
+error_code
+Conditional
+Required when call fails.
+18. Output Validation Rules
+Validation Layer
+Requirement
+Failure Result
+Parse
+Output must be valid JSON when schema requires JSON.
+Reject output.
+Schema
+All required fields must exist with valid types.
+Reject output.
+Allowed Values
+Enums/categories must match registry values.
+Reject or repair if deterministic.
+Forbidden Actions
+Output must not request forbidden system actions.
+Reject output.
+State Version
+Output must match current state version.
+Reject stale output.
+Length
+User-facing copy must fit UI limits.
+Trim through deterministic rule or retry once.
+No Authority Claim
+Output must not claim final system authority.
+Reject output.
+No Hidden Mutation
+Output must not imply database changes were made.
+Reject output.
+19. Fallback Behavior
+Bhudhi failure must never stop the execution loop. Every trigger must define a deterministic fallback.
+Failure
+Fallback
+Provider timeout
+Use deterministic template for selected trigger.
+Invalid JSON
+Retry once with repair prompt, then fallback.
+Schema validation failure
+Reject and fallback.
+Budget exhausted
+Skip AI and use deterministic output.
+Rate limit exceeded
+Queue if non-urgent; fallback if urgent.
+State version stale
+Rebuild context or return stale rejection.
+Memory unavailable
+Proceed without memory if trigger permits.
+20. Security and Permission Rules
+Bhudhi cannot be invoked without an authenticated user or approved internal worker context.
+Bhudhi cannot receive secrets, private keys, raw tokens, or database credentials.
+Bhudhi cannot perform tool calls directly in Phase 1.
+Bhudhi cannot call APIs, send notifications, create orders, or update state by itself.
+All state-changing actions must be executed by normal engines after validation.
+Admin/internal Bhudhi calls must still be logged and output-validated.
+User-facing outputs must be sanitized before display.
+21. Cost, Rate Limit, and Timeout Rules
+Control
+Phase 1 Rule
+Default timeout
+20 seconds per call.
+Task wording timeout
+10 seconds; fallback immediately if exceeded.
+Max retries
+1 retry only for parse/schema repair.
+Daily per-user cap
+Configurable by tier; default low for Phase 1.
+System emergency cap
+If global budget limit is reached, use deterministic fallbacks.
+Logging
+Every call records token usage and estimated cost.
+Streaming
+Disabled for engine calls; optional only for user-facing explanation routes.
+22. Memory Boundaries
+Bhudhi memory is not a general dump of everything the user has ever done. Memory access must be explicit, typed, and justified by the trigger.
+Memory Use
+Allowed?
+Rule
+Current task context
+Yes
+Allowed when drafting or explaining the current order.
+Recent feedback summary
+Yes
+Allowed for recovery, friction, and classification triggers.
+Long-term behavior pattern
+Limited
+Only when Pattern Learning or Burnout Detection requests it.
+Private raw notes
+Limited
+Use summarized/filtered version whenever possible.
+Credentials/secrets
+No
+Never passed to Bhudhi.
+Unrelated history
+No
+Not allowed by context minimization.
+23. User-Facing Behavior
+Bhudhi should feel integrated into the execution system, not like a separate chatbot floating beside it.
+Bhudhi explanations must be short, direct, and tied to the user's current next action.
+Bhudhi must not expose internal event names, package ids, database names, or validator language.
+Bhudhi must never imply the system changed something unless the calling engine actually applied a validated change.
+When Bhudhi is unavailable, the product must still function with deterministic copy and normal engine behavior.
+24. API Requirements
+Route
+Method
+Purpose
+/api/internal/bhudhi/trigger
+POST
+Internal route for approved engine-triggered Bhudhi calls.
+/api/bhudhi/explain-state
+POST
+User-facing controlled state explanation.
+/api/bhudhi/structure-goal
+POST
+Onboarding goal structuring route.
+/api/internal/bhudhi/validate-output
+POST
+Internal validation/test helper route.
+/api/internal/bhudhi/usage
+GET
+Admin/internal usage and cost read.
+25. Event Contracts
+Event
+Direction
+Payload Minimum
+bhudhi_trigger_requested
+Consumes
+source_engine, trigger_type, user_id, state_version
+bhudhi_trigger_rejected
+Emits
+reason, source_engine, trigger_type
+bhudhi_call_started
+Emits
+bhudhi_log_id, trigger_type, prompt_contract
+bhudhi_call_completed
+Emits
+bhudhi_log_id, output_type, usage
+bhudhi_output_validation_failed
+Emits
+bhudhi_log_id, validation_errors
+bhudhi_fallback_used
+Emits
+bhudhi_log_id, fallback_reason
+system_health_degraded
+Emits
+area=BHUDHI, severity, reason
+26. Error Handling
+Failure
+Router Response
+Caller Result
+Unregistered trigger
+Reject and log.
+Caller receives typed rejection.
+Missing output validator
+Reject trigger.
+Caller uses deterministic fallback.
+Provider unavailable
+Log provider failure.
+Fallback output returned.
+Output violates rules
+Reject output and log validation failure.
+Caller receives fallback or failure.
+Budget exceeded
+Skip provider call.
+Fallback output returned.
+Stale state version
+Reject output.
+Caller rebuilds context or retries.
+BhudhiLog write fails
+Do not call provider.
+Fail closed and log system health if possible.
+27. System Health Rules
+Health Trigger
+Severity
+Required Action
+Provider failures exceed threshold
+WARN
+Switch to deterministic fallback mode temporarily.
+Validation failures exceed threshold
+WARN
+Review prompt contract and schema.
+Budget exhausted
+WARN
+Disable noncritical calls.
+BhudhiLog failures
+ERROR
+Fail closed; do not run unlogged calls.
+Forbidden action appears in output
+ERROR
+Reject output and flag prompt contract.
+Latency above threshold
+WARN
+Reduce context or use faster model.
+28. Acceptance Criteria
+No engine calls Bhudhi directly without the Trigger Router.
+Every trigger type has a registered prompt contract and output validator.
+Bhudhi receives only minimized context packets.
+Bhudhi output cannot be used until schema and rule validation pass.
+Bhudhi failures produce deterministic fallbacks instead of breaking the loop.
+Every invocation is recorded in BhudhiLog with source, trigger, usage, status, and state version.
+Forbidden modes DECIDE, MUTATE, and OVERRIDE are blocked in Phase 1.
+Budget, timeout, and rate-limit controls are enforced.
+29. Test Scenarios
+Test
+Setup
+Expected Result
+Approved task drafting
+TaskGenerationEngine requests TASK_DRAFTING.
+Validated task_copy returned and logged.
+Unregistered trigger
+Caller sends unknown trigger type.
+Trigger rejected.
+Forbidden mode
+Caller requests MUTATE.
+Trigger rejected.
+Invalid JSON
+Provider returns malformed output.
+Repair retry then fallback if still invalid.
+Forbidden action
+Output asks to bypass enforcement.
+Output rejected and health event logged.
+Budget cap reached
+User/system exceeds usage cap.
+Provider skipped; deterministic fallback used.
+Stale context
+State version changes during call.
+Output rejected as stale.
+Provider timeout
+Provider exceeds timeout.
+Fallback returned and logged.
+Missing validator
+Trigger has no validator registered.
+Trigger rejected before provider call.
+30. Implementation Checklist
+Create Bhudhi Trigger Router service.
+Create trigger registry with approved source engines, trigger types, modes, and output contracts.
+Create Context Builder with minimization rules.
+Create Prompt Contract Builder.
+Create Provider Adapter with timeout, retry, and usage capture.
+Create Output Validator registry.
+Create deterministic fallback library for every trigger type.
+Implement BhudhiLog write service.
+Wire budget, rate limit, and cost tracking.
+Add internal trigger API route.
+Replace direct AI calls in engines with Trigger Router calls.
+Add unit tests for routing eligibility and output validation.
+Add integration tests for task drafting, feedback classification, and fallback behavior.
+31. Final Rule
+Bhudhi makes Torgima more intelligent only when it remains controlled. The Trigger Router is the boundary that protects the system from random AI behavior. Every Bhudhi call must have a reason, a route, a context packet, a contract, a validator, a log, and a fallback. Intelligence is useful only when execution remains governed.
+

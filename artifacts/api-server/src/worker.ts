@@ -7,7 +7,7 @@ import { handleAsNodeRequest } from "cloudflare:node";
 import type { ExecutionContext, MessageBatch, ScheduledController } from "@cloudflare/workers-types";
 import express from "express";
 import { bindCloudflareEnv, type TorgimaQueueMessage, type TorgimaWorkerEnv } from "./lib/cloudflare-runtime.js";
-import { createCorsMiddleware } from "./lib/cors.js";
+import { createCorsMiddleware, isAllowedOrigin } from "./lib/cors.js";
 import { handleQueueBatch } from "./queues/handler.js";
 import { handleCloudflareCron } from "./schedulers/cloudflare-cron.js";
 
@@ -47,7 +47,20 @@ async function createFetchHandler(): Promise<FetchHandler> {
   }
 
   const server = createServer(root);
-  server.listen(HTTP_PORT);
+
+  // Await server ready so the first request does not hit ECONNREFUSED.
+  await new Promise<void>((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", (err) => {
+      // EADDRINUSE on a warm isolate — server is already listening; safe to continue.
+      if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+        resolve();
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(HTTP_PORT);
+  });
 
   return (request) => handleAsNodeRequest(HTTP_PORT, request);
 }
@@ -69,8 +82,28 @@ function healthProbeResponse(): Response {
   });
 }
 
+/**
+ * Build a CORS-safe error Response for when the Worker itself fails before Express
+ * can set headers. Never expose internal details to the client.
+ */
+function workerErrorResponse(request: Request, status: number, code: string, message: string): Response {
+  const origin = request.headers.get("origin") ?? "";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (isAllowedOrigin(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Credentials"] = "true";
+    headers["Vary"] = "Origin";
+  }
+  return new Response(
+    JSON.stringify({ ok: false, error: { code, message } }),
+    { status, headers },
+  );
+}
+
 export default {
   async fetch(request: Request, env: TorgimaWorkerEnv, ctx: ExecutionContext): Promise<Response> {
+    // bindCloudflareEnv MUST run before getFetchHandler so process.env is populated
+    // before any route module or middleware reads it.
     bindCloudflareEnv(env);
 
     const { pathname } = new URL(request.url);
@@ -78,8 +111,28 @@ export default {
       return healthProbeResponse();
     }
 
-    const handler = await getFetchHandler();
-    return handler(request, env, ctx);
+    try {
+      const handler = await getFetchHandler();
+      return await handler(request, env, ctx);
+    } catch (err) {
+      // The Express server failed to start or crashed processing the request.
+      // Return a CORS-safe error so the browser does not get a raw Cloudflare page
+      // with no Access-Control-Allow-Origin header.
+      console.error(
+        JSON.stringify({
+          type: "worker_fetch_error",
+          path: pathname,
+          errorClass: err instanceof Error ? err.constructor?.name : "unknown",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return workerErrorResponse(
+        request,
+        500,
+        "INTERNAL_ERROR",
+        "Service temporarily unavailable. Please try again.",
+      );
+    }
   },
 
   async queue(batch: MessageBatch<TorgimaQueueMessage>, env: TorgimaWorkerEnv): Promise<void> {

@@ -1,0 +1,342 @@
+﻿CURSOR BUILD PROMPT
+BLUEPRINT TIER SYSTEM
+Complete Production Build: Schema â†’ Engines â†’ API Routes â†’ Frontend â†’ Tests
+Paste this entire document into Cursor as a single message with the Schema and Connection docs attached.
+Blueprint System Document 3 of 3
+
+
+
+READ ALL THREE DOCUMENTS BEFORE WRITING A SINGLE LINE OF CODE
+
+You are building the Blueprint Tier System for Torgima Execution Governance. This connects the Erector validation output to blueprint generation and the execution loop. This is not a UI enhancement. This is a core engine that bridges two major systems.
+
+Before proceeding, read and confirm:
+Schema document â€” all new tables, columns, enums
+Connection document â€” all engine connections, events, tier behaviors
+DOC_02 â€” existing database schema (42 tables â€” do not break existing structure)
+DOC_04 â€” execution loop engine (BlueprintEngine.launch() exists â€” extend, do not replace)
+DOC_08 â€” task generation engine (TaskGenerationEngine exists â€” extend, do not replace)
+DOC_12 â€” Bhudhi architecture (TriggerRouter exists â€” add new triggers, do not replace)
+
+STACK CONFIRMATION â€” CHECK FIRST
+Before writing any code, confirm:
+ORM: Drizzle (NOT Prisma). Schema is in packages/db/src/schema/. Migration: pnpm drizzle-kit generate + push.
+If project uses Prisma (schema.prisma file exists): use Prisma. Migration: npx prisma migrate dev.
+Backend: Express 5 in apps/api/src/. Routes in apps/api/src/routes/.
+Workers: pg-boss in apps/api/src/workers/.
+Frontend: Vite + React in apps/web/src/. State: TanStack Query or existing pattern.
+DO NOT switch ORM, framework, or pattern. Work with what exists.
+
+STEP 1: DATABASE SCHEMA MIGRATION
+COMPLETE STEP 1 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 2.
+
+1.1 Add BlueprintTier Enum
+In the schema file, add:
+BlueprintTier enum: STARTER | GROWTH | ULTIMATE
+ValidationStatus enum: pending | scored | tier_presented | tier_selected | launched
+
+1.2 Extend validations table
+Add these columns to the existing validations table. Do NOT drop or rename existing columns.
+selected_tier: BlueprintTier? (nullable until user selects)
+selected_path: SelectedPath? (nullable until user selects)
+tier_presented_at: DateTime?
+tier_selected_at: DateTime?
+tier_preview_data: Json? (snapshot of cards shown)
+status: ValidationStatus @default(pending)
+
+1.3 Extend blueprints table
+Add these columns to the existing blueprints table:
+tier: BlueprintTier @default(STARTER)
+generation_depth: Int @default(1) â€” 1=Starter, 2=Growth, 3=Ultimate
+tier_config: Json @default("{}") â€” full TierConfig snapshot at generation time
+intelligence_depth: Int @default(1)
+policy_enforcement: String @default("display_only")
+signal_mode: String @default("simplified")
+adaptation_mode: String @default("none")
+
+1.4 Create blueprint_tier_previews table
+New table. All columns as defined in Schema Document Section 2.3. Foreign keys: validation_id â†’ validations, user_id â†’ users. Indexes: validation_id, user_id.
+
+1.5 Create blueprint_generation_log table
+New table. All columns as defined in Schema Document Section 2.4. Foreign keys: blueprint_id â†’ blueprints, user_id â†’ users, validation_id â†’ validations. Indexes: blueprint_id, user_id.
+
+1.6 Run Migration
+# For Drizzle:
+pnpm -F @workspace/db generate
+pnpm -F @workspace/db push
+# For Prisma:
+npx prisma generate
+npx prisma migrate dev --name blueprint_tier_system
+
+1.7 Verify
+Run pnpm typecheck â€” zero errors
+Check Supabase: validations table has 6 new columns
+Check Supabase: blueprints table has 7 new columns
+Check Supabase: blueprint_tier_previews table exists
+Check Supabase: blueprint_generation_log table exists
+
+STEP 2: TIER CONFIG CONSTANTS
+COMPLETE STEP 2 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 3.
+
+2.1 Create TierConfig Type and TIER_CONFIG Map
+Create file: src/engines/blueprint/TierConfig.ts
+This is the central source of truth for all tier behavior. Every engine reads from this. Define the TierConfig interface and the TIER_CONFIG constant exactly as specified in Schema Document Section 4.4.
+Key rule: TIER_CONFIG is a constant. It is never mutated at runtime. At generation time, the correct config is serialized and stored in blueprints.tier_config as a JSON snapshot.
+
+2.2 Create getTierConfig utility
+export function getTierConfig(tier: BlueprintTier): TierConfig {
+  return TIER_CONFIG[tier];
+}
+
+export function getTierConfigFromBlueprint(blueprint: Blueprint): TierConfig {
+  // First try stored snapshot (guaranteed consistent)
+  if (blueprint.tier_config && Object.keys(blueprint.tier_config).length &gt; 0) {
+    return blueprint.tier_config as TierConfig;
+  }
+  // Fallback to live config if snapshot missing
+  return TIER_CONFIG[blueprint.tier ?? "STARTER"];
+}
+
+STEP 3: TIER PREVIEW ENGINE
+COMPLETE STEP 3 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 4.
+
+3.1 Create TierPreviewEngine.ts
+File: src/engines/blueprint/TierPreviewEngine.ts
+
+Implement buildPreviews(validationId: string, userId: string): Promise&lt;TierPreviewCard[]&gt;
+Logic:
+Load validation record from DB
+Verify verdict !== PIVOT (cannot present tiers if pivot required)
+Call recommendTier() â€” returns STARTER / GROWTH / ULTIMATE based on avg of feasibility/clarity/realism scores
+For each tier (STARTER, GROWTH, ULTIMATE): build preview card from TierConfig + validation data
+Compute growth_projection for each tier: estimate 30/60/90 day progress based on validation scores Ã— tier multipliers (Starter=1.0x, Growth=1.4x, Ultimate=1.8x)
+Call Bhudhi (BhudhiTriggerRouter, trigger: BLUEPRINT_TIER_PREVIEW, mode: STRUCTURE) to enrich descriptions with goal-specific language
+If Bhudhi fails, use template descriptions â€” never block
+Write 3 rows to blueprint_tier_previews
+Update validation: status=tier_presented, tier_presented_at=now, tier_preview_data=snapshot
+Return 3 TierPreviewCard objects
+
+STEP 4: BLUEPRINT GENERATION ENGINE
+COMPLETE STEP 4 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 5.
+
+4.1 Create BlueprintGenerationEngine.ts
+File: src/engines/blueprint/BlueprintGenerationEngine.ts
+
+Implement generate(input: GenerationInput): Promise&lt;GenerationOutput&gt;
+The ENTIRE generation must run inside one db.$transaction(). If any step fails, everything rolls back.
+
+Transaction sequence (DO NOT SKIP ANY STEP):
+STEP A: Load validation â€” verify status is tier_selected
+STEP B: Load blueprint â€” verify status is path_selection
+STEP C: Load TierConfig from TIER_CONFIG[selectedTier]
+STEP D: Update blueprint with all tier fields (tier, generation_depth, tier_config snapshot, intelligence_depth, policy_enforcement, signal_mode, adaptation_mode, status=generating)
+STEP E: Create Plans â€” use tierConfig.plans array â€” one row per plan name, in order
+STEP F: Create Seasons if tierConfig.seasons_enabled â€” link to plans
+STEP G: Create Targets â€” one per plan, one per target type in tierConfig.target_types
+STEP H: Create Phases per Target â€” one per phase name in tierConfig.phases â€” set phase_mode flag
+STEP I: Create Projects per Phase â€” one per type in tierConfig.project_types
+STEP J: Create Actions per Project â€” one per type in tierConfig.action_types
+STEP K: Create BlueprintPolicy â€” enforcement_level from policy_enforcement field
+STEP L: Update blueprint status to path_selection (ready to launch)
+STEP M: Emit blueprint_chain_generated event (inside transaction)
+
+AFTER transaction:
+Call Bhudhi (outside transaction â€” non-blocking) to enrich plan/target names. Update names if Bhudhi responds within 8 seconds.
+Write blueprint_generation_log row
+Call BlueprintEngine.launch(blueprintId, userId) â€” this is the existing launch function from DOC_04. Do NOT rewrite it.
+
+4.2 Tier-Specific Generation Rules
+STARTER: 3 plans, no seasons, 3 target types (major/primary/production), linear phases
+GROWTH: 4 plans, 4 seasons linked to plans, all 6 target types, gated phases, 4 project types, 4 action types
+ULTIMATE: same counts as Growth + store dynamic flags in blueprint.tier_config JSON: dynamic_plan_prioritization=true, adaptive_targets=true, performance_recalibration=true, project_reordering=true, impact_ranked_actions=true
+
+STEP 5: API ROUTES
+COMPLETE STEP 5 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 6.
+
+5.1 Extend POST /api/validation/complete
+Find the existing validation complete route. After the scoring logic:
+Call TierPreviewEngine.buildPreviews(validationId, userId)
+Return { ok: true, data: { validation, tierPreviews: [3 cards], recommendedTier } }
+
+5.2 Add GET /api/blueprints/:id/tier-preview
+Returns the 3 saved tier preview cards for a blueprint. Used when frontend needs to re-render the selection screen.
+Query: SELECT * FROM blueprint_tier_previews WHERE blueprint_id = :id AND user_id = :userId
+Returns: { ok: true, data: { previews: TierPreviewCard[] } }
+
+5.3 Add POST /api/blueprints/select-tier
+This is the main tier selection route. Handle in order:
+Auth check â€” return 401 if no session
+Validate body: blueprintId, validationId, selectedTier (must be STARTER/GROWTH/ULTIMATE), selectedPath (must be CURRENT/ADJUSTED/ALTERNATIVE)
+Load blueprint â€” verify belongs to user, status is path_selection
+Load validation â€” verify belongs to user, status is tier_presented
+Update validation: selected_tier, selected_path, tier_selected_at, status=tier_selected
+Update blueprint_tier_previews: set selected=true for chosen tier
+Call BlueprintGenerationEngine.generate(...)
+Return { ok: true, data: { blueprintId, tier, redirectTo: "/dashboard", generationSummary } }
+On error: return { ok: false, error: { code: "GENERATION_FAILED", message: err.message } }
+
+STEP 6: UPDATE EXISTING ENGINES FOR TIER AWARENESS
+COMPLETE STEP 6 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 7.
+
+Do NOT rewrite these engines. Add tier-awareness by reading from blueprints.tier_config.
+
+6.1 SignalCalculationEngine â€” add signal_mode check
+const tierConfig = getTierConfigFromBlueprint(blueprint);
+const signalMode = tierConfig.signal_mode; // 'simplified' | 'full' | 'predictive'
+const historyDays = tierConfig.signal_history_days; // 7 | 30 | 90
+If signalMode === "simplified": map computed signal to STARTER states (starting/struggling/stable/improving). Store in signal_snapshots but set a simplified_state field.
+If signalMode === "predictive": also compute projected_signal and burnout_risk fields.
+
+6.2 ConditionEvaluationEngine â€” add condition_mode check
+const conditionMode = tierConfig.condition_mode; // 'light' | 'full' | 'predictive'
+If conditionMode === "light": set task_limit_min=1, task_limit_max=2, difficulty_cap="easy". Do not enforce phase locks.
+If conditionMode === "full": full 7-condition logic as DOC_06 defines.
+If conditionMode === "predictive": full logic + forecast_condition field populated.
+
+6.3 EnforcementPackageGenerator â€” apply tier overrides
+const tierConfig = getTierConfigFromBlueprint(blueprint);
+Apply tier max task limit override: STARTER +0, GROWTH +1, ULTIMATE +2 to max from base condition.
+Apply tier difficulty override: ULTIMATE gets +1 difficulty level if capability supports it.
+Set framework_activations_max from tierConfig.framework_activations_max.
+
+6.4 TaskGenerationEngine â€” apply task_style
+const taskStyle = tierConfig.task_style; // 'simple' | 'condition_controlled' | 'predictive'
+"simple": generate title + instruction + expected output + time estimate. No condition count control.
+"condition_controlled": full enforcement_package task_limits applied. Add "why_this_matters" field to order.
+"predictive": all condition_controlled behavior + compute effort_score and sequence_position per task.
+
+6.5 Bhudhi TriggerRouter â€” add BLUEPRINT_TIER_PREVIEW trigger
+In the trigger router, add: BLUEPRINT_TIER_PREVIEW trigger type. Source: TIER_PREVIEW_ENGINE. Mode: STRUCTURE. Output contract: { tierDescriptions: Record&lt;BlueprintTier, string&gt;, planNames: string[], targetNames: string[] }. Fallback: use template descriptions from TIER_CONFIG.
+
+Also: read blueprint.intelligence_depth on all existing triggers. Pass depth to prompt contracts so they scale their output accordingly.
+
+STEP 7: FRONTEND â€” TIER SELECTION SCREEN
+COMPLETE STEP 7 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 8.
+
+This screen appears after validation completes. It shows 3 tier cards. User picks one. System generates blueprint and redirects to dashboard.
+
+7.1 Route
+/onboarding/select-blueprint or /validation/select-tier â€” wherever the validation results currently route to
+
+7.2 Tier Card Component
+Each card shows:
+Tier name (STARTER / GROWTH / ULTIMATE) as large header
+Headline (e.g. "Clarity + Guided Execution")
+2â€“3 sentence description
+Key highlights list (3â€“5 items)
+Growth projection: "In 30 days: X% Â· 60 days: Y% Â· 90 days: Z%"
+"Recommended" badge if this is the recommended tier
+"Select" button â€” large, full-width
+
+7.3 Selection Flow
+User clicks "Select" on a tier card
+Button shows loading state: "Building your execution system..."
+POST /api/blueprints/select-tier called
+On success: router.push("/dashboard")
+On error: show error message with retry button
+Do not allow double-click / double-submit â€” disable all cards after first selection
+
+7.4 Loading State
+While blueprint is generating, show a progress screen:
+"Building your execution system" â€” animated
+Show steps completing: "Creating plans... Creating targets... Creating phases... Initializing signals... Generating your first tasks..."
+This entire screen should take no more than 5 seconds. If API takes longer, show spinner â€” do not timeout the user.
+
+STEP 8: FRONTEND â€” DASHBOARD TIER DISPLAY
+COMPLETE STEP 8 FULLY. RUN pnpm typecheck. ZERO ERRORS BEFORE STEP 9.
+
+Dashboard must show the user's active tier. Find the existing dashboard component and:
+Add tier badge next to blueprint name: STARTER / GROWTH / ULTIMATE
+Show tier-appropriate signal display: if signal_mode=simplified, show "Starting/Struggling/Stable/Improving". If full or predictive, show the 7-signal system.
+Show condition with tier-appropriate explanation: STARTER=simplified language, GROWTH/ULTIMATE=full operational language
+
+STEP 9: TESTING
+COMPLETE STEP 9 FULLY. ALL TESTS PASS BEFORE STEP 10.
+
+Test
+Expected Result
+Complete validation with PROCEED verdict
+TierPreviewEngine builds 3 cards, writes to blueprint_tier_previews
+Complete validation with ADJUST verdict
+Same â€” 3 tier cards shown with ADJUST noted in description
+Complete validation with PIVOT verdict
+TierPreviewEngine skips â€” no cards â€” user prompted to revise goal
+Select STARTER tier
+blueprints.tier=STARTER, generation_depth=1, 3 plans created, 0 seasons, 3 target types
+Select GROWTH tier
+blueprints.tier=GROWTH, generation_depth=2, 4 plans, 4 seasons, 6 target types, gated phases
+Select ULTIMATE tier
+blueprints.tier=ULTIMATE, generation_depth=3, 4 plans, 4 seasons, adaptive flags in tier_config
+BlueprintEngine.launch() fires after generation
+signal_snapshots row created with condition=nothingness
+Initial task generation after launch
+At least 1 pending order created within 5 seconds
+Dashboard loads after redirect
+Tier badge visible, first task visible, signals panel visible
+Feedback submission on STARTER
+Signal updates to simplified states â€” no full 7-signal names
+Feedback submission on GROWTH
+Full 7-signal update â€” condition changes â€” new tasks generated
+Feedback submission on ULTIMATE
+All GROWTH behavior + intelligence_depth=3 on Bhudhi calls
+Bhudhi call fails during tier preview
+Fallback template descriptions used â€” no error shown to user
+Generation fails midway (simulate DB error)
+Transaction rolls back â€” blueprint stays in path_selection â€” user can retry
+pnpm typecheck
+Zero errors
+pnpm build
+No build errors
+
+STEP 10: COMMIT AND DEPLOY
+ONLY COMMIT WHEN ALL 16 TESTS PASS
+
+git add -A
+git commit -m "feat: blueprint tier system â€” validation to tier selection to execution loop"
+git push origin main
+
+After Railway deploys, verify in production:
+Complete validation flow end-to-end
+Three tier cards appear on selection screen
+Select Growth tier â†’ dashboard loads with tasks within 10 seconds
+Submit feedback â†’ signals update â†’ new task appears
+
+FINAL REPORT FORMAT
+When complete, report:
+Item
+Result
+Schema migration status
+
+blueprint_tier_previews table exists
+YES / NO
+blueprint_generation_log table exists
+YES / NO
+TierPreviewEngine built and tested
+YES / NO
+BlueprintGenerationEngine built and tested
+YES / NO
+POST /api/blueprints/select-tier working
+YES / NO
+STARTER generation verified (3 plans, no seasons)
+YES / NO
+GROWTH generation verified (4 plans, 4 seasons)
+YES / NO
+ULTIMATE generation verified (adaptive flags)
+YES / NO
+Execution loop fires after generation
+YES / NO
+Dashboard shows tier + first task
+YES / NO
+Feedback â†’ signal â†’ task loop working
+YES / NO
+pnpm typecheck zero errors
+YES / NO
+pnpm build no errors
+YES / NO
+Commit hash
+
+Deploy URL
+
+
+DO NOT MARK THIS PROMPT COMPLETE UNTIL EVERY ROW ABOVE IS YES
+

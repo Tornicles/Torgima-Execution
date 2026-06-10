@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import router from "./routes/index.js";
@@ -10,6 +10,8 @@ import { isCloudflareRuntime } from "./lib/cloudflare-runtime.js";
 import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
 import { securityHeadersMiddleware } from "./middleware/securityHeaders.js";
 import { apiRateLimitMiddleware } from "./middleware/apiRateLimit.js";
+import { applyCorsHeaders } from "./lib/cors.js";
+import { handleError } from "./lib/utils.js";
 
 /** Requests slower than this are flagged for egress/perf review (metadata only). */
 const SLOW_REQUEST_MS = 3_000;
@@ -117,6 +119,18 @@ export async function createApp(): Promise<Express> {
   app.use("/api/auth", authRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api", router);
+
+  // Global error handler — 4-argument signature required by Express.
+  // Must be registered AFTER all routes.
+  // Re-applies CORS headers in case an error bypassed the root-level CORS middleware
+  // (e.g. errors thrown synchronously before the middleware response phase completes).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: Error, req: Request, res: Response, _next: NextFunction): void => {
+    // Ensure CORS headers are present on every error response.
+    // applyCorsHeaders is a no-op when the origin is not in the allowed list.
+    applyCorsHeaders(req, res);
+    handleError(req, res, err);
+  });
 
   return app;
 }

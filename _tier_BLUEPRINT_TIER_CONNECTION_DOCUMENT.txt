@@ -1,0 +1,228 @@
+﻿BLUEPRINT SYSTEM
+CONNECTION DOCUMENT
+How Validation â†’ Tier Selection â†’ Blueprint â†’ Signals â†’ Feedback â†’ Tasks are connected
+Every engine. Every event. Every data flow. Complete.
+Blueprint System Document 2 of 3
+
+
+
+MASTER SYSTEM FLOW
+User Goal Input â†’ Erector Validation â†’ Score Validation â†’ TierPreviewEngine â†’ Tier Selection Screen â†’ User Selects Tier â†’ BlueprintGenerationEngine â†’ Blueprint Chain Created â†’ BlueprintEngine.launch() â†’ Signal Init â†’ Condition Init â†’ Enforcement Init â†’ TaskGenerationEngine â†’ Initial Tasks â†’ Dashboard
+
+Task Execution â†’ FeedbackProcessingEngine â†’ SignalCalculationEngine â†’ ConditionEvaluationEngine â†’ EnforcementPackageGenerator â†’ TaskGenerationEngine â†’ Next Tasks â†’ Loop Continues Infinitely
+
+CONNECTION 1: VALIDATION â†’ TIER PREVIEW
+TRIGGER: Erector validation engine completes scoring. All 11 Erector scores calculated. Verdict assigned.
+
+From
+To
+POST /api/validation/complete
+TierPreviewEngine.buildPreviews()
+TierPreviewEngine
+Reads: validation.feasibility_score, clarity_score, realism_score
+TierPreviewEngine
+Calls recommendTier() â†’ computes recommended tier
+TierPreviewEngine
+Builds 3 TierPreviewCard objects (STARTER, GROWTH, ULTIMATE)
+TierPreviewEngine
+Calls Bhudhi (STRUCTURE trigger) to enrich card descriptions with goal context
+TierPreviewEngine
+Writes 3 rows to blueprint_tier_previews
+TierPreviewEngine
+Updates validation.status â†’ tier_presented, validation.tier_presented_at
+API Response
+Returns 3 tier cards to frontend â†’ Tier Selection Screen renders
+
+CONNECTION 2: TIER SELECTION â†’ BLUEPRINT GENERATION
+TRIGGER: User clicks "Select" on one of the three tier cards. Frontend sends POST /api/blueprints/select-tier.
+
+Step
+Engine / Table
+1. Validate request
+Route: verify blueprintId, validationId, tier, path are valid
+2. Lock validation record
+Update validations: selected_tier, selected_path, tier_selected_at, status=tier_selected
+3. Mark tier preview selected
+Update blueprint_tier_previews: selected=true for chosen tier
+4. Call generation engine
+BlueprintGenerationEngine.generate({ blueprintId, userId, validationId, selectedTier, selectedPath })
+5. Apply TierConfig
+Engine loads TIER_CONFIG[selectedTier], stores as blueprints.tier_config
+6. Generate chain
+In transaction: Plans â†’ Seasons â†’ Targets â†’ Phases â†’ Projects â†’ Actions
+7. Generate policy
+BlueprintPolicy created with enforcement_level from TierConfig
+8. Bhudhi enrichment
+BhudhiTriggerRouter called (STRUCTURE mode) to name plans/targets from goal
+9. Log generation
+blueprint_generation_log row written
+10. Emit event
+Event: blueprint_chain_generated emitted to event system
+11. Launch loop
+BlueprintEngine.launch() â†’ initializes signal/condition/enforcement in one transaction
+12. Initial tasks
+TaskGenerationEngine called with mode=initial, condition=nothingness
+13. Redirect
+API returns { redirectTo: "/dashboard" }
+
+CONNECTION 3: BLUEPRINT â†’ SIGNAL ENGINE
+TRIGGER: blueprint_launched event. SignalCalculationEngine reads blueprint.tier_config.signal_mode to determine which signal architecture to use.
+
+signal_mode
+Behavior
+"simplified" (STARTER)
+Computes: starting / struggling / stable / improving. No 7-signal names. Uses same signal_snapshots table but maps to simplified state strings.
+"full" (GROWTH)
+Full 7-signal calculation: nothingness / danger / urgency / stability / power / affluence / power_change. All fields populated.
+"predictive" (ULTIMATE)
+Full 7 signals + projected_signal field populated. Burnout risk score calculated. Failure trajectory detection enabled.
+
+DATA FLOW:
+blueprint_launched event â†’ SignalWorker picks up
+SignalCalculationEngine.calculate({ blueprintId, userId }) called
+Reads: orders (last 7/30/90 days per signal_history_days), feedback, behavior_patterns
+Computes: completion_rate, weighted_score, momentum, trend
+On ULTIMATE: also computes predicted_signal, burnout_risk
+Writes new signal_snapshots row with is_current=true
+Previous is_current=false
+Emits: signal_updated event â†’ triggers ConditionEvaluationEngine
+
+CONNECTION 4: SIGNAL â†’ CONDITION ENGINE
+TRIGGER: signal_updated event. ConditionEvaluationEngine reads the new signal and produces a condition.
+
+condition_mode
+Behavior
+"light" (STARTER)
+Condition affects task count only. No phase locks, no difficulty enforcement beyond basic cap.
+"full" (GROWTH)
+Condition controls task count, difficulty cap, phase progression locks, allowed/restricted actions.
+"predictive" (ULTIMATE)
+All GROWTH controls + predictive condition forecast, risk-based execution limits, scale permission logic.
+
+DATA FLOW:
+signal_updated event â†’ ConditionWorker picks up
+Reads new signal_snapshots row
+Evaluates condition rules per condition_mode
+Writes new conditions row with is_current=true
+Updates state_memory (tracks time in each condition)
+Emits: condition_changed event â†’ triggers EnforcementPackageGenerator
+
+CONNECTION 5: CONDITION â†’ ENFORCEMENT PACKAGE
+TRIGGER: condition_changed event. EnforcementPackageGenerator builds the control rules packet that governs what tasks can be generated and what actions are allowed.
+
+DATA FLOW:
+condition_changed event â†’ EnforcementWorker picks up
+Reads: conditions row, blueprints.tier_config (for tier overrides)
+Computes task_limits (min/max) â€” applies tier override (+0/+1/+2 to max)
+Computes difficulty_cap â€” applies tier cap (base / base / base+1)
+Computes feature_permissions (which features active per condition + tier)
+Computes allowed_actions and blocked_actions
+Writes new enforcement_packages row with is_current=true
+Emits: enforcement_package_created â†’ triggers TaskGenerationEngine
+
+CONNECTION 6: ENFORCEMENT â†’ TASK GENERATION
+TRIGGER: enforcement_package_created event OR blueprint_launched (initial). TaskGenerationEngine reads tier config + enforcement package to generate the correct tasks.
+
+task_style
+Behavior
+"simple" (STARTER)
+Clear instruction + expected output + time estimate. No condition-controlled count. Basic difficulty.
+"condition_controlled" (GROWTH)
+Task count controlled by enforcement_package.task_limits. "Why this matters" context added. Difficulty from enforcement cap.
+"predictive" (ULTIMATE)
+All GROWTH behavior + optimized sequencing, effort vs reward scoring, fatigue-aware workload calculation.
+
+DATA FLOW:
+enforcement_package_created event â†’ TaskWorker picks up
+Reads: enforcement_package (task_limits, difficulty_cap, allowed_actions)
+Reads: blueprints.tier_config (task_style, intelligence_depth, knowledge_injection)
+Reads: blueprint chain position (current plan â†’ target â†’ phase â†’ project â†’ action)
+Calls Bhudhi (DRAFT trigger) if ai_enabled â€” depth scaled by intelligence_depth
+Falls back to template if Bhudhi times out (5 seconds)
+Writes orders rows
+Links knowledge_objects if tier allows
+Writes task_generation_log row
+User sees tasks on Dashboard
+
+CONNECTION 7: TASK â†’ FEEDBACK â†’ SIGNAL (CONTINUOUS LOOP)
+This is the infinite execution loop. Every feedback submission restarts the signal calculation chain.
+
+Task Completed â†’ FeedbackScreen â†’ POST /api/feedback/submit â†’ FeedbackProcessingEngine â†’ signal_recalculation_requested event â†’ SignalCalculationEngine â†’ ConditionEvaluationEngine â†’ EnforcementPackageGenerator â†’ TaskGenerationEngine â†’ New Tasks
+
+Engine
+Reads Tier From
+FeedbackProcessingEngine
+blueprints.tier_config.signal_mode (determines confidence weighting)
+SignalCalculationEngine
+blueprints.tier_config.signal_mode, signal_history_days
+ConditionEvaluationEngine
+blueprints.tier_config.condition_mode
+EnforcementPackageGenerator
+conditions + blueprints.tier_config for override rules
+TaskGenerationEngine
+blueprints.tier_config.task_style + intelligence_depth
+Bhudhi
+blueprints.intelligence_depth (1=EXPLAIN, 2=STRUCTURE, 3=INTERPRET)
+
+CONNECTION 8: TIER â†’ BHUDHI DEPTH
+Bhudhi receives the intelligence_depth from the blueprint and adjusts every prompt contract accordingly.
+
+intelligence_depth
+Bhudhi Behavior
+1 (STARTER)
+EXPLAIN mode. Light rewrites. Simple task titles. Basic explanations. No strategic framing. Memory = session only.
+2 (GROWTH)
+STRUCTURE mode. Structured output. Operational language. Connects tasks to plan context. Memory = 7 days.
+3 (ULTIMATE)
+INTERPRET mode. Full context interpretation. Strategic framing. Pattern detection. Predictive suggestions. Memory = 30 days.
+
+CONNECTION 9: FEEDBACK TIER BEHAVIOR
+Feedback Feature
+Tier Logic
+Submission required
+STARTER=optional, GROWTH=required, ULTIMATE=required
+Confidence weighting
+STARTER=not applied, GROWTH+ULTIMATE=applied
+Signal impact
+STARTER=minimal, GROWTH=direct signal update, ULTIMATE=direct + pattern detection
+Active interrogation
+STARTER=none, GROWTH=triggered on vague, ULTIMATE=personalized + avoidance detection
+Proof requirement
+STARTER=none, GROWTH=on hard tasks, ULTIMATE=on all high-value tasks
+Bhudhi classification
+GROWTH/ULTIMATE: Bhudhi classifies blocker text â†’ routes to correct recovery
+
+EVENT CHAIN SUMMARY
+Event
+Produced By â†’ Consumed By
+validation_completed
+Erector API â†’ TierPreviewEngine
+tier_selected
+Route handler â†’ BlueprintGenerationEngine
+blueprint_chain_generated
+BlueprintGenerationEngine â†’ BlueprintEngine.launch()
+blueprint_launched
+BlueprintEngine â†’ SignalWorker + TaskWorker
+signal_updated
+SignalWorker â†’ ConditionWorker
+condition_changed
+ConditionWorker â†’ EnforcementWorker
+enforcement_package_created
+EnforcementWorker â†’ TaskWorker
+task_generated
+TaskWorker â†’ Dashboard refresh
+feedback_submitted
+FeedbackWorker â†’ signal_recalculation_requested
+signal_recalculation_requested
+FeedbackWorker â†’ SignalWorker â†’ (loop repeats)
+
+SYSTEM LAWS â€” NEVER VIOLATE
+Signals are calculated from real execution data. No engine, user, or AI can write a signal directly.
+Blueprint tier_config is a snapshot. It does not change after generation. Tier upgrade requires blueprint regeneration.
+Condition controls execution. Nothing bypasses enforcement_package rules.
+Bhudhi never decides, mutates signals, or overrides conditions. It only advises inside the envelope.
+TaskGenerationEngine ONLY reads blueprint position. BlueprintEngine advances position.
+An active blueprint MUST always have at least one pending task. ContinuousTaskGuarantee enforces this unconditionally.
+Every tier preview card must be written to blueprint_tier_previews before the selection screen is shown.
+
+

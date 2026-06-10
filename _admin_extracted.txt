@@ -1,0 +1,421 @@
+TORGIMA EXECUTION SYSTEM
+CURSOR AGENT PROMPT  •  PHASE ADMIN OF 9
+TORGIMA SUPER ADMIN DASHBOARD
+Complete Organization Intelligence — Users, Execution, System Health, Support Tools
+Engines Built in This Phase
+AdminAuthService, AdminAPI routes, Admin React app at /admin, all org-level views
+Prerequisite
+All prior phases COMPLETE with passing report
+Gate Law
+DO NOT commit until every check in the Final Report returns YES
+WHAT THIS IS
+A completely separate admin interface accessible only to you (the organization owner). It shows everything happening in the app: every user, every execution state, system health, Bhudhi usage, revenue intelligence, and support tools to intervene when a user is stuck. It is not part of the user-facing app — it is your organizational nerve center.
+⚖ LAW: Admin access is protected by a separate ADMIN_SECRET environment variable. It has nothing to do with the user session system. If ADMIN_SECRET is missing, the admin panel returns 403 on every request.
+⚖ LAW: Admins can READ everything. Admins can intervene in specific controlled ways. Admins CANNOT override signals, change conditions, or corrupt execution state — the same system laws apply.
+SECTION 1 — SECURITY ARCHITECTURE
+1.1 Admin Auth — separate from user sessions
+File: src/admin/auth/adminAuth.ts
+// Admin access requires ALL THREE of these:
+// 1. ADMIN_EMAIL matches process.env.ADMIN_EMAIL (your email)
+// 2. ADMIN_PASSWORD matches process.env.ADMIN_PASSWORD (strong password)
+// 3. Optional: ADMIN_2FA_SECRET for TOTP 2FA (recommended)
+// Add to Railway env vars:
+ADMIN_EMAIL=your@email.com
+ADMIN_PASSWORD=&lt;strong-password-minimum-20-chars&gt;
+ADMIN_SESSION_SECRET=&lt;32-char-random-string&gt;
+ADMIN_2FA_SECRET=&lt;totp-secret-optional&gt;
+Admin sessions are stored separately from user sessions in an admin_sessions table. Admin session TTL: 8 hours. No idle refresh.
+1.2 Database: admin_sessions table
+CREATE TABLE IF NOT EXISTS admin_sessions (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+admin_email TEXT NOT NULL,
+created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+expires_at TIMESTAMPTZ NOT NULL,
+ip_hash TEXT,
+revoked BOOLEAN NOT NULL DEFAULT false
+);
+1.3 Admin route protection middleware
+export async function requireAdminAuth(req, res, next) {
+const adminSessionId = req.cookies[&quot;admin_session&quot;];
+if (!adminSessionId) return res.status(403).json({ error: &quot;FORBIDDEN&quot; });
+const session = await db.adminSession.findFirst({
+where: { id: adminSessionId, revoked: false,
+expires_at: { gt: new Date() } }
+});
+if (!session) return res.status(403).json({ error: &quot;FORBIDDEN&quot; });
+next();
+}
+⚠ The /admin route MUST be completely isolated from user routes. Never reuse user session cookies for admin access. Never expose admin routes in the public API.
+SECTION 2 — ADMIN API ROUTES
+File: src/routes/admin.ts — ALL routes require requireAdminAuth middleware
+2.1 Auth Routes
+POST /api/admin/auth/login     -- { email, password } → admin session cookie
+POST /api/admin/auth/logout    -- revoke admin session
+GET  /api/admin/auth/me        -- verify session + return admin info
+2.2 User Management Routes
+GET  /api/admin/users                    -- paginated user list with search/filter
+GET  /api/admin/users/:userId            -- full user profile + execution state
+GET  /api/admin/users/:userId/blueprint  -- active blueprint + hierarchy
+GET  /api/admin/users/:userId/signals    -- signal history
+GET  /api/admin/users/:userId/orders     -- order history
+GET  /api/admin/users/:userId/feedback   -- feedback history
+GET  /api/admin/users/:userId/events     -- event log for this user
+GET  /api/admin/users/:userId/bhudhi     -- Bhudhi call log for this user
+POST /api/admin/users/:userId/reset      -- reset user execution state (careful)
+POST /api/admin/users/:userId/message    -- send system message to user
+2.3 System Health Routes
+GET  /api/admin/health/system            -- full system health dashboard
+GET  /api/admin/health/workers           -- all pg-boss worker statuses
+GET  /api/admin/health/events            -- event queue depth + stuck events
+GET  /api/admin/health/dead-letter       -- all DLQ events
+POST /api/admin/health/dead-letter/:id/replay -- replay a DLQ event
+POST /api/admin/health/dead-letter/:id/dismiss -- dismiss a DLQ event
+2.4 Organization Analytics Routes
+GET  /api/admin/analytics/overview       -- org-level KPIs (signups, DAU, MAU, retention)
+GET  /api/admin/analytics/signups        -- signup trend over time
+GET  /api/admin/analytics/execution      -- org-wide task completion rates
+GET  /api/admin/analytics/conditions     -- distribution of users by condition
+GET  /api/admin/analytics/blueprints     -- blueprints by tier, active/inactive
+GET  /api/admin/analytics/bhudhi         -- Bhudhi usage, tokens, cost estimate
+GET  /api/admin/analytics/errors         -- error rates by type
+GET  /api/admin/analytics/retention      -- cohort retention curves
+2.5 Support Intervention Routes
+POST /api/admin/support/unlock/:userId   -- unlock system-locked blueprint
+POST /api/admin/support/repair/:userId   -- trigger state integrity repair
+POST /api/admin/support/task/:userId     -- manually trigger task guarantee
+POST /api/admin/support/note/:userId     -- add internal support note
+GET  /api/admin/support/notes/:userId    -- get support notes for user
+SECTION 3 — DATABASE: ADMIN TABLES
+CREATE TABLE IF NOT EXISTS admin_sessions (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+admin_email TEXT NOT NULL,
+created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+expires_at TIMESTAMPTZ NOT NULL,
+ip_hash TEXT,
+revoked BOOLEAN NOT NULL DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS admin_support_notes (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+user_id UUID NOT NULL REFERENCES users(id),
+note TEXT NOT NULL,
+admin_email TEXT NOT NULL,
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS admin_actions_log (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+admin_email TEXT NOT NULL,
+action_type TEXT NOT NULL,
+target_user_id UUID REFERENCES users(id),
+payload JSONB,
+reason TEXT,
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+SECTION 4 — ADMIN FRONTEND APP
+Build as a completely separate React app at /admin route. Separate from the user app. Same Vite/React stack. Dark theme.
+4.1 Admin Login Screen (/admin/login)
+Simple email + password form. On success: sets admin_session cookie. Redirects to /admin/dashboard. No magic link — direct credential login.
+4.2 Admin Sidebar Navigation
+Dashboard (org overview)
+Users (user management)
+System Health
+Analytics
+Bhudhi Usage
+Dead Letter Queue
+Support Tools
+Audit Log
+SECTION 5 — ADMIN DASHBOARD (HOME SCREEN)
+Route: /admin/dashboard
+Shows at a glance everything happening in the organization right now:
+Row 1 — KPI Cards (update every 60 seconds)
+CARD
+DATA SOURCE
+Total Users
+COUNT users
+Active Today (DAU)
+COUNT sessions.lastSeenAt &gt; 24h ago
+Active This Month (MAU)
+COUNT sessions.lastSeenAt &gt; 30d ago
+Active Blueprints
+COUNT blueprints WHERE status=active
+Tasks Completed Today
+COUNT orders WHERE status=completed AND updated_at &gt; today
+Feedback Submitted Today
+COUNT feedback WHERE created_at &gt; today
+Row 2 — System Health Strip
+INDICATOR
+SHOWS
+API Status
+Railway health check — green/red
+Database
+Supabase connection — green/red
+Worker Queue
+pg-boss queue depth — number + color
+Dead Letter Queue
+Count of unresolved DLQ events — 0=green
+Bhudhi API
+Last Bhudhi call success — green/red
+Stuck Events
+Events pending &gt; 5 minutes — 0=green
+Row 3 — Live Activity Feed (last 20 events)
+Real-time feed of significant system events across all users:
+User signed up: [email] at [time]
+Blueprint activated: [userId] — tier: [tier] at [time]
+Task completed: [userId] — [taskTitle] at [time]
+Condition changed: [userId] → [condition] at [time]
+System alert: [type] at [time]
+DLQ event: [eventType] at [time]
+Row 4 — Condition Distribution Chart
+Donut chart showing how many active users are in each condition right now:
+Nothingness / Danger / Urgency / Stability / Power / Affluence / Power Change
+Row 5 — New Signups (last 7 days)
+Bar chart of daily signups. Click a bar to see that day&apos;s users.
+SECTION 6 — USERS SCREEN
+Route: /admin/users
+6.1 User List Table
+Columns:
+COLUMN
+DATA
+Email
+user.email
+Signed Up
+user.created_at — relative time
+Last Active
+session.lastSeenAt — relative time
+Tier
+blueprint.tier — badge
+Condition
+current condition — colored badge
+Tasks Today
+COUNT completed orders today
+Blueprint Status
+active / draft / none
+Actions
+View button
+Search: by email. Filter: by tier, condition, signup date, last active. Sort: by any column.
+6.2 User Detail Page (/admin/users/:userId)
+Everything about one user on a single page:
+SECTION A — Identity
+Email, user ID, signup date, last active, tier, mode
+Identity stage with evidence count
+Current condition with time in condition
+Capability level
+SECTION B — Blueprint State
+Blueprint goal (full text)
+Active plan / phase / project
+State version number
+Tier + mode
+Activated at
+System locked: yes/no with reason
+SECTION C — Signal Dashboard
+All 7 signals as numbers + direction arrows
+Last calculated at
+Signal history sparkline (7 days)
+SECTION D — Current Task
+Active order title + instruction
+Priority reason
+Proof requirement
+Time estimate
+Created at
+SECTION E — Recent Activity (last 20 events)
+Full event log with type, payload summary, timestamp
+SECTION F — Feedback History (last 10)
+Task title, verdict, score, proof type, submitted at
+SECTION G — Behavior Patterns (active)
+Pattern type, severity, detected at
+SECTION H — Bhudhi Usage (last 10 calls)
+Trigger type, tokens used, status, created at
+SECTION I — Support Notes
+Internal notes added by admin
+Add new note form
+SECTION J — Support Actions
+ACTION
+WHAT IT DOES
+Unlock Blueprint
+Clears system_locked=true — use when health repair stalled
+Trigger Task Guarantee
+Manually fires task_guarantee_requested — use when dashboard empty
+Trigger State Repair
+Fires StateIntegrityValidator for this user — use when state corrupt
+Send System Message
+Creates a notification for the user — use to communicate
+Add Support Note
+Internal note only — never shown to user
+⚠ Every support action is logged to admin_actions_log with your email, action type, target user, and timestamp. All admin interventions are auditable.
+SECTION 7 — SYSTEM HEALTH SCREEN
+Route: /admin/health
+7.1 Worker Status Panel
+Shows every pg-boss worker with:
+Worker name
+Last run timestamp
+Jobs processed in last hour
+Jobs failed in last hour
+Status: healthy / degraded / stopped
+7.2 Event Queue Panel
+Total PENDING events
+Events stuck &gt; 5 minutes (highlighted in red)
+Events by type (top 10)
+Average processing time
+7.3 Dead Letter Queue Panel
+Table of all unresolved DLQ events:
+Event type, user ID, failure reason, failure category, attempt count, created at
+Replay button (for retryable events)
+Dismiss button (for non-retryable)
+Filter: by failure category, event type, date
+7.4 Database Metrics
+Total rows per major table
+Tables with missing required columns (integrity check)
+Recent migration ledger entries
+SECTION 8 — ANALYTICS SCREEN
+Route: /admin/analytics
+8.1 Organization KPIs (date range picker: 7d / 30d / 90d)
+METRIC
+CALCULATION
+Total Signups
+COUNT users in period
+Daily Active Users (DAU)
+AVG daily unique sessions
+Monthly Active Users (MAU)
+Unique users with session in period
+DAU/MAU Ratio
+Stickiness metric
+Blueprint Activation Rate
+COUNT activated / COUNT signed up
+Task Completion Rate
+COUNT completed orders / COUNT generated orders
+Avg Tasks Per Active User Per Day
+AVG daily completions
+Feedback Rejection Rate (anti-gaming)
+COUNT rejected / COUNT total feedback
+Users in Danger Condition
+COUNT users with condition=danger
+Users Active After 7 Days (D7)
+Cohort retention
+Users Active After 30 Days (D30)
+Cohort retention
+8.2 Signups Over Time
+Line chart: daily signups over selected period. Breakout by tier (Starter / Growth / Ultimate).
+8.3 Condition Distribution Over Time
+Stacked area chart: % of users in each condition each day. Shows organization-wide execution health trend.
+8.4 Task Completion Funnel
+Bar chart: tasks generated → tasks started → tasks completed → feedback accepted. Shows where users drop off.
+8.5 Feedback Verdict Distribution
+Pie chart: ACCEPTED / PARTIAL / FAILED / BLOCKED / REJECTED (anti-gaming). High REJECTED = anti-gaming working. High BLOCKED = dependency issues.
+8.6 Tier Distribution
+Pie chart: users by tier. Tracks upgrade behavior over time.
+SECTION 9 — BHUDHI USAGE SCREEN
+Route: /admin/bhudhi
+9.1 Usage Summary Cards
+Total Bhudhi calls today
+Total tokens used today
+Estimated cost today (tokens × rate)
+Success rate (successful / total)
+Avg response time
+Most used trigger type
+9.2 Usage Over Time
+Line chart: daily calls + tokens for last 30 days. Shows Bhudhi cost trend.
+9.3 Trigger Type Breakdown
+Table showing calls per trigger type with success rate and avg tokens:
+goal_structuring, task_generation, feedback_interpretation, recovery_explanation, state_explanation, outcome_drafting, etc.
+9.4 Error Log
+Recent Bhudhi failures: trigger type, error type, user ID, timestamp. Click to see sanitized log entry.
+SECTION 10 — AUDIT LOG SCREEN
+Route: /admin/audit
+Complete log of all admin actions taken through the dashboard:
+Admin email
+Action type (unlock, repair, message, note, replay-dlq, etc.)
+Target user ID
+Payload summary
+Timestamp
+Filter: by action type, date range. Export: CSV button.
+SECTION 11 — FRONTEND IMPLEMENTATION
+File structure:
+src/admin/
+app.tsx              -- admin React app root
+router.tsx           -- admin routes
+auth/
+AdminLogin.tsx
+adminAuthStore.ts
+api/
+adminClient.ts     -- separate API client for admin routes
+pages/
+Dashboard.tsx
+Users.tsx
+UserDetail.tsx
+SystemHealth.tsx
+Analytics.tsx
+BhudhiUsage.tsx
+AuditLog.tsx
+components/
+AdminSidebar.tsx
+KPICard.tsx
+DataTable.tsx
+StatusBadge.tsx
+ActionButton.tsx
+Chart.tsx          -- recharts wrapper
+Admin route protection on the frontend:
+// In admin/router.tsx:
+// On every admin page mount: check /api/admin/auth/me
+// If 403: redirect to /admin/login
+// Never render admin data without confirmed admin session
+Charts library: recharts (already available in the stack)
+Use recharts for all charts: LineChart, BarChart, PieChart, AreaChart. Dark theme consistent with the app design system.
+Auto-refresh:
+Dashboard KPI cards: every 60 seconds
+System health indicators: every 30 seconds
+Live activity feed: every 15 seconds
+All other data: manual refresh button
+SECTION 12 — EXPRESS SERVER MOUNTING
+Add to src/server.ts:
+import adminRoutes from &quot;./routes/admin&quot;;
+app.use(&quot;/api/admin&quot;, requireAdminAuth, adminRoutes);
+// Serve admin frontend at /admin
+// (handled by Vite routing or Express static serve)
+⚠ The /api/admin prefix must use requireAdminAuth middleware on the entire prefix — not just individual routes. One misconfigured route without the middleware exposes the entire user database.
+FINAL REPORT — COMPLETE BEFORE COMMIT
+🚫 GATE: DO NOT commit. DO NOT push. DO NOT start the next phase. Until every row below is YES.
+CHECK
+RESULT
+admin_sessions table created
+YES / NO
+admin_support_notes table created
+YES / NO
+admin_actions_log table created
+YES / NO
+ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_SESSION_SECRET set on Railway
+YES / NO
+POST /api/admin/auth/login returns admin session cookie
+YES / NO
+GET /api/admin/users returns paginated user list
+YES / NO
+GET /api/admin/users/:userId returns full user profile with all sections
+YES / NO
+GET /api/admin/analytics/overview returns org KPIs
+YES / NO
+GET /api/admin/health/system returns full health status
+YES / NO
+GET /api/admin/health/dead-letter returns DLQ events
+YES / NO
+POST /api/admin/support/unlock/:userId clears system_locked
+YES / NO
+POST /api/admin/support/task/:userId triggers task guarantee
+YES / NO
+Every admin action logged to admin_actions_log
+YES / NO
+requireAdminAuth middleware applied to ALL /api/admin routes
+YES / NO
+Admin route from user session cookie returns 403
+YES / NO
+/admin/dashboard accessible after admin login
+YES / NO
+KPI cards refresh every 60 seconds
+YES / NO
+System health indicators refresh every 30 seconds
+YES / NO
+User detail page shows all 10 sections
+YES / NO
+pnpm typecheck = zero errors
+YES / NO
+Commit message when all YES:
+git add -A
+git commit -m &quot;feat: [message from this phase]&quot;
+git push origin main

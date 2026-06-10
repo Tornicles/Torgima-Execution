@@ -1,0 +1,617 @@
+﻿
+BLUEPRINT ENGINE
+SCHEMA & SYSTEM SPEC
+Validation â†’ Tier Selection â†’ Blueprint Generation â†’ Execution Loop
+Torgima Execution Governance â€” Individual Mode â€” Phase 1
+Blueprint System Document 1 of 3
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+
+1. SYSTEM OVERVIEW
+The Blueprint Engine is the execution backbone of Torgima. It receives a completed, scored validation and automatically presents three blueprint tiers (Starter, Growth, Ultimate) for user selection. When the user picks a tier, the system generates the full blueprint chain â€” Plans, Seasons, Targets, Phases, Projects, Actions â€” then immediately initializes the Execution Loop: Signal â†’ Condition â†’ Enforcement â†’ Task Generation. This document defines the complete schema, engine architecture, and all connection points.
+
+1.1 Master Flow
+Validation Complete â†’ Tier Presentation Screen â†’ User Selects Tier â†’ BlueprintGenerationEngine â†’ Plans/Seasons/Targets/Phases/Projects/Actions Created â†’ BlueprintEngine.launch() â†’ Signal Init â†’ Condition Init â†’ Enforcement Package â†’ Task Generation â†’ Dashboard
+
+1.2 Tier Meaning
+Tier
+System Purpose
+STARTER
+Clarity + guided execution. Simple structure. AI guides inside basic rules.
+GROWTH
+Structured execution + adaptation. Full signal system. Rule engine controls.
+ULTIMATE
+Predictive optimization + strategic control. Deterministic envelope. AI blocked if invalid.
+
+
+2. COMPLETE SCHEMA â€” BLUEPRINT SYSTEM TABLES
+These are all tables involved in the validation-to-blueprint flow. Existing tables from DOC_02 are referenced where they connect. New columns and new tables introduced by the tier-aware generation system are marked NEW.
+
+2.1 validations (EXTENDED)
+Stores the Erector validation result and the user's selected path and tier. The tier selection writes here before BlueprintGenerationEngine is called.
+
+Table: validations
+
+Column
+Purpose / Type
+id
+uuid PK
+blueprint_id
+FK â†’ blueprints.id
+user_id
+FK â†’ users.id
+verdict
+ValidationVerdict enum: PROCEED / ADJUST / PIVOT
+feasibility_score
+Float 0.0â€“1.0
+clarity_score
+Float 0.0â€“1.0
+realism_score
+Float 0.0â€“1.0
+path_current
+Json â€” full current path object
+path_adjusted
+Json â€” adjusted path object
+path_alternative
+Json â€” alternative path object
+selected_path
+SelectedPath enum: CURRENT / ADJUSTED / ALTERNATIVE â€” NEW
+selected_tier
+BlueprintTier enum: STARTER / GROWTH / ULTIMATE â€” NEW
+tier_presented_at
+DateTime â€” when tier selection screen shown â€” NEW
+tier_selected_at
+DateTime â€” when user confirmed tier â€” NEW
+tier_preview_data
+Json â€” snapshot of preview cards shown to user â€” NEW
+selected_at
+DateTime
+status
+String: pending / scored / tier_presented / tier_selected / launched
+ai_summary
+String â€” Bhudhi-generated validation summary
+created_at
+DateTime
+
+2.2 blueprints (EXTENDED)
+The master blueprint record. Now carries tier, generation_depth, and tier_config that the entire engine stack reads to determine behavior.
+
+Table: blueprints â€” New Tier Columns
+
+Column
+Purpose / Type
+tier
+BlueprintTier enum: STARTER / GROWTH / ULTIMATE â€” was user.tier, now on blueprint
+generation_depth
+Int 1/2/3 â€” Starter=1, Growth=2, Ultimate=3 â€” NEW
+tier_config
+Json â€” complete tier rules snapshot at generation time â€” NEW
+intelligence_depth
+Int 1/2/3 â€” controls Bhudhi prompt depth â€” NEW
+policy_enforcement
+String: display_only / applied / enforced â€” NEW
+signal_mode
+String: simplified / full / predictive â€” NEW
+adaptation_mode
+String: none / trigger_based / full_simulation â€” NEW
+selected_blueprint_level
+String â€” mirrors tier for API compatibility â€” EXISTING
+selected_path
+String â€” path carried from validation â€” EXISTING
+status
+String: draft / path_selection / generating / active / paused / complete
+validation_id
+FK â†’ validations.id â€” carries validation context into blueprint
+
+2.3 blueprint_tier_previews â€” NEW TABLE
+Stores the three tier preview cards shown to the user after validation. Each row is one tier card. This enables analytics on which tier users choose, and whether preview data influenced them.
+
+Table: blueprint_tier_previews
+
+Column
+Purpose / Type
+id
+uuid PK
+validation_id
+FK â†’ validations.id
+user_id
+FK â†’ users.id
+tier
+BlueprintTier enum
+headline
+String â€” tier card headline e.g. "Clarity + Guided Execution"
+description
+String â€” 2â€“3 sentence tier description
+plan_count
+Int â€” number of plans this tier generates
+target_types
+String[] â€” target types available
+signal_system
+String â€” signal system description for this tier
+task_style
+String â€” task generation style description
+ai_depth
+String â€” AI intelligence depth description
+highlights
+Json â€” array of 3â€“5 key feature highlights
+growth_projection
+Json â€” estimated progress data at 30/60/90 days â€” NEW
+recommended
+Boolean â€” true if system recommends this tier for this goal
+recommendation_reason
+String â€” why recommended based on validation scores
+selected
+Boolean â€” true if user picked this tier
+created_at
+DateTime
+
+2.4 blueprint_generation_log â€” NEW TABLE
+Audit log for every blueprint generation run. Records what was generated, in what sequence, and whether any layer failed or used fallback.
+
+Table: blueprint_generation_log
+
+Column
+Purpose / Type
+id
+uuid PK
+blueprint_id
+FK â†’ blueprints.id
+user_id
+FK â†’ users.id
+validation_id
+FK â†’ validations.id
+tier
+BlueprintTier
+generation_trigger
+String: tier_selected / regeneration / recovery
+layers_generated
+Json â€” which layers were created in this run
+plans_created
+Int
+seasons_created
+Int
+targets_created
+Int
+phases_created
+Int
+projects_created
+Int
+actions_created
+Int
+bhudhi_used
+Boolean â€” was Bhudhi called for generation
+bhudhi_log_id
+FK â†’ bhudhi_logs.id â€” which Bhudhi call powered generation
+fallback_used
+Boolean
+fallback_reason
+String?
+duration_ms
+Int â€” total generation time
+status
+String: complete / partial / failed
+error
+String?
+created_at
+DateTime
+
+
+2.5 Existing Blueprint Chain Tables (DOC_02 â€” unchanged structure)
+These tables are generated by BlueprintGenerationEngine. Structure defined in DOC_02. The tier controls how many rows are created and what types are used.
+
+Table
+What tier controls
+plans
+STARTER=3 plans, GROWTH=3-4, ULTIMATE=4 + dynamic prioritization
+seasons
+STARTER=hidden, GROWTH=4 seasons, ULTIMATE=4 + dynamic rebalancing
+targets
+STARTER=3 types, GROWTH=6 types, ULTIMATE=6 + adaptive + recalibration
+phases
+STARTER=linear, GROWTH=gated, ULTIMATE=adaptive (repeat/delay/accelerate)
+projects
+STARTER=2 types, GROWTH=4 types, ULTIMATE=4 + reordering + expand/shrink
+actions
+STARTER=2 types, GROWTH=4 types, ULTIMATE=4 + impact-ranked
+orders (tasks)
+STARTER=simple, GROWTH=condition-controlled, ULTIMATE=predictive+fatigue-aware
+signal_snapshots
+STARTER=simplified states, GROWTH=full 7, ULTIMATE=+predictive
+conditions
+STARTER=light, GROWTH=full control, ULTIMATE=predictive+risk-based
+enforcement_packages
+All tiers â€” controls task limits, difficulty cap, allowed actions
+bhudhi_logs
+All tiers â€” Bhudhi depth scales with generation_depth 1/2/3
+blueprint_policies
+STARTER=display only, GROWTH=applied, ULTIMATE=enforced
+
+
+3. ENUMS (NEW + EXTENDED)
+
+3.1 New Enums
+enum BlueprintTier {
+  STARTER
+  GROWTH
+  ULTIMATE
+}
+
+enum ValidationStatus {
+  pending
+  scored
+  tier_presented
+  tier_selected
+  launched
+}
+
+enum GenerationTrigger {  // EXTENDED
+  blueprint_launched     // existing
+  tier_selected          // NEW â€” fires BlueprintGenerationEngine
+  regeneration           // NEW â€” full regeneration on tier change
+  recovery               // existing
+}
+
+
+4. BLUEPRINT GENERATION ENGINE
+BlueprintGenerationEngine is the new engine that sits between validation completion and BlueprintEngine.launch(). It reads the selected tier and generates the complete blueprint chain in a single database transaction.
+
+4.1 Engine Location
+src/engines/blueprint/BlueprintGenerationEngine.ts
+
+4.2 Trigger Sequence
+POST /api/blueprints/select-tier â†’ validateTierSelection() â†’ BlueprintGenerationEngine.generate() â†’ BlueprintEngine.launch() â†’ InitialTaskGeneration
+
+4.3 Engine Interface
+interface GenerationInput {
+  blueprintId: string;
+  userId: string;
+  validationId: string;
+  selectedTier: BlueprintTier;   // STARTER | GROWTH | ULTIMATE
+  selectedPath: SelectedPath;    // CURRENT | ADJUSTED | ALTERNATIVE
+}
+
+interface GenerationOutput {
+  blueprintId: string;
+  plansCreated: number;
+  seasonsCreated: number;
+  targetsCreated: number;
+  phasesCreated: number;
+  projectsCreated: number;
+  actionsCreated: number;
+  readyToLaunch: boolean;
+}
+
+4.4 Tier Configuration Map
+The TierConfig object is computed at generation time and stored in blueprints.tier_config as a JSON snapshot. It governs every engine downstream.
+
+const TIER_CONFIG: Record&lt;BlueprintTier, TierConfig&gt; = {
+  STARTER: {
+    generation_depth: 1,
+    intelligence_depth: 1,
+    plans: ["Foundation", "Validation/Proof", "Growth"],
+    seasons_enabled: false,
+    target_types: ["major", "primary", "production"],
+    phases: ["initiation", "development", "completion"],
+    phase_mode: "linear",
+    project_types: ["setup", "execution"],
+    action_types: ["create", "analyze"],
+    task_style: "simple",
+    signal_mode: "simplified",
+    condition_mode: "light",
+    policy_enforcement: "display_only",
+    adaptation_mode: "none",
+    knowledge_injection: "minimal",
+    bhudhi_mode: "EXPLAIN",
+    framework_activations_max: 2,
+    signal_history_days: 7,
+    bhudhi_memory_days: 0, // session only
+  },
+  GROWTH: {
+    generation_depth: 2,
+    intelligence_depth: 2,
+    plans: ["Foundation", "Validation/Proof", "Growth", "Scale"],
+    seasons_enabled: true,
+    seasons: ["ignition", "foundation", "traction", "scale"],
+    target_types: ["major","primary","vital","operating","production","conditional"],
+    phases: ["initiation", "development", "completion"],
+    phase_mode: "gated",
+    project_types: ["setup","execution","analysis","optimization"],
+    action_types: ["create","replicate","analyze","improve"],
+    task_style: "condition_controlled",
+    signal_mode: "full",
+    condition_mode: "full",
+    policy_enforcement: "applied",
+    adaptation_mode: "trigger_based",
+    knowledge_injection: "full",
+    bhudhi_mode: "STRUCTURE",
+    framework_activations_max: 4,
+    signal_history_days: 30,
+    bhudhi_memory_days: 7,
+  },
+  ULTIMATE: {
+    generation_depth: 3,
+    intelligence_depth: 3,
+    plans: ["Foundation","Validation/Proof","Growth","Scale"],
+    dynamic_plan_prioritization: true,
+    seasons_enabled: true,
+    seasons: ["ignition","foundation","traction","scale"],
+    dynamic_season_rebalancing: true,
+    target_types: ["major","primary","vital","operating","production","conditional"],
+    adaptive_targets: true,
+    performance_recalibration: true,
+    phases: ["initiation", "development", "completion"],
+    phase_mode: "adaptive",
+    project_types: ["setup","execution","analysis","optimization"],
+    project_reordering: true,
+    project_expansion: true,
+    action_types: ["create","replicate","analyze","improve"],
+    impact_ranked_actions: true,
+    task_style: "predictive",
+    signal_mode: "predictive",
+    condition_mode: "predictive",
+    policy_enforcement: "enforced",
+    adaptation_mode: "full_simulation",
+    knowledge_injection: "predictive",
+    bhudhi_mode: "INTERPRET",
+    framework_activations_max: 14,
+    predictive_signals: true,
+    signal_history_days: 90,
+    bhudhi_memory_days: 30,
+  },
+};
+
+4.5 Generation Transaction Sequence
+All creation happens inside one database transaction. If any step fails, the entire transaction rolls back and an error is returned. The frontend shows an error and the user can retry.
+
+Step
+Action
+1
+Load validation record â€” verify verdict is not PIVOT
+2
+Load blueprint draft â€” verify status is path_selection
+3
+Compute TierConfig from selectedTier
+4
+Update blueprints: set tier, generation_depth, tier_config, intelligence_depth, policy_enforcement, signal_mode, adaptation_mode, status=generating
+5
+Create Plans (per tier config)
+6
+Create Seasons if seasons_enabled (per tier config)
+7
+Create Targets per Plan (per target_types)
+8
+Create Phases per Target (per phase config)
+9
+Create Projects per Phase (per project_types)
+10
+Create Actions per Project (per action_types)
+11
+Generate BlueprintPolicy with correct enforcement_level
+12
+Call Bhudhi (STRUCTURE mode) to enrich plan/target names with goal context
+13
+Update blueprints: status=path_selection, generation_depth confirmed
+14
+Write blueprint_generation_log row
+15
+Emit blueprint_chain_generated event
+16
+Call BlueprintEngine.launch() â†’ initializes signal, condition, enforcement, emits blueprint_launched
+
+
+5. TIER PREVIEW ENGINE
+The TierPreviewEngine generates the three blueprint tier cards shown to the user after validation completes. These cards display what each tier will generate, projected progress data, and which tier the system recommends based on their validation scores.
+
+5.1 Engine Location
+src/engines/blueprint/TierPreviewEngine.ts
+
+5.2 Trigger
+POST /api/validation/complete â†’ TierPreviewEngine.buildPreviews() â†’ returns 3 TierPreviewCard objects â†’ written to blueprint_tier_previews table â†’ frontend displays selection screen
+
+5.3 Preview Card Contents per Tier
+Feature
+Shown on Card
+Source
+Headline
+Tier purpose statement
+static per tier
+Plan count
+How many plans generated
+TierConfig
+Signal system
+Which signals active
+TierConfig.signal_mode
+Task style
+How tasks are generated
+TierConfig.task_style
+AI depth
+Intelligence description
+TierConfig.intelligence_depth
+Key highlights
+3â€“5 feature bullets
+TierConfig + validation
+Growth projection
+30/60/90 day progress estimate
+Computed from validation scores
+Recommended badge
+Is this the recommended tier?
+Recommendation engine
+Recommendation reason
+Why recommended
+Based on feasibility + clarity scores
+
+5.4 Recommendation Logic
+The system recommends one tier based on the validation scores:
+
+function recommendTier(validation: Validation): BlueprintTier {
+  const { feasibility_score, clarity_score, realism_score } = validation;
+  const avg = (feasibility_score + clarity_score + realism_score) / 3;
+  // Low scores â†’ start with Starter for structure
+  if (avg &lt; 0.5) return BlueprintTier.STARTER;
+  // Mid scores â†’ Growth for adaptation
+  if (avg &lt; 0.75) return BlueprintTier.GROWTH;
+  // High scores â†’ Ultimate for full optimization
+  return BlueprintTier.ULTIMATE;
+}
+
+
+6. API ROUTES â€” BLUEPRINT TIER FLOW
+
+Route
+Purpose
+POST /api/validation/complete
+Scores validation, calls TierPreviewEngine, writes previews, returns 3 tier cards
+GET /api/blueprints/:id/tier-preview
+Returns saved tier preview cards for display/refresh
+POST /api/blueprints/select-tier
+Receives { blueprintId, validationId, selectedTier, selectedPath } â†’ calls BlueprintGenerationEngine â†’ calls BlueprintEngine.launch() â†’ returns { redirectTo: "/dashboard" }
+GET /api/blueprints/:id/generation-status
+Polls generation progress (websocket alternative for frontend loading state)
+
+6.1 select-tier Payload
+{
+  "blueprintId": "uuid",
+  "validationId": "uuid",
+  "selectedTier": "STARTER" | "GROWTH" | "ULTIMATE",
+  "selectedPath": "CURRENT" | "ADJUSTED" | "ALTERNATIVE"
+}
+
+6.2 select-tier Response
+{
+  "ok": true,
+  "data": {
+    "blueprintId": "uuid",
+    "tier": "GROWTH",
+    "redirectTo": "/dashboard",
+    "generationSummary": {
+      "plansCreated": 4,
+      "targetsCreated": 6,
+      "phasesCreated": 12,
+      "projectsCreated": 48,
+      "actionsCreated": 192
+    }
+  }
+}
+
+
+7. SIGNAL + CONDITION INITIALIZATION PER TIER
+BlueprintEngine.launch() always starts at condition = nothingness regardless of tier. But the enforcement package is initialized differently per tier â€” controlling how quickly the system can escalate.
+
+Init Parameter
+STARTER
+GROWTH
+ULTIMATE
+Initial condition
+nothingness
+nothingness
+nothingness
+task_limit_min
+1
+1
+1
+task_limit_max
+2
+3
+3
+difficulty_cap
+easy
+easy
+easy
+signal_mode
+simplified
+full
+predictive
+bhudhi ai_mode
+"command"
+"command"
+"command"
+policy active
+No (display)
+Yes (applied)
+Yes (enforced)
+framework_max
+2
+4
+14
+signal_history_window
+7 days
+30 days
+90 days
+predictive_signals
+false
+false
+true
+memory_depth
+session
+7 days
+30 days
+
+8. TASK GENERATION â€” TIER BEHAVIOR
+TaskGenerationEngine reads blueprints.tier_config to control every aspect of task creation. The tier snapshot ensures tasks are always consistent with the tier the user selected, even if the user tier changes later.
+
+Generation Aspect
+Logic
+Tier Source
+Task count
+enforcement_package.task_limits (min/max)
+condition + tier override
+Difficulty cap
+enforcement_package.difficulty_cap
+condition + tier cap
+Task style
+blueprints.tier_config.task_style
+simple / condition_controlled / predictive
+Bhudhi depth
+blueprints.intelligence_depth (1/2/3)
+controls prompt depth
+Knowledge injection
+tier_config.knowledge_injection
+minimal / full / predictive
+Impact ranking
+tier_config.impact_ranked_actions
+Ultimate only
+Fatigue awareness
+tier_config.task_style === predictive
+Ultimate only
+
+
+9. SCHEMA VERIFICATION CHECKLIST
+
+Check
+Pass/Fail
+New columns on validations table exist (selected_tier, tier_presented_at, tier_selected_at, tier_preview_data)
+â˜
+blueprint_tier_previews table created with all columns
+â˜
+blueprint_generation_log table created with all columns
+â˜
+New columns on blueprints table exist (tier, generation_depth, tier_config, intelligence_depth, policy_enforcement, signal_mode, adaptation_mode)
+â˜
+BlueprintTier enum exists in schema
+â˜
+ValidationStatus enum exists in schema
+â˜
+Prisma generate runs with zero errors
+â˜
+Prisma migrate dev runs with zero errors
+â˜
+GET /api/blueprints/:id/tier-preview returns 3 tier cards
+â˜
+POST /api/blueprints/select-tier with STARTER creates 3 plans, no seasons
+â˜
+POST /api/blueprints/select-tier with GROWTH creates 4 plans + 4 seasons
+â˜
+POST /api/blueprints/select-tier with ULTIMATE creates 4 plans + 4 seasons + adaptive flags
+â˜
+BlueprintEngine.launch() fires after generation completes
+â˜
+Signal snapshot created with condition=nothingness after launch
+â˜
+Initial tasks generated within 5 seconds of launch
+â˜
+Dashboard loads with correct tier label and first task visible
+â˜
+
+

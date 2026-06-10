@@ -5,10 +5,31 @@ import { PlatformUpgradeService } from "../services/PlatformUpgradeService.js";
 
 const router = Router();
 
-/** GET /api/upgrade/status */
+/** GET /api/upgrade/status
+ *
+ * Returns the authenticated user's upgrade state.
+ * Returns a safe default when the caller is not authenticated so the frontend
+ * can always render the upgrade screen — even before login completes — without
+ * triggering a CORS-blocked 500 error.
+ */
 router.get("/upgrade/status", async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = await requireAuth(req, "OPTIONAL_SESSION");
+
+    if (!auth.userId) {
+      // Not authenticated — return a safe default instead of 401 or 500.
+      // The frontend calls this route early in the session lifecycle so it must
+      // never crash the page while the user is still logging in.
+      success(res, {
+        requiresUpgrade: false,
+        executionState: "NORMAL",
+        firstLoginAfterUpgrade: false,
+        archivedCounts: {},
+        migrationApplied: true,
+      });
+      return;
+    }
+
     const status = await PlatformUpgradeService.getStatus(auth.userId);
     success(res, status);
   } catch (err) {

@@ -95,10 +95,16 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     "ADMIN_SESSION_SECRET",
   ] as const;
 
+  const boundKeys: string[] = [];
+  const missingKeys: string[] = [];
+
   for (const key of passthrough) {
     const value = env[key];
     if (typeof value === "string" && value.trim()) {
       process.env[key] = value;
+      boundKeys.push(key);
+    } else {
+      missingKeys.push(key);
     }
   }
 
@@ -109,12 +115,19 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     const viteUrl = env["VITE_SUPABASE_URL"];
     if (typeof viteUrl === "string" && viteUrl.trim()) {
       process.env.SUPABASE_URL = viteUrl.trim();
+      boundKeys.push("SUPABASE_URL(via VITE_)");
+      // Remove from missing list if it was added
+      const idx = missingKeys.indexOf("SUPABASE_URL");
+      if (idx !== -1) missingKeys.splice(idx, 1);
     }
   }
   if (!process.env.SUPABASE_ANON_KEY) {
     const viteAnon = env["VITE_SUPABASE_ANON_KEY"];
     if (typeof viteAnon === "string" && viteAnon.trim()) {
       process.env.SUPABASE_ANON_KEY = viteAnon.trim();
+      boundKeys.push("SUPABASE_ANON_KEY(via VITE_)");
+      const idx = missingKeys.indexOf("SUPABASE_ANON_KEY");
+      if (idx !== -1) missingKeys.splice(idx, 1);
     }
   }
 
@@ -126,10 +139,27 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     bindWorkerDatabaseUrl(nextDbUrl);
   }
 
-  if (process.env.NODE_ENV !== "production") {
+  // Critical keys that MUST be present for the Worker to function correctly.
+  const criticalKeys = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+  const missingCritical = criticalKeys.filter((k) => !process.env[k]);
+
+  if (missingCritical.length > 0) {
+    console.error(
+      JSON.stringify({
+        type: "env_binding_critical_missing",
+        missingCritical,
+        message: "Critical Worker env keys are not set — auth and database calls will fail",
+      }),
+    );
+  } else if (process.env.NODE_ENV !== "production") {
+    // Verbose only outside production to avoid log noise in prod.
     console.log(
-      "[cloudflare-runtime] Env bound. DATABASE_URL present:",
-      Boolean(env.DATABASE_URL || env.HYPERDRIVE),
+      JSON.stringify({
+        type: "env_binding_complete",
+        boundCount: boundKeys.length,
+        missingCount: missingKeys.length,
+        missingNonCritical: missingKeys,
+      }),
     );
   }
 }

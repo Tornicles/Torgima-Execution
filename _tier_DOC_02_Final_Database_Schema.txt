@@ -1,0 +1,2214 @@
+﻿TORGIMA
+INDIVIDUAL EXECUTION SYSTEM
+
+DOCUMENT 02 OF 32
+Final Database Schema
+Complete Prisma Schema â€” All 42 Tables â€” Production Ready
+Phase 1 â€” Individual System
+
+1. Document Purpose
+
+This document contains the complete Prisma schema for Torgima Phase 1. It defines all 42 tables, every column, every relation, every index, every constraint, and every enum. This is the single source of truth for the database layer.
+
+This document is executed in Cursor by replacing the contents of prisma/schema.prisma with the full schema defined in section 4, then running the migration commands in section 5.
+
+Rule: No engine, API route, or frontend component reads from or writes to the database using any column, table, or relation not defined in this document. If a column is needed and is not here, this document must be updated first.
+
+2. Schema Overview
+
+The schema is organized into 10 groups. Every table belongs to exactly one group. Groups follow the execution flow of the system.
+
+#
+Group
+Tables
+Purpose
+1
+Identity & Auth
+users, sessions
+User accounts and authentication
+2
+Blueprint Chain
+blueprints, validations, blueprint_policies, plans, seasons, targets, phases, projects, actions, orders
+Full execution structure from goal to task
+3
+Dependencies
+project_dependencies, order_dependencies
+Relational dependency tracking
+4
+Feedback & Truth
+feedback
+User execution submissions
+5
+Signal & Control
+signal_snapshots, conditions, enforcement_packages
+Reality layer and execution control
+6
+Event System
+events, event_logs, dead_letter_events
+Async processing and audit trail
+7
+Domain & Framework
+domain_history, framework_activations, framework_decisions, framework_signal_snapshots
+Domain transitions and framework layer
+8
+Capability & Behavior
+capability_profiles, capability_history, behavior_patterns, behavior_events, inactivity_records
+User execution intelligence
+9
+Identity & Engagement
+user_identity_states, identity_history, milestones, reward_events
+Identity continuity and compulsion loop
+10
+Execution Support
+habits, habit_checkins, knowledge_objects, order_knowledge_links, weekly_reviews, phase_checkpoints, academy_tasks, academy_proof, real_outcomes, outcome_validations, false_progress_flags, state_memory, escalation_logs, blueprint_versions, blueprint_mutations, task_generation_log, decision_traces, cognitive_load_scores, bhudhi_logs, bhudhi_memory, system_health_logs, feature_flags
+All supporting systems
+
+Total: 42 tables. Every table has created_at. Every mutable table has updated_at with an auto-trigger. Every is_current pattern is enforced by a partial unique index.
+
+3. Enums
+
+All enums are defined at the top of schema.prisma before any model definitions. Prisma enums map directly to PostgreSQL enum types.
+
+3.1 User & System Enums
+enum UserMode {
+  individual
+  team
+}
+
+enum UserTier {
+  starter
+  growth
+  ultimate
+}
+
+enum CommitmentLevel {
+  low
+  medium
+  high
+  full
+}
+
+3.2 Blueprint & Execution Enums
+enum BlueprintStatus {
+  draft
+  validating
+  path_selection
+  active
+  paused
+  complete
+  abandoned
+}
+
+enum ValidationVerdict {
+  proceed
+  adjust
+  pivot
+}
+
+enum SelectedPath {
+  current
+  adjusted
+  alternative
+}
+
+enum Domain {
+  genesis
+  market
+  delivery
+  operations
+  people
+  growth
+  continuity
+}
+
+enum Season {
+  ignition
+  foundation
+  traction
+  scale
+}
+
+enum PlanStatus {
+  pending
+  active
+  complete
+  skipped
+}
+
+enum TargetType {
+  major
+  primary
+  vital
+  operating
+  production
+  conditional
+}
+
+enum TargetStatus {
+  pending
+  active
+  on_track
+  at_risk
+  complete
+  failed
+  skipped
+}
+
+enum PhaseName {
+  initiation
+  development
+  completion
+}
+
+enum PhaseStatus {
+  pending
+  active
+  gated
+  blocked
+  complete
+  skipped
+}
+
+enum ProjectType {
+  setup
+  execution
+  analysis
+  optimization
+  recovery
+}
+
+enum ProjectStatus {
+  pending
+  active
+  blocked
+  complete
+  failed
+  skipped
+}
+
+enum ActionType {
+  create
+  replicate
+  analyze
+  improve
+  standardize
+  recover
+  test
+  publish
+  validate
+  measure
+  build
+}
+
+3.3 Order (Task) Enums
+enum TaskType {
+  execution
+  recovery
+  academy
+  clarification
+  blocker_resolution
+  phase_checkpoint
+  habit
+  review
+}
+
+enum Difficulty {
+  very_easy
+  easy
+  moderate
+  hard
+  very_hard
+}
+
+enum ProofType {
+  link
+  file
+  text
+  image
+  none
+}
+
+enum OrderStatus {
+  pending
+  active
+  paused
+  blocked
+  needs_feedback
+  needs_proof
+  completed
+  failed
+  skipped
+  cancelled
+}
+
+3.4 Signal & Condition Enums
+enum Condition {
+  nothingness
+  danger
+  urgency
+  stability
+  power
+  affluence
+  power_change
+}
+
+enum SignalTrend {
+  rising
+  stable
+  declining
+  flat
+  recovering
+}
+
+enum SignalConfidence {
+  high
+  medium
+  low
+  insufficient_data
+}
+
+enum PhasePermission {
+  blocked
+  restricted
+  normal
+  accelerated
+}
+
+enum TargetAdjustment {
+  maintain
+  reduce
+  expand
+}
+
+enum AiMode {
+  command
+  correction
+  stabilization
+  optimization
+  expansion
+  strategic
+  analytical
+}
+
+enum UiMode {
+  starter
+  restrictive
+  focused
+  standard
+  expanded
+  strategic
+  transitional
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+3.5 Feedback Enums
+enum FeedbackCompletion {
+  completed
+  partial
+  failed
+  skipped
+}
+
+enum FeedbackValidationStatus {
+  pending
+  accepted
+  needs_interrogation
+  interrogated
+  rejected
+  low_confidence
+}
+
+3.6 Event Enums
+enum EventStatus {
+  pending
+  processing
+  processed
+  failed
+  retrying
+}
+
+enum EventLogResult {
+  success
+  failure
+  skipped
+}
+
+3.7 Framework Enums
+enum FrameworkName {
+  strategy_core
+  customer_value
+  synergy_ops
+  governance_risk
+  omni_growth
+  fin_matrix
+  knowledge_flow
+  talent_sync
+  culture_dynamics
+  decision_velocity
+  adaptive_intelligence
+  alignment_accountability
+  regeneration_exit
+  clarity_catalyst
+}
+
+enum FrameworkActivationLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum FrameworkDecisionStatus {
+  proposed
+  approved
+  rejected
+  applied
+  overridden
+}
+
+3.8 Bhudhi Enums
+enum BhudhiTriggerType {
+  user_input
+  goal_creation
+  goal_update
+  validation_request
+  domain_resolution
+  blueprint_creation
+  task_generation
+  task_open
+  task_help_requested
+  feedback_submission
+  weak_feedback_detected
+  signal_change
+  condition_change
+  domain_change
+  repeated_failure_pattern
+  knowledge_extraction
+}
+
+enum BhudhiResponseType {
+  validation_response
+  domain_assignment
+  blueprint_structure
+  task_generation
+  execution_guidance
+  feedback_analysis
+  condition_explanation
+  adaptation_update
+  knowledge_object
+  team_assignment
+}
+
+enum BhudhiExecutionContext {
+  marketing
+  pr
+  strategy
+  execution
+  analysis
+}
+
+enum BhudhiRequestType {
+  goal_validation
+  blueprint_generation
+  policy_generation
+  task_generation
+  task_regeneration
+  feedback_interpretation
+  feedback_interrogation
+  condition_explanation
+  recovery_suggestion
+  academy_content
+  knowledge_generation
+  behavior_analysis
+  dashboard_summary
+  other
+}
+
+3.9 Capability & Behavior Enums
+enum CapabilityLevel {
+  beginner
+  operator
+  advanced
+  lead
+}
+
+enum Throughput {
+  very_low
+  low
+  moderate
+  high
+  very_high
+}
+
+enum FatigueRisk {
+  low
+  moderate
+  high
+  critical
+}
+
+enum BehaviorPatternType {
+  procrastination
+  burnout
+  inconsistency
+  avoidance
+  fake_completion
+  low_reflection
+  blocker_repetition
+  inactivity
+  score_inflation
+}
+
+enum BehaviorPatternStatus {
+  active
+  resolved
+  ignored
+  monitoring
+}
+
+enum InactivityThreshold {
+  warning
+  soft
+  hard
+  critical
+}
+
+3.10 Identity & Engagement Enums
+enum IdentityStage {
+  starting
+  forming
+  building
+  establishing
+  consolidated
+  transforming
+}
+
+enum MilestoneType {
+  task_streak
+  phase_complete
+  project_complete
+  target_hit
+  blueprint_complete
+  comeback
+  score_improvement
+  capability_level_up
+}
+
+enum GenerationTrigger {
+  blueprint_launched
+  feedback_submitted
+  condition_changed
+  task_completed
+  task_blocked
+  user_inactive
+  phase_checkpoint_required
+  academy_gap_detected
+  weekly_review_due
+  habit_check_due
+  dependency_unblocked
+  daily_cycle
+  recovery_triggered
+  manual_regeneration
+}
+
+enum GenerationMode {
+  initial
+  post_feedback
+  daily
+  recovery
+  condition_change
+}
+
+enum DomainTransitionTrigger {
+  validation_complete
+  blueprint_launched
+  signal_change
+  condition_change
+  strategy_pivot
+  manual_review
+  phase_complete
+  recovery_mode
+}
+
+
+4. Complete Prisma Schema
+
+Paste the entire contents of this section into prisma/schema.prisma, replacing everything after the generator and datasource blocks defined in Document 01.
+
+All enums from section 3 must appear before the model definitions. Prisma requires enums to be declared before they are referenced in models.
+
+4.1 Group 1 â€” Identity & Auth
+
+Model: User
+model User {
+  id                  String            @id @default(uuid())
+  email               String            @unique
+  username            String?
+  display_name        String?
+  mode                UserMode          @default(individual)
+  tier                UserTier          @default(starter)
+  role_context        String?
+  domain_hint         String?
+  commitment_level    CommitmentLevel?
+  timezone            String            @default("UTC")
+  onboarding_complete Boolean           @default(false)
+  active              Boolean           @default(true)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  // Relations
+  sessions              Session[]
+  blueprints            Blueprint[]
+  validations           Validation[]
+  orders                Order[]
+  feedback              Feedback[]
+  signal_snapshots      SignalSnapshot[]
+  conditions            ConditionRecord[]
+  capability_profile    CapabilityProfile?
+  capability_history    CapabilityHistory[]
+  behavior_patterns     BehaviorPattern[]
+  behavior_events       BehaviorEvent[]
+  inactivity_records    InactivityRecord[]
+  user_identity_states  UserIdentityState[]
+  identity_history      IdentityHistory[]
+  milestones            Milestone[]
+  reward_events         RewardEvent[]
+  habits                Habit[]
+  habit_checkins        HabitCheckin[]
+  knowledge_objects     KnowledgeObject[]
+  weekly_reviews        WeeklyReview[]
+  phase_checkpoints     PhaseCheckpoint[]
+  academy_tasks         AcademyTask[]
+  academy_proof         AcademyProof[]
+  real_outcomes         RealOutcome[]
+  state_memory          StateMemory[]
+  escalation_logs       EscalationLog[]
+  task_generation_logs  TaskGenerationLog[]
+  bhudhi_logs           BhudhiLog[]
+  bhudhi_memory         BhudhiMemory[]
+  framework_activations FrameworkActivation[]
+  domain_history        DomainHistory[]
+  cognitive_load_scores CognitiveLoadScore[]
+
+  @@map("users")
+}
+
+Model: Session
+model Session {
+  id           String   @id @default(uuid())
+  user_id      String
+  token_hash   String   @unique
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+  last_used_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("sessions")
+}
+
+4.2 Group 2 â€” Blueprint Chain
+
+Model: Blueprint
+model Blueprint {
+  id                 String          @id @default(uuid())
+  user_id            String
+  version            Int             @default(1)
+
+  // Goal definition
+  goal               String
+  purpose            String?
+  timeframe_start    DateTime?
+  timeframe_end      DateTime?
+
+  // Context at intake
+  role_context       String?
+  commitment_level   CommitmentLevel?
+  domain_hint        String?
+
+  // Execution state
+  current_domain     Domain?
+  current_condition  Condition?
+  current_plan_id    String?
+  current_phase_id   String?
+  current_season     Season?
+
+  // Validation
+  validation_verdict ValidationVerdict?
+  selected_path      SelectedPath?
+  validation_id      String?
+
+  // Lifecycle
+  status             BlueprintStatus  @default(draft)
+  active             Boolean          @default(false)
+  launched_at        DateTime?
+  completed_at       DateTime?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+
+  // Relations
+  user                      User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  validation                Validation?             @relation(fields: [validation_id], references: [id])
+  current_plan              Plan?                   @relation("current_plan", fields: [current_plan_id], references: [id])
+  current_phase             Phase?                  @relation("current_phase", fields: [current_phase_id], references: [id])
+  plans                     Plan[]                  @relation("blueprint_plans")
+  seasons                   Season[]
+  targets                   Target[]
+  phases                    Phase[]                 @relation("blueprint_phases")
+  projects                  Project[]
+  actions                   Action[]
+  orders                    Order[]
+  feedback                  Feedback[]
+  signal_snapshots          SignalSnapshot[]
+  conditions                ConditionRecord[]
+  enforcement_packages      EnforcementPackage[]
+  events                    Event[]
+  framework_activations     FrameworkActivation[]
+  framework_decisions       FrameworkDecision[]
+  framework_signal_snapshots FrameworkSignalSnapshot[]
+  domain_history            DomainHistory[]
+  blueprint_policies        BlueprintPolicy[]
+  capability_profile        CapabilityProfile[]
+  behavior_patterns         BehaviorPattern[]
+  inactivity_records        InactivityRecord[]
+  user_identity_states      UserIdentityState[]
+  milestones                Milestone[]
+  habits                    Habit[]
+  habit_checkins            HabitCheckin[]
+  knowledge_objects         KnowledgeObject[]
+  weekly_reviews            WeeklyReview[]
+  phase_checkpoints         PhaseCheckpoint[]
+  academy_tasks             AcademyTask[]
+  real_outcomes             RealOutcome[]
+  state_memory              StateMemory[]
+  escalation_logs           EscalationLog[]
+  blueprint_versions        BlueprintVersion[]
+  blueprint_mutations       BlueprintMutation[]
+  task_generation_logs      TaskGenerationLog[]
+  decision_traces           DecisionTrace[]
+  cognitive_load_scores     CognitiveLoadScore[]
+  bhudhi_logs               BhudhiLog[]
+  bhudhi_memory             BhudhiMemory[]
+  system_health_logs        SystemHealthLog[]
+
+  @@unique([user_id], map: "one_active_blueprint_per_user", where: { active: true })
+  @@index([user_id])
+  @@index([status])
+  @@map("blueprints")
+}
+
+Model: Validation
+model Validation {
+  id                String            @id @default(uuid())
+  blueprint_id      String
+  user_id           String
+
+  verdict           ValidationVerdict?
+  ai_summary        String?
+  feasibility_score Float?
+  clarity_score     Float?
+  realism_score     Float?
+
+  path_current      Json?
+  path_adjusted     Json?
+  path_alternative  Json?
+
+  selected_path     SelectedPath?
+  selected_at       DateTime?
+  status            String            @default("pending")
+  created_at        DateTime          @default(now())
+
+  blueprint  Blueprint  @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprints Blueprint[]
+
+  @@index([blueprint_id])
+  @@map("validations")
+}
+
+Model: BlueprintPolicy
+model BlueprintPolicy {
+  id                 String   @id @default(uuid())
+  blueprint_id       String
+  user_id            String
+
+  focus_statement    String?
+  anti_focus         String?
+  rules              Json     @default("[]")
+  enforcement_level  String   @default("guidance")
+  generated_from     Json     @default("{}")
+  ai_log_id          String?
+  version            Int      @default(1)
+  active             Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  blueprint Blueprint  @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  ai_log    BhudhiLog? @relation(fields: [ai_log_id], references: [id])
+
+  @@index([blueprint_id])
+  @@index([blueprint_id, active])
+  @@map("blueprint_policies")
+}
+
+Model: Plan
+model Plan {
+  id           String     @id @default(uuid())
+  blueprint_id String
+  name         String
+  description  String?
+  order_index  Int
+  status       PlanStatus @default(pending)
+  created_at   DateTime   @default(now())
+
+  blueprint         Blueprint  @relation("blueprint_plans", fields: [blueprint_id], references: [id], onDelete: Cascade)
+  blueprint_current Blueprint[] @relation("current_plan")
+  seasons           Season[]
+  targets           Target[]
+  phases            Phase[]
+
+  @@index([blueprint_id])
+  @@map("plans")
+}
+
+Model: Season
+model Season {
+  id           String     @id @default(uuid())
+  blueprint_id String
+  plan_id      String?
+  name         Season     @default(ignition)
+  order_index  Int
+  effort_level String?
+  start_date   DateTime?
+  end_date     DateTime?
+  status       PlanStatus @default(pending)
+  created_at   DateTime   @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  plan      Plan?     @relation(fields: [plan_id], references: [id])
+  targets   Target[]
+  orders    Order[]
+
+  @@index([blueprint_id])
+  @@map("seasons")
+}
+
+Model: Target
+model Target {
+  id            String       @id @default(uuid())
+  blueprint_id  String
+  plan_id       String?
+  season_id     String?
+  owner_id      String?
+
+  name          String
+  description   String?
+  type          TargetType
+  metric        String?
+  target_value  Float?
+  current_value Float        @default(0)
+  unit          String?
+  progress      Float        @default(0)
+  order_index   Int          @default(0)
+  status        TargetStatus @default(pending)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  plan      Plan?     @relation(fields: [plan_id], references: [id])
+  season    Season?   @relation(fields: [season_id], references: [id])
+  owner     User?     @relation(fields: [owner_id], references: [id])
+  phases    Phase[]
+  projects  Project[]
+  actions   Action[]
+  orders    Order[]
+  real_outcomes RealOutcome[]
+
+  @@index([blueprint_id])
+  @@index([status])
+  @@map("targets")
+}
+
+Model: Phase
+model Phase {
+  id           String      @id @default(uuid())
+  blueprint_id String
+  target_id    String?
+  plan_id      String?
+
+  name         PhaseName
+  order_index  Int
+  gate_criteria Json?
+  status       PhaseStatus @default(pending)
+  locked       Boolean     @default(false)
+  gate_passed  Boolean     @default(false)
+  started_at   DateTime?
+  completed_at DateTime?
+  created_at   DateTime    @default(now())
+
+  blueprint         Blueprint   @relation("blueprint_phases", fields: [blueprint_id], references: [id], onDelete: Cascade)
+  blueprint_current Blueprint[] @relation("current_phase")
+  target            Target?     @relation(fields: [target_id], references: [id])
+  plan              Plan?       @relation(fields: [plan_id], references: [id])
+  projects          Project[]
+  orders            Order[]
+  phase_checkpoints PhaseCheckpoint[]
+
+  @@index([blueprint_id])
+  @@index([status])
+  @@map("phases")
+}
+
+Model: Project
+model Project {
+  id           String        @id @default(uuid())
+  blueprint_id String
+  phase_id     String?
+  target_id    String?
+  owner_id     String?
+
+  name          String
+  description   String?
+  type          ProjectType
+  is_blocked    Boolean       @default(false)
+  blocked_reason String?
+  order_index   Int           @default(0)
+  status        ProjectStatus @default(pending)
+  started_at    DateTime?
+  completed_at  DateTime?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  blueprint   Blueprint  @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  phase       Phase?     @relation(fields: [phase_id], references: [id])
+  target      Target?    @relation(fields: [target_id], references: [id])
+  actions     Action[]
+  orders      Order[]
+  // Dependencies
+  blocking          ProjectDependency[] @relation("blocking_project")
+  blocked_by        ProjectDependency[] @relation("blocked_by_project")
+
+  @@index([blueprint_id])
+  @@index([status])
+  @@map("projects")
+}
+
+Model: Action
+model Action {
+  id                 String     @id @default(uuid())
+  blueprint_id       String
+  project_id         String
+  target_id          String?
+
+  name               String
+  description        String?
+  type               ActionType
+  knowledge_category String?
+  order_index        Int        @default(0)
+  status             String     @default("pending")
+  created_at         DateTime   @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  target    Target?   @relation(fields: [target_id], references: [id])
+  orders    Order[]
+
+  @@index([blueprint_id])
+  @@index([project_id])
+  @@map("actions")
+}
+
+Model: Order
+model Order {
+  id                      String      @id @default(uuid())
+  blueprint_id            String
+  user_id                 String
+  action_id               String?
+
+  // Blueprint position
+  linked_plan_id          String?
+  linked_season_id        String?
+  linked_target_id        String?
+  linked_phase_id         String?
+  linked_project_id       String?
+
+  // Content
+  task_type               TaskType
+  title                   String
+  instruction             String
+  expected_output         String
+  definition_of_done      String
+  why_it_matters          String?
+  time_estimate_minutes   Int?
+  content_hash            String?
+
+  // Proof
+  proof_required          Boolean     @default(false)
+  proof_type              ProofType?
+  proof_description       String?
+
+  // Controls
+  difficulty              Difficulty  @default(moderate)
+  priority                Int         @default(5)
+  domain                  Domain?
+  value_score             Float?
+
+  // Generation snapshot
+  condition_at_generation String?
+  domain_at_generation    String?
+  enforcement_package_id  String?
+  generation_reason       String?
+
+  // State
+  status                  OrderStatus @default(pending)
+  blocker_type            String?
+  blocker_description     String?
+  dependency_reference    String?
+
+  // Output
+  output_summary          String?
+  proof_json              Json?
+
+  // Timestamps
+  started_at              DateTime?
+  finished_at             DateTime?
+  due_at                  DateTime?
+  created_at              DateTime    @default(now())
+  updated_at              DateTime    @updatedAt
+
+  blueprint          Blueprint           @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  action             Action?             @relation(fields: [action_id], references: [id])
+  linked_plan        Plan?               @relation(fields: [linked_plan_id], references: [id])
+  linked_season      Season?             @relation(fields: [linked_season_id], references: [id])
+  linked_target      Target?             @relation(fields: [linked_target_id], references: [id])
+  linked_phase       Phase?              @relation(fields: [linked_phase_id], references: [id])
+  linked_project     Project?            @relation(fields: [linked_project_id], references: [id])
+  enforcement_package EnforcementPackage? @relation(fields: [enforcement_package_id], references: [id])
+  feedback           Feedback[]
+  blocking           OrderDependency[]   @relation("blocking_order")
+  blocked_by         OrderDependency[]   @relation("blocked_by_order")
+  knowledge_links    OrderKnowledgeLink[]
+  academy_tasks      AcademyTask[]
+  inactivity_recovery InactivityRecord[]
+
+  @@index([user_id])
+  @@index([blueprint_id])
+  @@index([status])
+  @@index([blueprint_id, status])
+  @@index([task_type])
+  @@map("orders")
+}
+
+4.3 Group 3 â€” Dependencies
+
+Model: ProjectDependency
+model ProjectDependency {
+  id                      String  @id @default(uuid())
+  project_id              String
+  depends_on_project_id   String
+  created_at              DateTime @default(now())
+
+  project     Project @relation("blocking_project", fields: [project_id], references: [id], onDelete: Cascade)
+  depends_on  Project @relation("blocked_by_project", fields: [depends_on_project_id], references: [id], onDelete: Cascade)
+
+  @@unique([project_id, depends_on_project_id])
+  @@index([project_id])
+  @@index([depends_on_project_id])
+  @@map("project_dependencies")
+}
+
+Model: OrderDependency
+model OrderDependency {
+  id                  String   @id @default(uuid())
+  order_id            String
+  depends_on_order_id String
+  created_at          DateTime @default(now())
+
+  order      Order @relation("blocking_order", fields: [order_id], references: [id], onDelete: Cascade)
+  depends_on Order @relation("blocked_by_order", fields: [depends_on_order_id], references: [id], onDelete: Cascade)
+
+  @@unique([order_id, depends_on_order_id])
+  @@index([order_id])
+  @@index([depends_on_order_id])
+  @@map("order_dependencies")
+}
+
+4.4 Group 4 â€” Feedback
+
+Model: Feedback
+model Feedback {
+  id                               String                  @id @default(uuid())
+  order_id                         String
+  user_id                          String
+  blueprint_id                     String
+
+  completion                       FeedbackCompletion
+  score                            Int
+  difficulty_felt                  Difficulty?
+  reflection                       String
+  proof_json                       Json?
+
+  had_blocker                      Boolean                 @default(false)
+  blocker_type                     String?
+  blocker_details                  String?
+
+  confidence                       String?
+  confidence_weight                Float                   @default(1.0)
+  quality_score                    Float?
+  validation_status                FeedbackValidationStatus @default(pending)
+  interrogation_question           String?
+  interrogation_answer             String?
+
+  flagged_for_gaming               Boolean                 @default(false)
+  gaming_reason                    String?
+  submitted_hours_after_completion Float?
+  late_penalty_applied             Boolean                 @default(false)
+  weighted_score                   Float?
+
+  created_at                       DateTime                @default(now())
+
+  order     Order     @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  behavior_events BehaviorEvent[]
+
+  @@index([user_id])
+  @@index([blueprint_id])
+  @@index([validation_status])
+  @@map("feedback")
+}
+
+4.5 Group 5 â€” Signal & Control
+
+Model: SignalSnapshot
+model SignalSnapshot {
+  id                  String          @id @default(uuid())
+  blueprint_id        String
+  user_id             String
+
+  window_start        DateTime
+  window_end          DateTime
+  tasks_in_window     Int             @default(0)
+  feedback_in_window  Int             @default(0)
+
+  completion_rate     Float           @default(0)
+  weighted_score      Float           @default(0)
+  raw_score           Float           @default(0)
+  momentum            Int             @default(0)
+  trend               SignalTrend?
+  confidence          SignalConfidence?
+  condition           Condition
+
+  blocker_ratio       Float           @default(0)
+  skip_ratio          Float           @default(0)
+  avg_difficulty_felt String?
+  trigger_event_id    String?
+  is_current          Boolean         @default(true)
+  created_at          DateTime        @default(now())
+
+  blueprint     Blueprint  @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  trigger_event Event?     @relation(fields: [trigger_event_id], references: [id])
+  conditions    ConditionRecord[]
+  enforcement_packages EnforcementPackage[]
+  framework_activations FrameworkActivation[]
+
+  // Enforced by partial unique index in migration
+  @@index([blueprint_id])
+  @@index([blueprint_id, is_current])
+  @@map("signal_snapshots")
+}
+
+Model: ConditionRecord
+model ConditionRecord {
+  id                  String          @id @default(uuid())
+  blueprint_id        String
+  signal_snapshot_id  String?
+
+  condition           Condition
+  task_limit_min      Int             @default(1)
+  task_limit_max      Int             @default(3)
+  difficulty_cap      Difficulty      @default(moderate)
+  phase_permission    PhasePermission?
+  scaling_permission  Boolean         @default(false)
+  recovery_required   Boolean         @default(false)
+  risk_level          RiskLevel?
+  duration_days       Int             @default(0)
+  previous_condition  String?
+  is_current          Boolean         @default(true)
+  created_at          DateTime        @default(now())
+
+  blueprint        Blueprint       @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user             User            @relation(fields: [blueprint_id], references: [id])
+  signal_snapshot  SignalSnapshot? @relation(fields: [signal_snapshot_id], references: [id])
+  enforcement_packages EnforcementPackage[]
+
+  @@index([blueprint_id])
+  @@index([blueprint_id, is_current])
+  @@map("conditions")
+}
+
+Model: EnforcementPackage
+model EnforcementPackage {
+  id                   String          @id @default(uuid())
+  blueprint_id         String
+  condition_id         String?
+  signal_snapshot_id   String?
+
+  condition            Condition
+  task_limits          Json            @default("{}")
+  difficulty_cap       Difficulty      @default(moderate)
+  allowed_actions      String[]        @default([])
+  blocked_actions      String[]        @default([])
+  phase_permission     PhasePermission?
+  target_adjustment    TargetAdjustment?
+  ai_mode              AiMode?
+  ui_mode              UiMode?
+  feature_permissions  Json            @default("{}")
+  risk_level           RiskLevel?
+  override_flags       Json            @default("{}")
+  cognitive_load_score Float?
+  is_current           Boolean         @default(true)
+  created_at           DateTime        @default(now())
+
+  blueprint        Blueprint       @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  condition_record ConditionRecord? @relation(fields: [condition_id], references: [id])
+  signal_snapshot  SignalSnapshot? @relation(fields: [signal_snapshot_id], references: [id])
+  orders           Order[]
+  task_generation_logs TaskGenerationLog[]
+
+  @@index([blueprint_id])
+  @@index([blueprint_id, is_current])
+  @@map("enforcement_packages")
+}
+
+4.6 Group 6 â€” Event System
+
+Model: Event
+model Event {
+  id               String      @id @default(uuid())
+  event_type       String
+  entity_type      String
+  entity_id        String?
+  user_id          String?
+  blueprint_id     String?
+  payload          Json        @default("{}")
+  idempotency_key  String?     @unique
+  status           EventStatus @default(pending)
+  retry_count      Int         @default(0)
+  max_retries      Int         @default(3)
+  process_after    DateTime    @default(now())
+  created_at       DateTime    @default(now())
+
+  blueprint        Blueprint?  @relation(fields: [blueprint_id], references: [id])
+  event_logs       EventLog[]
+  signal_snapshots SignalSnapshot[]
+  domain_history   DomainHistory[]
+  inactivity_records InactivityRecord[]
+
+  @@index([status])
+  @@index([event_type])
+  @@index([blueprint_id])
+  @@map("events")
+}
+
+Model: EventLog
+model EventLog {
+  id           String         @id @default(uuid())
+  event_id     String
+  worker       String?
+  result       EventLogResult?
+  error_code   String?
+  error_message String?
+  duration_ms  Int?
+  processed_at DateTime       @default(now())
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@index([event_id])
+  @@map("event_logs")
+}
+
+Model: DeadLetterEvent
+model DeadLetterEvent {
+  id             String   @id @default(uuid())
+  original_event_id String
+  event_type     String
+  blueprint_id   String?
+  user_id        String?
+  payload        Json     @default("{}")
+  failure_reason String
+  retry_count    Int
+  last_error     String?
+  created_at     DateTime @default(now())
+  reviewed       Boolean  @default(false)
+  reviewed_at    DateTime?
+  resolved       Boolean  @default(false)
+
+  @@index([event_type])
+  @@index([resolved])
+  @@map("dead_letter_events")
+}
+
+4.7 Group 7 â€” Domain & Framework
+
+Model: DomainHistory
+model DomainHistory {
+  id                  String                  @id @default(uuid())
+  blueprint_id        String
+  user_id             String
+  domain              Domain
+  previous_domain     Domain?
+  transition_trigger  DomainTransitionTrigger
+  trigger_event_id    String?
+  transition_notes    String?
+  is_current          Boolean                 @default(true)
+  entered_at          DateTime                @default(now())
+  exited_at           DateTime?
+
+  blueprint     Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  trigger_event Event?    @relation(fields: [trigger_event_id], references: [id])
+
+  @@index([blueprint_id])
+  @@index([blueprint_id, is_current])
+  @@map("domain_history")
+}
+
+Model: FrameworkActivation
+model FrameworkActivation {
+  id                  String                   @id @default(uuid())
+  blueprint_id        String
+  user_id             String
+  signal_snapshot_id  String?
+  framework_name      FrameworkName
+  activation_level    FrameworkActivationLevel?
+  confidence          Float?
+  reason              String?
+  trigger_condition   String?
+  status              String                   @default("pending")
+  created_at          DateTime                 @default(now())
+  resolved_at         DateTime?
+
+  blueprint        Blueprint      @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  signal_snapshot  SignalSnapshot? @relation(fields: [signal_snapshot_id], references: [id])
+  decisions        FrameworkDecision[]
+
+  @@index([blueprint_id])
+  @@map("framework_activations")
+}
+
+Model: FrameworkDecision
+model FrameworkDecision {
+  id                      String                   @id @default(uuid())
+  activation_id           String
+  blueprint_id            String
+  decision_type           String
+  target_layer            String?
+  payload                 Json                     @default("{}")
+  requires_control_engine Boolean                  @default(true)
+  status                  FrameworkDecisionStatus  @default(proposed)
+  rejection_reason        String?
+  created_at              DateTime                 @default(now())
+  resolved_at             DateTime?
+
+  activation FrameworkActivation @relation(fields: [activation_id], references: [id], onDelete: Cascade)
+  blueprint  Blueprint           @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([activation_id])
+  @@index([blueprint_id])
+  @@map("framework_decisions")
+}
+
+Model: FrameworkSignalSnapshot
+model FrameworkSignalSnapshot {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  framework_name  String
+  signal_state    String?
+  score           Float?
+  confidence      Float?
+  evidence_json   Json     @default("{}")
+  created_at      DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("framework_signal_snapshots")
+}
+
+4.8 Group 8 â€” Capability & Behavior
+
+Model: CapabilityProfile
+model CapabilityProfile {
+  id                      String          @id @default(uuid())
+  user_id                 String          @unique
+  blueprint_id            String?
+
+  consistency             Float           @default(0)
+  execution_quality       Float           @default(0)
+  recovery_speed          Float           @default(0)
+  feedback_quality        Float           @default(0)
+  throughput              Throughput?
+  difficulty_handling     CapabilityLevel?
+  fatigue_risk            FatigueRisk?
+  level                   CapabilityLevel @default(beginner)
+  level_score             Float           @default(0)
+
+  consistency_trait       Float           @default(0)
+  grit_trait              Float           @default(0)
+  discipline_trait        Float           @default(0)
+  execution_intelligence  Float           @default(0)
+
+  total_tasks_completed   Int             @default(0)
+  total_tasks_failed      Int             @default(0)
+  total_tasks_skipped     Int             @default(0)
+  current_streak_days     Int             @default(0)
+  best_streak_days        Int             @default(0)
+  last_active_date        DateTime?
+  identity_type           String?
+  updated_at              DateTime        @updatedAt
+
+  user      User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint? @relation(fields: [blueprint_id], references: [id])
+
+  @@map("capability_profiles")
+}
+
+Model: CapabilityHistory
+model CapabilityHistory {
+  id            String   @id @default(uuid())
+  user_id       String
+  blueprint_id  String?
+  trigger_event String?
+  snapshot      Json
+  created_at    DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("capability_history")
+}
+
+Model: BehaviorPattern
+model BehaviorPattern {
+  id                String               @id @default(uuid())
+  user_id           String
+  blueprint_id      String?
+  pattern_type      BehaviorPatternType
+  severity          String?
+  confidence        Float?
+  frequency         Int                  @default(1)
+  evidence_json     Json                 @default("{}")
+  status            BehaviorPatternStatus @default(active)
+  first_detected_at DateTime             @default(now())
+  last_detected_at  DateTime             @default(now())
+  resolved_at       DateTime?
+
+  user             User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint        Blueprint?      @relation(fields: [blueprint_id], references: [id])
+  behavior_events  BehaviorEvent[]
+
+  @@index([user_id])
+  @@index([status])
+  @@map("behavior_patterns")
+}
+
+Model: BehaviorEvent
+model BehaviorEvent {
+  id           String   @id @default(uuid())
+  user_id      String
+  blueprint_id String?
+  pattern_id   String?
+  order_id     String?
+  feedback_id  String?
+  event_type   String
+  data_json    Json     @default("{}")
+  detected_at  DateTime @default(now())
+
+  user     User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pattern  BehaviorPattern? @relation(fields: [pattern_id], references: [id])
+  feedback Feedback?       @relation(fields: [feedback_id], references: [id])
+
+  @@index([user_id])
+  @@index([pattern_id])
+  @@map("behavior_events")
+}
+
+Model: InactivityRecord
+model InactivityRecord {
+  id                  String              @id @default(uuid())
+  user_id             String
+  blueprint_id        String
+  last_activity_at    DateTime
+  inactivity_hours    Float
+  inactivity_days     Float
+  threshold_breached  InactivityThreshold
+  response_triggered  String?
+  response_event_id   String?
+  recovery_task_id    String?
+  resolved            Boolean             @default(false)
+  resolved_at         DateTime?
+  created_at          DateTime            @default(now())
+
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint      Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  response_event Event?    @relation(fields: [response_event_id], references: [id])
+  recovery_task  Order?    @relation(fields: [recovery_task_id], references: [id])
+
+  @@index([user_id])
+  @@index([blueprint_id, resolved])
+  @@map("inactivity_records")
+}
+
+4.9 Group 9 â€” Identity & Engagement
+
+Model: UserIdentityState
+model UserIdentityState {
+  id                    String        @id @default(uuid())
+  user_id               String
+  blueprint_id          String
+  current_identity      String?
+  target_identity       String?
+  identity_gap_score    Float         @default(0)
+  stage                 IdentityStage @default(starting)
+  reinforcement_count   Int           @default(0)
+  last_reinforced_at    DateTime?
+  transformation_score  Float         @default(0)
+  is_current            Boolean       @default(true)
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([blueprint_id, is_current])
+  @@map("user_identity_states")
+}
+
+Model: IdentityHistory
+model IdentityHistory {
+  id                String   @id @default(uuid())
+  user_id           String
+  blueprint_id      String?
+  trigger           String?
+  stage_before      String?
+  stage_after       String?
+  transformation_score Float?
+  snapshot          Json
+  created_at        DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("identity_history")
+}
+
+Model: Milestone
+model Milestone {
+  id              String        @id @default(uuid())
+  user_id         String
+  blueprint_id    String
+  type            MilestoneType
+  title           String
+  description     String?
+  value           Float?
+  metadata_json   Json          @default("{}")
+  seen_by_user    Boolean       @default(false)
+  seen_at         DateTime?
+  created_at      DateTime      @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([blueprint_id])
+  @@map("milestones")
+}
+
+Model: RewardEvent
+model RewardEvent {
+  id               String   @id @default(uuid())
+  user_id          String
+  blueprint_id     String?
+  milestone_id     String?
+  reward_type      String
+  title            String
+  description      String?
+  ui_action        String?
+  delivered        Boolean  @default(false)
+  delivered_at     DateTime?
+  created_at       DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([delivered])
+  @@map("reward_events")
+}
+
+4.10 Group 10 â€” Execution Support
+
+Models: Habits & HabitCheckin
+model Habit {
+  id           String   @id @default(uuid())
+  blueprint_id String
+  user_id      String
+  name         String
+  description  String?
+  type         String
+  frequency    String?
+  time_of_day  String?
+  active       Boolean  @default(true)
+  created_at   DateTime @default(now())
+
+  blueprint Blueprint     @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  checkins  HabitCheckin[]
+
+  @@index([blueprint_id])
+  @@map("habits")
+}
+
+model HabitCheckin {
+  id           String   @id @default(uuid())
+  habit_id     String
+  user_id      String
+  blueprint_id String
+  order_id     String?
+  completed    Boolean
+  effort_score Int?
+  note         String?
+  created_at   DateTime @default(now())
+
+  habit     Habit     @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([habit_id])
+  @@map("habit_checkins")
+}
+
+Models: KnowledgeObject & OrderKnowledgeLink
+model KnowledgeObject {
+  id                String   @id @default(uuid())
+  blueprint_id      String?
+  user_id           String?
+  title             String
+  content           String
+  content_json      Json     @default("{}")
+  type              String
+  domain            Domain?
+  action_type       String?
+  applicable_level  String?
+  is_global         Boolean  @default(false)
+  active            Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  blueprint        Blueprint?          @relation(fields: [blueprint_id], references: [id])
+  user             User?               @relation(fields: [user_id], references: [id])
+  order_links      OrderKnowledgeLink[]
+  academy_tasks    AcademyTask[]
+
+  @@index([domain])
+  @@index([type])
+  @@map("knowledge_objects")
+}
+
+model OrderKnowledgeLink {
+  id             String   @id @default(uuid())
+  order_id       String
+  knowledge_id   String
+  injection_type String?
+  created_at     DateTime @default(now())
+
+  order     Order           @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  knowledge KnowledgeObject @relation(fields: [knowledge_id], references: [id], onDelete: Cascade)
+
+  @@unique([order_id, knowledge_id])
+  @@map("order_knowledge_links")
+}
+
+Models: WeeklyReview & PhaseCheckpoint
+model WeeklyReview {
+  id                  String   @id @default(uuid())
+  blueprint_id        String
+  user_id             String
+  week_start          DateTime
+  week_end            DateTime
+  wins                String?
+  failures            String?
+  patterns            String?
+  next_focus          String?
+  reflection          String?
+  patterns_detected   Json     @default("[]")
+  issues_identified   Json     @default("[]")
+  created_at          DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("weekly_reviews")
+}
+
+model PhaseCheckpoint {
+  id                String   @id @default(uuid())
+  blueprint_id      String
+  phase_id          String
+  user_id           String
+  outcomes_achieved String?
+  evidence_summary  String?
+  bottlenecks       String?
+  next_risks        String?
+  proof_json        Json     @default("{}")
+  readiness         String?
+  system_verdict    String?
+  rejection_reason  String?
+  evaluated_at      DateTime?
+  created_at        DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  phase     Phase     @relation(fields: [phase_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("phase_checkpoints")
+}
+
+Models: AcademyTask & AcademyProof
+model AcademyTask {
+  id                String   @id @default(uuid())
+  blueprint_id      String
+  user_id           String
+  order_id          String?
+  knowledge_id      String?
+  title             String
+  description       String?
+  learning_content  String?
+  trigger_reason    String
+  domain            String?
+  skill_target      String?
+  proof_required    Boolean  @default(true)
+  proof_description String?
+  status            String   @default("pending")
+  blocks_execution  Boolean  @default(false)
+  created_at        DateTime @default(now())
+  completed_at      DateTime?
+
+  blueprint Blueprint        @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order     Order?           @relation(fields: [order_id], references: [id])
+  knowledge KnowledgeObject? @relation(fields: [knowledge_id], references: [id])
+  proof     AcademyProof[]
+
+  @@index([blueprint_id])
+  @@index([status])
+  @@map("academy_tasks")
+}
+
+model AcademyProof {
+  id                String   @id @default(uuid())
+  academy_task_id   String
+  user_id           String
+  proof_json        Json     @default("{}")
+  reflection        String?
+  validation_status String   @default("pending")
+  rejection_reason  String?
+  validated_at      DateTime?
+  created_at        DateTime @default(now())
+
+  academy_task AcademyTask @relation(fields: [academy_task_id], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([academy_task_id])
+  @@map("academy_proof")
+}
+
+Models: RealOutcome & OutcomeValidation & FalseProgressFlag
+model RealOutcome {
+  id              String   @id @default(uuid())
+  user_id         String
+  blueprint_id    String
+  target_id       String?
+  metric_name     String
+  metric_value    Float
+  unit            String?
+  source          String?
+  recorded_at     DateTime @default(now())
+  created_at      DateTime @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  target    Target?   @relation(fields: [target_id], references: [id])
+
+  @@index([blueprint_id])
+  @@map("real_outcomes")
+}
+
+model OutcomeValidation {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  user_id         String
+  tasks_completed Int      @default(0)
+  outcomes_verified Int    @default(0)
+  alignment_score Float    @default(0)
+  verdict         String?
+  notes           String?
+  created_at      DateTime @default(now())
+
+  @@index([blueprint_id])
+  @@map("outcome_validations")
+}
+
+model FalseProgressFlag {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  user_id         String
+  detection_type  String
+  evidence_json   Json     @default("{}")
+  severity        String?
+  resolved        Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  @@index([blueprint_id])
+  @@index([resolved])
+  @@map("false_progress_flags")
+}
+
+Models: StateMemory & EscalationLog
+model StateMemory {
+  id               String   @id @default(uuid())
+  blueprint_id     String
+  user_id          String
+  condition        String
+  entered_at       DateTime @default(now())
+  exited_at        DateTime?
+  duration_days    Int      @default(0)
+  escalation_level Int      @default(0)
+  is_current       Boolean  @default(true)
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@index([blueprint_id, is_current])
+  @@map("state_memory")
+}
+
+model EscalationLog {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  user_id         String
+  level           Int      @default(1)
+  condition       String
+  trigger_reason  String
+  action_taken    String?
+  payload         Json     @default("{}")
+  created_at      DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("escalation_logs")
+}
+
+Models: BlueprintVersion & BlueprintMutation
+model BlueprintVersion {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  version_number  Int
+  change_type     String
+  affected_layer  String
+  before_state    Json
+  after_state     Json
+  framework_source String?
+  triggered_by    String?
+  created_at      DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("blueprint_versions")
+}
+
+model BlueprintMutation {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  mutation_type   String
+  layer           String
+  entity_id       String?
+  change_summary  String
+  cascade_json    Json     @default("[]")
+  approved        Boolean  @default(false)
+  approved_at     DateTime?
+  created_at      DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@map("blueprint_mutations")
+}
+
+Model: TaskGenerationLog
+model TaskGenerationLog {
+  id                      String           @id @default(uuid())
+  blueprint_id            String
+  user_id                 String
+  generation_trigger      GenerationTrigger
+  generation_mode         GenerationMode
+  condition_at_generation String
+  enforcement_package_id  String?
+  capability_level        String?
+  domain_at_generation    String?
+  input_json              Json             @default("{}")
+  orders_generated        Int              @default(0)
+  order_ids               String[]         @default([])
+  generation_notes        String?
+  used_fallback           Boolean          @default(false)
+  fallback_reason         String?
+  ai_log_id               String?
+  ai_used                 Boolean          @default(false)
+  created_at              DateTime         @default(now())
+
+  blueprint           Blueprint           @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  enforcement_package EnforcementPackage? @relation(fields: [enforcement_package_id], references: [id])
+  ai_log              BhudhiLog?          @relation(fields: [ai_log_id], references: [id])
+
+  @@index([blueprint_id])
+  @@index([generation_trigger])
+  @@map("task_generation_log")
+}
+
+Model: DecisionTrace
+model DecisionTrace {
+  id              String   @id @default(uuid())
+  blueprint_id    String
+  decision_type   String
+  entity_type     String?
+  entity_id       String?
+  reasoning       String
+  inputs_json     Json     @default("{}")
+  outputs_json    Json     @default("{}")
+  engine          String?
+  created_at      DateTime @default(now())
+
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([blueprint_id])
+  @@index([decision_type])
+  @@map("decision_traces")
+}
+
+Model: CognitiveLoadScore
+model CognitiveLoadScore {
+  id              String   @id @default(uuid())
+  user_id         String
+  blueprint_id    String
+  load_score      Float
+  active_tasks    Int
+  complexity_level String?
+  recommendation  String?
+  created_at      DateTime @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint @relation(fields: [blueprint_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([blueprint_id])
+  @@map("cognitive_load_scores")
+}
+
+Model: BhudhiLog
+model BhudhiLog {
+  id                          String                @id @default(uuid())
+  user_id                     String?
+  blueprint_id                String?
+  order_id                    String?
+
+  request_type                BhudhiRequestType
+  trigger_type                BhudhiTriggerType?
+  response_type               BhudhiResponseType?
+  execution_context           BhudhiExecutionContext?
+
+  input_json                  Json                  @default("{}")
+  prompt_version              String?
+  model_used                  String?
+  output_json                 Json?
+  raw_response                String?
+
+  validation_status           String?
+  validation_notes            String?
+  output_schema_valid         Boolean               @default(true)
+  authority_language_detected Boolean               @default(false)
+
+  latency_ms                  Int?
+  token_count_in              Int?
+  token_count_out             Int?
+  created_at                  DateTime              @default(now())
+
+  user      User?      @relation(fields: [user_id], references: [id])
+  blueprint Blueprint? @relation(fields: [blueprint_id], references: [id])
+  blueprint_policies BlueprintPolicy[]
+  task_generation_logs TaskGenerationLog[]
+
+  @@index([user_id])
+  @@index([blueprint_id])
+  @@index([request_type])
+  @@map("bhudhi_logs")
+}
+
+Model: BhudhiMemory
+model BhudhiMemory {
+  id                  String   @id @default(uuid())
+  user_id             String
+  blueprint_id        String?
+  memory_type         String
+  content_json        Json
+  confidence          Float    @default(0.5)
+  reinforcement_count Int      @default(1)
+  last_reinforced_at  DateTime @default(now())
+  expires_at          DateTime?
+  active              Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user      User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blueprint Blueprint? @relation(fields: [blueprint_id], references: [id])
+
+  @@index([user_id])
+  @@index([user_id, memory_type])
+  @@map("bhudhi_memory")
+}
+
+Model: SystemHealthLog
+model SystemHealthLog {
+  id                  String   @id @default(uuid())
+  blueprint_id        String?
+  check_type          String
+  status              String
+  score               Float?
+  details_json        Json     @default("{}")
+  issues_detected     String[]  @default([])
+  created_at          DateTime @default(now())
+
+  blueprint Blueprint? @relation(fields: [blueprint_id], references: [id])
+
+  @@index([blueprint_id])
+  @@index([check_type])
+  @@map("system_health_logs")
+}
+
+Model: FeatureFlag
+model FeatureFlag {
+  id           String   @id @default(uuid())
+  feature_name String   @unique
+  enabled      Boolean  @default(false)
+  environment  String?
+  description  String?
+  updated_at   DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+
+5. Migration Commands
+
+Execute in order after the full schema is written to prisma/schema.prisma.
+
+5.1 Generate Prisma Client
+npx prisma generate
+
+5.2 Create Initial Migration
+npx prisma migrate dev --name init
+
+5.3 Apply Partial Unique Indexes
+Prisma does not support partial unique indexes in schema.prisma. After the migration runs, execute the following raw SQL against the database to add the six partial unique indexes:
+
+-- One active blueprint per user
+CREATE UNIQUE INDEX one_active_blueprint_per_user
+  ON blueprints(user_id) WHERE active = TRUE;
+
+-- One current signal per blueprint
+CREATE UNIQUE INDEX one_current_signal_per_blueprint
+  ON signal_snapshots(blueprint_id) WHERE is_current = TRUE;
+
+-- One current condition per blueprint
+CREATE UNIQUE INDEX one_current_condition_per_blueprint
+  ON conditions(blueprint_id) WHERE is_current = TRUE;
+
+-- One current enforcement package per blueprint
+CREATE UNIQUE INDEX one_current_enforcement_per_blueprint
+  ON enforcement_packages(blueprint_id) WHERE is_current = TRUE;
+
+-- One current state memory per blueprint
+CREATE UNIQUE INDEX one_current_state_memory_per_blueprint
+  ON state_memory(blueprint_id) WHERE is_current = TRUE;
+
+-- One current domain per blueprint
+CREATE UNIQUE INDEX one_current_domain_per_blueprint
+  ON domain_history(blueprint_id) WHERE is_current = TRUE;
+
+Save this SQL as scripts/apply-partial-indexes.sql and add it to package.json:
+"db:partial-indexes": "psql $DATABASE_URL -f scripts/apply-partial-indexes.sql"
+
+6. Transaction Rules
+
+These seven operations must always execute inside a database transaction. A partial write leaves the system in a corrupted state. Every engine that performs these operations must use prisma.$transaction([]).
+
+#
+Operation
+Tables Written Inside Transaction
+T1
+Feedback submission
+feedback INSERT â†’ events INSERT (feedback_submitted)
+T2
+Signal update
+signal_snapshots INSERT (is_current=true) â†’ signal_snapshots UPDATE (previous is_current=false) â†’ events INSERT (signal_updated)
+T3
+Condition change
+conditions INSERT â†’ conditions UPDATE â†’ state_memory UPDATE (exited_at) â†’ state_memory INSERT â†’ events INSERT (condition_changed)
+T4
+Enforcement package creation
+enforcement_packages INSERT â†’ enforcement_packages UPDATE (previous is_current=false) â†’ events INSERT (enforcement_package_created)
+T5
+Task generation
+orders INSERT (all tasks) â†’ task_generation_log INSERT â†’ events INSERT per order (task_generated)
+T6
+Phase progression
+phases UPDATE (status=complete) â†’ blueprints UPDATE (current_phase_id) â†’ events INSERT (phase_advanced)
+T7
+Domain transition
+domain_history UPDATE (exited_at, is_current=false) â†’ domain_history INSERT (is_current=true) â†’ blueprints UPDATE (current_domain) â†’ events INSERT (domain_transitioned)
+
+7. Seed File
+
+Create prisma/seed.ts with the following content. This populates feature flags and one test user for development.
+
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
+
+async function main() {
+  // Upsert feature flags
+  const flags = [
+    { feature_name: "ai_enabled",                  enabled: true,  description: "Core AI" },
+    { feature_name: "academy_enabled",             enabled: true,  description: "Academy tasks" },
+    { feature_name: "team_mode_enabled",           enabled: false, description: "Phase 2" },
+    { feature_name: "community_enabled",           enabled: false, description: "Phase 2" },
+    { feature_name: "advanced_domains_enabled",    enabled: false, description: "Phase 2" },
+    { feature_name: "advanced_frameworks_enabled", enabled: false, description: "Phase 2" },
+    { feature_name: "ai_advanced_enabled",         enabled: false, description: "Phase 2" },
+    { feature_name: "marketplace_enabled",         enabled: false, description: "Phase 2" },
+    { feature_name: "predictive_signals_enabled",  enabled: false, description: "Ultimate only" },
+  ];
+
+  for (const flag of flags) {
+    await prisma.featureFlag.upsert({
+      where: { feature_name: flag.feature_name },
+      update: {},
+      create: flag,
+    });
+  }
+
+  // Dev test user
+  await prisma.user.upsert({
+    where: { email: "dev@torgima.com" },
+    update: {},
+    create: {
+      email: "dev@torgima.com",
+      display_name: "Dev User",
+      tier: "growth",
+    },
+  });
+
+  console.log("Seed complete");
+}
+
+main()
+  .catch(console.error)
+  .finally(() =&gt; prisma.$disconnect());
+
+8. Verification Checklist
+
+#
+Check
+Status
+1
+prisma generate runs with zero errors
+â˜ Pass
+2
+prisma migrate dev --name init creates migration file
+â˜ Pass
+3
+All 42 tables exist in the database after migration
+â˜ Pass
+4
+All 6 partial unique indexes created via SQL script
+â˜ Pass
+5
+npm run db:seed runs without errors
+â˜ Pass
+6
+Feature flags table contains all 9 rows
+â˜ Pass
+7
+Dev user exists in users table
+â˜ Pass
+8
+npm run typecheck passes with zero errors
+â˜ Pass
+9
+GET /api/health returns database: true
+â˜ Pass
+
+9. Connections to Other Documents
+
+Document
+Title
+What It Uses From Doc 02
+Doc 03
+Migration & Seed Guide
+Full schema, partial index SQL, seed.ts
+Doc 04
+Execution Loop Engine
+orders, feedback, events, enforcement_packages tables
+Doc 05
+Signal Calculation Engine
+signal_snapshots, feedback, orders tables and enums
+Doc 06
+Condition Evaluation Engine
+conditions, signal_snapshots, state_memory tables
+Doc 07
+Control Engine
+enforcement_packages, conditions, feature_flags tables
+Doc 08
+Task Generation Engine
+orders, task_generation_log, enforcement_packages, blueprint chain tables
+Doc 12
+Bhudhi Architecture
+bhudhi_logs, bhudhi_memory, all enums
+Doc 18
+Identity & Compulsion
+user_identity_states, identity_history, milestones, reward_events tables
+All Docs
+All Documents
+Prisma client types generated from this schema
+
+
+END OF DOCUMENT 02 â€” FINAL DATABASE SCHEMA
+Next: Document 03 â€” Database Migration & Seed Guide
+
