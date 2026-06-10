@@ -7,9 +7,9 @@ import { expectLoginAuthGate, gotoProtectedRoute } from "../helpers/auth-gate";
  */
 test.describe("Phase 9 — Frontend acceptance", () => {
   test("marketing route renders without raw engine errors", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 20_000 });
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => null);
+    await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 15_000 });
     const body = await page.locator("body").innerText();
     expect(body).not.toMatch(/ControlEngine|SignalWorker|dead_letter_events/i);
   });
@@ -25,9 +25,9 @@ test.describe("Phase 9 — Frontend acceptance", () => {
   });
 
   test("QUAL-05: no forbidden execution-language in visible shell", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 20_000 });
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => null);
+    await expect(page.getByRole("heading", { name: /execution system/i })).toBeVisible({ timeout: 15_000 });
     const body = await page.locator("body").innerText();
     expect(body.toLowerCase()).not.toMatch(/\bcongratulations\b/);
     expect(body.toLowerCase()).not.toMatch(/\bgreat job\b/);

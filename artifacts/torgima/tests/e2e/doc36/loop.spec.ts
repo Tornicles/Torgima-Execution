@@ -31,13 +31,13 @@ test.describe("DOC 36 — Frontend E2E gate", () => {
   });
 
   test("no forbidden internal engine terms on marketing shell", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
     const body = await page.locator("body").innerText();
     expect(body).not.toMatch(FORBIDDEN_INTERNAL);
   });
 
   test("language layer maps condition labels (no raw nothingness)", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
     const body = await page.locator("body").innerText();
     expect(body.toLowerCase()).not.toMatch(/\bnothingness\b/);
   });

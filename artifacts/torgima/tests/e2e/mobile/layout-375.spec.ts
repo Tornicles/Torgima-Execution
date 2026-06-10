@@ -10,8 +10,8 @@ const MOBILE_ROUTES = ["/validation-results", "/feedback", "/dashboard", "/erect
 test.describe("Mobile layout (375px)", () => {
   for (const path of MOBILE_ROUTES) {
     test(`${path} renders without horizontal overflow`, async ({ page }) => {
-      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 60_000 });
-      await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => null);
+      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => null);
 
       const overflow = await page.evaluate(() => {
         const doc = document.documentElement;
