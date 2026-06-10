@@ -176,24 +176,20 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: artifacts/api-server
           command: deploy
+          # Only upload secrets that are stored in GitHub.
+          # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, and
+          # BHUDHI_MODEL are managed directly in the Cloudflare dashboard and
+          # must NOT be listed here — an empty GitHub secret causes wrangler to fail.
           secrets: |
             DATABASE_URL
-            SUPABASE_URL
-            SUPABASE_ANON_KEY
-            SUPABASE_SERVICE_ROLE_KEY
             ANTHROPIC_API_KEY
-            BHUDHI_MODEL
             RESEND_API_KEY
             EMAIL_FROM
             INTERNAL_AUTH_SECRET
             NOTIFICATION_UNSUBSCRIBE_SECRET
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          BHUDHI_MODEL: ${{ secrets.BHUDHI_MODEL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
