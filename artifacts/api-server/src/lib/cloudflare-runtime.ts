@@ -73,21 +73,34 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
   }
 
   const passthrough = [
+    // ── Launch mode + feature gates ──────────────────────────────────────────
+    "LAUNCH_MODE",
+    "ENABLE_MAGIC_LINK_AUTH",
+    "ENABLE_ADVANCED_UPGRADE_GATE",
+    "ENABLE_BACKGROUND_BHUDHI",
+    "ENABLE_TEAM_BOOTSTRAP",
+    "ENABLE_SIGNAL_AUTO_BOOTSTRAP",
+    // ── Event dispatch cron ──────────────────────────────────────────────────
     "EVENT_DISPATCH_CRON_BATCH_SIZE",
     "EVENT_DISPATCH_CRON_ENABLED",
+    // ── App URLs ─────────────────────────────────────────────────────────────
     "APP_URL",
     "FRONTEND_URL",
+    // ── Supabase ─────────────────────────────────────────────────────────────
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
+    // ── AI / Email ───────────────────────────────────────────────────────────
     "ANTHROPIC_API_KEY",
     "BHUDHI_MODEL",
     "RESEND_API_KEY",
     "EMAIL_FROM",
+    // ── Internal auth / security ─────────────────────────────────────────────
     "INTERNAL_API_SECRET",
     "INTERNAL_AUTH_SECRET",
     "INTERNAL_SERVICE_SECRET",
     "NOTIFICATION_UNSUBSCRIBE_SECRET",
+    // ── Legacy / admin ───────────────────────────────────────────────────────
     "NEXTAUTH_SECRET",
     "SESSION_SECRET",
     "ADMIN_EMAIL",

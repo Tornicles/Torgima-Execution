@@ -12,6 +12,7 @@ import { syncTaskGenerationSequence } from "../engines/sequence/sequenceTaskQueu
 import { initializeStarterAllocation } from "../engines/mini-plan/MiniPlanAllocationEngine.js";
 import { fillBlueprintTaskQueue } from "../engines/task-engine/TaskEngine.js";
 import { initializePermanentFrameworkSignals } from "./PermanentFrameworkSignalService.js";
+import { isSignalAutoBootstrapEnabled } from "../lib/launch-mode.js";
 import { SequenceTracker } from "../engines/sequence/SequenceTracker.js";
 import { KnowledgeService } from "../engines/growth/KnowledgeService.js";
 import type { BlueprintTier } from "../engines/blueprint/infrastructure/blueprint-types.js";
@@ -177,7 +178,12 @@ export const BlueprintLaunchService = {
     );
 
     await recordExecutionStructureFromBlueprint(input.blueprintId, selectedBlueprintLevel).catch(() => null);
-    await initializePermanentFrameworkSignals(input.blueprintId).catch(() => null);
+    // Signal auto-bootstrap is gated behind ENABLE_SIGNAL_AUTO_BOOTSTRAP.
+    // In launch mode (false by default) signals load lazily when the user
+    // visits the Signals page — no subrequest budget consumed at launch time.
+    if (isSignalAutoBootstrapEnabled()) {
+      await initializePermanentFrameworkSignals(input.blueprintId).catch(() => null);
+    }
     await initializeStarterAllocation(input.blueprintId, input.userId).catch(() => null);
     await fillBlueprintTaskQueue({
       blueprintId: input.blueprintId,

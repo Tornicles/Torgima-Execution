@@ -19,13 +19,38 @@ head_sampling_rate = 1
 [vars]
 NODE_ENV = "production"
 TORGIMA_RUNTIME = "cloudflare"
-EVENT_DISPATCH_CRON_BATCH_SIZE = "1"
-EVENT_DISPATCH_CRON_ENABLED = "false"
 APP_URL = "https://torgima.com"
 FRONTEND_URL = "https://torgima.com"
+
+# ── Launch Mode ─────────────────────────────────────────────────────────────
+# LAUNCH_MODE=true enables MVP-safe lazy initialization:
+#   - signup/login only create auth + profile
+#   - upgrade/status returns starter defaults without hitting upgrade tables
+#   - all heavy cron/background jobs are skipped
+#   - missing optional data never blocks rendering
+# Set to "false" when the platform is stable and all features are ready.
+LAUNCH_MODE = "true"
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
 # Magic link disabled — Supabase email/password auth is now the default.
 # Set to "true" in Cloudflare secrets to re-enable (not recommended).
 ENABLE_MAGIC_LINK_AUTH = "false"
+
+# ── Event Dispatch Cron ──────────────────────────────────────────────────────
+# Keep disabled in launch mode to prevent "Too many subrequests" Worker errors.
+EVENT_DISPATCH_CRON_ENABLED = "false"
+EVENT_DISPATCH_CRON_BATCH_SIZE = "1"
+
+# ── Advanced Feature Gates ───────────────────────────────────────────────────
+# Upgrade gate advanced logic (archive queries, migration checks)
+ENABLE_ADVANCED_UPGRADE_GATE = "false"
+# Background Bhudhi civilization / identity systems
+ENABLE_BACKGROUND_BHUDHI = "false"
+# Team creation/bootstrap on user signup
+ENABLE_TEAM_BOOTSTRAP = "false"
+# Signal engine auto-bootstrap on blueprint launch
+ENABLE_SIGNAL_AUTO_BOOTSTRAP = "false"
+
 # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 # are set as encrypted secrets in the Cloudflare dashboard — never put them here.
 

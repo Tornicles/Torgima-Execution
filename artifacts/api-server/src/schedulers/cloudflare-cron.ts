@@ -48,6 +48,18 @@ export async function handleCloudflareCron(
 ): Promise<void> {
   bindCloudflareEnv(env);
 
+  // LAUNCH_MODE: disable all background cron jobs to prevent subrequest exhaustion
+  // and avoid initialising advanced subsystems before the MVP flow is stable.
+  // Event dispatch poll has its own kill-switch (EVENT_DISPATCH_CRON_ENABLED).
+  const { isLaunchMode } = await import("../lib/launch-mode.js");
+  if (isLaunchMode()) {
+    logger.info(
+      { cron: controller.cron },
+      "[Cron] Skipped — LAUNCH_MODE=true; all background crons are disabled in launch mode",
+    );
+    return;
+  }
+
   const queue = CRON_TO_QUEUE[controller.cron];
   if (!queue) {
     logger.warn({ cron: controller.cron }, "[Cron] No queue mapping for cron expression");
