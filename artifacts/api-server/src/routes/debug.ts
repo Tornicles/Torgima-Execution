@@ -396,6 +396,68 @@ router.get("/debug/cloudflare-env", (_req, res) => {
 });
 
 /**
+ * GET /api/debug/db-target — diagnose WHY the DB connection fails (internal auth only).
+ * Returns the masked connection target (host/port/pooler/ssl) and the exact raw error
+ * from a live `SELECT 1`, with elapsed time. Never returns credentials.
+ *
+ * Reading the result:
+ *  - ~10s elapsed + timeout error  -> host:port UNREACHABLE (paused project, or direct URL not pooler)
+ *  - <1s + "password"/"role"       -> wrong credentials / wrong pooler username (postgres.<ref>)
+ *  - <1s + "SSL"/"tls"             -> SSL/TLS handshake problem
+ *  - ok:true                       -> DB reachable; failure is elsewhere
+ */
+router.get("/debug/db-target", async (_req, res) => {
+  const raw = process.env.DATABASE_URL?.trim();
+  const target: Record<string, unknown> = { configured: Boolean(raw) };
+
+  if (raw) {
+    try {
+      const parsed = new URL(raw.replace(/^postgresql:/i, "postgres:"));
+      const host = parsed.hostname;
+      target.host = host;
+      target.port = parsed.port || "(default 5432)";
+      target.isPooler = host.includes("pooler.supabase.com");
+      target.isDirectSupabase = /\.supabase\.co$/i.test(host);
+      target.username = parsed.username
+        ? `${parsed.username.slice(0, 9)}***`
+        : "(none)";
+      target.usernameHasProjectRef = parsed.username.includes(".");
+      target.sslmode = parsed.searchParams.get("sslmode") ?? "(unset → require)";
+      target.pgbouncer = parsed.searchParams.get("pgbouncer") ?? "(unset)";
+    } catch {
+      target.parseError = "DATABASE_URL is not a valid URL";
+    }
+  }
+
+  let dbOk = false;
+  let dbError: string | null = null;
+  let elapsedMs = 0;
+  if (raw) {
+    const started = Date.now();
+    try {
+      await db.execute(sql.raw("select 1 as ok"));
+      dbOk = true;
+    } catch (err) {
+      dbError = err instanceof Error ? err.message : String(err);
+    } finally {
+      elapsedMs = Date.now() - started;
+    }
+  }
+
+  success(res, {
+    ok: dbOk,
+    target,
+    probe: { ok: dbOk, error: dbError, elapsedMs },
+    hint: dbOk
+      ? "Database reachable — the timeout is not here."
+      : elapsedMs >= 8000
+        ? "Connect timed out: host:port unreachable from the Worker. Check (1) Supabase project paused/restricted, (2) DATABASE_URL must be the Transaction Pooler (*.pooler.supabase.com:6543, user postgres.<ref>), NOT the direct db.<ref>.supabase.co:5432."
+        : "Fast failure: likely credentials/SSL — inspect the error string above.",
+    runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
+  });
+});
+
+/**
  * GET /api/debug/routes — deploy smoke list (internal auth required).
  */
 router.get("/debug/routes", (_req, res) => {
@@ -406,6 +468,7 @@ router.get("/debug/routes", (_req, res) => {
       "GET /api/health",
       "GET /api/debug/routes",
       "GET /api/debug/cloudflare-env",
+      "GET /api/debug/db-target",
       "GET /api/debug/blueprint-launch-health",
       "POST /api/v1/validations",
       "GET /api/v1/validations/:id",
