@@ -23,6 +23,11 @@ EVENT_DISPATCH_CRON_BATCH_SIZE = "1"
 EVENT_DISPATCH_CRON_ENABLED = "false"
 APP_URL = "https://torgima.com"
 FRONTEND_URL = "https://torgima.com"
+# Magic link disabled — Supabase email/password auth is now the default.
+# Set to "true" in Cloudflare secrets to re-enable (not recommended).
+ENABLE_MAGIC_LINK_AUTH = "false"
+# SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+# are set as encrypted secrets in the Cloudflare dashboard — never put them here.
 
 [[routes]]
 pattern = "api.torgima.com/*"

@@ -23,7 +23,6 @@ import {
 
 type MagicLinkRequest = Request & { env?: TorgimaWorkerEnv };
 
-/** Worker bindings (c.env) — not process.env — for magic-link secrets on Cloudflare. */
 function magicLinkWorkerContext(req: Request): { env: TorgimaWorkerEnv } {
   const reqEnv = (req as MagicLinkRequest).env;
   if (reqEnv) return { env: reqEnv };
@@ -62,10 +61,9 @@ function bindMagicLinkWorkerSecrets(c: { env: TorgimaWorkerEnv }): void {
 
 const router = Router();
 
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const prod = process.env["NODE_ENV"] === "production";
 
-// Cross-origin SPA (torgima.com) + API (api.torgima.com): cookie must be None+Secure in production.
 const sessionCookieOptions = {
   httpOnly: true,
   secure: prod,
@@ -73,6 +71,20 @@ const sessionCookieOptions = {
   path: "/" as const,
   maxAge: COOKIE_MAX_AGE * 1000,
 };
+
+/** Returns true when magic-link auth is explicitly enabled via env var. Default: disabled. */
+function isMagicLinkEnabled(): boolean {
+  return process.env.ENABLE_MAGIC_LINK_AUTH === "true";
+}
+
+function magicLinkDisabledResponse(res: Response): void {
+  failure(
+    res,
+    "FEATURE_DISABLED",
+    "Magic link login is not available. Please use email and password.",
+    403,
+  );
+}
 
 function postVerifyRedirectPath(onboardingComplete: boolean): string {
   return onboardingComplete ? "/dashboard" : "/onboarding";
@@ -112,8 +124,12 @@ async function completeMagicLinkVerify(
   success(res, { user, verified: true, redirectTo });
 }
 
-// POST /api/auth/login — DOC 30 magic-link bootstrap
+// POST /api/auth/login — legacy magic-link bootstrap (disabled by default)
 router.post("/login", async (req, res) => {
+  if (!isMagicLinkEnabled()) {
+    magicLinkDisabledResponse(res);
+    return;
+  }
   try {
     const schema = z.object({ email: z.email() });
     const result = schema.safeParse(req.body);
@@ -145,9 +161,17 @@ function redirectVerifyError(_req: Request, res: Response, message: string): voi
   res.redirect(302, `${resolveAppUrl()}/auth/callback?${q.toString()}`);
 }
 
-// GET /api/auth/verify — browser magic-link landing (redirect after cookie)
+// GET /api/auth/verify — legacy magic-link browser callback (disabled by default)
 router.get("/verify", async (req, res) => {
   const htmlFlow = wantsHtmlRedirect(req);
+  if (!isMagicLinkEnabled()) {
+    if (htmlFlow) {
+      redirectVerifyError(req, res, "Magic link login is disabled. Please use email and password.");
+      return;
+    }
+    magicLinkDisabledResponse(res);
+    return;
+  }
   try {
     const parsed = verifySchema.safeParse({
       token: req.query.token,
@@ -161,13 +185,7 @@ router.get("/verify", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid verify query", 422);
       return;
     }
-    await completeMagicLinkVerify(
-      req,
-      res,
-      parsed.data.token,
-      parsed.data.email,
-      htmlFlow,
-    );
+    await completeMagicLinkVerify(req, res, parsed.data.token, parsed.data.email, htmlFlow);
   } catch (err) {
     if (htmlFlow) {
       const message =
@@ -181,13 +199,15 @@ router.get("/verify", async (req, res) => {
   }
 });
 
-// POST /api/auth/send-magic-link
+// POST /api/auth/send-magic-link and /api/auth/magic-link/send (disabled by default)
 router.post("/send-magic-link", handleSendMagicLink);
-
-// POST /api/auth/magic-link/send — alias for launch verification scripts
 router.post("/magic-link/send", handleSendMagicLink);
 
 async function handleSendMagicLink(req: Request, res: Response): Promise<void> {
+  if (!isMagicLinkEnabled()) {
+    magicLinkDisabledResponse(res);
+    return;
+  }
   try {
     const c = magicLinkWorkerContext(req);
     bindMagicLinkWorkerSecrets(c);
@@ -217,8 +237,12 @@ async function handleSendMagicLink(req: Request, res: Response): Promise<void> {
   }
 }
 
-// POST /api/auth/verify
+// POST /api/auth/verify — legacy JSON verify (disabled by default)
 router.post("/verify", async (req, res) => {
+  if (!isMagicLinkEnabled()) {
+    magicLinkDisabledResponse(res);
+    return;
+  }
   try {
     const result = verifySchema.safeParse(req.body);
     if (!result.success) {
@@ -231,7 +255,8 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-// GET /api/auth/session — DOC 30 session status
+// GET /api/auth/session — returns Supabase user + TORGIMA profile
+// Works with both Supabase JWT (Authorization: Bearer) and legacy session cookie.
 router.get("/session", async (req, res) => {
   try {
     const auth = await requireAuth(req, "OPTIONAL_SESSION");
@@ -253,7 +278,27 @@ router.get("/session", async (req, res) => {
   }
 });
 
-// POST /api/auth/logout
+// POST /api/auth/sign-out — Supabase sessions are client-side JWT; frontend calls supabase.auth.signOut()
+// This endpoint exists for completeness and to clear any legacy session cookie.
+router.post("/sign-out", async (req, res) => {
+  try {
+    const cookies = req.cookies as Record<string, string | undefined>;
+    const sessionToken = cookies[SESSION_COOKIE_NAME];
+    if (sessionToken) {
+      await revokeSession(sessionToken).catch(() => null);
+    }
+    res.clearCookie(SESSION_COOKIE_NAME, {
+      path: "/",
+      secure: prod,
+      sameSite: prod ? "none" : "lax",
+    });
+    success(res, { signedOut: true });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+// POST /api/auth/logout — alias for sign-out (backwards compat)
 router.post("/logout", async (req, res) => {
   try {
     const cookies = req.cookies as Record<string, string | undefined>;

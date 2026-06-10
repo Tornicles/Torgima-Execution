@@ -73,6 +73,7 @@ import {
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
+  supabase_id: uuid("supabase_id").unique(),
   username: text("username"),
   display_name: text("display_name"),
   mode: userModeEnum("mode").notNull().default("individual"),

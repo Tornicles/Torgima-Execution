@@ -1,66 +1,78 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
-import { sendMagicLink } from "@/lib/torgima-api";
-import { ApiError } from "@workspace/api-client-react";
+import { supabase } from "@/lib/supabase";
+import { setAuthToken } from "@/lib/auth-token";
+import { apiFetch } from "@/config/api";
+
+const FEATURES = [
+  "Personalized execution Blueprint",
+  "Daily execution Orders",
+  "Signal-driven adaptation",
+  "Blueprint tracking",
+];
 
 export default function LoginPage() {
-  const [location] = useLocation();
-  const isSignup = location === "/signup";
+  const [, setLocation] = useLocation();
+  const search = useSearch();
+  const returnTo = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("returnTo") ?? "";
+
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
+
     setLoading(true);
     setError("");
-    try {
-      const result = (await sendMagicLink({
-        email: email.trim().toLowerCase(),
-      })) as { sent?: boolean; message?: string; devVerifyUrl?: string };
-      if (!result.sent) {
-        const devLink =
-          typeof result.devVerifyUrl === "string" ? result.devVerifyUrl : null;
-        setError(
-          devLink ?
-            `${result.message ?? "Email was not sent (no Resend key)."} Open this link to sign in: ${devLink}`
-          : result.message ??
-              "We could not send the sign-in email. If you run the API locally, check the server logs for the magic link URL.",
-        );
-        return;
+
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
+    });
+
+    setLoading(false);
+
+    if (loginError) {
+      if (
+        loginError.message.includes("Invalid login credentials") ||
+        loginError.message.includes("invalid_credentials")
+      ) {
+        setError("Incorrect email or password. Please try again.");
+      } else if (loginError.message.includes("Email not confirmed")) {
+        setError("Please check your email and confirm your account first.");
+      } else if (loginError.message.includes("Too many requests")) {
+        setError("Too many login attempts. Please wait a few minutes and try again.");
+      } else {
+        setError(loginError.message || "Login failed. Please try again.");
       }
-      setSent(true);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        const msg =
-          (err.data as { error?: { message?: string } })?.error?.message ?? err.message;
-        setError(msg || "Failed to send link.");
-        return;
+      return;
+    }
+
+    if (data.session?.access_token) {
+      setAuthToken(data.session.access_token);
+
+      // Check if onboarding is complete
+      try {
+        const res = await apiFetch("/api/auth/session");
+        const body = (await res.json()) as {
+          data?: { user?: { onboardingComplete?: boolean } };
+        };
+        const onboardingComplete = body.data?.user?.onboardingComplete ?? false;
+        const destination = returnTo || (onboardingComplete ? "/dashboard" : "/onboarding");
+        setLocation(destination);
+      } catch {
+        setLocation(returnTo || "/dashboard");
       }
-      if (err instanceof TypeError) {
-        setError(
-          "Network error — the API may be unreachable or CORS blocked the request. Confirm https://api.torgima.com/health responds and Cloudflare Pages uses VITE_API_BASE_URL=https://api.torgima.com.",
-        );
-        return;
-      }
-      setError("Cannot reach the server.");
-    } finally {
-      setLoading(false);
     }
   }
 
-  const FEATURES = [
-    "Personalized execution Blueprint",
-    "Daily execution Orders",
-    "Signal-driven adaptation",
-    "Blueprint tracking",
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Left panel */}
       <div className="hidden lg:flex lg:w-2/5 bg-gray-900 text-white p-12 flex-col">
         <div className="flex items-center gap-2 mb-12">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
@@ -73,9 +85,7 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col justify-center">
           <h2 className="text-4xl font-bold leading-tight mb-4">Your execution system awaits.</h2>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            {isSignup ?
-              "Create your account and start your execution Blueprint."
-            : "Sign in to access your personalized execution Blueprint and daily Order engine."}
+            Sign in to access your personalized execution Blueprint and daily Order engine.
           </p>
           <div className="space-y-3">
             {FEATURES.map((f) => (
@@ -91,6 +101,7 @@ export default function LoginPage() {
         <p className="text-xs text-gray-500">Individual Execution System — Phase 1</p>
       </div>
 
+      {/* Right panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md space-y-8">
           <Link href="/">
@@ -99,77 +110,80 @@ export default function LoginPage() {
             </div>
           </Link>
 
-          {!sent ? (
-            <>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{isSignup ? "Create your account" : "Welcome back"}</h1>
-                <p className="text-gray-500 mt-1">Enter your email to receive a magic sign-in link. No password required.</p>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
+            <p className="text-gray-500 mt-1">Sign in with your email and password.</p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-700">Email address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  autoFocus
+                  disabled={loading}
+                  autoComplete="email"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder:text-gray-300 disabled:bg-gray-50"
+                />
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 space-y-5">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Email address</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                      autoFocus
-                      disabled={loading}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder:text-gray-300 disabled:bg-gray-50"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                      <p className="text-red-600 text-sm">{error}</p>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading || !email.trim()}
-                    className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />{" "}
-                        Sending...
-                      </>
-                    ) : (
-                      "Send Magic Link →"
-                    )}
-                  </button>
-                </form>
-                <p className="text-center text-xs text-gray-400">🔒 We never share your email address.</p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-semibold text-gray-700">Password</label>
+                  <Link href="/forgot-password">
+                    <span className="text-xs text-green-600 hover:underline cursor-pointer">
+                      Forgot password?
+                    </span>
+                  </Link>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  required
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder:text-gray-300 disabled:bg-gray-50"
+                />
               </div>
-            </>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center space-y-5">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                <span className="text-3xl">✉️</span>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Check your email</h2>
-              <p className="text-gray-500 leading-relaxed">
-                We sent a magic sign-in link to
-                <br />
-                <strong className="text-gray-900">{email}</strong>
-              </p>
-              <p className="text-sm text-gray-400">The link expires in 15 minutes. Check your spam if you don&apos;t see it.</p>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+
               <button
-                type="button"
-                onClick={() => {
-                  setSent(false);
-                  setEmail("");
-                }}
-                className="text-sm text-green-600 underline"
+                type="submit"
+                disabled={loading || !email.trim() || !password}
+                className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
-                Use a different email
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />{" "}
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in →"
+                )}
               </button>
-            </div>
-          )}
+            </form>
+
+            <p className="text-center text-sm text-gray-500">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup">
+                <span className="text-green-600 font-medium hover:underline cursor-pointer">
+                  Create one
+                </span>
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,9 +1,10 @@
 /**
  * DOC 31 — single fetch wrapper for all frontend API calls.
- * Uses session cookies; normalizes envelope; handles auth redirect.
+ * Attaches Supabase Bearer token when available; falls back to session cookie.
  */
 
 import { API_BASE_URL } from "@/lib/api-base";
+import { getAuthToken } from "@/lib/auth-token";
 import type { ApiRequestOptions, ApiResponse } from "./types";
 
 const AUTH_PUBLIC_PATHS = ["/login", "/verify", "/auth/callback", "/signup", "/landing", "/"];
@@ -47,6 +48,12 @@ export async function apiRequest<T>(
     Accept: "application/json",
     ...extraHeaders,
   };
+
+  // Attach Supabase JWT when present (set by useSessionGuard on auth state change)
+  const token = getAuthToken();
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   if (body !== undefined && method !== "GET") {
     headers["Content-Type"] = headers["Content-Type"] ?? "application/json";

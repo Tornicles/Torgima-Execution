@@ -1,38 +1,63 @@
 import { useEffect, useState } from "react";
-import { Link, useSearch } from "wouter";
+import { useLocation } from "wouter";
 import { XCircle } from "lucide-react";
-import { buildApiMagicLinkVerifyUrl } from "@/lib/magic-link-verify";
+import { Link } from "wouter";
+import { supabase } from "@/lib/supabase";
+import { setAuthToken } from "@/lib/auth-token";
 
 /**
- * Magic-link callback — public route, no session guard.
- * Completes sign-in via top-level GET to the API (not fetch), so the session cookie is set reliably.
+ * Auth callback page — handles Supabase redirects for:
+ *  - Email confirmation links
+ *  - Password reset links
+ *  - Magic link (legacy, if re-enabled)
+ *
+ * Supabase appends tokens to the URL hash or query string.
+ * The Supabase client detects these automatically when detectSessionInUrl: true.
  */
 export default function AuthCallbackPage() {
+  const [, setLocation] = useLocation();
   const [status, setStatus] = useState<"verifying" | "error">("verifying");
   const [errMsg, setErrMsg] = useState("");
-  const search = useSearch();
 
   useEffect(() => {
-    const q = search.startsWith("?") ? search.slice(1) : search;
-    const p = new URLSearchParams(q);
-    const error = p.get("error");
-    if (error) {
+    // Check for error in query string (legacy magic link errors)
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get("error");
+    if (urlError) {
       setStatus("error");
-      setErrMsg(error);
+      setErrMsg(urlError);
       return;
     }
 
-    const token = p.get("token");
-    const email = p.get("email");
+    // Supabase handles its own token exchange via onAuthStateChange
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.access_token) {
+        setAuthToken(session.access_token);
+        // Redirect to password update page if this is a recovery flow
+        if (event === "SIGNED_IN" && params.get("type") === "recovery") {
+          setLocation("/auth/update-password");
+        } else {
+          setLocation("/dashboard");
+        }
+      } else if (event === "PASSWORD_RECOVERY") {
+        setAuthToken(session?.access_token ?? null);
+        setLocation("/auth/update-password");
+      }
+    });
 
-    if (!token || !email) {
+    // Give Supabase 8 seconds to resolve the session from the URL
+    const timeout = setTimeout(() => {
       setStatus("error");
-      setErrMsg("This sign-in link is missing required parameters.");
-      return;
-    }
+      setErrMsg("Authentication timed out. Please try signing in again.");
+    }, 8000);
 
-    window.location.replace(buildApiMagicLinkVerifyUrl(token, email));
-  }, [search]);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -55,7 +80,7 @@ export default function AuthCallbackPage() {
             <p className="text-gray-500 text-sm leading-relaxed">{errMsg}</p>
             <Link href="/login">
               <span className="inline-block bg-gray-900 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-gray-800 cursor-pointer">
-                Request a new link
+                Back to login
               </span>
             </Link>
           </>
