@@ -102,6 +102,22 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
     }
   }
 
+  // Some Cloudflare dashboards store these with the VITE_ prefix that was
+  // originally set for the frontend Pages build.  Accept both names so the
+  // Worker works regardless of how the secrets were named in the dashboard.
+  if (!process.env.SUPABASE_URL) {
+    const viteUrl = env["VITE_SUPABASE_URL"];
+    if (typeof viteUrl === "string" && viteUrl.trim()) {
+      process.env.SUPABASE_URL = viteUrl.trim();
+    }
+  }
+  if (!process.env.SUPABASE_ANON_KEY) {
+    const viteAnon = env["VITE_SUPABASE_ANON_KEY"];
+    if (typeof viteAnon === "string" && viteAnon.trim()) {
+      process.env.SUPABASE_ANON_KEY = viteAnon.trim();
+    }
+  }
+
   if (nextDbUrl) {
     if (nextDbUrl !== previousDbUrl && nextDbUrl !== lastBoundDatabaseUrl) {
       lastBoundDatabaseUrl = nextDbUrl;

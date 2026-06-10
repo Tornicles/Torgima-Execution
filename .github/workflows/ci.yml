@@ -51,6 +51,9 @@ jobs:
 
       - name: Build workspaces
         run: pnpm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
   unit-tests:
     name: Unit tests
@@ -145,6 +148,8 @@ jobs:
         run: pnpm -F @workspace/torgima run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.torgima.com' }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - name: Run Playwright against preview
         run: |
           echo "Testing preview URL: $PREVIEW_URL"
