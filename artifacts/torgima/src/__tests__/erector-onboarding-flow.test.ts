@@ -48,7 +48,8 @@ describe("Erector onboarding state machine", () => {
         selectedGoal: "Refined goal for validation",
         selectedPurpose: "Refined purpose for validation",
         context: {
-          location: "United States",
+          // country must use the CountrySelection shape { countryName, countryCode }
+          country: { countryName: "United States", countryCode: "US" },
           domain: "SaaS",
           commitment: "HIGH",
           currentContext: "Solo founder",

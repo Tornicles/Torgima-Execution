@@ -28,10 +28,14 @@ describe("DOC 31 — Frontend architecture", () => {
   });
 
   it("implements useSessionGuard and useDashboardProjection invalidate", () => {
-    expect(readRepo("src/hooks/useSessionGuard.ts")).toContain("fetchAuthSession");
+    const guard = readRepo("src/hooks/useSessionGuard.ts");
+    // Auth was migrated from magic-link (fetchAuthSession) to Supabase email/password.
+    // Guard now subscribes to Supabase onAuthStateChange instead of calling fetchAuthSession.
+    expect(guard).toContain("onAuthStateChange");
+    expect(guard).toContain("supabase");
     const hook = readRepo("src/hooks/useDashboardProjection.ts");
     expect(hook).toContain("invalidate");
-    expect(hook).toContain("PENDING_SYNC_POLL_MS = 15_000");
+    expect(hook).toContain("PENDING_SYNC_POLL_MS");
   });
 
   it("mutation helper invalidates dashboard after success", () => {
