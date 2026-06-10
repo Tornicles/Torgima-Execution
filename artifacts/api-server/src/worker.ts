@@ -113,7 +113,27 @@ export default {
 
     try {
       const handler = await getFetchHandler();
-      return await handler(request, env, ctx);
+      const response = await handler(request, env, ctx);
+
+      // Final CORS safety net: if the Express response is missing the ACAO header
+      // (e.g. the built-in Express finalhandler fired instead of our error handler,
+      // or an async middleware threw before the CORS middleware ran its setHeader call),
+      // patch the header here before returning to the browser.
+      // This runs on EVERY response so it also covers 4xx/5xx that bypass app.ts.
+      const origin = request.headers.get("origin") ?? "";
+      if (isAllowedOrigin(origin) && !response.headers.get("Access-Control-Allow-Origin")) {
+        const patchedHeaders = new Headers(response.headers);
+        patchedHeaders.set("Access-Control-Allow-Origin", origin);
+        patchedHeaders.set("Access-Control-Allow-Credentials", "true");
+        patchedHeaders.set("Vary", "Origin");
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: patchedHeaders,
+        });
+      }
+
+      return response;
     } catch (err) {
       // The Express server failed to start or crashed processing the request.
       // Return a CORS-safe error so the browser does not get a raw Cloudflare page

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { TorgimaError, torgimaErrorToStatus, isTorgimaError } from "./errors.js";
 import { classifyFailureCode, type FailureClass } from "./failure-taxonomy.js";
 import { logger } from "./logger.js";
+import { applyCorsHeaders } from "./cors.js";
 
 export function generateId(): string {
   return randomUUID();
@@ -192,6 +193,11 @@ function mapInfrastructureFailure(err: unknown): {
 }
 
 export function handleError(req: Request, res: Response, err: unknown): void {
+  // Guarantee CORS headers on every error response regardless of where in the
+  // middleware chain the error originated.  applyCorsHeaders is a no-op when
+  // the request origin is not in the allowed list.
+  applyCorsHeaders(req, res);
+
   const log = req.log ?? logger;
 
   if (isTorgimaError(err)) {

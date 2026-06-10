@@ -1,39 +1,46 @@
 import { Router } from "express";
 import { requireAuth } from "../lib/auth.js";
 import { success, handleError } from "../lib/utils.js";
+import { logger } from "../lib/logger.js";
 import { PlatformUpgradeService } from "../services/PlatformUpgradeService.js";
 
 const router = Router();
 
+const UPGRADE_SAFE_DEFAULT = {
+  requiresUpgrade: false,
+  executionState: "NORMAL",
+  firstLoginAfterUpgrade: false,
+  archivedCounts: {},
+  migrationApplied: true,
+} as const;
+
 /** GET /api/upgrade/status
  *
  * Returns the authenticated user's upgrade state.
- * Returns a safe default when the caller is not authenticated so the frontend
- * can always render the upgrade screen — even before login completes — without
- * triggering a CORS-blocked 500 error.
+ * Returns safe defaults when unauthenticated OR when any error occurs so the
+ * frontend can always render without CORS-blocked 500 errors.
+ * This route MUST NEVER return 500.
  */
 router.get("/upgrade/status", async (req, res) => {
   try {
     const auth = await requireAuth(req, "OPTIONAL_SESSION");
 
     if (!auth.userId) {
-      // Not authenticated — return a safe default instead of 401 or 500.
-      // The frontend calls this route early in the session lifecycle so it must
-      // never crash the page while the user is still logging in.
-      success(res, {
-        requiresUpgrade: false,
-        executionState: "NORMAL",
-        firstLoginAfterUpgrade: false,
-        archivedCounts: {},
-        migrationApplied: true,
-      });
+      success(res, UPGRADE_SAFE_DEFAULT);
       return;
     }
 
     const status = await PlatformUpgradeService.getStatus(auth.userId);
     success(res, status);
   } catch (err) {
-    handleError(req, res, err);
+    // On ANY error (DB down, missing table, user not found, etc.) return safe
+    // defaults instead of a 500.  The upgrade gate in the frontend must always
+    // be able to render, even during login, DB maintenance, or schema rollouts.
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err), path: req.path },
+      "[upgrade/status] Error suppressed — returning safe defaults",
+    );
+    success(res, UPGRADE_SAFE_DEFAULT);
   }
 });
 

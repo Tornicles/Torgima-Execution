@@ -31,28 +31,40 @@ export const PlatformUpgradeService = {
     const u = user as UserUpgradeRow;
     const executionState = readExecutionState(u);
 
-    const archiveRows = await db.execute<{ entity_type: string; count: string }>(sql`
-      SELECT entity_type, COUNT(*)::text AS count
-      FROM platform_upgrade_archive
-      WHERE user_id = ${userId}::uuid
-      GROUP BY entity_type
-    `);
-
+    // These queries target tables created by the platform upgrade migration.
+    // They are wrapped in individual try-catch blocks so that a missing table
+    // (migration not yet applied) never propagates a 500 to the client.
     const archivedCounts: Record<string, number> = {};
-    for (const row of archiveRows.rows ?? []) {
-      archivedCounts[row.entity_type] = Number(row.count ?? 0);
+    try {
+      const archiveRows = await db.execute<{ entity_type: string; count: string }>(sql`
+        SELECT entity_type, COUNT(*)::text AS count
+        FROM platform_upgrade_archive
+        WHERE user_id = ${userId}::uuid
+        GROUP BY entity_type
+      `);
+      for (const row of archiveRows.rows ?? []) {
+        archivedCounts[row.entity_type] = Number(row.count ?? 0);
+      }
+    } catch {
+      // Table not yet created — archived counts are empty; safe to continue.
     }
 
-    const migrationRows = await db.execute<{ id: string }>(sql`
-      SELECT id FROM platform_upgrade_migrations WHERE id = 'platform_upgrade_v1_20260604' LIMIT 1
-    `);
+    let migrationApplied = false;
+    try {
+      const migrationRows = await db.execute<{ id: string }>(sql`
+        SELECT id FROM platform_upgrade_migrations WHERE id = 'platform_upgrade_v1_20260604' LIMIT 1
+      `);
+      migrationApplied = (migrationRows.rows?.length ?? 0) > 0;
+    } catch {
+      // Table not yet created — migration is not applied; safe to continue.
+    }
 
     return {
       requiresUpgrade: executionState === "RESET_REQUIRED",
       executionState,
       firstLoginAfterUpgrade: readFirstLoginFlag(u),
       archivedCounts,
-      migrationApplied: (migrationRows.rows?.length ?? 0) > 0,
+      migrationApplied,
     };
   },
 
