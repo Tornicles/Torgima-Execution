@@ -12,10 +12,18 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("lib/auth.ts — Supabase profile sync", () => {
   const src = read("artifacts/api-server/src/lib/auth.ts");
 
-  it("resolves profile by id, supabase_id, and email", () => {
-    expect(src).toContain("eq(users.id, supabaseId)");
+  it("resolves profile by supabase_id first, then email, then legacy id", () => {
     expect(src).toContain("eq(users.supabase_id, supabaseId)");
     expect(src).toContain("eq(users.email, normalizedEmail)");
+    expect(src).toContain("eq(users.id, supabaseId)");
+    const resolveIdx = src.indexOf("async function resolveUserFromSupabase");
+    const resolveBlock = src.slice(resolveIdx, resolveIdx + 1200);
+    const supabaseIdx = resolveBlock.indexOf("eq(users.supabase_id, supabaseId)");
+    const emailIdx = resolveBlock.indexOf("eq(users.email, normalizedEmail)");
+    const idIdx = resolveBlock.indexOf("eq(users.id, supabaseId)");
+    expect(supabaseIdx).toBeGreaterThan(-1);
+    expect(emailIdx).toBeGreaterThan(supabaseIdx);
+    expect(idIdx).toBeGreaterThan(emailIdx);
   });
 
   it("creates profile with id = supabaseId (preferred mapping)", () => {

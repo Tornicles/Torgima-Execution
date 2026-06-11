@@ -7,7 +7,7 @@ import { extractInternalToken, getInternalAuthSecret } from "./security/internal
 import { logAuthSecurityEvent } from "./auth-security-log.js";
 import { verifySupabaseJwt } from "./supabase.js";
 import { db, users } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export const SESSION_COOKIE_NAME = "torgima_session";
 
@@ -31,10 +31,12 @@ function buildInternalContext(): AuthContext {
   };
 }
 
+const profileSelect = { id: users.id, mode: users.mode, tier: users.tier };
+
 /**
- * Look up a public.users row by Supabase auth user id or email.
- * Preferred mapping: public.users.id = auth.users.id (supabaseId).
- * Legacy rows may use a separate id with supabase_id set.
+ * Look up a public.users row for a Supabase auth user.
+ * Lookup order: supabase_id → lowercase email → legacy id match.
+ * public.users.id may differ from auth.users.id on legacy rows; always return public.users.id.
  */
 async function resolveUserFromSupabase(
   supabaseId: string,
@@ -42,18 +44,26 @@ async function resolveUserFromSupabase(
 ): Promise<{ id: string; mode: string; tier: string } | null> {
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    const [user] = await db
-      .select({ id: users.id, mode: users.mode, tier: users.tier })
+    const [bySupabaseId] = await db
+      .select(profileSelect)
       .from(users)
-      .where(
-        or(
-          eq(users.id, supabaseId),
-          eq(users.supabase_id, supabaseId),
-          eq(users.email, normalizedEmail),
-        ),
-      )
+      .where(eq(users.supabase_id, supabaseId))
       .limit(1);
-    return user ?? null;
+    if (bySupabaseId) return bySupabaseId;
+
+    const [byEmail] = await db
+      .select(profileSelect)
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
+    if (byEmail) return byEmail;
+
+    const [byLegacyId] = await db
+      .select(profileSelect)
+      .from(users)
+      .where(eq(users.id, supabaseId))
+      .limit(1);
+    return byLegacyId ?? null;
   } catch {
     return null;
   }
