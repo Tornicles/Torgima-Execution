@@ -363,6 +363,35 @@ router.get("/v1/debug/complete-diagnostic", async (req, res) => {
 });
 
 /**
+ * GET /api/debug/auth-flow — protected auth handoff diagnostics (internal auth only).
+ * Pass Authorization: Bearer <token> to probe Supabase JWT → profile sync.
+ * Never returns tokens, secrets, or raw user data.
+ */
+router.get("/debug/auth-flow", async (req, res) => {
+  try {
+    const { probeSupabaseAuthToken } = await import("../lib/auth.js");
+    const { isLaunchMode, isMagicLinkAuthEnabled } = await import("../lib/launch-mode.js");
+
+    const bearer = req.headers.authorization;
+    const token = bearer?.startsWith("Bearer ") ? bearer.slice(7) : null;
+    const probe = await probeSupabaseAuthToken(token);
+
+    success(res, {
+      launchMode: isLaunchMode(),
+      magicLinkEnabled: isMagicLinkAuthEnabled(),
+      supabaseUrlPresent: Boolean(process.env.SUPABASE_URL?.trim()),
+      supabaseAnonPresent: Boolean(process.env.SUPABASE_ANON_KEY?.trim()),
+      serviceRolePresent: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
+      upgradeStatusSafe: isLaunchMode() || !process.env.ENABLE_ADVANCED_UPGRADE_GATE,
+      onboardingRouteSafe: true,
+      ...probe,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
  * GET /api/debug/cloudflare-env — present/missing env (no secret values).
  */
 router.get("/debug/cloudflare-env", (_req, res) => {

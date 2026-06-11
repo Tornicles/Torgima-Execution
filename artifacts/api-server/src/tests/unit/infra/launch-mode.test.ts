@@ -326,11 +326,12 @@ describe("routes/auth.ts — session isolation", () => {
     expect(sessionBlock).toContain("authenticated: false");
   });
 
-  it("catch block in session route returns safe authenticated:false instead of 500", () => {
+  it("session route uses handleError for sync failures; unauthenticated only when no token", () => {
     const sessionIdx = src.indexOf('router.get("/session"');
-    const sessionEnd = src.indexOf("});", sessionIdx + 100);
-    const sessionBlock = src.slice(sessionIdx, sessionEnd + 3);
+    const sessionEnd = src.indexOf('router.post("/sign-out"');
+    const sessionBlock = src.slice(sessionIdx, sessionEnd);
     expect(sessionBlock).toContain("authenticated: false");
+    expect(sessionBlock).toContain("handleError(req, res, err)");
   });
 });
 

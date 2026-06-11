@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-10T22:57:29.352Z",
-  "routeCount": 700,
+  "generatedAt": "2026-06-11T05:54:03.305Z",
+  "routeCount": 701,
   "routes": [
     {
       "method": "GET",
@@ -1721,6 +1721,11 @@
       "method": "GET",
       "path": "/dashboard/intelligence/:blueprintId",
       "file": "state.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/auth-flow",
+      "file": "debug.ts"
     },
     {
       "method": "GET",
@@ -3503,5 +3508,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 678
+  "openApiPathCount": 679
 }

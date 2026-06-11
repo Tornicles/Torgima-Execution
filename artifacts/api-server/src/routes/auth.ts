@@ -9,6 +9,7 @@ import {
 import { requireAuth } from "../lib/auth.js";
 import { SESSION_COOKIE_NAME } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
+import { logger } from "../lib/logger.js";
 import { resolveAppUrl } from "../lib/app-url.js";
 import {
   bindCloudflareEnv,
@@ -264,7 +265,32 @@ router.get("/session", async (req, res) => {
       success(res, { authenticated: false, user: null });
       return;
     }
-    const user = await getUser(auth.userId);
+
+    // Load full profile; fall back to auth-context defaults if blueprint/extra queries fail.
+    let user;
+    try {
+      user = await getUser(auth.userId);
+    } catch (err) {
+      const log = req.log ?? logger;
+      log.warn(
+        { err: err instanceof Error ? err.message : String(err), userId: auth.userId },
+        "[auth/session] getUser failed — returning minimal profile from auth context",
+      );
+      user = {
+        id: auth.userId,
+        email: "",
+        displayName: null,
+        mode: auth.userMode,
+        tier: auth.userTier,
+        onboardingComplete: false,
+        executionState: "NORMAL",
+        firstLoginAfterUpgrade: false,
+        activeBlueprintId: null,
+        timezone: "UTC",
+        notificationPreferences: {},
+      };
+    }
+
     success(res, {
       authenticated: true,
       userId: auth.userId,
@@ -273,8 +299,9 @@ router.get("/session", async (req, res) => {
       userTier: auth.userTier,
       user,
     });
-  } catch {
-    success(res, { authenticated: false, user: null });
+  } catch (err) {
+    // Profile sync or token verification failure — structured error with CORS + requestId.
+    handleError(req, res, err);
   }
 });
 

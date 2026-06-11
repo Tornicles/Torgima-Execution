@@ -13,6 +13,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { UpgradeGate } from "@/components/UpgradeGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSessionGuard } from "@/hooks/useSessionGuard";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -22,6 +23,7 @@ import AboutPage from "@/pages/about";
 import ChangelogPage from "@/pages/changelog";
 import LoginPage from "@/pages/login";
 import SignupPage from "@/pages/signup";
+import SignupCheckEmailPage from "@/pages/signup/check-email";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import VerifyPage from "@/pages/verify";
 import AuthCallbackPage from "@/pages/auth/callback";
@@ -318,6 +320,7 @@ function AppRoutes() {
         <Route path="/changelog" component={ChangelogPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
+        <Route path="/signup/check-email" component={SignupCheckEmailPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/auth/callback" component={AuthCallbackPage} />
         <Route path="/verify" component={VerifyPage} />
@@ -422,14 +425,16 @@ export default function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="torgima-theme">
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <UpgradeGate>
-              <AppRoutes />
-            </UpgradeGate>
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <UpgradeGate>
+                <AppRoutes />
+              </UpgradeGate>
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -39,7 +39,7 @@ export default function AuthCallbackPage() {
         if (event === "SIGNED_IN" && params.get("type") === "recovery") {
           setLocation("/auth/update-password");
         } else {
-          setLocation("/dashboard");
+          setLocation("/onboarding");
         }
       } else if (event === "PASSWORD_RECOVERY") {
         setAuthToken(session?.access_token ?? null);

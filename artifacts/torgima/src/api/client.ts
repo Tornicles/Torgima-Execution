@@ -99,7 +99,11 @@ export async function apiRequest<T>(
         retryable: false,
       };
     }
-    redirectToLogin();
+    // Only redirect when there is no Supabase token — avoids login loops during
+    // profile sync or transient backend errors while the user is authenticated.
+    if (!getAuthToken()) {
+      redirectToLogin();
+    }
     return { ...envelope, ok: false };
   }
 

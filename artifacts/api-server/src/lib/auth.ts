@@ -33,17 +33,25 @@ function buildInternalContext(): AuthContext {
 
 /**
  * Look up a public.users row by Supabase auth user id or email.
- * Falls back to email lookup so it works before migration 0040 is applied.
+ * Preferred mapping: public.users.id = auth.users.id (supabaseId).
+ * Legacy rows may use a separate id with supabase_id set.
  */
 async function resolveUserFromSupabase(
   supabaseId: string,
   email: string,
 ): Promise<{ id: string; mode: string; tier: string } | null> {
+  const normalizedEmail = email.toLowerCase().trim();
   try {
     const [user] = await db
       .select({ id: users.id, mode: users.mode, tier: users.tier })
       .from(users)
-      .where(or(eq(users.supabase_id, supabaseId), eq(users.email, email)))
+      .where(
+        or(
+          eq(users.id, supabaseId),
+          eq(users.supabase_id, supabaseId),
+          eq(users.email, normalizedEmail),
+        ),
+      )
       .limit(1);
     return user ?? null;
   } catch {
@@ -52,28 +60,53 @@ async function resolveUserFromSupabase(
 }
 
 /**
- * Create a minimal public.users row for a Supabase auth user who has no profile yet.
- * This is a safety net — the trigger in migration 0040 normally handles creation.
+ * Create or link a public.users row for a Supabase auth user.
+ * Idempotent: never creates duplicate profiles for the same email or supabase id.
  */
 async function createUserFromSupabase(
   supabaseId: string,
   email: string,
 ): Promise<{ id: string; mode: string; tier: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Link existing legacy profile (magic-link era) by email.
+  const existing = await resolveUserFromSupabase(supabaseId, normalizedEmail);
+  if (existing) {
+    await db
+      .update(users)
+      .set({ supabase_id: supabaseId, updated_at: new Date() })
+      .where(eq(users.id, existing.id))
+      .catch(() => null);
+    return existing;
+  }
+
+  // Preferred model: public.users.id = auth.users.id
   const [user] = await db
     .insert(users)
     .values({
-      email,
+      id: supabaseId,
+      email: normalizedEmail,
       supabase_id: supabaseId,
       mode: "individual",
       tier: "starter",
       onboarding_complete: false,
       active: true,
+      execution_state: "NORMAL",
+      first_login_after_upgrade: false,
+      notification_preferences: {},
+      metadata: {},
+      civilization_context: {},
+      communication_profile: {},
     })
     .onConflictDoUpdate({
       target: users.email,
       set: { supabase_id: supabaseId, updated_at: new Date() },
     })
     .returning({ id: users.id, mode: users.mode, tier: users.tier });
+
+  if (!user) {
+    throw new TorgimaError("INTERNAL_ERROR", "Failed to create user profile");
+  }
   return user;
 }
 
@@ -129,17 +162,15 @@ export async function requireAuth(req: Request, authClass: AuthClass): Promise<A
             "[Auth] Created public.users row for new Supabase user",
           );
         } catch (err) {
-          logger.error({ err }, "[Auth] Could not create public.users row for Supabase user");
-          if (authClass === "OPTIONAL_SESSION") {
-            return {
-              userId: "",
-              sessionId: "",
-              userMode: "individual",
-              userTier: "",
-              isInternal: false,
-            };
-          }
-          throw new TorgimaError("INTERNAL_ERROR", "Authentication failed — please try again");
+          logger.error(
+            { err: err instanceof Error ? err.message : String(err), email: supabaseUser.email },
+            "[Auth] Could not create public.users row for Supabase user",
+          );
+          throw new TorgimaError(
+            "INTERNAL_ERROR",
+            "Profile sync failed — please try again",
+            true,
+          );
         }
       }
 
@@ -188,6 +219,60 @@ export function assertOwnership(
 }
 
 // Express middleware factory for route-level auth
+/** Internal/debug probe — tests Supabase token → public.users profile chain. */
+export async function probeSupabaseAuthToken(token: string | null): Promise<{
+  authHeaderReceived: boolean;
+  tokenVerified: boolean;
+  publicProfileFound: boolean;
+  publicProfileCreated: boolean;
+}> {
+  if (!token?.startsWith("eyJ")) {
+    return {
+      authHeaderReceived: Boolean(token),
+      tokenVerified: false,
+      publicProfileFound: false,
+      publicProfileCreated: false,
+    };
+  }
+
+  const supabaseUser = await verifySupabaseJwt(token);
+  if (!supabaseUser) {
+    return {
+      authHeaderReceived: true,
+      tokenVerified: false,
+      publicProfileFound: false,
+      publicProfileCreated: false,
+    };
+  }
+
+  let profile = await resolveUserFromSupabase(supabaseUser.userId, supabaseUser.email);
+  if (profile) {
+    return {
+      authHeaderReceived: true,
+      tokenVerified: true,
+      publicProfileFound: true,
+      publicProfileCreated: false,
+    };
+  }
+
+  try {
+    profile = await createUserFromSupabase(supabaseUser.userId, supabaseUser.email);
+    return {
+      authHeaderReceived: true,
+      tokenVerified: true,
+      publicProfileFound: Boolean(profile),
+      publicProfileCreated: true,
+    };
+  } catch {
+    return {
+      authHeaderReceived: true,
+      tokenVerified: true,
+      publicProfileFound: false,
+      publicProfileCreated: false,
+    };
+  }
+}
+
 export function withAuth(authClass: AuthClass) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
