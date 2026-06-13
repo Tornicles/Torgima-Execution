@@ -163,7 +163,11 @@ export function evaluatePoolerExpectations(target: ParsedDatabaseTarget): string
   if (!target.isPoolerHost) {
     issues.push("Host is not a pooler.supabase.com hostname");
   }
-  if (!target.isTransactionPoolerPort) {
+  if (!target.isTransactionPoolerPort && target.isPoolerHost && target.port === "5432") {
+    issues.push(
+      "Port is 5432 (session pooler) — Worker runtime upgrades to 6543; prefer transaction pooler :6543 in the secret",
+    );
+  } else if (!target.isTransactionPoolerPort) {
     issues.push(`Port is ${target.port ?? "unknown"} — transaction pooler requires 6543`);
   }
   if (target.projectRef !== EXPECTED_PROJECT_REF) {
@@ -178,4 +182,32 @@ export function evaluatePoolerExpectations(target: ParsedDatabaseTarget): string
     issues.push("Password segment missing from DATABASE_URL");
   }
   return issues;
+}
+
+/** Safe snapshot for health/diagnostic responses — never includes secrets. */
+export function buildSafeDatabaseTargetSnapshot(raw: string | undefined): {
+  bindingSource: DatabaseUrlBindingSource;
+  host: string | null;
+  port: string | null;
+  database: string | null;
+  usernamePrefix: string | null;
+  sslEnabled: boolean;
+  isPoolerHost: boolean;
+  isTransactionPoolerPort: boolean;
+  passwordPresent: boolean;
+  configurationIssues: string[];
+} {
+  const parsed = parseDatabaseTargetSafe(raw);
+  return {
+    bindingSource: parsed.bindingSource,
+    host: parsed.host,
+    port: parsed.port,
+    database: parsed.database,
+    usernamePrefix: parsed.usernamePrefix,
+    sslEnabled: parsed.sslEnabled,
+    isPoolerHost: parsed.isPoolerHost,
+    isTransactionPoolerPort: parsed.isTransactionPoolerPort,
+    passwordPresent: parsed.passwordPresent,
+    configurationIssues: evaluatePoolerExpectations(parsed),
+  };
 }

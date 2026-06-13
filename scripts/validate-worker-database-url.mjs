@@ -40,7 +40,10 @@ function validateDatabaseUrl(raw) {
   if (!host.includes("pooler.supabase.com")) {
     issues.push(`Host must be *.pooler.supabase.com (got ${host})`);
   }
-  if (port !== "6543") {
+  const isPoolerHost = host.includes("pooler.supabase.com");
+  if (isPoolerHost && port !== "6543" && port !== "5432") {
+    issues.push(`Port must be 6543 (transaction) or 5432 (session pooler) — got ${port}`);
+  } else if (!isPoolerHost && port !== "6543") {
     issues.push(`Port must be 6543 for transaction pooler (got ${port})`);
   }
 

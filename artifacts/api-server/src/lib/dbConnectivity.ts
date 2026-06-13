@@ -5,6 +5,9 @@
 const CONNECTIVITY_PATTERNS = [
   /timed?\s*out/i,
   /timeout/i,
+  /connect_timeout/i,
+  /connect timeout/i,
+  /query read timeout/i,
   /etimedout/i,
   /econnrefused/i,
   /connection refused/i,
@@ -14,7 +17,11 @@ const CONNECTIVITY_PATTERNS = [
   /connect econn/i,
   /could not connect/i,
   /connection terminated/i,
+  /connection closed/i,
   /failed to connect/i,
+  /cannot reach/i,
+  /socket hang up/i,
+  /ECONNRESET/i,
 ];
 
 export function isDbConnectivityError(err: unknown): boolean {

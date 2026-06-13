@@ -8,6 +8,7 @@ import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { extractInternalToken, getInternalAuthSecret } from "../lib/security/internalAuth.js";
+import { buildSafeDatabaseTargetSnapshot } from "../lib/databaseTargetDebug.js";
 
 const router: IRouter = Router();
 
@@ -379,6 +380,7 @@ router.get("/health", async (req, res) => {
       service: "torgima-api",
       runtime: "cloudflare-workers",
       version: process.env.APP_VERSION ?? "phase1",
+      databaseTarget: buildSafeDatabaseTargetSnapshot(process.env.DATABASE_URL),
     });
     return;
   }
@@ -392,6 +394,7 @@ router.get("/health", async (req, res) => {
       service: "torgima-api",
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
       version: results.version,
+      databaseTarget: buildSafeDatabaseTargetSnapshot(process.env.DATABASE_URL),
       checks,
       ...(failing.length > 0 ? { failing } : {}),
     });

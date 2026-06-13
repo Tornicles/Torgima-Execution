@@ -9,6 +9,7 @@ import { verifySupabaseJwt } from "./supabase.js";
 import { db, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { isDbConnectivityError } from "./dbConnectivity.js";
+import { isLaunchMode } from "./launch-mode.js";
 
 export const SESSION_COOKIE_NAME = "torgima_session";
 
@@ -205,19 +206,23 @@ export async function requireAuth(req: Request, authClass: AuthClass): Promise<A
 
         return buildSupabaseJwtContext(supabaseUser, profile);
       } catch (err) {
-        if (isDbConnectivityError(err)) {
+        const errMessage = err instanceof Error ? err.message : String(err);
+        const dbUnavailable = isDbConnectivityError(err);
+        if (dbUnavailable || isLaunchMode()) {
           logger.warn(
             {
               email: supabaseUser.email,
-              err: err instanceof Error ? err.message : String(err),
+              err: errMessage,
+              launchMode: isLaunchMode(),
+              dbUnavailable,
             },
-            "[Auth] Database unreachable — Supabase JWT passthrough (degraded)",
+            "[Auth] Profile DB lookup failed — Supabase JWT passthrough (degraded)",
           );
           return buildDegradedSupabaseJwtContext(supabaseUser);
         }
 
         logger.error(
-          { err: err instanceof Error ? err.message : String(err), email: supabaseUser.email },
+          { err: errMessage, email: supabaseUser.email },
           "[Auth] Could not resolve public.users row for Supabase user",
         );
         throw new TorgimaError(
@@ -270,6 +275,8 @@ export async function probeSupabaseAuthToken(token: string | null): Promise<{
   tokenVerified: boolean;
   publicProfileFound: boolean;
   publicProfileCreated: boolean;
+  profileSyncError: string | null;
+  profileSyncDegraded: boolean;
 }> {
   if (!token?.startsWith("eyJ")) {
     return {
@@ -277,6 +284,8 @@ export async function probeSupabaseAuthToken(token: string | null): Promise<{
       tokenVerified: false,
       publicProfileFound: false,
       publicProfileCreated: false,
+      profileSyncError: null,
+      profileSyncDegraded: false,
     };
   }
 
@@ -287,33 +296,43 @@ export async function probeSupabaseAuthToken(token: string | null): Promise<{
       tokenVerified: false,
       publicProfileFound: false,
       publicProfileCreated: false,
-    };
-  }
-
-  let profile = await resolveUserFromSupabase(supabaseUser.userId, supabaseUser.email);
-  if (profile) {
-    return {
-      authHeaderReceived: true,
-      tokenVerified: true,
-      publicProfileFound: true,
-      publicProfileCreated: false,
+      profileSyncError: null,
+      profileSyncDegraded: false,
     };
   }
 
   try {
+    let profile = await resolveUserFromSupabase(supabaseUser.userId, supabaseUser.email);
+    if (profile) {
+      return {
+        authHeaderReceived: true,
+        tokenVerified: true,
+        publicProfileFound: true,
+        publicProfileCreated: false,
+        profileSyncError: null,
+        profileSyncDegraded: false,
+      };
+    }
+
     profile = await createUserFromSupabase(supabaseUser.userId, supabaseUser.email);
     return {
       authHeaderReceived: true,
       tokenVerified: true,
       publicProfileFound: Boolean(profile),
       publicProfileCreated: true,
+      profileSyncError: null,
+      profileSyncDegraded: false,
     };
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const degraded = isDbConnectivityError(err) || isLaunchMode();
     return {
       authHeaderReceived: true,
       tokenVerified: true,
       publicProfileFound: false,
       publicProfileCreated: false,
+      profileSyncError: message.slice(0, 200),
+      profileSyncDegraded: degraded,
     };
   }
 }

@@ -37,8 +37,10 @@ describe("lib/auth.ts — Supabase profile sync", () => {
     expect(createBlock).toContain("if (existing)");
   });
 
-  it("exports probeSupabaseAuthToken for debug auth-flow", () => {
-    expect(src).toContain("export async function probeSupabaseAuthToken");
+  it("uses launch-mode JWT passthrough when profile DB lookup fails", () => {
+    expect(src).toContain("isLaunchMode()");
+    expect(src).toContain("Profile DB lookup failed — Supabase JWT passthrough (degraded)");
+    expect(src).toContain("buildDegradedSupabaseJwtContext");
   });
 });
 

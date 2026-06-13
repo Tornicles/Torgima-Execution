@@ -254,6 +254,29 @@ jobs:
           echo "✗ Worker deploy verification failed (workers.dev probe and Cloudflare API check)"
           exit 1
 
+      - name: Verify Worker database target (api.torgima.com)
+        env:
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          API_BASE="https://api.torgima.com"
+          echo "Probing ${API_BASE}/api/debug/db-target"
+          sleep 10
+          RAW="$(curl -sS -w "\n%{http_code}" --max-time 25 \
+            -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
+            -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
+            "${API_BASE}/api/debug/db-target" || true)"
+          HTTP_CODE="$(echo "${RAW}" | tail -1)"
+          BODY="$(echo "${RAW}" | head -n -1)"
+          echo "HTTP: ${HTTP_CODE}"
+          echo "${BODY}" | head -c 4000
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "db-target probe failed (HTTP ${HTTP_CODE})"
+            exit 1
+          fi
+          echo "${BODY}" | grep -q '"probe"' || { echo "missing probe in db-target response"; exit 1; }
+          echo "✓ db-target probe returned"
+
       - name: Optional debug env probe (non-blocking)
         env:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
