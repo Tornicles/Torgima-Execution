@@ -7,6 +7,9 @@ import { ensureTierPreviewsPresent } from "../lib/ensureTierPreviews.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { BlueprintLaunchService } from "./BlueprintLaunchService.js";
 import { BlueprintGenerationEngine } from "../engines/blueprint/BlueprintGenerationEngine.js";
+import { isLaunchMode } from "../lib/launch-mode.js";
+import { activateMinimalLaunchBlueprint } from "../engines/launch/LaunchModeBlueprintEngine.js";
+import { shouldDegradeOnFailure } from "../lib/systemResilience.js";
 
 export type TierLaunchPath = "current" | "adjusted" | "alternative";
 export type TierLaunchLevel = "starter" | "growth" | "ultimate";
@@ -57,7 +60,7 @@ export const BlueprintTierLaunchService = {
       throw new TorgimaError("NOT_FOUND", "Validation not found", false);
     }
 
-    if (validation.verdict === "pivot") {
+    if (validation.verdict === "pivot" && !isLaunchMode()) {
       throw new TorgimaError(
         "VALIDATION_ERROR",
         "Cannot launch when validation verdict is pivot — adjust your direction first",
@@ -65,7 +68,7 @@ export const BlueprintTierLaunchService = {
       );
     }
 
-    await ensureTierPreviewsPresent(input.validationId, input.userId);
+    await ensureTierPreviewsPresent(input.validationId, input.userId).catch(() => []);
 
     const [flowRow] = await db
       .select({ tier_flow_status: validations.tier_flow_status })
@@ -74,12 +77,23 @@ export const BlueprintTierLaunchService = {
       .limit(1);
 
     const flowStatus = flowRow?.tier_flow_status ?? "pending";
-    if (flowStatus !== "tier_presented" && flowStatus !== "tier_selected") {
+    if (
+      !isLaunchMode() &&
+      flowStatus !== "tier_presented" &&
+      flowStatus !== "tier_selected"
+    ) {
       throw new TorgimaError(
         "VALIDATION_ERROR",
         `Complete validation and tier previews first (tier_flow_status=${flowStatus})`,
         false,
       );
+    }
+
+    if (isLaunchMode() && flowStatus === "pending") {
+      await db
+        .update(validations)
+        .set({ tier_flow_status: "tier_presented" })
+        .where(eq(validations.id, input.validationId));
     }
 
     if (!validation.contract_id) {
@@ -122,34 +136,59 @@ export const BlueprintTierLaunchService = {
       "[TierLaunch] Generating tier chain and activating blueprint",
     );
 
-    const result = await BlueprintGenerationEngine.generate({
-      blueprintId: input.blueprintId,
-      userId: input.userId,
-      validationId: input.validationId,
-      selectedTier: input.selectedTier,
-      selectedPath: input.selectedPath,
-      launchAfterGenerate: false,
-    });
+    try {
+      const result = await BlueprintGenerationEngine.generate({
+        blueprintId: input.blueprintId,
+        userId: input.userId,
+        validationId: input.validationId,
+        selectedTier: input.selectedTier,
+        selectedPath: input.selectedPath,
+        launchAfterGenerate: false,
+      });
 
-    await BlueprintLaunchService.launch({
-      blueprintId: input.blueprintId,
-      userId: input.userId,
-      validationContractId: validation.contract_id,
-      selectedPathType: input.selectedPath,
-      selectedBlueprintLevel: input.selectedTier,
-    });
+      await BlueprintLaunchService.launch({
+        blueprintId: input.blueprintId,
+        userId: input.userId,
+        validationContractId: validation.contract_id,
+        selectedPathType: input.selectedPath,
+        selectedBlueprintLevel: input.selectedTier,
+      });
 
-    await db
-      .update(validations)
-      .set({ tier_flow_status: "launched" })
-      .where(eq(validations.id, input.validationId));
+      await db
+        .update(validations)
+        .set({ tier_flow_status: "launched" })
+        .where(eq(validations.id, input.validationId));
 
-    return {
-      blueprintId: result.blueprintId,
-      tier: input.selectedTier,
-      redirectTo: "/dashboard",
-      launched: true,
-      generationSummary: result.generationSummary,
-    };
+      return {
+        blueprintId: result.blueprintId,
+        tier: input.selectedTier,
+        redirectTo: "/dashboard",
+        launched: true,
+        generationSummary: result.generationSummary,
+      };
+    } catch (err) {
+      if (!shouldDegradeOnFailure(err) || !validation.contract_id) {
+        throw err;
+      }
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "[TierLaunch] Advanced generation failed — minimal launch",
+      );
+      const minimal = await activateMinimalLaunchBlueprint({
+        blueprintId: input.blueprintId,
+        validationId: input.validationId,
+        userId: input.userId,
+        selectedTier: input.selectedTier,
+        selectedPath: input.selectedPath,
+        validationContractId: validation.contract_id,
+      });
+      return {
+        blueprintId: minimal.blueprintId,
+        tier: minimal.tier,
+        redirectTo: "/dashboard",
+        launched: true,
+        generationSummary: minimal.generationSummary,
+      };
+    }
   },
 };

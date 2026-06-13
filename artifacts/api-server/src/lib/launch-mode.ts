@@ -18,8 +18,10 @@ function boolEnv(name: string): boolean {
  *
  * When enabled:
  *  - signup and login create/sync only the auth + public.users profile
+ *  - JWT passthrough when profile DB lookup fails (see auth.ts)
  *  - /api/upgrade/status returns starter defaults without hitting upgrade tables
  *  - all heavy cron and background jobs are skipped
+ *  - validation, launch, and dashboard use System Resilience Layer fallbacks
  *  - missing optional data must never block login/dashboard rendering
  *
  * Set to "false" once the platform is stable and all advanced features are ready.

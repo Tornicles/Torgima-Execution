@@ -235,11 +235,18 @@ export const ValidationService = {
   }): Promise<StructuredGoalDraft> {
     const aiEnabled = params.aiEnabled ?? (await getAiEnabled());
     if (aiEnabled) {
-      return structureGoalWithBhudhi({
-        ...params.input,
-        userId: params.userId,
-        blueprintId: params.blueprintId,
-      });
+      try {
+        return await structureGoalWithBhudhi({
+          ...params.input,
+          userId: params.userId,
+          blueprintId: params.blueprintId,
+        });
+      } catch (err) {
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          "[ValidationService] structureGoal Bhudhi failed — deterministic fallback",
+        );
+      }
     }
     return structureGoalDeterministic(params.input);
   },

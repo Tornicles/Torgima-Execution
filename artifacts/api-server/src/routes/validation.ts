@@ -23,8 +23,10 @@ import {
   validationProgressFromStatus,
 } from "../lib/buildOnboardingValidationResults.js";
 import { resolveValidationTimeframeFields } from "../lib/validationTimeframe.js";
-import type { ValidationFeedInput } from "../types/erector-complete.js";
+import { runWithResilience } from "../lib/systemResilience.js";
+import { runLaunchModeDeterministicValidation } from "../engines/launch/LaunchModeValidationEngine.js";
 import type { ErectorValidationInput } from "../types/erector.js";
+import type { ValidationFeedInput } from "../types/erector-complete.js";
 import { ValidationKind } from "@workspace/state-machine";
 import { transitionBlueprintToPathSelection } from "../lib/transitionBlueprintToPathSelection.js";
 
@@ -348,65 +350,83 @@ router.post("/v1/validation/run", async (req, res) => {
 
     let validationId: string;
     let result: Awaited<ReturnType<typeof runErectorValidation>> | null = null;
+    let validationUsedFallback = false;
 
-    if (useTwentyStage) {
-      const tfFields = resolveValidationTimeframeFields({
-        timeframe: parsed.data.timeframe,
-        customTimeframeDays:
-          parsed.data.customTimeframeDays ?? refineRow?.timeframe_days ?? undefined,
-        timeframeStart: refineRow?.timeframe_start,
-        timeframeEnd: refineRow?.timeframe_end,
-      });
-      const startIso =
-        refineRow?.timeframe_start?.toISOString?.().slice(0, 10) ??
-        new Date().toISOString().slice(0, 10);
-      const endDate = new Date(startIso);
-      endDate.setDate(endDate.getDate() + (tfFields.timeframe_days ?? 90));
-      const endIso = refineRow?.timeframe_end?.toISOString?.().slice(0, 10) ?? endDate.toISOString().slice(0, 10);
-
-      const feed: ValidationFeedInput = {
-        blueprintId,
-        userId: auth.userId,
-        idempotencyKey: parsed.data.idempotencyKey,
-        goal_final: goalFinal,
-        purpose_final: purposeFinal,
+    const legacyErectorInput: ErectorValidationInput = {
+      ...parsed.data,
+      blueprintId,
+      userId: auth.userId,
+      rawGoal: refineRow?.raw_goal ?? parsed.data.rawGoal,
+      goalFinal,
+      purposeFinal,
+      purpose: purposeFinal ?? parsed.data.purpose,
+      location: {
         country: refineRow?.location_country ?? parsed.data.location.country,
-        economic_type: refineRow?.economic_type ?? undefined,
-        business_type: refineRow?.business_type ?? parsed.data.businessModel,
-        business_model: refineRow?.business_model ?? parsed.data.businessModel,
-        commitment_level: refineRow?.commitment_level ?? parsed.data.commitmentLevel,
-        budget: refineRow?.budget_available ?? parsed.data.budgetAvailable,
-        resources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
-        target_customer: refineRow?.target_customer ?? parsed.data.targetCustomer,
-        currency: refineRow?.currency ?? parsed.data.currency,
-        location_city: refineRow?.location_city ?? parsed.data.location.city,
-        tier: parsed.data.tier,
-        timeframe_start: startIso,
-        timeframe_end: endIso,
-        timeframe_days: tfFields.timeframe_days ?? undefined,
-      };
-      const run = await runErectorTwentyStages(feed);
-      validationId = run.validationId;
-    } else {
-      result = await runErectorValidation({
-        ...parsed.data,
-        blueprintId,
-        userId: auth.userId,
-        rawGoal: refineRow?.raw_goal ?? parsed.data.rawGoal,
-        goalFinal,
-        purposeFinal,
-        purpose: purposeFinal,
-        location: {
-          country: refineRow?.location_country ?? parsed.data.location.country,
-          city: refineRow?.location_city ?? parsed.data.location.city,
-        },
-        businessType: (refineRow?.business_type as "online" | "offline" | "hybrid") ?? parsed.data.businessType,
-        businessModel: refineRow?.business_model ?? parsed.data.businessModel,
-        budgetAvailable: refineRow?.budget_available ?? parsed.data.budgetAvailable,
-        targetCustomer: refineRow?.target_customer ?? parsed.data.targetCustomer,
-        currentResources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
-      });
-      validationId = result.validationId;
+        city: refineRow?.location_city ?? parsed.data.location.city,
+      },
+      businessType: (refineRow?.business_type as "online" | "offline" | "hybrid") ?? parsed.data.businessType,
+      businessModel: refineRow?.business_model ?? parsed.data.businessModel,
+      budgetAvailable: refineRow?.budget_available ?? parsed.data.budgetAvailable,
+      targetCustomer: refineRow?.target_customer ?? parsed.data.targetCustomer,
+      currentResources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
+    };
+
+    const runOutcome = await runWithResilience(
+      { label: "POST /api/v1/validation/run" },
+      async () => {
+        if (useTwentyStage) {
+          const tfFields = resolveValidationTimeframeFields({
+            timeframe: parsed.data.timeframe,
+            customTimeframeDays:
+              parsed.data.customTimeframeDays ?? refineRow?.timeframe_days ?? undefined,
+            timeframeStart: refineRow?.timeframe_start,
+            timeframeEnd: refineRow?.timeframe_end,
+          });
+          const startIso =
+            refineRow?.timeframe_start?.toISOString?.().slice(0, 10) ??
+            new Date().toISOString().slice(0, 10);
+          const endDate = new Date(startIso);
+          endDate.setDate(endDate.getDate() + (tfFields.timeframe_days ?? 90));
+          const endIso = refineRow?.timeframe_end?.toISOString?.().slice(0, 10) ?? endDate.toISOString().slice(0, 10);
+
+          const feed: ValidationFeedInput = {
+            blueprintId,
+            userId: auth.userId,
+            idempotencyKey: parsed.data.idempotencyKey,
+            goal_final: goalFinal,
+            purpose_final: purposeFinal,
+            country: refineRow?.location_country ?? parsed.data.location.country,
+            economic_type: refineRow?.economic_type ?? undefined,
+            business_type: refineRow?.business_type ?? parsed.data.businessModel,
+            business_model: refineRow?.business_model ?? parsed.data.businessModel,
+            commitment_level: refineRow?.commitment_level ?? parsed.data.commitmentLevel,
+            budget: refineRow?.budget_available ?? parsed.data.budgetAvailable,
+            resources: (refineRow?.current_resources as string[]) ?? parsed.data.currentResources,
+            target_customer: refineRow?.target_customer ?? parsed.data.targetCustomer,
+            currency: refineRow?.currency ?? parsed.data.currency,
+            location_city: refineRow?.location_city ?? parsed.data.location.city,
+            tier: parsed.data.tier,
+            timeframe_start: startIso,
+            timeframe_end: endIso,
+            timeframe_days: tfFields.timeframe_days ?? undefined,
+          };
+          const run = await runErectorTwentyStages(feed);
+          return { validationId: run.validationId, result: null as typeof result };
+        }
+        const erectorResult = await runErectorValidation(legacyErectorInput);
+        return { validationId: erectorResult.validationId, result: erectorResult };
+      },
+      async (reason) => {
+        const fb = await runLaunchModeDeterministicValidation(legacyErectorInput, reason);
+        return { validationId: fb.validationId, result: fb };
+      },
+    );
+
+    validationId = runOutcome.value.validationId;
+    result = runOutcome.value.result;
+    validationUsedFallback = runOutcome.usedFallback;
+    if (validationUsedFallback) {
+      logger.info({ validationId, reason: runOutcome.fallbackReason }, "[RUN_SUCCESS] Launch mode fallback");
     }
     await SequenceTrackingService.recordContext(blueprintId, parsed.data.tier, {
       timeframe: parsed.data.customTimeframeDays ?? undefined,
@@ -468,7 +488,8 @@ router.post("/v1/validation/run", async (req, res) => {
       verdict,
       result: result ?? { validationId, blueprintId, verdict },
       redirectTo,
-      pipeline: useTwentyStage ? "20_stage" : "legacy",
+      pipeline: validationUsedFallback ? "launch_mode_deterministic" : useTwentyStage ? "20_stage" : "legacy",
+      usedFallback: validationUsedFallback,
     });
   } catch (err) {
     logSchemaDbError("select|insert|update", "validations", err, {
@@ -476,6 +497,43 @@ router.post("/v1/validation/run", async (req, res) => {
     });
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ error: message }, "[RUN_FAILURE]");
+    try {
+      const auth = await requireAuth(req, "USER_SESSION");
+      const parsed = erectorValidationInputSchema.safeParse(req.body);
+      if (parsed.success && parsed.data.idempotencyKey) {
+        const fb = await runLaunchModeDeterministicValidation({
+          userId: auth.userId,
+          blueprintId: parsed.data.blueprintId ?? "",
+          idempotencyKey: parsed.data.idempotencyKey,
+          rawGoal: parsed.data.rawGoal,
+          purpose: parsed.data.purpose,
+          timeframe: parsed.data.timeframe,
+          commitmentLevel: parsed.data.commitmentLevel,
+          desiredOutcome: parsed.data.purpose,
+          location: parsed.data.location,
+          businessType: parsed.data.businessType,
+          businessModel: parsed.data.businessModel,
+          budgetAvailable: parsed.data.budgetAvailable,
+          currency: parsed.data.currency,
+          currentResources: parsed.data.currentResources,
+          targetCustomer: parsed.data.targetCustomer,
+        }, message);
+        success(res, {
+          success: true,
+          validationId: fb.validationId,
+          validationContractId: fb.validationContractId,
+          blueprintId: fb.blueprintId,
+          verdict: fb.verdict,
+          result: fb,
+          redirectTo: `/validation/${fb.validationId}/results`,
+          pipeline: "launch_mode_deterministic",
+          usedFallback: true,
+        });
+        return;
+      }
+    } catch {
+      /* last-resort below */
+    }
     handleError(req, res, err);
   }
 });

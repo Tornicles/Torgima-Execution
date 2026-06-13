@@ -1,5 +1,8 @@
-import { TorgimaError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { TorgimaError } from "../lib/errors.js";
+import { isLaunchMode } from "../lib/launch-mode.js";
+import { launchDefaultPath, launchDefaultTier, shouldDegradeOnFailure } from "../lib/systemResilience.js";
+import { activateMinimalLaunchBlueprint } from "../engines/launch/LaunchModeBlueprintEngine.js";
 import { type LaunchPathType } from "./BlueprintLaunchService.js";
 import { BlueprintTierLaunchService } from "./BlueprintTierLaunchService.js";
 import { BlueprintService } from "./BlueprintService.js";
@@ -63,6 +66,9 @@ function resolvePath(
   const fromDirection = input.selectedDirection?.path ?? input.selectedDirection?.selectedPath;
   const path = input.selectedPath ?? fromDirection ?? row.selected_path_type ?? row.selected_path;
   if (!path || !["current", "adjusted", "alternative"].includes(path)) {
+    if (isLaunchMode()) {
+      return launchDefaultPath();
+    }
     throw new TorgimaError(
       "VALIDATION_ERROR",
       "selected_direction.path is required (current, adjusted, or alternative)",
@@ -85,6 +91,9 @@ function resolveTier(
     row.recommended_blueprint_level ??
     null;
   if (raw === "growth" || raw === "ultimate" || raw === "starter") return raw;
+  if (isLaunchMode()) {
+    return launchDefaultTier();
+  }
   throw new TorgimaError(
     "VALIDATION_ERROR",
     "Please select an execution level (Starter, Growth, or Ultimate) before launch.",
@@ -168,8 +177,12 @@ export const ValidationLaunchService = {
       await ensureBlueprintReadyForLaunch(row.blueprint_id, input.userId, validationRow);
     } catch (launchPrepErr: unknown) {
       const msg = launchPrepErr instanceof Error ? launchPrepErr.message : String(launchPrepErr);
-      logger.error({ blueprintId: row.blueprint_id, msg }, "[LAUNCH] Blueprint pre-launch check failed");
-      throw new TorgimaError("VALIDATION_ERROR", msg.replace(/^\[LAUNCH\]\s*/, ""), false);
+      if (shouldDegradeOnFailure(launchPrepErr)) {
+        logger.warn({ blueprintId: row.blueprint_id, msg }, "[LAUNCH] Pre-launch check degraded — continuing");
+      } else {
+        logger.error({ blueprintId: row.blueprint_id, msg }, "[LAUNCH] Blueprint pre-launch check failed");
+        throw new TorgimaError("VALIDATION_ERROR", msg.replace(/^\[LAUNCH\]\s*/, ""), false);
+      }
     }
 
     const { db, validations, blueprints: blueprintsTable } = await import("@workspace/db");
@@ -224,6 +237,24 @@ export const ValidationLaunchService = {
           { validationId: row.id, blueprintId: row.blueprint_id },
           "Validation launch — blueprint already active (idempotent)",
         );
+      } else if (shouldDegradeOnFailure(err)) {
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err) },
+          "[LAUNCH] Tier launch failed — minimal launch fallback",
+        );
+        if (row.contract_id) {
+          const minimal = await activateMinimalLaunchBlueprint({
+            blueprintId: row.blueprint_id,
+            validationId: row.id,
+            userId: input.userId,
+            selectedTier: tier,
+            selectedPath: selectedPathType,
+            validationContractId: row.contract_id,
+          });
+          generationSummary = minimal.generationSummary;
+        } else {
+          throw err;
+        }
       } else {
         throw err;
       }

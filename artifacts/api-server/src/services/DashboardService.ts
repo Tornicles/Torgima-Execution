@@ -54,6 +54,7 @@ import {
 import { normalizeBlueprintTier, getTierConfig } from "../engines/blueprint/TierConfig.js";
 import { buildHomeDashboardPanels } from "../lib/homeDashboardPanels.js";
 import { buildLaunchDashboardProjection } from "../lib/buildLaunchDashboardProjection.js";
+import { isLaunchMode } from "../lib/launch-mode.js";
 import { buildBlueprintPositionProjection } from "../lib/buildBlueprintPositionProjection.js";
 import { buildSignalBreakdownFromSnapshot } from "../engines/signal/SignalFormulaBreakdown.js";
 
@@ -1036,8 +1037,34 @@ export const DashboardService = {
       logger.info({ userId, cache: "hit" }, "DashboardService.getDashboardState");
       return cached;
     }
-    const result = await computeDashboardState(userId);
-    setCachedDashboard(userId, result);
-    return result;
+    try {
+      const result = await computeDashboardState(userId);
+      setCachedDashboard(userId, result);
+      return result;
+    } catch (err) {
+      logger.error(
+        { userId, err: err instanceof Error ? err.message : String(err), launchMode: isLaunchMode() },
+        "DashboardService.getDashboardState failed — degraded projection",
+      );
+      const degraded = await buildNoActiveBlueprintDashboardState(userId);
+      return {
+        ...degraded,
+        intelligence: {
+          ...(degraded.intelligence ?? {}),
+          fallbackUsed: true,
+          degraded: true,
+          message: "Dashboard loaded in safe mode — some intelligence panels unavailable.",
+        },
+        homePanels: null,
+        alerts: [
+          ...(degraded.alerts ?? []),
+          {
+            code: "DASHBOARD_DEGRADED",
+            message: "Some dashboard data is temporarily unavailable.",
+            severity: "info" as const,
+          },
+        ],
+      } as DashboardStateResult;
+    }
   },
 };
