@@ -64,6 +64,8 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(workflow).toContain("workers.dev");
     expect(workflow).toContain("GitHub-Actions-Deploy-Verify");
     expect(workflow).not.toContain("https://api.torgima.com/health");
+    expect(workflow).not.toContain('API_BASE="https://api.torgima.com"');
+    expect(workflow).toContain("/api/debug/db-target");
     expect(workflow).toContain("workers/scripts/torgima");
     expect(workflow).toContain("verify-connections");
     expect(workflow).toContain("verify:deploy:connections");
@@ -84,6 +86,7 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(script).toContain("GitHub-Actions");
     expect(script).toContain("/api/health");
     expect(script).toContain('eq "/api/healthz"');
+    expect(script).toContain("/api/debug/db-target");
     expect(script).not.toMatch(/uri\.path eq "\/healthz"/);
     expect(script).toContain('action: "skip"');
   });

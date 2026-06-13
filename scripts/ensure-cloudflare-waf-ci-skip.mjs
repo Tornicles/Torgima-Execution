@@ -22,7 +22,9 @@ const RULE_EXPRESSION = [
   'http.user_agent contains "GitHubActions" or',
   'http.request.uri.path eq "/health" or',
   'http.request.uri.path eq "/api/health" or',
-  'http.request.uri.path eq "/api/healthz"',
+  'http.request.uri.path eq "/api/healthz" or',
+  'http.request.uri.path eq "/api/debug/db-target" or',
+  'starts_with(http.request.uri.path, "/api/debug/")',
   "))",
 ].join(" ");
 const PHASE = "http_request_firewall_custom";
@@ -151,7 +153,7 @@ async function updateEntrypointRuleset(zoneId, ruleset) {
     fail(`Failed to update ${PHASE} entrypoint: ${body.errors?.[0]?.message ?? res.status}`);
   }
 
-  log("WAF skip rule active for /health, /api/health, /healthz, and GitHub Actions");
+  log("WAF skip rule active for /health, /api/health, /healthz, /api/debug/*, and GitHub Actions");
   return body.result;
 }
 
