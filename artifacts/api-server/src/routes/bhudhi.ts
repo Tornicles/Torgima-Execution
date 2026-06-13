@@ -38,6 +38,8 @@ import { modulesService } from "../bhudhi/modules/ModulesService.js";
 import { decisionEngine } from "../bhudhi/decision/decision-engine/DecisionEngine.js";
 import { governanceEngine } from "../bhudhi/governance/GovernanceEngine.js";
 import { approvalEngine } from "../bhudhi/governance/approval-engine/ApprovalEngine.js";
+import { structureGoalDeterministic } from "../engines/validation/ValidationEngine.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -65,20 +67,34 @@ router.post("/bhudhi/structure-goal", async (req, res) => {
     }
 
     const input = parsed.data;
-    const structured = await ValidationService.structureGoal({
-      userId: auth.userId,
-      input: {
-        rawGoal:         input.rawGoal,
-        purpose:         input.purpose,
-        timeframe:       input.timeframe,
-        commitmentLevel: input.commitmentLevel,
-        currentContext:  input.currentContext,
-        successSignal:   input.successSignal,
-        knownBlockers:   input.knownBlockers,
-        domainHints:     input.domainHints,
-        idempotencyKey:  input.idempotencyKey ?? `bhudhi_${auth.userId}_${Date.now()}`,
-      },
-    });
+    const goalInput = {
+      rawGoal: input.rawGoal,
+      purpose: input.purpose,
+      timeframe: input.timeframe,
+      commitmentLevel: input.commitmentLevel,
+      currentContext: input.currentContext,
+      successSignal: input.successSignal,
+      knownBlockers: input.knownBlockers,
+      domainHints: input.domainHints,
+      idempotencyKey: input.idempotencyKey ?? `bhudhi_${auth.userId}_${Date.now()}`,
+    };
+
+    let structured;
+    try {
+      structured = await ValidationService.structureGoal({
+        userId: auth.userId,
+        input: goalInput,
+      });
+    } catch (structureErr) {
+      logger.error(
+        {
+          userId: auth.userId,
+          err: structureErr instanceof Error ? structureErr.message : String(structureErr),
+        },
+        "[Bhudhi] structure-goal failed — deterministic fallback",
+      );
+      structured = structureGoalDeterministic(goalInput);
+    }
 
     success(res, {
       structured,

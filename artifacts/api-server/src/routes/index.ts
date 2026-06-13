@@ -83,6 +83,7 @@ import erectorValidationRouter from "./erectorValidation.js";
 import upgradeRouter from "./upgrade.js";
 import waitlistRouter from "./waitlist.js";
 import debugRouter from "./debug.js";
+import diagnosticRouter from "./diagnostic.js";
 
 const router = Router();
 
@@ -170,5 +171,6 @@ router.use("/api/erector/validation", erectorValidationRouter);
 router.use(upgradeRouter);
 router.use(waitlistRouter);
 router.use(debugRouter);
+router.use(diagnosticRouter);
 
 export default router;

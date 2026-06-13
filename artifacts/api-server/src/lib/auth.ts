@@ -8,6 +8,7 @@ import { logAuthSecurityEvent } from "./auth-security-log.js";
 import { verifySupabaseJwt } from "./supabase.js";
 import { db, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { isDbConnectivityError } from "./dbConnectivity.js";
 
 export const SESSION_COOKIE_NAME = "torgima_session";
 
@@ -64,9 +65,38 @@ async function resolveUserFromSupabase(
       .where(eq(users.id, supabaseId))
       .limit(1);
     return byLegacyId ?? null;
-  } catch {
+  } catch (err) {
+    if (isDbConnectivityError(err)) throw err;
     return null;
   }
+}
+
+function buildSupabaseJwtContext(
+  supabaseUser: { userId: string; email: string },
+  profile: { id: string; mode: string; tier: string },
+  degraded = false,
+): AuthContext {
+  return {
+    userId: profile.id,
+    sessionId: degraded ? "supabase-jwt-degraded" : "supabase-jwt",
+    userMode: (profile.mode === "team" ? "team" : "individual") as "individual" | "team",
+    userTier: String(profile.tier ?? "starter"),
+    isInternal: false,
+  };
+}
+
+/** When Postgres is unreachable, trust a verified Supabase JWT and use auth.users.id as userId. */
+function buildDegradedSupabaseJwtContext(supabaseUser: {
+  userId: string;
+  email: string;
+}): AuthContext {
+  return {
+    userId: supabaseUser.userId,
+    sessionId: "supabase-jwt-degraded",
+    userMode: "individual",
+    userTier: "starter",
+    isInternal: false,
+  };
 }
 
 /**
@@ -161,36 +191,41 @@ export async function requireAuth(req: Request, authClass: AuthClass): Promise<A
   if (sessionToken.startsWith("eyJ")) {
     const supabaseUser = await verifySupabaseJwt(sessionToken);
     if (supabaseUser) {
-      let profile = await resolveUserFromSupabase(supabaseUser.userId, supabaseUser.email);
+      try {
+        let profile = await resolveUserFromSupabase(supabaseUser.userId, supabaseUser.email);
 
-      if (!profile) {
-        // Safety net: trigger may not have fired yet (migration pending).
-        try {
+        if (!profile) {
+          // Safety net: trigger may not have fired yet (migration pending).
           profile = await createUserFromSupabase(supabaseUser.userId, supabaseUser.email);
           logger.info(
             { email: supabaseUser.email },
             "[Auth] Created public.users row for new Supabase user",
           );
-        } catch (err) {
-          logger.error(
-            { err: err instanceof Error ? err.message : String(err), email: supabaseUser.email },
-            "[Auth] Could not create public.users row for Supabase user",
-          );
-          throw new TorgimaError(
-            "INTERNAL_ERROR",
-            "Profile sync failed — please try again",
-            true,
-          );
         }
-      }
 
-      return {
-        userId: profile.id,
-        sessionId: "supabase-jwt",
-        userMode: (profile.mode === "team" ? "team" : "individual") as "individual" | "team",
-        userTier: String(profile.tier ?? "starter"),
-        isInternal: false,
-      };
+        return buildSupabaseJwtContext(supabaseUser, profile);
+      } catch (err) {
+        if (isDbConnectivityError(err)) {
+          logger.warn(
+            {
+              email: supabaseUser.email,
+              err: err instanceof Error ? err.message : String(err),
+            },
+            "[Auth] Database unreachable — Supabase JWT passthrough (degraded)",
+          );
+          return buildDegradedSupabaseJwtContext(supabaseUser);
+        }
+
+        logger.error(
+          { err: err instanceof Error ? err.message : String(err), email: supabaseUser.email },
+          "[Auth] Could not resolve public.users row for Supabase user",
+        );
+        throw new TorgimaError(
+          "INTERNAL_ERROR",
+          "Profile sync failed — please try again",
+          true,
+        );
+      }
     }
 
     // JWT verification failed — don't fall through to legacy path for JWT-shaped tokens

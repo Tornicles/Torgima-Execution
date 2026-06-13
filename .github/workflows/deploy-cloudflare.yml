@@ -151,6 +151,11 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Validate Worker DATABASE_URL (pooler required)
+        run: node scripts/validate-worker-database-url.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Verify Worker entry and build output
         run: |
           test -f artifacts/api-server/src/worker.ts

@@ -19,6 +19,12 @@ import { BlueprintStatus, EventStatus, OrderStatus } from "@workspace/state-mach
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
+import {
+  classifyDatabaseProbeError,
+  evaluatePoolerExpectations,
+  parseDatabaseTargetSafe,
+  resolveDatabaseUrlBindingSource,
+} from "../lib/databaseTargetDebug.js";
 
 const router = Router();
 
@@ -425,64 +431,66 @@ router.get("/debug/cloudflare-env", (_req, res) => {
 });
 
 /**
- * GET /api/debug/db-target — diagnose WHY the DB connection fails (internal auth only).
- * Returns the masked connection target (host/port/pooler/ssl) and the exact raw error
- * from a live `SELECT 1`, with elapsed time. Never returns credentials.
- *
- * Reading the result:
- *  - ~10s elapsed + timeout error  -> host:port UNREACHABLE (paused project, or direct URL not pooler)
- *  - <1s + "password"/"role"       -> wrong credentials / wrong pooler username (postgres.<ref>)
- *  - <1s + "SSL"/"tls"             -> SSL/TLS handshake problem
- *  - ok:true                       -> DB reachable; failure is elsewhere
+ * GET /api/debug/db-target — DATABASE_URL binding audit (INTERNAL_AUTH_SECRET / x-internal-auth).
+ * Never returns full DATABASE_URL, password, or credentials in errors.
  */
 router.get("/debug/db-target", async (_req, res) => {
   const raw = process.env.DATABASE_URL?.trim();
-  const target: Record<string, unknown> = { configured: Boolean(raw) };
+  const parsed = parseDatabaseTargetSafe(raw);
+  const configurationIssues = evaluatePoolerExpectations(parsed);
 
-  if (raw) {
-    try {
-      const parsed = new URL(raw.replace(/^postgresql:/i, "postgres:"));
-      const host = parsed.hostname;
-      target.host = host;
-      target.port = parsed.port || "(default 5432)";
-      target.isPooler = host.includes("pooler.supabase.com");
-      target.isDirectSupabase = /\.supabase\.co$/i.test(host);
-      target.username = parsed.username
-        ? `${parsed.username.slice(0, 9)}***`
-        : "(none)";
-      target.usernameHasProjectRef = parsed.username.includes(".");
-      target.sslmode = parsed.searchParams.get("sslmode") ?? "(unset → require)";
-      target.pgbouncer = parsed.searchParams.get("pgbouncer") ?? "(unset)";
-    } catch {
-      target.parseError = "DATABASE_URL is not a valid URL";
-    }
-  }
+  let probeOk = false;
+  let probeElapsedMs = 0;
+  let probeErrorClass: string | null = null;
+  let probeErrorMessage: string | null = null;
 
-  let dbOk = false;
-  let dbError: string | null = null;
-  let elapsedMs = 0;
   if (raw) {
     const started = Date.now();
     try {
       await db.execute(sql.raw("select 1 as ok"));
-      dbOk = true;
+      probeOk = true;
     } catch (err) {
-      dbError = err instanceof Error ? err.message : String(err);
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      const classified = classifyDatabaseProbeError(rawMessage, Date.now() - started);
+      probeErrorClass = classified.errorClass;
+      probeErrorMessage = classified.errorMessage;
     } finally {
-      elapsedMs = Date.now() - started;
+      probeElapsedMs = Date.now() - started;
     }
+  } else {
+    probeErrorClass = "UNCONFIGURED";
+    probeErrorMessage = "DATABASE_URL is not set on the Worker";
   }
 
   success(res, {
-    ok: dbOk,
-    target,
-    probe: { ok: dbOk, error: dbError, elapsedMs },
-    hint: dbOk
-      ? "Database reachable — the timeout is not here."
-      : elapsedMs >= 8000
-        ? "Connect timed out: host:port unreachable from the Worker. Check (1) Supabase project paused/restricted, (2) DATABASE_URL must be the Transaction Pooler (*.pooler.supabase.com:6543, user postgres.<ref>), NOT the direct db.<ref>.supabase.co:5432."
-        : "Fast failure: likely credentials/SSL — inspect the error string above.",
+    ok: probeOk,
     runtime: process.env.TORGIMA_RUNTIME ?? "unknown",
+    bindingSource: resolveDatabaseUrlBindingSource(),
+    readFrom:
+      "Cloudflare Worker env binding (c.env.DATABASE_URL or Hyperdrive) per request — not Pages, not GitHub Actions at runtime",
+    host: parsed.host,
+    port: parsed.port,
+    database: parsed.database,
+    usernamePrefix: parsed.usernamePrefix,
+    projectRef: parsed.projectRef,
+    sslEnabled: parsed.sslEnabled,
+    isPoolerHost: parsed.isPoolerHost,
+    isTransactionPoolerPort: parsed.isTransactionPoolerPort,
+    passwordPresent: parsed.passwordPresent,
+    passwordEncodingSuspect: parsed.passwordEncodingSuspect,
+    parseError: parsed.parseError,
+    configurationIssues,
+    probe: {
+      ok: probeOk,
+      elapsedMs: probeElapsedMs,
+      errorClass: probeErrorClass,
+      errorMessage: probeErrorMessage,
+    },
+    hint: probeOk
+      ? "Database reachable from the Worker."
+      : probeErrorClass === "TIMEOUT"
+        ? "Connect timed out (~8–10s): Worker cannot reach host:port. Common causes: direct db.<ref>.supabase.co URL, wrong pooler region, or GitHub Actions DATABASE_URL secret out of sync with Cloudflare (wrangler deploy re-pushes GitHub secret on every main push)."
+        : "Inspect configurationIssues and probe.errorClass — no credentials are returned.",
   });
 });
 

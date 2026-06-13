@@ -5,6 +5,7 @@
 
 import type { Hyperdrive, KVNamespace, Queue } from "@cloudflare/workers-types";
 import { bindWorkerDatabaseUrl, resetWorkerDbCache } from "@workspace/db";
+import { evaluatePoolerExpectations, parseDatabaseTargetSafe } from "./databaseTargetDebug.js";
 
 export type TorgimaWorkerEnv = {
   NODE_ENV?: string;
@@ -150,6 +151,19 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
       resetWorkerDbCache();
     }
     bindWorkerDatabaseUrl(nextDbUrl);
+
+    const poolerIssues = evaluatePoolerExpectations(parseDatabaseTargetSafe(nextDbUrl));
+    if (poolerIssues.length > 0) {
+      console.error(
+        JSON.stringify({
+          type: "database_url_config_warning",
+          binding: env.HYPERDRIVE ? "hyperdrive" : "worker_secret",
+          issues: poolerIssues,
+          message:
+            "DATABASE_URL may be unreachable from Cloudflare Workers — use Supabase transaction pooler (*.pooler.supabase.com:6543)",
+        }),
+      );
+    }
   }
 
   // Critical keys that MUST be present for the Worker to function correctly.

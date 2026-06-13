@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-11T08:50:22.365Z",
-  "routeCount": 701,
+  "generatedAt": "2026-06-13T05:35:50.554Z",
+  "routeCount": 702,
   "routes": [
     {
       "method": "GET",
@@ -1759,6 +1759,11 @@
     },
     {
       "method": "GET",
+      "path": "/diagnostic/pipeline",
+      "file": "diagnostic.ts"
+    },
+    {
+      "method": "GET",
       "path": "/erector/dashboard",
       "file": "erector-dashboard.ts"
     },
@@ -3508,5 +3513,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 679
+  "openApiPathCount": 680
 }

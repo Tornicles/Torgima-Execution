@@ -12,6 +12,7 @@ import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingG
 import { normalizeProjectName } from "../lib/projectName.js";
 import { logSchemaDbError } from "../lib/schemaDbDiagnostics.js";
 import { logger } from "../lib/logger.js";
+import { isDbConnectivityError } from "../lib/dbConnectivity.js";
 
 const pathTypeSchema = z.enum(["current", "adjusted", "alternative"]);
 const tierSchema = z.enum(["starter", "growth", "ultimate"]);
@@ -36,30 +37,51 @@ router.get("/onboarding/status", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
 
-    const userRows = await db
-      .select({ onboarding_complete: users.onboarding_complete })
-      .from(users)
-      .where(eq(users.id, auth.userId))
-      .limit(1);
-    const onboardingComplete = userRows[0]?.onboarding_complete ?? false;
+    try {
+      const userRows = await db
+        .select({ onboarding_complete: users.onboarding_complete })
+        .from(users)
+        .where(eq(users.id, auth.userId))
+        .limit(1);
+      const onboardingComplete = userRows[0]?.onboarding_complete ?? false;
 
-    const activeBlueprint = await BlueprintService.findActive(auth.userId);
-    const hasActiveBlueprint = Boolean(activeBlueprint);
+      const activeBlueprint = await BlueprintService.findActive(auth.userId);
+      const hasActiveBlueprint = Boolean(activeBlueprint);
 
-    let onboardingStep: string = "welcome";
-    if (hasActiveBlueprint) onboardingStep = "active";
-    else if (onboardingComplete) onboardingStep = "done";
-    else onboardingStep = "goal";
+      let onboardingStep: string = "welcome";
+      if (hasActiveBlueprint) onboardingStep = "active";
+      else if (onboardingComplete) onboardingStep = "done";
+      else onboardingStep = "goal";
 
-    success(res, {
-      completed: onboardingComplete,
-      onboardingComplete,
-      hasActiveBlueprint,
-      step: onboardingStep,
-      onboardingStep,
-      blueprintId: activeBlueprint?.id ?? null,
-      activeBlueprintId: activeBlueprint?.id ?? null,
-    });
+      success(res, {
+        completed: onboardingComplete,
+        onboardingComplete,
+        hasActiveBlueprint,
+        step: onboardingStep,
+        onboardingStep,
+        blueprintId: activeBlueprint?.id ?? null,
+        activeBlueprintId: activeBlueprint?.id ?? null,
+      });
+    } catch (dbErr) {
+      logger.error(
+        {
+          userId: auth.userId,
+          err: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          degraded: isDbConnectivityError(dbErr),
+        },
+        "[Onboarding] status query failed — safe default",
+      );
+      success(res, {
+        completed: false,
+        onboardingComplete: false,
+        hasActiveBlueprint: false,
+        step: "goal",
+        onboardingStep: "goal",
+        blueprintId: null,
+        activeBlueprintId: null,
+        warning: "Status check degraded — database unavailable",
+      });
+    }
   } catch (err) {
     handleError(req, res, err);
   }

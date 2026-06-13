@@ -27,12 +27,20 @@ import { BlueprintStatus, ErectorValidationStage, ValidationKind, ValidationStat
 import { ValidationFinalizationService } from "./ValidationFinalizationService.js";
 
 export async function getAiEnabled(): Promise<boolean> {
-  const rows = await db
-    .select({ enabled: featureFlags.enabled })
-    .from(featureFlags)
-    .where(eq(featureFlags.feature_name, "ai_enabled"))
-    .limit(1);
-  return rows[0]?.enabled ?? false;
+  try {
+    const rows = await db
+      .select({ enabled: featureFlags.enabled })
+      .from(featureFlags)
+      .where(eq(featureFlags.feature_name, "ai_enabled"))
+      .limit(1);
+    return rows[0]?.enabled ?? false;
+  } catch (err) {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      "[ValidationService] getAiEnabled failed — defaulting to false",
+    );
+    return false;
+  }
 }
 
 function rowToResult(row: typeof validations.$inferSelect, blueprintId: string): ValidationResult {
