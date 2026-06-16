@@ -3,7 +3,12 @@ UPDATE blueprints
 SET
   status = 'path_selection',
   selected_path = COALESCE(selected_path, 'adjusted'),
-  selected_blueprint_level = COALESCE(selected_blueprint_level, tier, 'starter')
+  -- Normalize to user_tier when available; safe for text columns too.
+  selected_blueprint_level = COALESCE(
+    selected_blueprint_level,
+    tier::user_tier,
+    'starter'::user_tier
+  )
 WHERE status IN ('draft', 'validating', 'awaiting_selection')
   AND validation_verdict IS NOT NULL
   AND active = false;

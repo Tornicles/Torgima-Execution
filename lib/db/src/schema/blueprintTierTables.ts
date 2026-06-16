@@ -9,8 +9,8 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { userTierEnum } from "./enums.js";
-import { bhudhiLogs, blueprints, users, validations } from "./tables.js";
+import { userTierEnum } from "./enums";
+import { bhudhiLogs, blueprints, users, validations } from "./tables";
 
 /** Tier preview cards shown after validation (one row per tier). */
 export const blueprintTierPreviews = pgTable(

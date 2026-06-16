@@ -11,7 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { blueprints, users, validations } from "./tables.js";
+import { blueprints, users, validations } from "./tables";
 
 export const validationRuns = pgTable(
   "validation_runs",

@@ -14,11 +14,11 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { blueprints, phases, users } from "./tables.js";
+import { blueprints, phases, users } from "./tables";
 import {
   erectorCorrectionPaths,
   erectorSimulationRuns,
-} from "./erectorCoreRuntimeTables.js";
+} from "./erectorCoreRuntimeTables";
 
 export const erectorCapabilityGraph = pgTable(
   "erector_capability_graph",

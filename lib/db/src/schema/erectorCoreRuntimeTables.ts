@@ -15,8 +15,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { blueprints, users } from "./tables.js";
-import { erectorIntakeSessions } from "./erectorTables.js";
+import { blueprints, users } from "./tables";
+import { erectorIntakeSessions } from "./erectorTables";
 
 export const erectorUserRealityProfiles = pgTable(
   "erector_user_reality_profiles",
@@ -135,9 +135,10 @@ export const erectorValidationRuns = pgTable(
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("idx_validation_runs_user").on(t.user_id),
-    index("idx_validation_runs_blueprint").on(t.blueprint_id),
-    index("idx_validation_runs_verdict").on(t.verdict),
+    // NOTE: index names must be globally unique across the public schema for drizzle-kit.
+    index("idx_erector_validation_runs_user").on(t.user_id),
+    index("idx_erector_validation_runs_blueprint").on(t.blueprint_id),
+    index("idx_erector_validation_runs_verdict").on(t.verdict),
   ],
 );
 

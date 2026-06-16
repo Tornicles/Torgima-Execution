@@ -14,8 +14,8 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { blueprints, users } from "./tables.js";
-import { erectorEvidenceLedger } from "./erectorCoreRuntimeTables.js";
+import { blueprints, users } from "./tables";
+import { erectorEvidenceLedger } from "./erectorCoreRuntimeTables";
 
 export const erectorDecisionAudits = pgTable(
   "erector_decision_audits",
