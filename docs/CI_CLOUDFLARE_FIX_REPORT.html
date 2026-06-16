@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TORGIMA — CI Migration Removal &amp; Cloudflare Secrets Fix Report</title>
+  <style>
+    @page { margin: 18mm 14mm; }
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { font-size: 22pt; border-bottom: 3px solid #2563eb; padding-bottom: 8px; color: #1e3a8a; margin-top: 0; }
+    h2 { font-size: 13pt; margin-top: 26px; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; page-break-after: avoid; }
+    h3 { font-size: 11pt; margin-top: 16px; color: #334155; page-break-after: avoid; }
+    .meta { background: #f1f5f9; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 16px 0; }
+    .pass { color: #15803d; font-weight: 600; }
+    .fail { color: #b91c1c; font-weight: 600; }
+    .warn { color: #b45309; font-weight: 600; }
+    .pending { color: #64748b; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 9.5pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .summary-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px 16px; margin: 16px 0; border-radius: 4px; }
+    .summary-box.warn { background: #fffbeb; border-color: #fde68a; }
+    ul { margin: 6px 0 12px 18px; }
+    li { margin-bottom: 4px; }
+    code { font-family: Consolas, monospace; font-size: 9pt; background: #f1f5f9; padding: 1px 4px; }
+    .small { font-size: 9pt; color: #64748b; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 6px; font-size: 8.5pt; overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+<h1>CI Migration Removal &amp; Cloudflare Secrets Fix</h1>
+
+<div class="meta">
+  <strong>Report date:</strong> 16 June 2026<br />
+  <strong>Repository:</strong> Torgima-Execution<br />
+  <strong>Commit:</strong> <code>e2fe890</code> — <code>fix(ci): remove migration step from CI pipeline — migrations are manual only</code><br />
+  <strong>Branch:</strong> <code>main</code> (pushed to <code>origin/main</code>)
+</div>
+
+<div class="summary-box">
+  <strong>Executive summary</strong>
+  <p>
+    <strong>Issue 1 (CI migrations):</strong> <span class="pass">RESOLVED</span> — Production migration job removed from
+    <code>deploy-cloudflare.yml</code>. Deploy pipeline no longer runs <code>pnpm db:migrate</code> or
+    <code>pnpm db:apply-manual</code> against production <code>DATABASE_URL</code>.
+  </p>
+  <p>
+    <strong>Issue 2 (Cloudflare secrets):</strong> <span class="warn">PARTIALLY RESOLVED</span> — Worker env vars updated in
+    <code>wrangler.toml</code> and deploy workflow now syncs <code>INTERNAL_API_SECRET</code> /
+    <code>INTERNAL_SERVICE_SECRET</code> from <code>INTERNAL_AUTH_SECRET</code>. Local <code>wrangler secret put</code>
+    commands could not run (no API token in build environment); secrets apply on next successful deploy.
+  </p>
+</div>
+
+<h2>Issue 1 — Remove migrations from CI pipeline</h2>
+
+<h3>Workflow files modified</h3>
+<table>
+  <thead>
+    <tr><th>File</th><th>Change</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>.github/workflows/deploy-cloudflare.yml</code></td>
+      <td>Entire <code>migrate</code> job removed; <code>deploy-worker</code> now <code>needs: ci</code></td>
+    </tr>
+    <tr>
+      <td><code>.github/workflows/ci.yml</code></td>
+      <td><span class="pending">Unchanged</span> — Phase 9 job still uses <code>pnpm db:ci</code> against local Postgres service only (not production)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Migration steps removed</h3>
+<p>The following steps were deleted from the <code>migrate</code> job in <code>deploy-cloudflare.yml</code>:</p>
+<ul>
+  <li>Check if migration files changed (git diff guard)</li>
+  <li><code>pnpm db:migration-precheck</code></li>
+  <li><code>pnpm db:migrate</code> (with production <code>DATABASE_URL</code> secret)</li>
+  <li><code>pnpm db:apply-manual</code> (with production <code>DATABASE_URL</code> secret)</li>
+  <li>Migration summary step</li>
+</ul>
+
+<h3>Replacement comment added</h3>
+<pre># Migrations are applied manually from local machine only.
+# Never run migrations in CI. See CONTRIBUTING.md for migration workflow.</pre>
+
+<h3>Deploy workflow verification steps retained</h3>
+<table>
+  <thead>
+    <tr><th>Step</th><th>Command</th><th>Job</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Install</td><td><code>pnpm install --frozen-lockfile</code></td><td><code>ci</code></td></tr>
+    <tr><td>Typecheck</td><td><code>pnpm typecheck</code></td><td><code>ci</code></td></tr>
+    <tr><td>Build</td><td><code>pnpm build</code></td><td><code>ci</code></td></tr>
+    <tr><td>Test</td><td><code>pnpm test</code></td><td><code>ci</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Issue 2 — Cloudflare Worker environment variables</h2>
+
+<h3>Local wrangler status</h3>
+<table>
+  <thead>
+    <tr><th>Command</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>pnpm exec wrangler whoami</code></td><td><span class="fail">Not authenticated</span> — requires <code>wrangler login</code> or <code>CLOUDFLARE_API_TOKEN</code></td></tr>
+    <tr><td><code>pnpm exec wrangler secret list</code></td><td><span class="fail">Blocked</span> — non-interactive environment; API token required</td></tr>
+    <tr><td><code>wrangler secret put …</code> (manual)</td><td><span class="pending">Not executed locally</span></td></tr>
+  </tbody>
+</table>
+
+<h3>Deploy-time fix (commit e2fe890)</h3>
+
+<h4><code>artifacts/api-server/wrangler.toml</code> — [vars] updated</h4>
+<table>
+  <thead>
+    <tr><th>Variable</th><th>New value</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>LAUNCH_MODE</code></td><td><code>production</code></td><td>Non-truthy → launch mode off (full production behaviour)</td></tr>
+    <tr><td><code>EVENT_DISPATCH_CRON_ENABLED</code></td><td><code>true</code></td><td>Enables event dispatch cron (was <code>false</code>)</td></tr>
+    <tr><td><code>EVENT_DISPATCH_CRON_BATCH_SIZE</code></td><td><code>50</code></td><td>Was <code>1</code></td></tr>
+    <tr><td><code>ENABLE_SIGNAL_AUTO_BOOTSTRAP</code></td><td><code>true</code></td><td>Was <code>false</code></td></tr>
+    <tr><td><code>ENABLE_MAGIC_LINK_AUTH</code></td><td><code>false</code></td><td>Unchanged</td></tr>
+    <tr><td><code>ENABLE_ADVANCED_UPGRADE_GATE</code></td><td><code>false</code></td><td>Unchanged</td></tr>
+    <tr><td><code>ENABLE_BACKGROUND_BHUDHI</code></td><td><code>false</code></td><td>Unchanged</td></tr>
+    <tr><td><code>ENABLE_TEAM_BOOTSTRAP</code></td><td><code>false</code></td><td>Unchanged</td></tr>
+  </tbody>
+</table>
+
+<h4><code>deploy-cloudflare.yml</code> — wrangler deploy secrets expanded</h4>
+<p>On each deploy, the following are now uploaded via <code>cloudflare/wrangler-action</code>:</p>
+<table>
+  <thead>
+    <tr><th>Worker secret</th><th>Source</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>INTERNAL_API_SECRET</code></td><td><code>${{ secrets.INTERNAL_AUTH_SECRET }}</code></td></tr>
+    <tr><td><code>INTERNAL_SERVICE_SECRET</code></td><td><code>${{ secrets.INTERNAL_AUTH_SECRET }}</code></td></tr>
+    <tr><td><code>INTERNAL_AUTH_SECRET</code></td><td><code>${{ secrets.INTERNAL_AUTH_SECRET }}</code> (existing)</td></tr>
+    <tr><td><code>DATABASE_URL</code></td><td>GitHub secret (existing)</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td>GitHub secret (existing)</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td>GitHub secret (existing)</td></tr>
+    <tr><td><code>EMAIL_FROM</code></td><td>GitHub secret (existing)</td></tr>
+    <tr><td><code>NOTIFICATION_UNSUBSCRIBE_SECRET</code></td><td>GitHub secret (existing)</td></tr>
+  </tbody>
+</table>
+
+<h3>Manual wrangler commands (if immediate secret update needed)</h3>
+<pre>cd artifacts/api-server
+$env:CLOUDFLARE_API_TOKEN = "&lt;your-token&gt;"
+pnpm exec wrangler secret put INTERNAL_API_SECRET
+pnpm exec wrangler secret put INTERNAL_SERVICE_SECRET
+pnpm exec wrangler secret put EVENT_DISPATCH_CRON_ENABLED
+pnpm exec wrangler secret list</pre>
+<p class="small">Use the same value as <code>INTERNAL_AUTH_SECRET</code> for <code>INTERNAL_API_SECRET</code> and <code>INTERNAL_SERVICE_SECRET</code>.</p>
+
+<h2>Git &amp; CI status</h2>
+<table>
+  <thead>
+    <tr><th>Item</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Commit</td><td><code>e2fe890</code> on <code>main</code></td></tr>
+    <tr><td>Push</td><td><span class="pass">Success</span> — <code>93dd46f..e2fe890 main → main</code></td></tr>
+    <tr><td>GitHub Actions verification</td><td><span class="pending">Unable to confirm from this environment</span> (private repo API returns 404 without auth)</td></tr>
+  </tbody>
+</table>
+
+<div class="summary-box warn">
+  <strong>Post-deploy verification checklist</strong>
+  <ol>
+    <li>Open GitHub Actions — confirm no <code>migrate</code> job in <code>Deploy to Cloudflare</code> workflow</li>
+    <li>Confirm <code>ci</code>, <code>deploy-worker</code>, <code>deploy-pages</code> jobs complete</li>
+    <li>Probe <code>GET /health</code> on workers.dev URL</li>
+    <li>Probe <code>GET /api/debug/cloudflare-env</code> with <code>x-internal-auth</code> header — confirm cron and internal secrets bound</li>
+  </ol>
+</div>
+
+<p class="small">Generated for Torgima-Execution engineering. TORGIMA UI unchanged — Layer 2 infrastructure only.</p>
+
+</body>
+</html>
