@@ -135,8 +135,8 @@ describe("Cloudflare Workers runtime bridge", () => {
     const worker = readRepo("artifacts/api-server/src/workers/EventDispatcherWorker.ts");
     const cronBridge = readRepo("artifacts/api-server/src/schedulers/cloudflare-cron.ts");
 
-    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "1"');
-    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "false"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "50"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "true"');
     expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 1");
     expect(dispatcher).toContain("dispatchPendingEventsForCron");
     expect(worker).toContain("dispatchPendingEventsForCron");

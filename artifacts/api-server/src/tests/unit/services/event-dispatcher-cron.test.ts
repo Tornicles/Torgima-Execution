@@ -225,9 +225,9 @@ describe("EventDispatcher cron subrequest-safe processing", () => {
     expect(updateCalls.some((c) => c.status === EventStatus.RETRY_PENDING)).toBe(true);
   });
 
-  it("sets wrangler cron env defaults", () => {
+  it("sets wrangler cron env for production", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
-    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "1"');
-    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "false"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "50"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "true"');
   });
 });

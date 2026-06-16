@@ -143,15 +143,15 @@ describe("launch-mode helpers — isMagicLinkAuthEnabled()", () => {
 // wrangler.toml — must declare all required flags with correct defaults
 // ---------------------------------------------------------------------------
 
-describe("wrangler.toml — launch mode flag declarations", () => {
+describe("wrangler.toml — production flag declarations", () => {
   const wrangler = read("artifacts/api-server/wrangler.toml");
 
-  it("declares LAUNCH_MODE=true (safe MVP default)", () => {
-    expect(wrangler).toMatch(/LAUNCH_MODE\s*=\s*["']?true["']?/);
+  it('declares LAUNCH_MODE="production" (full production mode)', () => {
+    expect(wrangler).toMatch(/^LAUNCH_MODE\s*=\s*["']production["']/m);
   });
 
-  it("declares EVENT_DISPATCH_CRON_ENABLED=false", () => {
-    expect(wrangler).toMatch(/EVENT_DISPATCH_CRON_ENABLED\s*=\s*["']?false["']?/);
+  it("declares EVENT_DISPATCH_CRON_ENABLED=true", () => {
+    expect(wrangler).toMatch(/^EVENT_DISPATCH_CRON_ENABLED\s*=\s*["']?true["']?/m);
   });
 
   it("declares ENABLE_MAGIC_LINK_AUTH=false", () => {
@@ -170,8 +170,8 @@ describe("wrangler.toml — launch mode flag declarations", () => {
     expect(wrangler).toMatch(/ENABLE_TEAM_BOOTSTRAP\s*=\s*["']?false["']?/);
   });
 
-  it("declares ENABLE_SIGNAL_AUTO_BOOTSTRAP=false", () => {
-    expect(wrangler).toMatch(/ENABLE_SIGNAL_AUTO_BOOTSTRAP\s*=\s*["']?false["']?/);
+  it("declares ENABLE_SIGNAL_AUTO_BOOTSTRAP=true", () => {
+    expect(wrangler).toMatch(/^ENABLE_SIGNAL_AUTO_BOOTSTRAP\s*=\s*["']?true["']?/m);
   });
 });
 
