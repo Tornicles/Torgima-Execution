@@ -16,6 +16,7 @@ import {
   eventLogs,
   deadLetterEvents,
   systemHealthLogs,
+  erectorSystemErrorRecords,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { createTestUser, createTestBlueprint, createInitialState, createTestOrder } from "./db.js";
@@ -286,7 +287,11 @@ export async function cleanupPhase9User(userId: string): Promise<void> {
   if (blueprintIds.length > 0) {
     await db.delete(events).where(inArray(events.blueprint_id, blueprintIds));
     await db.delete(systemHealthLogs).where(inArray(systemHealthLogs.blueprint_id, blueprintIds));
+    // Erector governance/runtime may record errors that keep the user row referenced.
+    await db.delete(erectorSystemErrorRecords).where(inArray(erectorSystemErrorRecords.blueprint_id, blueprintIds));
   }
 
+  // Catch any remaining user-linked records (e.g. errors without blueprint_id).
+  await db.delete(erectorSystemErrorRecords).where(eq(erectorSystemErrorRecords.user_id, userId));
   await db.delete(users).where(eq(users.id, userId));
 }
