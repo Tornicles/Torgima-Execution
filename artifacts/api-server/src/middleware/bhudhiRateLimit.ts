@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { checkRateLimit, getRateLimitConfig } from "../monitoring/rateLimiter.js";
+import { checkRateLimit } from "../monitoring/rateLimiter.js";
 import { failure } from "../lib/utils.js";
 
 const SKIP_PREFIXES = [
@@ -42,9 +42,8 @@ export async function bhudhiRateLimitMiddleware(
     return;
   }
 
-  const cfg = getRateLimitConfig();
   const key = `bhudhi:${blueprintKey(req)}`;
-  const allowed = await checkRateLimit(key, cfg.limit, cfg.windowMs);
+  const allowed = await checkRateLimit(key, 10, 60_000);
 
   if (!allowed) {
     failure(res, "RATE_LIMIT_EXCEEDED", "Rate limit exceeded for Bhudhi API", 429);

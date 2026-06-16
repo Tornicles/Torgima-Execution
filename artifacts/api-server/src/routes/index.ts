@@ -80,10 +80,25 @@ import erectorRefinementRouter from "./erector-refinement.js";
 import erectorGoalRouter from "./erector-goal.js";
 import erectorDashboardRouter from "./erector-dashboard.js";
 import erectorValidationRouter from "./erectorValidation.js";
+import erectorFreeRouter from "./erector/free.js";
+import erectorIntakeRouter from "./erector/intake.js";
+import erectorIntakeValidationRouter from "./erector/validation.js";
+import erectorIntakePathRouter from "./erector/paths.js";
+import erectorSimulationRouter from "./erector/simulation.js";
+import erectorEvidenceRouter from "./erector/evidence.js";
+import erectorOutcomesRouter from "./erector/outcomes.js";
+import erectorFalseProgressRouter from "./erector/false-progress.js";
+import erectorAcademyRouter, { capabilityRouter as erectorCapabilityRouter } from "./erector/academy.js";
+import { auditRouter as erectorAuditRouter, modelsRouter as erectorModelsRouter } from "./erector/audit.js";
+import { correctionsRouter, phaseGateRouter } from "./erector/corrections.js";
+import erectorPaidRouter from "./erector/paid.js";
+import handoffRouter from "./handoff.js";
 import upgradeRouter from "./upgrade.js";
 import waitlistRouter from "./waitlist.js";
 import debugRouter from "./debug.js";
 import diagnosticRouter from "./diagnostic.js";
+import { requireAuth } from "../lib/auth.js";
+import { success, handleError } from "../lib/utils.js";
 
 const router = Router();
 
@@ -168,9 +183,42 @@ router.use(erectorRefinementRouter);
 router.use(erectorGoalRouter);
 router.use(erectorDashboardRouter);
 router.use("/api/erector/validation", erectorValidationRouter);
+router.use("/api/erector/validation", erectorIntakeValidationRouter);
+router.use("/api/erector", erectorFreeRouter);
+router.use("/api/erector", erectorIntakeRouter);
+router.use("/api/erector/intake-validation", erectorIntakeValidationRouter);
+router.use("/api/erector/intake-validation", erectorIntakePathRouter);
+router.use("/api/erector/simulation", erectorSimulationRouter);
+router.use("/api/erector/evidence", erectorEvidenceRouter);
+router.use("/api/erector/outcome", erectorOutcomesRouter);
+router.use("/api/erector/false-progress", erectorFalseProgressRouter);
+router.use("/api/erector/academy", erectorAcademyRouter);
+router.use("/api/erector/capability", erectorCapabilityRouter);
+router.use("/api/erector/audit", erectorAuditRouter);
+router.use("/api/erector/models", erectorModelsRouter);
+router.use("/api/erector/corrections", correctionsRouter);
+router.use("/api/erector/phase-gate", phaseGateRouter);
+router.use("/api/erector", erectorPaidRouter);
+router.use("/api/handoff", handoffRouter);
 router.use(upgradeRouter);
 router.use(waitlistRouter);
 router.use(debugRouter);
 router.use(diagnosticRouter);
+
+/** DOC B9 — billing upgrade entry (auth required). */
+router.post("/api/billing/upgrade", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    success(res, {
+      ok: true,
+      user_id: auth.userId,
+      tier: auth.userTier ?? "starter",
+      redirect: "/onboarding/intake",
+      message: "Upgrade flow initiated",
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
 
 export default router;

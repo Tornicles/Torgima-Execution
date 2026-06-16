@@ -1,0 +1,171 @@
+﻿TORGIMA
+ENGINE PROMPT 13 — DOC 23
+Decision Trace and Cognitive Load System
+Decision Recording · 7 Decision Types · Cognitive Load Scoring · Simplification Rules · Load Panel
+
+
+PREREQUISITE: Engines 1-12 must pass. Decision traces are written by all engines — this engine must come after those engines exist.
+
+OBJECTIVE
+Build the Decision Trace and Cognitive Load System. Record every significant engine and user decision with full rationale, options considered, and state version. Score cognitive load from choice count, reversals, ambiguity, friction, and latency. Trigger simplification when load is HIGH or CRITICAL. Provide decision memory to dashboard, review flows, and Bhudhi context.
+
+FILES TO CREATE
+src/engines/decision/DecisionTraceService.ts — CREATE
+src/engines/decision/CognitiveLoadScorer.ts — CREATE
+src/engines/decision/SimplificationEngine.ts — CREATE
+
+TASK 1 — DECISION TRACE SERVICE
+// DecisionTraceService.ts
+// Called by every engine that makes a significant decision
+// Writes to decision_traces table (exists from DOC 02 schema)
+ 
+export class DecisionTraceService {
+  static async write(input: DecisionTraceData): Promise<string> {
+    // 1. Validate decision type is in approved list
+    const validTypes = [&apos;USER_STRATEGIC&apos;,&apos;USER_EXECUTION&apos;,&apos;SYSTEM_CONTROL&apos;,
+      &apos;SYSTEM_GENERATION&apos;,&apos;SYSTEM_CORRECTION&apos;,&apos;AI_ASSISTED&apos;,&apos;ADMIN_REPAIR&apos;];
+    if (!validTypes.includes(input.decisionType)) throw new Error(&apos;INVALID_DECISION_TYPE&apos;);
+ 
+    // 2. Validate required fields
+    if (!input.decisionKey || !input.selectedOption) throw new Error(&apos;MISSING_REQUIRED_FIELDS&apos;);
+ 
+    // 3. Write to decision_traces table
+    const trace = await prisma.decisionTrace.create({ data: {
+      user_id: input.userId, blueprint_id: input.blueprintId, order_id: input.orderId,
+      decision_type: input.decisionType, decision_key: input.decisionKey,
+      selected_option: input.selectedOption,
+      options_considered: input.optionsConsidered,
+      rejected_options: input.rejectedOptions ?? [],
+      rationale_summary: input.rationaleSummary,
+      evidence_ids: input.evidenceIds ?? [],
+      source_engine: input.sourceEngine,
+      confidence: input.confidence ?? &apos;MEDIUM&apos;,
+      state_version: input.stateVersion,
+      causation_event_id: input.causationEventId,
+    }});
+ 
+    // 4. If decision adds unresolved choices, trigger cognitive load update
+    const addsChoices = input.optionsConsidered.length > 1 && !input.selectedOption;
+    if (addsChoices) {
+      await emitEvent({ event_type: &apos;cognitive_load_evaluation_requested&apos;,
+        payload: { userId: input.userId, reason: &apos;new_unresolved_decision&apos; } });
+    }
+ 
+    return trace.id;
+  }
+ 
+  // Memory for Bhudhi context — returns last N decisions for a user/blueprint
+  static async loadRecent(userId: string, blueprintId: string, limit = 5): Promise<DecisionTrace[]> {
+    return prisma.decisionTrace.findMany({
+      where: { user_id: userId, blueprint_id: blueprintId },
+      orderBy: { created_at: &apos;desc&apos; }, take: limit,
+    });
+  }
+}
+
+TASK 2 — COGNITIVE LOAD SCORER
+// CognitiveLoadScorer.ts
+// Calculates 0-100 load score from 8 inputs
+ 
+// LOAD SCORE FORMULA:
+// score = 0
+// score += choiceCount * 3               (0-30 max — 10+ choices = full 30)
+// score += unresolvedDecisionCount * 5    (0-25 max — 5+ unresolved = full 25)
+// score += reversalCount * 8              (0-24 max — 3+ reversals = full 24)
+// score += ambiguityCount * 4             (0-12 max — 3+ ambiguities = full 12)
+// if frictionScoreAverage > 70: score += 9 (friction adds load)
+// if condition IN (&apos;danger&apos;,&apos;urgency&apos;): score += 5 (harder conditions add load)
+// if taskComplexity = &apos;very_hard&apos;: score += 5
+// Clamp to 100 maximum
+ 
+// LOAD LEVELS:
+// 0-34: LOW — no action
+// 35-59: MEDIUM — simplify copy, reduce optional choices
+// 60-79: HIGH — clarification task or guided default
+// 80-100: CRITICAL — show ONE next action only, pause optional choices
+ 
+// Write to cognitive_load_scores table
+// Emit simplification event if HIGH or CRITICAL
+
+TASK 3 — SIMPLIFICATION ENGINE
+// SimplificationEngine.ts — responds to cognitive_load_high events
+ 
+// SIMPLIFICATION ACTIONS BY CONDITION:
+ 
+// SIMPLIFY (MEDIUM load):
+//   → frontend hides advanced options until user requests them
+//   → Bhudhi explains next step more simply
+//   → reduce optionsConsidered to 2 for any user-facing decision
+ 
+// CLARIFY (HIGH load):
+//   → generate clarification task before next execution task
+//   → reduce task content to: title + 1 sentence instruction + definition of done
+//   → emit clarification_task_requested
+ 
+// CRITICAL:
+//   → show exactly 1 next action on dashboard
+//   → hide all other UI elements except current task and feedback
+//   → emit reduce_decision_burden_requested to frontend
+//   → condition review may be needed (emit condition_evaluation_requested)
+ 
+// IMPORTANT: Simplification NEVER overrides enforcement package
+// If enforcement says 2 tasks max, simplification can show 1 — not 0
+// If enforcement blocks an action, simplification does not unblock it
+
+TASK 4 — WIRE DECISION TRACES TO ALL ENGINES
+Every engine that makes a traceable decision must call DecisionTraceService.write(). Add these calls:
+ENGINE
+DECISION TYPE
+WHEN TO WRITE TRACE
+FailureClassificationEngine
+SYSTEM_CORRECTION
+After determining primaryCategory
+IdentityStageEvaluator
+SYSTEM_CONTROL
+After every stage advance or hold decision
+RewardEngine
+SYSTEM_CONTROL
+After blocking or granting HIGH intensity reward
+PatternLearningEngine
+SYSTEM_CORRECTION
+After creating HIGH or CRITICAL pattern
+TaskGenerationEngine
+SYSTEM_GENERATION
+When selecting task type (recovery vs execution vs academy)
+ControlEngine
+SYSTEM_CONTROL
+When enforcement package creates significant restriction
+BhudhiTriggerRouter
+AI_ASSISTED
+After every successful Bhudhi call that produces user-facing output
+Admin/DLQ replay
+ADMIN_REPAIR
+When dead letter event is replayed or repaired
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep &apos;decision-trace&apos;
+ 
+-- TEST 1: DecisionTrace written correctly
+-- Call DecisionTraceService.write() with valid input
+-- Expected: decision_traces row created with all fields
+ 
+-- TEST 2: CRITICAL load shows single action
+-- Input: choiceCount=12, reversalCount=4, unresolvedDecisionCount=6
+-- Expected: loadScore >= 80, loadLevel=CRITICAL, simplification emitted
+ 
+-- TEST 3: Low evidence → LOW confidence, no simplification
+-- Input: choiceCount=2, no reversals, no unresolved
+-- Expected: loadScore < 35, no event emitted
+ 
+-- TEST 4: DecisionTrace.loadRecent returns last 5 for user
+-- Expected: results ordered by created_at desc, limit 5
+
+ACCEPTANCE CRITERIA
+All 7 decision types accepted and stored correctly
+Cognitive load scored from all 8 inputs using correct formula
+All 4 load levels produce correct system response
+SimplificationEngine never overrides enforcement package
+All 8 specified engines write decision traces at correct moments
+Bhudhi AI_ASSISTED traces written after every user-facing Bhudhi output
+COMMIT: feat(decision): build decision trace service and cognitive load scorer with simplification engine and cross-engine trace wiring
+

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/torgima-api";
+import { LOOP_EVENT_TYPES } from "@/lib/execution-loop-events";
 
 interface LoopEvent {
   id: string;
@@ -9,20 +10,6 @@ interface LoopEvent {
   status: string;
   createdAt: string;
 }
-
-const LOOP_EVENT_TYPES = new Set([
-  "feedback_submitted",
-  "signal_recalculation_requested",
-  "signal_calculated",
-  "condition_evaluated",
-  "enforcement_package_created",
-  "task_generation_requested",
-  "task_generation_completed",
-  "order_available",
-  "queue_empty_detected",
-  "interrogation_answered",
-  "operating_loop_stage",
-]);
 
 export function ExecutionLoopTimeline({ blueprintId }: { blueprintId?: string | null }) {
   const [events, setEvents] = useState<LoopEvent[]>([]);

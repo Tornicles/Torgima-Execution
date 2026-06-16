@@ -1,0 +1,145 @@
+﻿TORGIMA
+ENGINE PROMPT 14 — DOC 24
+Real-Time Priority and Task Value Engine
+6-Dimension Task Value Scoring · Priority Selection · Override Rules · Condition-Aware Ranking
+
+
+PREREQUISITE: Engines 1-13 must pass. Priority scoring reads from task generation output, dependency state, outcome validations, and condition records.
+
+OBJECTIVE
+Build the PriorityEngine that scores every candidate task across 6 dimensions, ranks them by value given the current execution context, selects the highest-value executable task, and explains why this task is the priority. When only one task exists, priority is trivial. When multiple candidates exist, priority prevents wrong work.
+
+FILES TO CREATE
+src/engines/priority/PriorityEngine.ts — CREATE
+src/engines/priority/TaskValueScorer.ts — CREATE
+
+TASK 1 — 6-DIMENSION TASK VALUE SCORING
+DIMENSION
+WEIGHT
+DEFINITION
+HIGH SCORE WHEN
+outcome_alignment
+30%
+How directly this task contributes to the active target
+Task explicitly tied to current target AND target not yet validated
+blueprint_position
+20%
+How closely this task follows the logical blueprint sequence
+Task is the direct next action in the blueprint chain
+dependency_unlock
+20%
+Whether completing this task unlocks other blocked tasks
+Task completion resolves 1+ OrderDependency or ProjectDependency
+condition_fit
+15%
+How well the task type fits the current condition and enforcement
+Difficulty and type match current condition&apos;s allowed range exactly
+difficulty_fit
+10%
+How well task difficulty matches current proven capability
+Task difficulty = 1 level above last consistently passed difficulty
+time_sensitivity
+5%
+Whether delay creates downstream harm
+Deadline approaching OR dependency resolution needed for others
+
+TASK 2 — PRIORITY ENGINE
+// PriorityEngine.ts
+// Called by TaskGuaranteeEngine when multiple candidate tasks exist
+// Also runs as validation after TaskGenerationEngine when DEBUG_PRIORITY flag is on
+ 
+export async function selectHighestValueTask(
+  candidateTasks: CandidateTask[],
+  context: PriorityContext,
+): Promise<PriorityResult> {
+ 
+  if (candidateTasks.length === 0) throw new Error(&apos;NO_CANDIDATES&apos;);
+  if (candidateTasks.length === 1) {
+    return { selectedTask: candidateTasks[0], reason: &apos;single_candidate&apos;, score: 0 };
+  }
+ 
+  // 1. Check dependency executability for each candidate
+  const executable = await filterExecutableCandidates(candidateTasks, context.blueprintId);
+  if (executable.length === 0) {
+    // All blocked — return dependency resolution task
+    return { selectedTask: null, reason: &apos;all_blocked&apos;, requiresDependencyResolution: true };
+  }
+ 
+  // 2. Score each executable candidate
+  const scored = await Promise.all(
+    executable.map(async task => ({
+      task,
+      score: await TaskValueScorer.score(task, context),
+    }))
+  );
+ 
+  // 3. Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+  const selected = scored[0];
+ 
+  // 4. Apply override rules (override scoring when control is absolute)
+  const overrideTask = await checkOverrideRules(executable, context);
+  if (overrideTask) {
+    return { selectedTask: overrideTask, reason: &apos;override_rule&apos;, score: 100 };
+  }
+ 
+  // 5. Write DecisionTrace for selection when multiple candidates competed
+  await DecisionTraceService.write({
+    decisionType: &apos;SYSTEM_GENERATION&apos;, decisionKey: &apos;priority_selection&apos;,
+    selectedOption: selected.task.id,
+    optionsConsidered: scored.map(s => `${s.task.id}(${s.score.toFixed(0)})`),
+    rationaleSummary: `Selected highest value task. Score: ${selected.score.toFixed(0)}/100`,
+    confidence: &apos;HIGH&apos;,
+  });
+ 
+  return { selectedTask: selected.task, score: selected.score, reason: &apos;value_score&apos; };
+}
+
+TASK 3 — OVERRIDE RULES
+// Override rules that bypass scoring and force a specific task type:
+ 
+// RECOVERY OVERRIDE:
+// If enforcement_package.force_recovery = true
+// → select recovery task regardless of score
+ 
+// DEPENDENCY OVERRIDE:
+// If any candidate task has dependency_unlock score = 100
+// AND blocking 2+ other tasks
+// → always select the dependency-unlocking task
+ 
+// PHASE GATE OVERRIDE:
+// If phase gate review is due (phase.gate_criteria_met = true AND gate not passed)
+// → phase checkpoint task is always highest priority
+ 
+// CRITICAL UNBLOCK OVERRIDE:
+// If an OrderDependency exists with status=OPEN AND blocking=true
+// AND resolution task is available
+// → always select resolution task first
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep &apos;priority-engine&apos;
+ 
+-- TEST 1: Outcome-aligned task wins over generic task
+-- Input: 2 candidates — one tied to active target, one generic
+-- Expected: outcome_aligned task selected (outcome_alignment dimension drives score)
+ 
+-- TEST 2: Recovery override bypasses scoring
+-- Input: force_recovery = true in enforcement package
+-- Expected: recovery task selected regardless of other scores
+ 
+-- TEST 3: Dependency unlock task wins when blocking others
+-- Input: task A unlocks 3 blocked tasks, task B has higher outcome alignment
+-- Expected: task A selected (dependency_unlock override applies)
+ 
+-- TEST 4: Single candidate returns immediately without scoring
+-- Expected: score = 0, reason = &apos;single_candidate&apos;
+
+ACCEPTANCE CRITERIA
+All 6 scoring dimensions implemented with correct weights
+Composite score = weighted sum of 6 dimension scores, 0-100
+Recovery override, dependency override, phase gate override all enforced
+Single candidate returned without scoring overhead
+DecisionTrace written when multiple candidates competed
+All blocked candidates filtered before scoring
+COMMIT: feat(priority): build priority and task value engine with 6-dimension scoring, override rules, and condition-aware candidate ranking
+

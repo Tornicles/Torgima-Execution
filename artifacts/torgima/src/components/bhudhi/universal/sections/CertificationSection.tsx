@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  fetchBhudhiCertification,
-  type BhudhiCertificationPayload,
-} from "@/lib/bhudhi-certification-api";
+  fetchIntelligenceCertification,
+  type IntelligenceCertificationPayload,
+} from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 
 function categoryColor(category: string): string {
   switch (category) {
@@ -35,7 +36,7 @@ function categoryBorder(category: string): string {
 }
 
 export function CertificationSection({ blueprintId }: { blueprintId: string }) {
-  const [cert, setCert] = useState<BhudhiCertificationPayload | null>(null);
+  const [cert, setCert] = useState<IntelligenceCertificationPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +44,7 @@ export function CertificationSection({ blueprintId }: { blueprintId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchBhudhiCertification();
+      const data = await fetchIntelligenceCertification();
       setCert(data.certification);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load certification");
@@ -73,7 +74,7 @@ export function CertificationSection({ blueprintId }: { blueprintId: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-light mb-2">Bhudhi Readiness Certification</h1>
+        <h1 className="text-4xl font-light mb-2">{INTELLIGENCE_COPY.certificationTitle}</h1>
         <p className="text-gray-600 text-sm">
           BRS scorecard · 0–40 not ready · 40–70 partial · 70–85 production · 85+ enterprise
         </p>
@@ -139,7 +140,7 @@ export function CertificationSection({ blueprintId }: { blueprintId: string }) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `bhudhi-certification-${Date.now()}.json`;
+            a.download = `intelligence-certification-${Date.now()}.json`;
             a.click();
             URL.revokeObjectURL(url);
           }}

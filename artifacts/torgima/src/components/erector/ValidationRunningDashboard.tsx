@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ErectorFlowShell } from "./ErectorFlowShell";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import {
   VALIDATION_PIPELINE_STAGES,
   validationPipelineLabel,
@@ -73,7 +74,7 @@ export function ValidationRunningDashboard({
   return (
     <ErectorFlowShell
       title="Validating your idea"
-      subtitle="Bhudhi is validating your idea — checking reality, demand, risk, and execution path."
+      subtitle={INTELLIGENCE_COPY.validatingSubtitle}
     >
       <div className="max-w-3xl mx-auto p-6 space-y-6">
         <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-6 space-y-4">
@@ -87,7 +88,7 @@ export function ValidationRunningDashboard({
                 />
               ))}
             </div>
-            <p className="text-sm font-medium text-violet-300">Bhudhi is validating your idea...</p>
+            <p className="text-sm font-medium text-violet-300">{INTELLIGENCE_COPY.validatingTitle}</p>
           </div>
           <p className="text-xs text-slate-400">
             Checking reality, demand, risk, and execution path.

@@ -1,0 +1,59 @@
+﻿TORGIMACURSOR PROMPT â€” DOC 30Authentication and Session ManagementSupabase Auth Â· Session Middleware Â· Tier-Based Access Â· Route Protection Â· Session ContractsPREREQUISITE: DOC 29 routes must pass.
+Auth middleware is the security foundation for all routes.
+OBJECTIVEVerify and harden the complete Supabase email/password authentication system.
+Build the full session middleware, tier-based access control, route protection rules, and session lifecycle contracts.
+Every route must know the user's tier, dashboard_mode, and blueprint state from the session context.
+TASK 1 â€” SUPABASE AUTH CONFIGURATION// packages/api/src/lib/auth.
+ts// Supabase client initialized with service role key for server-side verification // SESSION VERIFICATION FLOW:// 1.
+Extract Bearer token from Authorization header// 2.
+Call supabase.
+auth.
+getUser(token) to verify session// 3.
+If valid: load user record from users table (for tier, dashboard_mode)// 4.
+Attach to request context: req.
+user = { id, email, tier, dashboard_mode }// 5.
+If invalid: return 401 UNAUTHENTICATED // SESSION PERSISTENCE:// Access token: 1 hour expiry// Refresh token: 30 days expiry// Frontend must refresh silently before access token expires// Logout: call supabase.
+auth.
+signOut() â€” invalidates refresh token server-side // SESSION CONTRACT returned by GET /api/auth/session:interface SessionResponse {  user: {    id: string;    email: string;    tier: 'starter' | 'growth' | 'ultimate';    dashboard_mode: 'limited' | 'full';    erector_tier: 'free' | 'pro' | 'authenticated' | null;    has_active_blueprint: boolean;    blueprint_id: string | null;  };  expires_at: string;}TASK 2 â€” AUTH MIDDLEWARE// packages/api/src/middleware/auth.
+ts// Hono middleware â€” applied to all protected routes export const authMiddleware = async (c: Context, next: Next) => {  const authHeader = c.
+req.
+header('Authorization');  if (!
+authHeader?
+.
+startsWith('Bearer ')) {    return c.
+json({ ok: false, error: 'UNAUTHENTICATED' }, 401);  }  const token = authHeader.
+slice(7);  const { data: { user }, error } = await supabase.
+auth.
+getUser(token);  if (error || !
+user) {    return c.
+json({ ok: false, error: 'UNAUTHENTICATED' }, 401);  }  // Load tier and dashboard_mode from users table  const dbUser = await db.
+select().
+from(users).
+where(eq(users.
+id, user.
+id)).
+get();  if (!
+dbUser) return c.
+json({ ok: false, error: 'USER_NOT_FOUND' }, 404);  c.
+set('userId', dbUser.
+id);  c.
+set('userTier', dbUser.
+tier ?
+?
+'starter');  c.
+set('dashboardMode', dbUser.
+dashboard_mode);  await next();}; // INTERNAL ROUTE MIDDLEWARE â€” rejects browser callsexport const internalOnlyMiddleware = async (c: Context, next: Next) => {  const secret = c.
+req.
+header('X-Internal-Secret');  if (secret !
+== process.
+env.
+INTERNAL_ROUTE_SECRET) {    return c.
+json({ ok: false, error: 'UNAUTHORIZED' }, 403);  }  await next();};TASK 3 â€” TIER-BASED ACCESS CONTROLFEATURESTARTERGROWTHULTIMATEErector validation depthFree 5-question onlyFull 8-section intakeFull + comparative historyErector simulationNoYes â€” CustomerValue + Governance vetoesYes â€” all 4 vetoes + 3 scenariosSignal history depth7 days30 days90 daysBhudhi memory depthSession only7 days30 daysDaily Bhudhi call limit2050100Resimulation accessNoYesYesAudit visibilitySummary onlySummary onlyFull audit trailAcademy content depthBasicFullAdvancedPhase gate strictnessSimple â€” 1-2 criteriaStandard archetype rulesStrict archetype rules// Tier gate middleware â€” use on tier-restricted routesexport const requireTier = (minTier: 'growth' | 'ultimate') =>  async (c: Context, next: Next) => {    const tier = c.
+get('userTier');    const tierOrder = { starter: 0, growth: 1, ultimate: 2 };    if (tierOrder[tier] < tierOrder[minTier]) {      return c.
+json({ ok: false, error: 'TIER_INSUFFICIENT',        message: `This feature requires ${minTier} tier or above.
+` }, 403);    }    await next();  }; // Usage: apply to simulation routesapp.
+post('/api/erector/simulation/request',  authMiddleware,  requireTier('growth'),  simulationHandler);TASK 4 â€” DASHBOARD MODE GATE// dashboard_mode = 'limited': user has not completed Erector intake// dashboard_mode = 'full': blueprint is active and execution is running // Routes that require 'full' mode (execution must be active):const FULL_MODE_ROUTES = [  '/api/orders/current', '/api/orders/:id/start', '/api/orders/:id/feedback',  '/api/signals/current', '/api/condition/current', '/api/rewards/current',  '/api/outcomes/current', '/api/priority/current',]; export const requireFullMode = async (c: Context, next: Next) => {  const dashboardMode = c.
+get('dashboardMode');  if (dashboardMode !
+== 'full') {    return c.
+json({ ok: false, error: 'DASHBOARD_LIMITED',      message: 'Complete project validation to access execution features.
+' }, 403);  }  await next();};VERIFICATIONpnpm typecheck && pnpm build && pnpm test -- --grep 'auth' -- TEST 1: Valid Supabase token â†’ session loaded correctly-- Expected: userId, userTier, dashboardMode set in context -- TEST 2: Expired token â†’ 401-- TEST 3: Missing Authorization header â†’ 401-- TEST 4: Growth tier accessing Ultimate simulation â†’ 200 (allowed)-- TEST 5: Starter tier accessing simulation â†’ 403 TIER_INSUFFICIENT-- TEST 6: Limited dashboard mode accessing /api/orders/current â†’ 403 DASHBOARD_LIMITED-- TEST 7: Internal route called from browser â†’ 403-- TEST 8: Logout invalidates session â€” subsequent requests return 401ACCEPTANCE CRITERIAauthMiddleware validates Supabase session and attaches user to contextinternalOnlyMiddleware blocks browser calls to internal routesrequireTier middleware enforces growth/ultimate feature gatesrequireFullMode blocks execution routes when dashboard_mode = limitedSession contract returns tier, dashboard_mode, blueprint statusLogout invalidates server-side sessionCOMMIT: feat(auth): complete session management â€” Supabase middleware, tier-based access control, and dashboard mode gating

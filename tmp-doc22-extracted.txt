@@ -1,0 +1,212 @@
+﻿TORGIMA
+ENGINE PROMPT 12 — DOC 22
+Failure Classification and Root Cause Engine
+10 Failure Categories · Root Cause Scoring · Repeat Failure Detection · Correction Routing Matrix
+
+
+PREREQUISITE: Engines 1-11 must pass. Failure classification reads from feedback, pattern records, outcome validations, capability profiles, and inactivity records.
+
+OBJECTIVE
+Build the FailureClassificationEngine that converts every failure event into a structured classification with root cause candidates, severity rating, and a specific correction route. A failed task is raw data. This engine turns it into actionable intelligence that routes to the correct engine. No repeated blind retries.
+
+FILES TO CREATE
+src/engines/failure/FailureClassificationEngine.ts — CREATE
+src/engines/failure/RootCauseScorer.ts — CREATE
+src/engines/failure/RepeatFailureDetector.ts — CREATE
+src/engines/failure/CorrectionRouter.ts — CREATE
+
+TASK 1 — FAILURE CLASSIFICATION FLOW
+// FailureClassificationEngine.ts
+// Triggered by: failure_classification_requested event
+// Sources: FAILED feedback, BLOCKED feedback, rejected proof, outcome mismatch, pattern
+ 
+export async function classifyFailure(request: FailureClassificationRequest) {
+  // 1. Load all evidence
+  const evidence = await loadFailureEvidence({
+    userId: request.userId,
+    blueprintId: request.blueprintId,
+    orderId: request.orderId,
+    sourceType: request.sourceType,
+    sourceId: request.sourceId,
+  });
+ 
+  // evidence includes: feedback record, order context, task generation log,
+  // capability profile, condition record, behavior patterns, outcome validations,
+  // inactivity records, false progress flags
+ 
+  // 2. Score all 10 failure categories
+  const scores = await RootCauseScorer.scoreAll(evidence);
+ 
+  // 3. Determine primary category (highest score) and secondary categories
+  const primaryCategory = scores[0].category;
+  const secondaryCategories = scores.slice(1, 3).filter(s => s.score >= 30).map(s => s.category);
+ 
+  // 4. Determine confidence based on evidence richness
+  const confidence = evidence.feedbackReflectionLength > 50 ? &apos;HIGH&apos;
+    : evidence.feedbackReflectionLength > 20 ? &apos;MEDIUM&apos; : &apos;LOW&apos;;
+ 
+  // 5. Determine severity
+  const severity = await determineSeverity(primaryCategory, evidence);
+ 
+  // 6. Check for repeat failure
+  const repeatFailure = await RepeatFailureDetector.check(
+    request.userId, request.blueprintId, primaryCategory
+  );
+ 
+  // 7. Write DecisionTrace
+  await DecisionTraceService.write({
+    decisionType: &apos;SYSTEM_CORRECTION&apos;,
+    decisionKey: `failure_classification:${request.sourceId}`,
+    selectedOption: primaryCategory,
+    optionsConsidered: scores.map(s => s.category),
+    rationaleSummary: `Primary: ${primaryCategory} (score: ${scores[0].score}). Evidence: ${evidence.summary}`,
+    confidence, stateVersion: request.stateVersion,
+  });
+ 
+  // 8. Write BehaviorEvent if pattern-relevant
+  if ([&apos;CAPABILITY_FAILURE&apos;,&apos;CAPACITY_FAILURE&apos;,&apos;MOTIVATION_FRICTION&apos;].includes(primaryCategory)) {
+    await writeBehaviorEvent(request.userId, request.blueprintId, primaryCategory, request.sourceId);
+  }
+ 
+  // 9. Route correction for MEDIUM/HIGH/CRITICAL severity
+  if (severity !== &apos;LOW&apos;) {
+    await CorrectionRouter.route(primaryCategory, request, repeatFailure);
+  }
+ 
+  return { primaryCategory, secondaryCategories, confidence, severity, repeatFailure };
+}
+
+TASK 2 — ROOT CAUSE SCORER
+// RootCauseScorer.ts — scores all 10 categories from evidence signals
+ 
+// SCORING SIGNALS PER CATEGORY:
+ 
+// CLARITY_FAILURE: score += 30 if reflection contains &apos;unclear/confused/unsure&apos;
+//   score += 25 if order.proof_description is null AND proof was required
+//   score += 20 if blocker_category = CLARITY_NEEDED
+ 
+// CAPABILITY_FAILURE: score += 35 if order.difficulty >= &apos;hard&apos;
+//   AND capability_profile.difficulty_handling = &apos;beginner&apos; or &apos;intermediate&apos;
+//   score += 25 if same difficulty failed 2+ times in last 14 days
+ 
+// CAPACITY_FAILURE: score += 30 if feedback.duration_minutes > 120 (exhaustion signal)
+//   score += 25 if consistency_7d < 40% AND condition != &apos;nothingness&apos; (active but inconsistent)
+//   score += 20 if FATIGUE_RISK pattern is active
+ 
+// DEPENDENCY_FAILURE: score += 40 if completion = &apos;BLOCKED&apos;
+//   AND blocker_category IN (&apos;DEPENDENCY_MISSING&apos;, &apos;EXTERNAL_WAIT&apos;, &apos;RESOURCE_MISSING&apos;)
+ 
+// MOTIVATION_FRICTION: score += 30 if completion = &apos;SKIPPED&apos; without clear reason
+//   score += 25 if TASK_TYPE_AVOIDANCE pattern is active for this task type
+//   score += 20 if reflection contains &apos;dont want/boring/pointless&apos;
+ 
+// SYSTEM_FRICTION: score += 40 if StateIntegrityEngine detected issues in last 1 hour
+//   score += 30 if order was regenerated 2+ times for same action
+//   score += 20 if reflection mentions &apos;app/system/error/bug&apos;
+ 
+// WRONG_PRIORITY: score += 35 if false_progress_signal > 60 AND task completed
+//   score += 25 if active false_progress_flag type = WRONG_WORK
+ 
+// OUTCOME_MISMATCH: score += 40 if outcome_movement_score < 15 AND completion = &apos;COMPLETED&apos;
+//   score += 25 if LOW_VALUE_COMPLETION pattern is active
+ 
+// EXTERNAL_BLOCKER: score += 40 if blocker_category = &apos;EXTERNAL_WAIT&apos;
+//   score += 30 if reflection mentions &apos;client/supplier/waiting/approval/response&apos;
+ 
+// PROOF_FAILURE: score += 40 if feedback.validation_status = &apos;rejected&apos;
+//   AND rejection_reason contains &apos;proof&apos; or &apos;evidence&apos;
+ 
+// Return scores sorted descending by score value
+
+TASK 3 — CORRECTION ROUTING MATRIX
+PRIMARY CATEGORY
+CORRECTION EVENT
+TARGET ENGINE
+SEVERITY THRESHOLD
+CLARITY_FAILURE
+clarification_task_requested
+TaskGenerationEngine
+MEDIUM+
+CAPABILITY_FAILURE
+academy_task_requested + capability_review_requested
+Academy/Capability
+MEDIUM+
+CAPACITY_FAILURE
+load_reduction_requested
+ControlEngine
+HIGH+
+DEPENDENCY_FAILURE
+dependency_resolution_requested
+DependencyEngine
+MEDIUM+
+MOTIVATION_FRICTION
+friction_adaptation_requested
+FrictionDetectionEngine
+HIGH+
+SYSTEM_FRICTION
+system_repair_requested
+StateIntegrityEngine
+MEDIUM+
+WRONG_PRIORITY
+priority_review_requested
+PriorityEngine
+MEDIUM+
+OUTCOME_MISMATCH
+correction_task_requested
+OutcomeValidationEngine
+HIGH+
+EXTERNAL_BLOCKER
+external_wait_task_requested
+TaskGenerationEngine
+MEDIUM+
+PROOF_FAILURE
+evidence_clarification_requested
+FeedbackProcessingEngine
+MEDIUM+
+
+TASK 4 — REPEAT FAILURE DETECTOR
+// RepeatFailureDetector.ts
+// Checks if this failure category has appeared before in current window
+ 
+// REPEAT RULES:
+// Same primary category appears 2+ times in 7-day window:
+//   → escalate confidence from MEDIUM to HIGH
+//   → escalate severity by 1 level (LOW→MEDIUM, MEDIUM→HIGH, HIGH→CRITICAL)
+ 
+// Same ORDER fails 2+ times (same order_id, different feedback records):
+//   → do NOT regenerate same task unchanged
+//   → emit task_variation_requested to TaskGenerationEngine
+//   → classify as CLARITY_FAILURE even if original category was different
+ 
+// Same PROOF TYPE rejected 3+ times:
+//   → flag for UI/proof contract review
+//   → emit system_friction_detected (proof UX may be broken)
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep &apos;failure-classification&apos;
+ 
+-- TEST 1: CLARITY_FAILURE on unclear task
+-- Input: FAILED feedback, reflection=&apos;task was confusing, didnt know what to do&apos;
+-- Expected: primaryCategory=CLARITY_FAILURE, correction=clarification_task_requested
+ 
+-- TEST 2: CAPABILITY_FAILURE on repeated hard task failures
+-- Input: 3 FAILED on difficulty=hard tasks in 14 days
+-- Expected: CAPABILITY_FAILURE, repeat=true, severity escalated to HIGH
+ 
+-- TEST 3: SYSTEM_FRICTION when integrity check failed recently
+-- Input: StateIntegrityEngine logged issue 30 minutes ago
+-- Expected: SYSTEM_FRICTION, system_repair_requested emitted
+ 
+-- TEST 4: Low evidence → LOW confidence, LOW severity
+-- Input: FAILED feedback with 5-char reflection, no other signals
+-- Expected: classification with confidence=LOW, no correction event emitted
+
+ACCEPTANCE CRITERIA
+All 10 failure categories scored from evidence signals
+Primary category determined by highest score, secondaries by threshold
+Correction routing emits correct event for each category at correct severity
+Repeat failure detection escalates severity correctly
+Same order failing twice triggers task variation, not identical regeneration
+DecisionTrace written for every classification
+COMMIT: feat(failure): build failure classification and root cause engine with 10 categories, evidence scoring, repeat detection, and correction routing
+

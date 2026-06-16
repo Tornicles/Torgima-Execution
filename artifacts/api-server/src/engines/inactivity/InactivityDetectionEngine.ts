@@ -27,6 +27,7 @@ import {
   type InactivityType,
 } from "./InactivityThresholds.js";
 import { recordInactivityWorkerRun } from "../state/SystemHealthMonitor.js";
+import { detectInactivity } from "../execution-loop/inactivity/InactivityDetectionCore.js";
 
 let lastScanCompletedAt: Date | null = null;
 
@@ -250,6 +251,22 @@ async function scanBlueprint(
   blueprint: typeof blueprints.$inferSelect,
 ): Promise<"detected" | "resolved" | "ok"> {
   const userId = blueprint.user_id;
+
+  try {
+    const doc11 = await detectInactivity(userId, blueprint.id);
+    if (doc11) {
+      return "detected";
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        blueprintId: blueprint.id,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      "[InactivityEngine] DOC11 detectInactivity failed — falling back to dimension scan",
+    );
+  }
+
   const commitment = parseCommitmentLevel(blueprint.commitment_level);
 
   const [lastFb] = await db

@@ -8,6 +8,13 @@ import { handleWorkerJob, type WorkerJobData, type WorkerResult } from "./BaseWo
 import { logValidationStage } from "../engines/validation/ValidationEventLogService.js";
 import { EventTypes } from "../types/eventContracts.js";
 import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
+import { handleErectorValidationRequestedJob } from "./erector-validation-worker.js";
+import {
+  handleErectorSimulationRequestedJob,
+  handleErectorSignalCalculatedJob,
+} from "./erector-simulation-worker.js";
+import { handleErectorSignalBridgeJob } from "./erector-signal-bridge-worker.js";
+import { WorkerQueues } from "../types/eventContracts.js";
 import { logger } from "../lib/logger.js";
 import {
   BlueprintStatus,
@@ -15,6 +22,13 @@ import {
   ValidationStatus,
 } from "@workspace/state-machine";
 import type { ArchetypeResolutionOutput } from "../types/erector.js";
+
+async function handleErectorSimulationQueueJob(data: WorkerJobData): Promise<WorkerResult> {
+  if (data.eventType === EventTypes.ERECTOR_SIGNAL_CALCULATED) {
+    return handleErectorSignalCalculatedJob(data);
+  }
+  return handleErectorSimulationRequestedJob(data);
+}
 
 function validationIdFrom(data: WorkerJobData): string | null {
   const p = data.payload;
@@ -24,6 +38,10 @@ function validationIdFrom(data: WorkerJobData): string | null {
     (data.entityType === "validation" ? data.entityId : undefined) ??
     null
   );
+}
+
+async function handleErectorValidationRequested(data: WorkerJobData): Promise<WorkerResult> {
+  return handleErectorValidationRequestedJob(data);
 }
 
 async function handleErectorValidationStarted(data: WorkerJobData): Promise<WorkerResult> {
@@ -322,6 +340,11 @@ function registerErectorWorker(
 }
 
 registerErectorWorker(
+  "ErectorValidationRequestedWorker",
+  EventTypes.ERECTOR_VALIDATION_REQUESTED,
+  handleErectorValidationRequested,
+);
+registerErectorWorker(
   "ErectorValidationStartedWorker",
   EventTypes.ERECTOR_VALIDATION_STARTED,
   handleErectorValidationStarted,
@@ -340,6 +363,11 @@ registerErectorWorker(
 );
 registerErectorWorker("ErectorPathSelectedWorker", EventTypes.ERECTOR_PATH_SELECTED, handleErectorPathSelected);
 registerErectorWorker(
+  "ErectorSimulationRequestedWorker",
+  EventTypes.ERECTOR_SIMULATION_REQUESTED,
+  handleErectorSimulationQueueJob,
+);
+registerErectorWorker(
   "ErectorFirstWeekGeneratedWorker",
   EventTypes.ERECTOR_FIRST_WEEK_GENERATED,
   handleErectorFirstWeekGenerated,
@@ -348,4 +376,10 @@ registerErectorWorker(
   "ErectorBlueprintLaunchedWorker",
   EventTypes.ERECTOR_BLUEPRINT_LAUNCHED,
   handleErectorBlueprintLaunched,
+);
+registerErectorWorker(
+  "ErectorSignalBridgeWorker",
+  WorkerQueues.ERECTOR_SIGNAL_BRIDGE,
+  handleErectorSignalBridgeJob,
+  { localConcurrency: 2 },
 );

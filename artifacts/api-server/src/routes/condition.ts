@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../lib/auth.js";
+import { authMiddleware, requireFullMode } from "../middleware/auth.js";
+import type { AuthContext } from "../types/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { ConditionService } from "../services/ConditionService.js";
@@ -11,7 +13,7 @@ async function handleCurrentCondition(
   res: import("express").Response,
 ): Promise<void> {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = (req as import("express").Request & { auth: AuthContext }).auth;
     const blueprintId =
       typeof req.query.blueprintId === "string" ? req.query.blueprintId : undefined;
 
@@ -37,8 +39,8 @@ async function handleCurrentCondition(
   }
 }
 
-router.get("/condition/current", handleCurrentCondition);
-router.get("/conditions/current", handleCurrentCondition);
+router.get("/condition/current", authMiddleware, requireFullMode, handleCurrentCondition);
+router.get("/conditions/current", authMiddleware, requireFullMode, handleCurrentCondition);
 
 router.get("/condition/history", async (req, res): Promise<void> => {
   try {

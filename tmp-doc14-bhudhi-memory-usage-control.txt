@@ -1,0 +1,133 @@
+﻿TORGIMA
+ENGINE PROMPT 5 — DOC 14
+Bhudhi Memory and Usage Control
+BhudhiMemory Service · Context Minimization · Usage Caps · Memory Decay · Budget Tracking
+
+
+PREREQUISITE: Engines 3 and 4 must pass. Memory and budget controls build on top of the router and prompt library.
+
+OBJECTIVE
+Build the Bhudhi Memory system that stores typed, expiring memory about user execution context. Build the usage control system that enforces daily call limits, tracks costs, and degrades gracefully when budget is exhausted. Memory must never be a data dump — it is a typed, justified, controlled context enhancement.
+
+FILES TO CREATE OR MODIFY
+src/lib/bhudhi/BhudhiMemoryService.ts — CREATE
+src/lib/bhudhi/BudgetController.ts — EXTEND (already created in Engine 3)
+src/lib/bhudhi/ContextBuilder.ts — EXTEND (add memory injection)
+
+TASK 1 — BHUDHI MEMORY SERVICE
+// BhudhiMemoryService.ts
+// Reads from and writes to the existing bhudhi_memory table (DOC 02 schema)
+ 
+// MEMORY TYPES (allowed):
+// user_goal_summary: cleaned goal and purpose — expires 30 days after blueprint update
+// recent_task_context: last 3 task types completed — expires 7 days
+// friction_summary: current dominant friction type — expires 3 days
+// capability_summary: current proven capability level — expires 14 days
+// recovery_context: last inactivity type and severity — expires 7 days
+// pattern_summary: current active behavior patterns (no raw data) — expires 7 days
+ 
+// WHAT MEMORY IS NOT:
+// Not a raw dump of feedback records
+// Not a copy of signal scores
+// Not private reflection notes
+// Not credential or session data
+ 
+export class BhudhiMemoryService {
+  // Write or update a memory entry
+  async upsert(userId: string, blueprintId: string, memoryType: string,
+    content: Record&lt;string, unknown&gt;, expiryDays: number): Promise&lt;void&gt;
+ 
+  // Load memory for a specific trigger (returns only what that trigger needs)
+  async loadForTrigger(userId: string, blueprintId: string,
+    triggerType: string): Promise&lt;Record&lt;string, unknown&gt;&gt;
+ 
+  // MEMORY INJECTION RULES per trigger:
+  // TASK_DRAFTING: inject user_goal_summary + recent_task_context
+  // RECOVERY_COPY: inject recovery_context + friction_summary
+  // ACADEMY_SUPPORT: inject capability_summary
+  // STATE_EXPLANATION: inject pattern_summary (summary only, not raw)
+  // GOAL_STRUCTURING: no memory (structuring raw input — memory would contaminate)
+  // BLOCKER_CLASSIFICATION: no memory (must classify from current input only)
+  // PROOF_RELEVANCE_CHECK: no memory
+ 
+  // MEMORY DECAY:
+  // Run nightly: delete bhudhi_memory WHERE expires_at &lt; NOW()
+  async runDecayCleanup(): Promise&lt;void&gt;
+ 
+  // CONTEXT MINIMIZATION:
+  // Memory content must be summarized to &lt;= 200 chars per entry
+  // before being injected into context packet
+  // Never inject raw JSON blobs as memory
+  private summarizeMemory(content: Record&lt;string, unknown&gt;): string
+}
+
+TASK 2 — USAGE TRACKING
+// Extend BudgetController.ts with cost tracking
+ 
+// After every completed Bhudhi call, record cost:
+// estimated_cost_cents = (input_tokens * 0.0003) + (output_tokens * 0.0015)
+// (approximate for claude-sonnet-4-6 — update if model changes)
+ 
+// DAILY USAGE REPORT (admin route: GET /api/internal/bhudhi/usage):
+// Returns: { total_calls_today, total_cost_cents_today, calls_by_trigger, calls_by_user_tier }
+ 
+// USAGE ALERT THRESHOLDS (emit to SystemHealthLog):
+// If total_cost_today &gt; $5: emit WARN
+// If total_cost_today &gt; $20: emit ERROR + switch all to fallbacks
+ 
+// MONTHLY COST ACCUMULATOR:
+// Store in feature_flags table: bhudhi_monthly_cost_cents
+// Reset on 1st of each month
+// Admin can set monthly budget cap via feature flag: bhudhi_monthly_budget_cap_cents
+
+TASK 3 — CONTEXT BUILDER WITH MEMORY
+// Extend ContextBuilder.ts to inject memory when appropriate
+ 
+async function build(
+  input: Record&lt;string, unknown&gt;,
+  requiredFields: string[],
+  forbiddenFields: string[],
+  userId: string,
+  blueprintId: string,
+  triggerType: string,
+): Promise&lt;ContextPacket&gt; {
+ 
+  // 1. Filter input to required fields only (existing behavior)
+  const filtered = pickAllowedFields(input, requiredFields, forbiddenFields);
+ 
+  // 2. Load relevant memory for this trigger type
+  const memory = await BhudhiMemoryService.loadForTrigger(
+    userId, blueprintId, triggerType
+  );
+ 
+  // 3. Inject memory as summarized context (not raw)
+  return { ...filtered, memory_context: memory, stateVersion: input.stateVersion };
+}
+
+VERIFICATION
+pnpm typecheck &amp;&amp; pnpm build
+pnpm test -- --grep &apos;bhudhi-memory&apos;
+ 
+-- TEST 1: Memory written and expires correctly
+-- Write user_goal_summary with expiry 7 days
+-- Expected: loadForTrigger returns it within 7 days
+-- Expected: after 7 days, returns empty
+ 
+-- TEST 2: GOAL_STRUCTURING trigger receives no memory
+-- Expected: memory_context = {} for GOAL_STRUCTURING
+ 
+-- TEST 3: Budget cap enforced
+-- Set user&apos;s daily calls to limit
+-- Next call: fallback returned, no API call made
+ 
+-- TEST 4: Memory content summarized under 200 chars per entry
+
+ACCEPTANCE CRITERIA
+6 memory types defined with correct expiry rules
+Memory injected only for permitted triggers
+Memory content summarized to &lt;= 200 chars before injection
+Nightly decay cleanup deletes expired memory
+Usage tracking records cost per call
+Budget alert emits to SystemHealthLog at correct thresholds
+COMMIT: feat(bhudhi): build memory service and usage control with cost tracking, decay, and budget caps
+

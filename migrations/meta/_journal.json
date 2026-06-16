@@ -106,6 +106,62 @@
       "when": 1780600000000,
       "tag": "0039_users_auth_magic_link_schema_alignment",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780700000000,
+      "tag": "0041_erector_schema_addendum",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780800000000,
+      "tag": "0042_erector_schema_1_core_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780900000000,
+      "tag": "0043_erector_schema_1_seed_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781000000000,
+      "tag": "0044_erector_schema_2_execution_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781100000000,
+      "tag": "0045_erector_schema_2_seed_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781200000000,
+      "tag": "0046_erector_schema_3_governance_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781300000000,
+      "tag": "0047_erector_schema_3_seed_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781400000000,
+      "tag": "0048_erector_prompt_1_seed_alignment",
+      "breakpoints": true
     }
   ]
 }

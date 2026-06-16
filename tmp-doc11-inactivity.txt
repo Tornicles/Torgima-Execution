@@ -1,0 +1,213 @@
+﻿TORGIMA
+ENGINE PROMPT 2 â€” DOC 11
+Inactivity Detection Engine
+Silence Detection Â· Inactivity Classification Â· Recovery Path Selection Â· Re-engagement Tasks
+
+
+PREREQUISITE: Engine 1 (DOC 10) must pass. Inactivity detection depends on accurate feedback records and the order status system to be working correctly.
+
+OBJECTIVE
+Build the InactivityDetectionEngine that monitors when customers go silent, classifies the type of inactivity, determines the severity and duration, selects the correct recovery path, and generates a re-engagement task. Inactivity is data â€” not failure. The system must use it to adapt without shaming the customer.
+
+SURGICAL RULE
+DOC 04 already has a basic inactivity worker stub. This prompt builds the full InactivityDetectionEngine service that the worker calls. The worker schedule (daily scan at midnight) already exists â€” do not change it. Extend only the engine logic.
+
+FILES TO CREATE
+src/engines/execution-loop/InactivityDetectionEngine.ts â€” CREATE
+src/engines/execution-loop/inactivity/InactivityClassifier.ts â€” CREATE
+src/engines/execution-loop/inactivity/RecoveryPathSelector.ts â€” CREATE
+
+TASK 1 â€” INACTIVITY DETECTION LOGIC
+// InactivityDetectionEngine.ts
+// Called by scheduled worker daily at midnight (existing cron worker)
+// Also called when: order has been pending > threshold with no activity
+ 
+// DETECTION RULES â€” classify as inactive when:
+ 
+// SHORT_ABSENCE (1-2 days):
+//   Last feedback OR last order start > 24 hours ago
+//   AND blueprint is active
+//   AND at least 1 pending or active order exists
+//   Action: no intervention yet â€” log only, watch window
+ 
+// MODERATE_ABSENCE (3-5 days):
+//   Last feedback OR activity > 72 hours ago
+//   Action: emit inactivity_detected event, generate gentle nudge
+//   InactivityRecord.severity = 'MODERATE'
+ 
+// EXTENDED_ABSENCE (6-13 days):
+//   Last feedback > 6 days ago
+//   Action: emit inactivity_detected, generate recovery task
+//   InactivityRecord.severity = 'HIGH'
+//   Reduce enforcement to minimum â€” user needs easy re-entry
+ 
+// ABANDONMENT_RISK (14+ days):
+//   Last feedback > 14 days ago
+//   Action: emit abandonment_risk event, generate restart task
+//   InactivityRecord.severity = 'CRITICAL'
+//   Condition forced to URGENCY minimum for re-entry
+ 
+// DETECTION METHOD:
+async function detectInactivity(userId: string, blueprintId: string) {
+  const lastFeedback = await getLastFeedbackTimestamp(userId, blueprintId);
+  const lastOrderActivity = await getLastOrderActivityTimestamp(userId, blueprintId);
+  const lastActivity = max(lastFeedback, lastOrderActivity);
+  const hoursInactive = (Date.now() - lastActivity.getTime()) / 3_600_000;
+ 
+  if (hoursInactive < 24) return null;  // not inactive
+ 
+  const severity = hoursInactive < 72 ? 'MODERATE'
+    : hoursInactive < 144 ? 'HIGH'
+    : 'CRITICAL';
+ 
+  // Check for existing open InactivityRecord â€” do not duplicate
+  const existing = await getOpenInactivityRecord(userId, blueprintId);
+  if (existing && existing.severity === severity) return existing;  // already detected
+ 
+  // Create new InactivityRecord
+  return await createInactivityRecord({ userId, blueprintId, severity, hoursInactive });
+}
+
+TASK 2 â€” INACTIVITY CLASSIFIER
+// InactivityClassifier.ts
+// Classifies WHY the inactivity happened using available evidence
+// Returns: { inactivity_type: string, confidence: string }
+ 
+// INACTIVITY TYPES:
+ 
+// TASK_TOO_HARD:
+//   Evidence: last task difficulty = HARD or VERY_HARD
+//   AND prior feedback showed friction (score <= 4 OR blocker)
+//   Response: regenerate with EASY task, reduce difficulty cap
+ 
+// TASK_UNCLEAR:
+//   Evidence: last order has blockers with clarity_needed category
+//   OR last feedback = BLOCKED with CLARITY_NEEDED blocker
+//   Response: clarification task first
+ 
+// LIFE_EVENT (personal absence):
+//   Evidence: sudden stop after long consistent period (consistency > 80%)
+//   AND no prior signs of friction or difficulty
+//   Response: calm return path, no pressure
+ 
+// LOSING_MOMENTUM:
+//   Evidence: signal trend = 'declining' across last 2 snapshots
+//   AND completion rate dropping
+//   Response: recovery task + identity reinforcement
+ 
+// WRONG_WORK:
+//   Evidence: false_progress_flags open for this blueprint
+//   OR outcome_movement_score consistently low
+//   Response: priority review task before returning to normal execution
+ 
+// UNKNOWN:
+//   No clear pattern from evidence
+//   Response: simple re-engagement with easiest available task
+
+TASK 3 â€” RECOVERY PATH SELECTOR
+// RecoveryPathSelector.ts
+// Selects the correct recovery task type based on classification
+// Emits appropriate event to TaskGenerationEngine
+ 
+// RECOVERY PATHS BY INACTIVITY TYPE:
+ 
+// TASK_TOO_HARD â†’ emit 'recovery_task_requested':
+//   task_type: 'recovery'
+//   difficulty: 'easy'
+//   title: 'Return to your project â€” a simple step to restart'
+//   enforcement: reduce task_limit to 1 task for next session
+ 
+// TASK_UNCLEAR â†’ emit 'clarification_task_requested':
+//   task_type: 'clarification'
+//   content: re-explain the blocked task in simpler terms
+ 
+// LIFE_EVENT â†’ emit 'recovery_task_requested':
+//   task_type: 'recovery'
+//   difficulty: 'easy'
+//   tone: calm, no judgment â€” 'Welcome back. Here is where you left off.'
+ 
+// LOSING_MOMENTUM â†’ emit 'recovery_task_requested':
+//   task_type: 'recovery'
+//   + identity reinforcement event to remind user of their goal
+ 
+// WRONG_WORK â†’ emit 'priority_review_requested':
+//   Generate a task that reviews what work is actually needed
+//   before resuming normal execution
+ 
+// UNKNOWN â†’ emit 'recovery_task_requested':
+//   task_type: 'recovery', difficulty: 'easy'
+//   Use the simplest available next task in the blueprint chain
+ 
+// SEVERITY MODIFIERS:
+// CRITICAL (14+ days): always start with 1 task maximum
+//   Update condition to URGENCY if not already lower
+//   Signal recalculation NOT triggered (no data in window)
+//   Do not show streak-loss messaging â€” show restart encouragement only
+
+TASK 4 â€” INACTIVITY RESOLUTION
+// When user submits feedback after inactivity:
+// 1. Check if open InactivityRecord exists for this user/blueprint
+// 2. If yes: mark InactivityRecord.resolved_at = now()
+//            set InactivityRecord.status = 'RESOLVED'
+//            set InactivityRecord.resolution_type = 'returned_to_execution'
+// 3. Emit 'inactivity_resolved' event
+// 4. PatternLearningEngine picks up the resolution as RECOVERY_SUCCESS evidence
+ 
+// Add this check to FeedbackProcessingEngine.ts (after feedback is accepted):
+// const openInactivity = await getOpenInactivityRecord(userId, blueprintId);
+// if (openInactivity) await resolveInactivityRecord(openInactivity.id);
+
+TASK 5 â€” EVENT CONTRACTS
+EVENT
+DIRECTION
+PAYLOAD MINIMUM
+TRIGGER
+inactivity_scan_requested
+Consumes
+user_id, blueprint_id
+Daily cron OR manual trigger
+inactivity_detected
+Emits
+inactivity_record_id, severity, hours_inactive, inactivity_type
+When MODERATE or worse detected
+abandonment_risk
+Emits
+inactivity_record_id, days_inactive
+When 14+ days inactive
+inactivity_resolved
+Emits
+inactivity_record_id, resolution_type
+When user returns and submits feedback
+recovery_task_requested
+Emits
+reason, inactivity_type, severity, task_difficulty
+From RecoveryPathSelector
+
+VERIFICATION
+pnpm typecheck && pnpm build
+pnpm test -- --grep 'inactivity'
+ 
+-- TEST 1: 25 hours since last feedback â†’ MODERATE inactivity
+-- Expected: InactivityRecord created, severity=MODERATE
+-- Expected: inactivity_detected event emitted
+ 
+-- TEST 2: 10 days since last feedback â†’ CRITICAL
+-- Expected: severity=CRITICAL, abandonment_risk event emitted
+-- Expected: task_limit reduced to 1 in enforcement
+ 
+-- TEST 3: Last task was HARD + score=3 â†’ TASK_TOO_HARD classification
+-- Expected: recovery task requested with difficulty=easy
+ 
+-- TEST 4: User submits feedback â†’ inactivity resolved
+-- Expected: InactivityRecord.status = 'RESOLVED'
+-- Expected: inactivity_resolved event emitted
+
+ACCEPTANCE CRITERIA
+All 4 severity levels detected at correct hour thresholds
+All 6 inactivity types classified from available evidence
+Recovery path selection matches classification correctly
+Inactivity resolved when user returns and submits feedback
+No duplicate InactivityRecords for same severity on same blueprint
+pnpm typecheck â€” zero errors
+COMMIT: feat(engine): build InactivityDetectionEngine with classifier, recovery path selector, and resolution flow
+

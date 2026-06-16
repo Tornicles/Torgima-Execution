@@ -62,3 +62,15 @@ export function submitOrderFeedback(
     idempotencyKey,
   });
 }
+
+export function submitFeedbackClarification(
+  feedbackId: string,
+  clarificationText: string,
+  idempotencyKey = generateIdempotencyKey("feedback-clarify"),
+): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiRequest(`/api/feedback/${feedbackId}/clarify`, {
+    method: "POST",
+    body: { clarification_text: clarificationText, idempotencyKey },
+    idempotencyKey,
+  });
+}

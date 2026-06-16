@@ -7,6 +7,7 @@
 
 export {
   processFeedbackSubmission,
+  processFeedbackClarification,
   runAntiGamingChecks,
   classifyVerdict,
   type FeedbackSubmissionPayload,
@@ -20,7 +21,7 @@ export {
   type FeedbackResult,
 } from "./processFeedbackLegacy.js";
 
-import { processFeedbackSubmission } from "./submitFeedbackPhase1.js";
+import { processFeedbackSubmission, processFeedbackClarification } from "./submitFeedbackPhase1.js";
 import { processFeedback } from "./processFeedbackLegacy.js";
 import type { FeedbackSubmissionPayload, FeedbackProcessResult } from "./submitFeedbackPhase1.js";
 import type { FeedbackInput, FeedbackResult } from "./processFeedbackLegacy.js";
@@ -32,6 +33,14 @@ export class FeedbackProcessingEngine {
     payload: FeedbackSubmissionPayload,
   ): Promise<FeedbackProcessResult> {
     return processFeedbackSubmission(userId, payload);
+  }
+
+  processClarification(
+    userId: string,
+    feedbackId: string,
+    clarificationText: string,
+  ): Promise<FeedbackProcessResult> {
+    return processFeedbackClarification(userId, feedbackId, clarificationText);
   }
 
   /** Production orders API — reflection score, Bhudhi critic, memory, psychology hooks. */

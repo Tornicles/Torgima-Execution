@@ -6,10 +6,14 @@ export type OrderSummary = {
   orderId: string;
   title: string;
   instruction: string;
+  whyItMatters?: string | null;
+  expectedOutput?: string | null;
+  definitionOfDone?: string | null;
   difficulty: string;
   timeEstimate?: number | null;
   timeEstimateMinutes?: number | null;
   proofRequired: boolean;
+  proofType?: string | null;
   allowedActions: string[];
   priorityReason?: string | null;
   status?: string;
@@ -18,9 +22,23 @@ export type OrderSummary = {
 
 export type SignalSummaryStrip = {
   completionRate?: number;
+  weightedScore?: number;
   momentum?: number;
   trend?: string;
   label?: string;
+};
+
+export type ConditionPanelData = {
+  conditionKey: string;
+  label: string;
+  explanation?: string;
+  restrictions: string[];
+};
+
+export type OutcomeSummaryData = {
+  openFlagCount: number;
+  canAdvancePhase: boolean;
+  blockers: string[];
 };
 
 export type DependencyAlert = {
@@ -51,6 +69,7 @@ export type DashboardControlProjection = {
   blueprintId: string | null;
   condition: string;
   conditionLabel: string;
+  conditionPanel: ConditionPanelData;
   currentAction: OrderSummary | null;
   pendingSync: boolean;
   locked: boolean;
@@ -60,4 +79,5 @@ export type DashboardControlProjection = {
   recoveryAlert?: RecoveryAlert;
   identitySnapshot?: IdentitySnapshot;
   rewardSnapshot?: RewardSnapshot;
+  outcomeSummary?: OutcomeSummaryData;
 };

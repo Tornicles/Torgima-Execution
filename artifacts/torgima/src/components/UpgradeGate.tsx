@@ -13,6 +13,8 @@ const PUBLIC_PREFIXES = [
   "/pricing",
   "/about",
   "/changelog",
+  "/validate",
+  "/project-intelligence",
   "/notifications/unsubscribe",
   "/profiles/",
   "/principles/",

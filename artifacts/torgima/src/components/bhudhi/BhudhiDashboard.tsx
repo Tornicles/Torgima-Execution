@@ -1,13 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Mic, RefreshCw } from "lucide-react";
-import { useBhudhiDashboard } from "@/hooks/useBhudhiDashboard";
-import {
-  executeBhudhiRecommendation,
-  generateBhudhiRecommendations,
-  runBhudhiCompleteCycle,
-  runBhudhiInvestigate,
-} from "@/lib/bhudhi-api";
+import { useIntelligenceDashboard, executeIntelligenceRecommendation, generateIntelligenceRecommendations, runIntelligenceCompleteCycle, runIntelligenceInvestigate } from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { formatConfidence, getSignalColor, getSignalLabel } from "@/lib/bhudhi-signals";
 import { buttons } from "@/design";
 
@@ -40,7 +35,7 @@ const TEAM_FRAMEWORK_SAMPLES = [
   "SYNERGYOPS",
 ];
 
-export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
+export function IntelligenceDashboard({ blueprintId }: { blueprintId: string }) {
   const {
     status,
     signals,
@@ -52,7 +47,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
     lastUpdated,
     reload,
     refreshSignals,
-  } = useBhudhiDashboard(blueprintId);
+  } = useIntelligenceDashboard(blueprintId);
 
   const [selectedSection, setSelectedSection] = useState<Section>("overview");
   const [actionBusy, setActionBusy] = useState<string | null>(null);
@@ -75,7 +70,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
   if (loading && !status) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-8">
-        <p className="text-2xl font-light text-gray-600">Bhudhi is analyzing…</p>
+        <p className="text-2xl font-light text-gray-600">{INTELLIGENCE_COPY.analyzing}</p>
       </div>
     );
   }
@@ -83,7 +78,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
   if (!blueprintId) {
     return (
       <div className="p-8 text-center text-gray-500">
-        <p>No active blueprint. Open Bhudhi from your dashboard after launch.</p>
+        <p>{INTELLIGENCE_COPY.noBlueprint}</p>
         <Link href="/dashboard" className="text-[var(--torgima-primary)] underline mt-4 inline-block">
           Back to dashboard
         </Link>
@@ -259,7 +254,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
 
         <nav
           className="flex gap-1 sm:gap-2 mb-8 border-b border-gray-200 overflow-x-auto pb-0"
-          aria-label="Bhudhi sections"
+          aria-label={INTELLIGENCE_COPY.sectionsLabel}
         >
           {SECTIONS.map((section) => (
             <button
@@ -310,7 +305,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
                 className={buttons.primary}
                 disabled={!!actionBusy}
                 onClick={() =>
-                  void runAction("investigate", () => runBhudhiInvestigate(blueprintId))
+                  void runAction("investigate", () => runIntelligenceInvestigate(blueprintId))
                 }
               >
                 {actionBusy === "investigate" ? "Running…" : "Run investigations"}
@@ -328,7 +323,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
                 className={buttons.secondary}
                 disabled={!!actionBusy}
                 onClick={() =>
-                  void runAction("recommend", () => generateBhudhiRecommendations(blueprintId))
+                  void runAction("recommend", () => generateIntelligenceRecommendations(blueprintId))
                 }
               >
                 {actionBusy === "recommend" ? "Generating…" : "Generate recommendations"}
@@ -338,19 +333,19 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
                 className={buttons.secondary}
                 disabled={!!actionBusy}
                 onClick={() =>
-                  void runAction("bhudhi20", async () => {
-                    const result = await runBhudhiCompleteCycle(blueprintId);
+                  void runAction("intel20", async () => {
+                    const result = await runIntelligenceCompleteCycle(blueprintId);
                     setLastCycleStrategy(result?.cycle?.intelligence?.strategy?.selected ?? null);
                   })
                 }
               >
-                {actionBusy === "bhudhi20" ? "Running Bhudhi 2.0…" : "Run Bhudhi 2.0 cycle"}
+                {actionBusy === "intel20" ? INTELLIGENCE_COPY.runningCycle : INTELLIGENCE_COPY.runCompleteCycle}
               </button>
             </div>
 
             <div className="border border-gray-200 rounded-xl p-6">
               <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">
-                Bhudhi 2.0 — 8 Torgima AI modules
+                {INTELLIGENCE_COPY.modulesLabel}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                 {BHUDHI_20_MODULES.map((mod) => (
@@ -471,7 +466,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
                     disabled={!!actionBusy}
                     onClick={() =>
                       void runAction(`exec-${rec.id}`, () =>
-                        executeBhudhiRecommendation(rec.id, blueprintId),
+                        executeIntelligenceRecommendation(rec.id, blueprintId),
                       )
                     }
                   >
@@ -552,7 +547,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
           >
             <label htmlFor="bhudhi-voice" className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Mic className="w-4 h-4" aria-hidden />
-              Ask Bhudhi
+              {INTELLIGENCE_COPY.askLabel}
             </label>
             <input
               id="bhudhi-voice"
@@ -561,7 +556,7 @@ export function BhudhiDashboard({ blueprintId }: { blueprintId: string }) {
               onChange={(e) => setVoiceQuery(e.target.value)}
               placeholder="Ask anything about your execution…"
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--torgima-primary)]"
-              aria-label="Voice-ready query for Bhudhi"
+              aria-label={INTELLIGENCE_COPY.voiceQuery}
             />
             <p className="text-[10px] text-gray-400 mt-1">Voice command ready · press Enter to save locally</p>
           </div>

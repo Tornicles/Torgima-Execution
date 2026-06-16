@@ -15,6 +15,7 @@ import {
   blueprintMutations,
   signalSnapshots,
   validations,
+  users,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
@@ -45,6 +46,7 @@ import {
   validateHierarchyAfterCompile,
 } from "./infrastructure/compileInTransaction.js";
 import { invalidateHydrationCache } from "./infrastructure/StateHydrationService.js";
+import { invalidateDashboardCache } from "../../services/dashboard-cache.js";
 import { blueprintMembers } from "@workspace/db";
 import { getClientFeatureManifest } from "./infrastructure/BlueprintTypeRegistry.js";
 import { ValidationService } from "../../services/ValidationService.js";
@@ -723,6 +725,12 @@ export class BlueprintEngine {
         );
       }
     });
+
+    await db
+      .update(users)
+      .set({ dashboard_mode: "full" })
+      .where(eq(users.id, userId));
+    invalidateDashboardCache(userId);
 
     await validateHierarchyAfterCompile(blueprintId, tier, mode);
     invalidateHydrationCache(blueprintId);

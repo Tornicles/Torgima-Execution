@@ -1,14 +1,16 @@
 import { Router } from "express";
 import { requireAuth } from "../lib/auth.js";
+import { authMiddleware, requireFullMode } from "../middleware/auth.js";
+import type { AuthContext } from "../types/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { SignalService } from "../services/SignalService.js";
 
 const router = Router();
 
-router.get("/signals/current", async (req, res) => {
+router.get("/signals/current", authMiddleware, requireFullMode, async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = (req as typeof req & { auth: AuthContext }).auth;
     const blueprintId =
       typeof req.query.blueprintId === "string" ? req.query.blueprintId : undefined;
 

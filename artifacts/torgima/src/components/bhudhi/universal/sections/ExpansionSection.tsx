@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import {
   approveExpansionCapability,
   discoverExpansion,
@@ -79,8 +80,7 @@ export function ExpansionSection({ blueprintId }: { blueprintId: string }) {
         <div>
           <h1 className="text-4xl font-light mb-2">AGI Expansion Engine</h1>
           <p className="text-gray-600 text-sm max-w-xl">
-            Bounded, governed self-improvement — Bhudhi proposes capabilities; humans approve.
-            Not AGI: no auto self-modification, all changes reversible.
+            {INTELLIGENCE_COPY.expansionHint}
           </p>
         </div>
         <button

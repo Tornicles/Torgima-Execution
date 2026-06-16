@@ -17,15 +17,16 @@ Per `TORGIMA_DOC37_ERROR_HANDLING.docx` / `DOC_37_Error_Handling_Edge_Case_Testi
 - Taxonomy: `artifacts/api-server/src/lib/failure-taxonomy.ts` — seven classes on API `error.class`
 - Payload guard: `feedback-payload-limit.ts` (10 KB) on `POST /orders/:id/feedback`; `ACTIVATION_FAILED` on incomplete launch
 - Frontend: `feedback-draft.ts`, `useNetworkResilience`, `refetchOnWindowFocus`, offline banner on `FeedbackForm`
-- Tests: `artifacts/api-server/src/tests/e2e/doc37/` (6 API suites) + `artifacts/torgima/tests/e2e/doc37/errors.frontend-resilience.spec.ts`
-- Gate: `artifacts/torgima/src/__tests__/unit/doc37-error-handling.test.ts`; `pnpm test:doc37` → `scripts/run-doc37-e2e.mjs`
+- Tests: `artifacts/api-server/src/tests/e2e/doc37/` — 12 suites (race, proof, scoring, system-failures, recovery, production-readiness, + 6 contract suites) + `artifacts/torgima/tests/e2e/doc37/errors.frontend-resilience.spec.ts`
+- Gate: `artifacts/torgima/src/__tests__/unit/doc37-error-handling.test.ts`; `pnpm test:doc37` → `scripts/run-doc37-e2e.mjs`; `pnpm test:edge` → `scripts/run-doc37-edge.mjs`
 
 ## DOC 36 — End-to-end loop testing (2026-06-02)
 
 Per `TORGIMA_DOC36_E2E_TESTING.docx` / `DOC_36_End_to_End_Loop_Testing_Specification.docx`:
 
-- Integration: `artifacts/api-server/src/tests/e2e/doc36/` — full loop, engine rules, DB integrity
-- Helpers: `doc36-reset.ts`, `doc36-loop-runner.ts` (15s budget), `doc36-constants.ts`
+- Integration: `artifacts/api-server/src/tests/e2e/doc36/` — `loop.test.ts`, `full-loop.integration.test.ts`, `scenarios.integration.test.ts` (10 spec scenarios), `db-integrity.integration.test.ts`
+- Helpers: `doc36-reset.ts`, `doc36-loop-runner.ts`, `doc36-event-wait.ts`, `doc36-constants.ts` (10s loop budget, `DOC36_TIMING`)
+- E2E setup: `packages/test/setup/e2e.setup.ts` — erector schema verify + catalog seed
 - Scripts: `scripts/doc36-reset-test-user.ts`, `scripts/run-doc36-e2e.mjs`; `pnpm test:doc36`
 - Playwright: `artifacts/torgima/tests/e2e/doc36/loop.spec.ts`
 - Structural gate: `artifacts/torgima/src/__tests__/unit/doc36-e2e-loop.test.ts`

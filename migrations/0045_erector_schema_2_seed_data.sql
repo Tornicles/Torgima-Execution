@@ -1,0 +1,86 @@
+-- ERECTOR SCHEMA 2 — seed data (capability graph + false progress patterns)
+
+-- Starter capability nodes across domains (v0.1)
+INSERT INTO erector_capability_graph (
+  capability_id, capability_name, capability_description, domain,
+  proof_required, evidence_types_allowed, minimum_signal_threshold
+) VALUES
+  ('CAP-customer-discovery-01', 'Customer Discovery', 'Ability to run structured customer discovery conversations', 'market',
+   'Completed discovery calls with documented insights', ARRAY['DIRECT_ARTIFACT', 'CUSTOMER_SIGNAL'], 60),
+  ('CAP-copywriting-01', 'Conversion Copywriting', 'Ability to write copy that drives measurable action', 'market',
+   'Published copy with measurable click or conversion data', ARRAY['DIRECT_ARTIFACT', 'ANALYTICS_MOVEMENT'], 60),
+  ('CAP-sales-conversation-01', 'Sales Conversations', 'Ability to conduct qualified sales or discovery calls', 'delivery',
+   'Recorded or logged sales conversations with outcomes', ARRAY['CUSTOMER_SIGNAL', 'DIRECT_ARTIFACT'], 65),
+  ('CAP-product-mvp-01', 'MVP Delivery', 'Ability to ship a minimum viable offer to real users', 'delivery',
+   'Shipped MVP with user usage evidence', ARRAY['DIRECT_ARTIFACT', 'ANALYTICS_MOVEMENT'], 70),
+  ('CAP-unit-economics-01', 'Unit Economics', 'Ability to model and validate unit economics', 'operations',
+   'Documented unit economics with real cost and revenue inputs', ARRAY['STRUCTURED_PROOF', 'PAYMENT_PROOF'], 65),
+  ('CAP-operations-systems-01', 'Operations Systems', 'Ability to run repeatable operational workflows', 'operations',
+   'Documented SOPs with execution proof', ARRAY['DIRECT_ARTIFACT', 'TASK_COMPLETION_COUNT'], 60),
+  ('CAP-retention-01', 'Retention Management', 'Ability to measure and improve customer retention', 'growth',
+   'Retention cohort data over 30+ days', ARRAY['ANALYTICS_MOVEMENT', 'CUSTOMER_SIGNAL'], 70),
+  ('CAP-content-distribution-01', 'Content Distribution', 'Ability to distribute content to owned audience channels', 'growth',
+   'Content published with owned-audience growth metrics', ARRAY['ANALYTICS_MOVEMENT', 'DIRECT_ARTIFACT'], 60),
+  ('CAP-strategic-positioning-01', 'Strategic Positioning', 'Ability to articulate differentiated market position', 'genesis',
+   'Positioning document validated by customer feedback', ARRAY['CUSTOMER_SIGNAL', 'STRUCTURED_PROOF'], 55),
+  ('CAP-continuity-planning-01', 'Continuity Planning', 'Ability to maintain execution through setbacks', 'continuity',
+   'Recovery plan executed after documented setback', ARRAY['USER_EXPLANATION', 'DIRECT_ARTIFACT'], 55)
+ON CONFLICT (capability_id) DO NOTHING;
+--> statement-breakpoint
+
+-- False progress patterns (10 archetypes — v0.1)
+INSERT INTO erector_false_progress_patterns (
+  pattern_id, archetype, pattern_name, pattern_description,
+  detection_logic, example, response_action
+) VALUES
+  ('FP-marketplace-01', 'marketplace_exchange', 'signups_without_transactions',
+   'High signup volume without matching transactions',
+   'High signup count, zero transaction count after 14 days',
+   '500 signups, 0 successful matches',
+   'Open correction path and require transaction proof'),
+  ('FP-saas-01', 'saas_platform', 'features_without_retained_users',
+   'Shipping features without retention improvement',
+   'Feature shipped, 7-day retention below 20%',
+   'Launched 3 features, DAU declining',
+   'Block phase advance until retention proof submitted'),
+  ('FP-service-01', 'direct_service_delivery', 'branding_without_sales',
+   'Brand-building activity without sales conversations',
+   'High branding tasks, zero paid client conversations',
+   'Logo done, website done, 0 discovery calls',
+   'Require qualified sales conversation evidence'),
+  ('FP-content-01', 'content_media', 'views_without_owned_audience',
+   'View growth without owned audience growth',
+   'High view count, zero email or owned audience growth',
+   '10k views, 12 newsletter subscribers',
+   'Require owned-audience growth proof'),
+  ('FP-consulting-01', 'consulting_advisory', 'content_without_qualified_conversations',
+   'Content output without qualified buyer conversations',
+   'Weekly content, zero qualified buyer conversations',
+   '5 articles published, 0 leads',
+   'Require qualified conversation evidence'),
+  ('FP-subscription-01', 'subscription_recurring', 'acquisition_without_retention',
+   'Acquisition growth with poor retention',
+   'New signups above 100, 30-day churn above 60%',
+   '100 signups, 40 active after 30 days',
+   'Open retention correction path'),
+  ('FP-physical-01', 'physical_product_inventory', 'interest_without_margin_proof',
+   'Demand interest without validated unit economics',
+   'Demand signals exist, no unit economics validated',
+   '1000 waitlist, margin not calculated',
+   'Require margin validation evidence'),
+  ('FP-info-01', 'information_knowledge_product', 'content_creation_without_trust',
+   'Content volume without trust or conversion signals',
+   'Content volume high, engagement and conversion near zero',
+   '20 articles, 0 sales or opt-ins',
+   'Require conversion or opt-in proof'),
+  ('FP-collective-01', 'collective_community', 'members_without_participation',
+   'Member growth without participation',
+   'Member count growing, participation rate below 10%',
+   '500 members, 45 monthly active',
+   'Require participation rate evidence'),
+  ('FP-social-01', 'social_enterprise_mission', 'mission_activity_without_impact',
+   'Mission activity without measurable beneficiary outcomes',
+   'Activity high, measurable beneficiary outcomes zero',
+   '50 events, 0 documented outcomes',
+   'Require impact outcome documentation')
+ON CONFLICT (pattern_id) DO NOTHING;

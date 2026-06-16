@@ -7,6 +7,7 @@ import {
   realOutcomes,
   outcomeValidations,
   falseProgressFlags,
+  erectorSignals,
 } from "@workspace/db";
 import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { OrderStatus, TargetStatus } from "@workspace/state-machine";
@@ -14,16 +15,30 @@ import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 import { TorgimaError } from "../../lib/errors.js";
 import { detectFalseProgress } from "../intelligence/FalseProgressDetectionEngine.js";
-import { scoreOutcomeDimensions } from "./outcomeScoring.js";
+import {
+  OutcomeEvidenceScorer,
+  determineValidationStatus,
+  applyLedgerEvidenceAdjustments,
+  applySignalMovementBonus,
+  scoreOutcomeDimensions,
+} from "./OutcomeEvidenceScorer.js";
+import { FalseProgressDetector } from "./FalseProgressDetector.js";
+import { OutcomeBlockingEnforcer } from "./OutcomeBlockingEnforcer.js";
+import { CorrectionPathGenerator } from "./CorrectionPathGenerator.js";
+import type { ValidationStatus, ExecutionDataSnapshot } from "./outcomeTypes.js";
 import { emitOutcomeCorrectionEvents } from "./outcomeCorrectionEvents.js";
+import { ledgerOverridesFeedbackStrength } from "./outcomeEvidenceMerge.js";
+import { EvidenceLedgerService } from "../../services/erector/evidence/EvidenceLedgerService.js";
+import { DecisionTraceService } from "../decision/DecisionTraceService.js";
+import {
+  mapScoreToFlagSeverity,
+  runFalseProgressDetection,
+} from "../erector/FalseProgressEngine.js";
+import { loadBlueprintArchetype } from "./OutcomeBlockingEnforcer.js";
 
-export type ValidationStatus =
-  | "VALIDATED"
-  | "PARTIALLY_VALIDATED"
-  | "NEEDS_MORE_EVIDENCE"
-  | "UNVALIDATED"
-  | "CONTRADICTED"
-  | "FALSE_PROGRESS";
+const evidenceLedgerService = new EvidenceLedgerService();
+
+export type { ValidationStatus } from "./outcomeTypes.js";
 
 function proofKeys(p: unknown): number {
   if (p && typeof p === "object" && !Array.isArray(p)) {
@@ -40,6 +55,7 @@ export async function validateOutcome(params: {
   evidenceText?: string;
   sourceType:    string;
   sourceId:      string;
+  archetypeContext?: import("../erector/EconomicFalseProgressPatternLibrary.js").ArchetypePatternContext;
 }): Promise<{
   status: ValidationStatus;
   evidenceScore: number;
@@ -58,14 +74,32 @@ export async function validateOutcome(params: {
     .orderBy(desc(feedback.created_at))
     .limit(20);
 
+  const recentFeedback7d = recentFeedback.filter(
+    (row) => row.created_at.getTime() >= Date.now() - 7 * 86400000,
+  );
+
   const completionCount = recentFeedback.filter(
     f => f.completion_status === "completed",
+  ).length;
+  const tasksCompleted7Days = recentFeedback7d.filter(
+    (row) => row.completion_status === "completed",
   ).length;
   const hasProof = recentFeedback.some(f => proofKeys(f.proof_json) > 0);
   const avgScore =
     recentFeedback.length > 0
       ? recentFeedback.reduce((s, f) => s + (f.score ?? 0), 0) / recentFeedback.length
       : 0;
+  const repeatedLowScoreCompletions = recentFeedback.filter(
+    (row) => row.completion_status === "completed" && (row.score ?? 0) < 5,
+  ).length;
+
+  const ledgerEvidence = await evidenceLedgerService.getByBlueprint(
+    params.blueprintId,
+    params.targetId,
+  );
+  const claimContradictedFromLedger = ledgerEvidence.some(
+    (row) => row.contradiction_status === "confirmed",
+  );
 
   let targetProgressRatio = completionCount * 0.05;
   const linkedToTarget = Boolean(params.targetId);
@@ -82,33 +116,175 @@ export async function validateOutcome(params: {
     }
   }
 
+  const [bp] = await db
+    .select({ created_at: blueprints.created_at, erector_archetype: blueprints.erector_archetype })
+    .from(blueprints)
+    .where(eq(blueprints.id, params.blueprintId))
+    .limit(1);
+  const blueprintActiveDays = bp
+    ? Math.max(1, Math.ceil((Date.now() - bp.created_at.getTime()) / 86400000))
+    : 1;
+  const archetype = bp?.erector_archetype ?? (await loadBlueprintArchetype(params.blueprintId));
+
+  const priorValidations = await db
+    .select({ outcome_movement_score: outcomeValidations.outcome_movement_score })
+    .from(outcomeValidations)
+    .where(eq(outcomeValidations.blueprint_id, params.blueprintId))
+    .orderBy(desc(outcomeValidations.created_at))
+    .limit(3);
+  const consecutiveLowMovementValidations = priorValidations.filter(
+    (row) => (row.outcome_movement_score ?? 0) < 15,
+  ).length;
+
+  const signalRows = await db
+    .select({ signal_type: erectorSignals.signal_type, value: erectorSignals.value })
+    .from(erectorSignals)
+    .where(
+      and(
+        eq(erectorSignals.blueprint_id, params.blueprintId),
+        inArray(erectorSignals.signal_type, ["DEMAND_SIGNAL", "OUTCOME_MOVEMENT_SIGNAL"]),
+      ),
+    )
+    .orderBy(desc(erectorSignals.generated_at))
+    .limit(10);
+
+  const demandSignal = signalRows.find((row) => row.signal_type === "DEMAND_SIGNAL")?.value ?? 0;
+  const outcomeMovementSignal =
+    signalRows.find((row) => row.signal_type === "OUTCOME_MOVEMENT_SIGNAL")?.value ?? 0;
+
+  const alignedTasks14d = linkedToTarget
+    ? completionCount
+    : Math.max(0, Math.floor(completionCount * 0.4));
+
+  const executionData: ExecutionDataSnapshot = {
+    completedCount14d: completionCount,
+    completedCount7d: tasksCompleted7Days,
+    totalTasks14d: Math.max(completionCount, recentFeedback.length),
+    alignedTasks14d,
+    hasClaim: Boolean(params.claimText) || hasProof,
+    hasPaymentOrExternalProof: ledgerEvidence.some(
+      (row) =>
+        row.evidence_class === "PAYMENT_PROOF" ||
+        row.evidence_class === "EXTERNAL_CONFIRMATION",
+    ),
+    demandSignalDelta: 0,
+    falseProgressSignal: outcomeMovementSignal,
+    claimComplete: (params.claimText ?? "").toLowerCase().includes("complete"),
+    repeatedSameTaskType: repeatedLowScoreCompletions,
+    easyTaskOnly: repeatedLowScoreCompletions >= 3,
+  };
+
+  const doc20Scoring = OutcomeEvidenceScorer.score(ledgerEvidence, executionData);
+
   const scores = scoreOutcomeDimensions({
     evidenceTextLength: params.evidenceText?.length ?? 0,
-    hasProof,
+    hasProof: hasProof || ledgerEvidence.length > 0,
     completionCount,
     avgScore,
     targetProgressRatio,
     linkedToTarget,
-    claimContradicted: false,
+    claimContradicted: claimContradictedFromLedger,
   });
 
-  const evidenceScore = scores.evidenceScore;
-  const outcomeMovementScore = scores.outcomeMovementScore;
-  const alignmentScore = scores.alignmentScore;
-  const contradictionScore = scores.contradictionScore;
+  let evidenceScore = Math.max(
+    doc20Scoring.evidenceScore,
+    applyLedgerEvidenceAdjustments(scores.evidenceScore, ledgerEvidence),
+  );
+  evidenceScore = ledgerOverridesFeedbackStrength(ledgerEvidence, evidenceScore);
 
-  let status: ValidationStatus;
-  let detectedPattern: import("../intelligence/FalseProgressDetectionEngine.js").FalseProgressPattern | null =
-    null;
+  const hasPaymentProof = executionData.hasPaymentOrExternalProof;
+  if (hasPaymentProof) {
+    evidenceScore = Math.max(evidenceScore, 80);
+  }
 
-  if (contradictionScore >= 70) {
-    status = "CONTRADICTED";
-    detectedPattern = "CLAIM_CONTRADICTED";
-  } else if (evidenceScore >= 70 && outcomeMovementScore >= 70) {
+  let outcomeMovementScore = Math.max(
+    doc20Scoring.outcomeMovementScore,
+    applySignalMovementBonus(scores.outcomeMovementScore, 0, outcomeMovementSignal),
+  );
+  if (targetProgressRatio > 0.1) {
+    outcomeMovementScore = Math.max(outcomeMovementScore, Math.round(targetProgressRatio * 100));
+  }
+
+  const alignmentScore = Math.max(doc20Scoring.alignmentScore, scores.alignmentScore);
+  let contradictionScore = Math.max(doc20Scoring.contradictionScore, scores.contradictionScore);
+  if (claimContradictedFromLedger) {
+    contradictionScore = Math.max(contradictionScore, 90);
+  }
+
+  const scoring = {
+    evidenceScore,
+    outcomeMovementScore,
+    alignmentScore,
+    contradictionScore,
+    confidence:
+      evidenceScore >= 70 ? ("high" as const) : evidenceScore >= 40 ? ("medium" as const) : ("low" as const),
+  };
+
+  const falseProgressResult = FalseProgressDetector.detect({
+    scoring,
+    execution: executionData,
+    ledgerContradicted: claimContradictedFromLedger,
+    vanityMetricUntied: evidenceScore >= 40 && outcomeMovementScore < 15 && !hasProof,
+  });
+
+  const fpResult = await runFalseProgressDetection({
+    blueprintId: params.blueprintId,
+    archetype,
+    tasksCompleted7Days,
+    blueprintActiveDays,
+    evidenceScore,
+    outcomeMovementScore,
+    outcomeMovementSignal,
+    alignmentScore,
+    claimedOutcome: Boolean(params.claimText) || hasProof,
+    hasProof: hasProof || ledgerEvidence.length > 0,
+    avgScore,
+    wrongWork: alignmentScore < 25 && completionCount >= 3,
+    vanityMetricUntied: evidenceScore >= 40 && outcomeMovementScore < 15 && !hasProof,
+    repeatedLowScoreCompletions,
+    consecutiveLowMovementValidations,
+    ledgerEvidence,
+    archetypeContext: params.archetypeContext,
+  });
+
+  let status: ValidationStatus = determineValidationStatus(
+    scoring,
+    falseProgressResult,
+    executionData,
+  );
+  let detectedPattern: import("../intelligence/FalseProgressDetectionEngine.js").FalseProgressPattern | string | null =
+    falseProgressResult.pattern;
+
+  if (hasPaymentProof && targetProgressRatio > 0 && status !== "CONTRADICTED") {
     status = "VALIDATED";
-  } else if (evidenceScore >= 40 && outcomeMovementScore >= 40) {
-    status = "PARTIALLY_VALIDATED";
-  } else {
+  }
+
+  if (fpResult.false_progress_detected && fpResult.should_create_flag && status !== "CONTRADICTED") {
+    status = "FALSE_PROGRESS";
+    detectedPattern = fpResult.flag_type ?? falseProgressResult.pattern;
+    await createFalseProgressFlag({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      targetId: params.targetId,
+      flagType: fpResult.flag_type ?? falseProgressResult.pattern ?? "ACTIVITY_WITHOUT_OUTCOME",
+      correctionTaskType: fpResult.correction_type ?? falseProgressResult.correctionTaskType,
+      falseProgressScore: fpResult.false_progress_score,
+      severity: mapScoreToFlagSeverity(fpResult.false_progress_score),
+      evidenceIds: ledgerEvidence.map((row) => row.id),
+      archetypePattern: fpResult.patterns_triggered.find((pattern) => pattern.archetype !== "global")?.pattern_id,
+    });
+  } else if (falseProgressResult.detected && falseProgressResult.pattern && status === "FALSE_PROGRESS") {
+    await createFalseProgressFlag({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      targetId: params.targetId,
+      flagType: falseProgressResult.pattern,
+      correctionTaskType: falseProgressResult.correctionTaskType,
+      falseProgressScore: falseProgressResult.falseProgressScore,
+      severity: mapScoreToFlagSeverity(falseProgressResult.falseProgressScore),
+      evidenceIds: ledgerEvidence.map((row) => row.id),
+    });
+  } else if (status === "FALSE_PROGRESS") {
     const fp = detectFalseProgress({
       completionCount,
       evidenceScore,
@@ -120,7 +296,6 @@ export async function validateOutcome(params: {
       wrongWork: alignmentScore < 25 && completionCount >= 3,
     });
     if (fp.detected && fp.pattern) {
-      status = "FALSE_PROGRESS";
       detectedPattern = fp.pattern;
       await createFalseProgressFlag({
         userId: params.userId,
@@ -128,60 +303,136 @@ export async function validateOutcome(params: {
         targetId: params.targetId,
         flagType: fp.pattern,
         correctionTaskType: fp.correctionTaskType,
+        falseProgressScore: 35,
+        severity: "medium",
       });
-    } else if (evidenceScore < 20) {
-      status = "NEEDS_MORE_EVIDENCE";
-    } else {
-      status = "UNVALIDATED";
     }
   }
 
   const missing =
     evidenceScore < 70 ? ["Specific proof of outcome", "Measurable result"] : [];
 
-  const confidence =
-    evidenceScore >= 70 ? "high" : evidenceScore >= 40 ? "medium" : "low";
+  const confidence = scoring.confidence;
 
-  await db.insert(outcomeValidations).values({
-    blueprint_id:       params.blueprintId,
-    user_id:            params.userId,
-    tasks_completed:    completionCount,
-    outcomes_verified:  Math.round(outcomeMovementScore),
-    alignment_score:    evidenceScore,
-    verdict:            status,
+  const [validationRow] = await db.insert(outcomeValidations).values({
+    blueprint_id: params.blueprintId,
+    user_id: params.userId,
+    target_id: params.targetId ?? null,
+    tasks_completed: completionCount,
+    outcomes_verified: Math.round(outcomeMovementScore),
+    outcome_movement_score: Math.round(outcomeMovementScore),
+    alignment_score: evidenceScore,
+    evidence_score: evidenceScore / 100,
+    verdict: status,
+    archetype_false_progress_patterns: fpResult.checked_pattern_ids,
     notes: JSON.stringify({
-      source_type:            params.sourceType,
-      source_id:              params.sourceId,
-      target_id:              params.targetId,
-      claim_text:             params.claimText,
+      source_type: params.sourceType,
+      source_id: params.sourceId,
+      target_id: params.targetId,
+      claim_text: params.claimText,
+      correction_path_id: falseProgressResult.correctionPathId,
       outcome_movement_score: outcomeMovementScore,
+      false_progress_score: fpResult.false_progress_score,
+      patterns_triggered: fpResult.patterns_triggered.map((pattern) => pattern.pattern_id),
       evidence_summary:
         params.evidenceText?.slice(0, 500) ?? "No evidence text submitted",
-      missing_evidence:     missing,
+      missing_evidence: missing,
       confidence,
     }),
-  });
+  }).returning({ id: outcomeValidations.id });
+
+  if (status === "CONTRADICTED") {
+    await createFalseProgressFlag({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      targetId: params.targetId,
+      flagType: "CLAIM_CONTRADICTED",
+      correctionTaskType: "reality_check",
+      falseProgressScore: 100,
+      severity: "critical",
+      evidenceIds: ledgerEvidence.map((row) => row.id),
+    });
+  }
+
+  await OutcomeBlockingEnforcer.enforce({
+    blueprintId: params.blueprintId,
+    userId: params.userId,
+    status,
+  }).catch(() => null);
+
+  if (
+    ["NEEDS_MORE_EVIDENCE", "UNVALIDATED", "CONTRADICTED", "FALSE_PROGRESS"].includes(status)
+  ) {
+    await CorrectionPathGenerator.generate({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      targetId: params.targetId,
+      status,
+      scoring,
+      pattern:
+        detectedPattern && typeof detectedPattern === "string"
+          ? (detectedPattern as import("./FalseProgressDetector.js").FalseProgressPattern)
+          : null,
+    }).catch(() => null);
+  }
+
+  await writeEvent({
+    eventType: EVENT_TYPES.OUTCOME_VALIDATED,
+    entityType: "blueprint",
+    entityId: params.blueprintId,
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    payload: {
+      validation_id: validationRow?.id,
+      status,
+      target_id: params.targetId,
+      evidence_score: evidenceScore,
+      outcome_movement_score: outcomeMovementScore,
+    },
+    idempotencyKey: `outcome_validated:${params.blueprintId}:${params.sourceId}:${status}`,
+  }).catch(() => null);
+
+  await DecisionTraceService.write({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    decisionType: "SYSTEM_CONTROL",
+    decisionKey: `outcome_validation:${params.targetId ?? params.blueprintId}`,
+    selectedOption: status,
+    optionsConsidered: [
+      "VALIDATED",
+      "PARTIALLY_VALIDATED",
+      "NEEDS_MORE_EVIDENCE",
+      "UNVALIDATED",
+      "CONTRADICTED",
+      "FALSE_PROGRESS",
+    ],
+    rationaleSummary: `evidenceScore:${evidenceScore}, movementScore:${outcomeMovementScore}, contradictionScore:${contradictionScore}`,
+    confidence: confidence === "high" ? "HIGH" : confidence === "medium" ? "MEDIUM" : "LOW",
+    sourceEngine: "OutcomeValidationEngine",
+  }).catch(() => null);
 
   if (status === "CONTRADICTED") {
     await emitOutcomeCorrectionEvents({
       userId: params.userId,
       blueprintId: params.blueprintId,
       status: "CONTRADICTED",
-      pattern: detectedPattern ?? "CLAIM_CONTRADICTED",
+      pattern: "CLAIM_CONTRADICTED",
       targetId: params.targetId,
       sourceId: params.sourceId,
     }).catch(() => null);
-    status = "FALSE_PROGRESS";
+  } else {
+    await emitOutcomeCorrectionEvents({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      status,
+      pattern:
+        status === "FALSE_PROGRESS" && typeof detectedPattern === "string"
+          ? (detectedPattern as import("../intelligence/FalseProgressDetectionEngine.js").FalseProgressPattern)
+          : null,
+      targetId: params.targetId,
+      sourceId: params.sourceId,
+    }).catch(() => null);
   }
-
-  await emitOutcomeCorrectionEvents({
-    userId: params.userId,
-    blueprintId: params.blueprintId,
-    status,
-    pattern: status === "FALSE_PROGRESS" ? detectedPattern : null,
-    targetId: params.targetId,
-    sourceId: params.sourceId,
-  }).catch(() => null);
 
   logger.info(
     {
@@ -191,6 +442,7 @@ export async function validateOutcome(params: {
       outcomeMovementScore,
       alignmentScore,
       contradictionScore,
+      falseProgressScore: fpResult.false_progress_score,
     },
     "[OutcomeEngine] Validation complete",
   );
@@ -204,6 +456,10 @@ async function createFalseProgressFlag(params: {
   targetId?:          string;
   flagType:           string;
   correctionTaskType?: string;
+  falseProgressScore?: number;
+  severity?:          string;
+  evidenceIds?:       string[];
+  archetypePattern?:  string | null;
 }): Promise<void> {
   const [existing] = await db
     .select()
@@ -223,9 +479,12 @@ async function createFalseProgressFlag(params: {
     user_id: params.userId,
     blueprint_id: params.blueprintId,
     detection_type: params.flagType,
-    severity: "medium",
+    severity: params.severity ?? "medium",
     status: "active",
     resolved: false,
+    false_progress_score: params.falseProgressScore ?? 0,
+    evidence_ids: params.evidenceIds ?? [],
+    archetype_pattern: params.archetypePattern ?? null,
     evidence_json: {
       target_id: params.targetId,
       created_from: "outcome_validation",

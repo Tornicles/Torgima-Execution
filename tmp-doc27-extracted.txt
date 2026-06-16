@@ -1,0 +1,207 @@
+﻿TORGIMA
+ENGINE PROMPT 17 — DOC 27
+External Signal Integration
+File Upload · Link Evidence · Webhook Processing · Trust Scoring · External Signal Routing
+
+
+PREREQUISITE: Engines 1-16 must pass. External signals must be classified and stored before they can feed outcome validation and evidence systems.
+
+OBJECTIVE
+Build the External Signal Integration system that processes user-uploaded proof files, submitted evidence links, and approved external webhooks. Classify each signal by source trust level, validate it against known patterns, store it as an ExternalSignal record, and route it to the correct downstream engine. External data is never automatically trusted — it always requires interpretation.
+
+SURGICAL RULE
+External signals feed the erector_evidence_ledger and the existing outcome validation system. They do NOT directly mutate blueprint state, signals, or conditions. Every external signal must be interpreted by the correct engine before any state change occurs. Bhudhi may summarize but cannot validate external truth.
+
+FILES TO CREATE
+src/engines/external/ExternalSignalProcessor.ts — CREATE
+src/engines/external/ExternalTrustScorer.ts — CREATE
+src/engines/external/WebhookRouter.ts — CREATE
+src/routes/external.ts — CREATE (upload, link, webhook routes)
+
+TASK 1 — EXTERNAL SIGNAL TYPES
+SIGNAL TYPE
+SOURCE
+TRUST LEVEL
+ROUTING TARGET
+user_upload
+File uploaded by user via /api/external/upload
+MEDIUM — user-controlled
+EvidenceLedgerService if file valid
+external_link
+URL submitted by user via /api/external/link
+LOW-MEDIUM — unverifiable source
+EvidenceLedgerService with LOW strength
+approved_webhook
+Signed webhook from approved source list
+HIGH — verified signature
+OutcomeValidationEngine or DependencyEngine
+internal_metric
+System-calculated metric (future — signals from Torgima itself)
+VERIFIED
+Signal engine directly
+manual_confirmation
+Admin-level confirmation of external fact
+HIGH
+OutcomeValidationEngine directly
+
+TASK 2 — FILE UPLOAD PROCESSING
+// POST /api/external/upload
+// Auth: required. Accepts: multipart/form-data
+// Allowed file types: pdf, png, jpg, jpeg, txt, csv, xlsx, docx
+// Max file size: 10MB
+ 
+async function processFileUpload(file: File, userId: string, blueprintId: string, context: UploadContext) {
+  // 1. Validate file type and size
+  if (!ALLOWED_TYPES.includes(file.type)) return reject('FILE_TYPE_NOT_ALLOWED');
+  if (file.size > 10_000_000) return reject('FILE_TOO_LARGE');
+ 
+  // 2. Store file in Supabase storage under /evidence/{userId}/{blueprintId}/
+  const storagePath = await supabase.storage.uploadFile(file, userId, blueprintId);
+ 
+  // 3. Score trust
+  const trust = await ExternalTrustScorer.score({
+    sourceType: 'user_upload', fileType: file.type, fileSize: file.size,
+    uploadedBy: userId, context: context.description,
+  });
+ 
+  // 4. Submit to EvidenceLedgerService
+  const evidence = await evidenceLedgerService.submit({
+    userId, blueprintId,
+    taskId: context.taskId, academyTaskId: context.academyTaskId,
+    sourceType: 'user_upload', sourceLocation: storagePath,
+    contentJson: { file_name: file.name, file_type: file.type, description: context.description },
+    contentSummary: context.description?.substring(0, 200),
+  });
+ 
+  // 5. Emit external_signal_received event
+  await emitEvent({ event_type: 'external_signal_received',
+    payload: { evidence_id: evidence.evidence_id, trust_level: trust.level, signal_type: 'user_upload' } });
+ 
+  return { evidence_id: evidence.evidence_id, trust_level: trust.level };
+}
+
+TASK 3 — TRUST SCORER
+// ExternalTrustScorer.ts
+// Returns: { level: 'LOW'|'MEDIUM'|'HIGH'|'VERIFIED', score: 0-100 }
+ 
+// TRUST SCORING RULES:
+ 
+// user_upload file:
+// Base trust: MEDIUM (score 50)
+// +20 if file type = pdf or xlsx (structured proof)
+// -10 if description < 20 chars (insufficient context)
+// +10 if same user has HIGH-trust history (no integrity flags in last 30 days)
+// -20 if integrity_flags has POSSIBLE_FABRICATION in last 7 days
+ 
+// external_link:
+// Base trust: LOW (score 30)
+// +20 if domain is in TRUSTED_DOMAINS list (e.g. stripe.com, github.com, analytics platform)
+// +10 if URL contains evidence of payment or confirmed outcome
+// -10 if URL submitted 3+ times for different tasks without variation
+ 
+// approved_webhook:
+// Base trust: HIGH (score 80)
+// +20 if signature verified AND source in APPROVED_SOURCES list
+// -50 if signature invalid → reject entirely
+ 
+// TRUSTED DOMAINS (Phase 1 — extendable):
+const TRUSTED_DOMAINS = ['stripe.com', 'paypal.com', 'github.com',
+  'notion.so', 'google.com/analytics', 'shopify.com', 'gumroad.com',
+  'calendly.com', 'typeform.com', 'loom.com'];
+
+TASK 4 — WEBHOOK ROUTER
+// POST /api/webhooks/:source
+// :source must be in APPROVED_WEBHOOK_SOURCES list
+// Requires: X-Webhook-Signature header for signature verification
+ 
+async function processWebhook(source: string, payload: unknown, signature: string) {
+  // 1. Verify source is approved
+  if (!APPROVED_WEBHOOK_SOURCES.includes(source)) return reject(401);
+ 
+  // 2. Verify signature
+  const signatureValid = await verifyWebhookSignature(source, payload, signature);
+  if (!signatureValid) {
+    await writeSystemHealthLog('WARN', 'WEBHOOK_SIGNATURE_INVALID', { source });
+    return reject(401);
+  }
+ 
+  // 3. Parse payload into ExternalSignal
+  const signal = await parseWebhookPayload(source, payload);
+  if (!signal) return reject(400, 'PAYLOAD_SCHEMA_INVALID');
+ 
+  // 4. Check for duplicate (idempotency — same external_id from same source)
+  const duplicate = await checkDuplicateWebhook(source, signal.external_id);
+  if (duplicate) return ok({ duplicate: true });
+ 
+  // 5. Route to correct engine based on signal type
+  if (signal.signal_type === 'payment_confirmed') {
+    await evidenceLedgerService.submit({ sourceType: 'payment_signal', ... });
+    await emitEvent({ event_type: 'outcome_validation_requested', ... });
+  } else if (signal.signal_type === 'external_confirmation') {
+    await emitEvent({ event_type: 'dependency_resolution_requested', ... });
+  }
+}
+ 
+// APPROVED_WEBHOOK_SOURCES (Phase 1):
+// 'stripe' — payment events
+// 'github' — commit/PR events for technical blueprints
+// 'calendly' — meeting completed events
+
+TASK 5 — ERROR HANDLING
+FAILURE
+RESPONSE
+USER RESULT
+Invalid file type
+Reject with FILE_TYPE_NOT_ALLOWED error
+User sees list of allowed types
+File too large
+Reject with FILE_TOO_LARGE error
+User asked to compress or split
+Webhook signature invalid
+Reject 401, write WARN health log
+No user-facing change — security logged
+Duplicate webhook
+Return ok with duplicate:true
+No duplicate evidence created
+Low trust evidence
+Accept but store with LOW strength
+Evidence recorded, may need stronger proof
+External source unavailable
+Retry once, then store as PENDING
+User sees 'evidence pending verification'
+Payload schema invalid
+Reject and log
+If user-submitted, ask for corrected format
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep 'external-signal'
+ 
+-- TEST 1: Valid PDF upload creates evidence record
+-- Input: PDF file, 2MB, valid description
+-- Expected: evidence_ledger record created, trust=MEDIUM
+ 
+-- TEST 2: Invalid file type rejected
+-- Input: .exe file
+-- Expected: 400 error, no storage write, no evidence record
+ 
+-- TEST 3: Valid Stripe webhook creates payment evidence
+-- Input: Stripe webhook with valid signature
+-- Expected: evidence_class=PAYMENT_PROOF, trust=HIGH
+-- Expected: outcome_validation_requested emitted
+ 
+-- TEST 4: Invalid webhook signature rejected
+-- Expected: 401 returned, SystemHealthLog WARN written
+ 
+-- TEST 5: Duplicate webhook from same source ignored
+-- Submit same external_id twice
+-- Expected: second returns {duplicate:true}, no duplicate evidence
+
+ACCEPTANCE CRITERIA
+File upload validates type, size, and stores to Supabase
+Trust scoring applied to all 5 signal types with correct base scores
+Webhook signature verified before processing any webhook payload
+Duplicate webhook detection enforced via external_id + source
+All signals route to evidence_ledger with correct evidence_class and strength
+LOW trust signals cannot directly trigger outcome rewards
+COMMIT: feat(external): build external signal integration with file upload, trust scoring, webhook router, duplicate detection, and evidence ledger routing
+

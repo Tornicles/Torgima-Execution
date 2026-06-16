@@ -1,6 +1,6 @@
 import { Link } from "wouter";
-import { useBhudhiDashboard } from "@/hooks/useBhudhiDashboard";
-import { fetchBhudhiModules } from "@/lib/bhudhi-api";
+import { useIntelligenceDashboard, fetchIntelligenceModules } from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { useEffect, useState } from "react";
 
 const DEEP_MODULES = [
@@ -31,13 +31,13 @@ const FIVE_SYSTEMS = [
 ] as const;
 
 export function SystemsSection({ blueprintId }: { blueprintId: string }) {
-  const { status, loading } = useBhudhiDashboard(blueprintId);
+  const { status, loading } = useIntelligenceDashboard(blueprintId);
   const [modules, setModules] = useState<Array<{ name: string; system: string; description: string }>>(
     [],
   );
 
   useEffect(() => {
-    void fetchBhudhiModules()
+    void fetchIntelligenceModules()
       .then((m) => setModules(m?.modules ?? []))
       .catch(() => setModules([]));
   }, []);
@@ -46,7 +46,7 @@ export function SystemsSection({ blueprintId }: { blueprintId: string }) {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-light mb-2">Systems</h1>
-        <p className="text-gray-600">Five Bhudhi systems and engine modules</p>
+        <p className="text-gray-600">{INTELLIGENCE_COPY.systemsHint}</p>
       </div>
 
       {loading && !status && <p className="text-gray-500 text-sm">Loading…</p>}

@@ -5,22 +5,28 @@ import { DashboardControlPanel } from "@/components/dashboard/DashboardControlPa
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { HealthLockState } from "@/components/dashboard/HealthLockState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { LimitedModeDashboard } from "@/components/dashboard/LimitedModeDashboard";
+import {
+  isLimitedDashboardPayload,
+  normalizeLimitedDashboardPayload,
+} from "@/components/dashboard/LimitedDashboard/limited-dashboard-types";
 import { MainDashboardView } from "@/components/dashboard/MainDashboardView";
 import { PendingSyncState } from "@/components/dashboard/PendingSyncState";
 import { useDashboardProjection } from "@/hooks/useDashboardProjection";
 import { useSessionGuard } from "@/hooks/useSessionGuard";
 import { resolveDashboardShellState, toDashboardControlProjection } from "@/lib/dashboard-control";
 import { getDashboardUiState, toDashboardProjection } from "@/lib/dashboard-types";
-import { LANGUAGE } from "@/lib/language";
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { checking } = useAppRouteGuard("post-launch");
-  const { loaded } = useSessionGuard();
   const { data, isLoading, isError, refetch, projection, pendingSync, invalidate } =
     useDashboardProjection();
-  const state = projection ?? (data ? toDashboardProjection(data) : null);
+  const limitedPayload = normalizeLimitedDashboardPayload(data);
+  const { checking } = useAppRouteGuard(limitedPayload || (isLoading && !data) ? "pre-launch" : "post-launch");
+  const { loaded } = useSessionGuard();
+  const state = limitedPayload ? null : projection ?? (data ? toDashboardProjection(data) : null);
   const uiState = getDashboardUiState(state);
   const shellState = resolveDashboardShellState({
     loading: checking || !loaded || (isLoading && !data),
@@ -29,37 +35,40 @@ export default function Dashboard() {
   const control = state ? toDashboardControlProjection(state) : null;
 
   useEffect(() => {
+    if (limitedPayload) return;
     if (shellState === "PENDING_SYNC") {
       const t = setInterval(() => void refetch(), 5_000);
       return () => clearInterval(t);
     }
     return undefined;
-  }, [shellState, refetch]);
+  }, [shellState, refetch, limitedPayload]);
 
   useEffect(() => {
+    if (limitedPayload) return;
     if (shellState === "NO_BLUEPRINT") {
       setLocation("/onboarding");
     }
-  }, [shellState, setLocation]);
+  }, [shellState, setLocation, limitedPayload]);
 
   const handleRefresh = () => {
     invalidate();
     void refetch();
   };
 
-  if (shellState === "LOADING") {
+  if (shellState === "LOADING" && !limitedPayload) {
     return <DashboardSkeleton />;
   }
 
+  if (isLoading && !data && !limitedPayload) {
+    return <DashboardSkeleton />;
+  }
+
+  if (limitedPayload) {
+    return <LimitedModeDashboard {...limitedPayload} />;
+  }
+
   if (isError && !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 p-8">
-        <p className="text-gray-500 text-sm">{LANGUAGE.errors.serverBusy}</p>
-        <button type="button" onClick={handleRefresh} className="text-[#5B21FF] underline text-sm font-semibold">
-          {LANGUAGE.actions.retry}
-        </button>
-      </div>
-    );
+    return <ErrorState onRetry={handleRefresh} />;
   }
 
   if (shellState === "NO_BLUEPRINT") {

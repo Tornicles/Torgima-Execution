@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { structureGoal } from "@/lib/torgima-api";
 
 export function OnboardingStructureStep({
@@ -67,7 +68,7 @@ export function OnboardingStructureStep({
     <div className="space-y-6 max-w-xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Refine your goal</h2>
-        <p className="text-sm text-gray-500 mt-1">Bhudhi structures intent into an execution-ready draft.</p>
+        <p className="text-sm text-gray-500 mt-1">{INTELLIGENCE_COPY.structureHint}</p>
       </div>
 
       {!refined && (
@@ -77,7 +78,7 @@ export function OnboardingStructureStep({
           onClick={() => void runStructure()}
           className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl disabled:opacity-50"
         >
-          {loading ? "Structuring…" : "Structure goal with Bhudhi"}
+          {loading ? "Structuring…" : INTELLIGENCE_COPY.structureButton}
         </button>
       )}
 

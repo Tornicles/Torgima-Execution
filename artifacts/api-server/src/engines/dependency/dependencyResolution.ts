@@ -29,6 +29,33 @@ export function unlockValueForDependency(
   return Math.max(0, score);
 }
 
+/** DOC26 Task 3 — unlock value for PriorityEngine dependency_unlock dimension (0–100). */
+export function calculateUnlockValue(
+  blockingDependencies: Array<{ type: DependencyType }>,
+  options: { blockedTaskCount?: number; hasPhaseGate?: boolean } = {},
+): number {
+  let score = 0;
+  const blockedCount = options.blockedTaskCount ?? blockingDependencies.length;
+  score += Math.min(60, blockedCount * 20);
+
+  const types = new Set(blockingDependencies.map((d) => d.type));
+  if (types.has("SEQUENCE")) score += 15;
+  if (types.has("CAPABILITY")) score += 10;
+  if (types.has("SYSTEM_STATE")) score += 25;
+  if (options.hasPhaseGate) score += 15;
+
+  return Math.min(100, Math.max(0, score));
+}
+
+export function normalizeDependencyType(raw: string | null | undefined): DependencyType {
+  const value = (raw ?? "SEQUENCE").toUpperCase();
+  if (value === "SEQUENTIAL") return "SEQUENCE";
+  if ((DEPENDENCY_TYPES as readonly string[]).includes(value)) {
+    return value as DependencyType;
+  }
+  return "SEQUENCE";
+}
+
 export function resolutionTaskForDependencyType(
   depType: DependencyType,
   detail: { title?: string; instruction?: string; blockerLabel?: string },

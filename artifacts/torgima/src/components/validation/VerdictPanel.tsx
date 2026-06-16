@@ -13,14 +13,14 @@ export function VerdictPanel({
   onLaunch?: () => void;
   launching?: boolean;
 }) {
-  const v = (verdict ?? "adjust").toUpperCase();
-  const display = getVerdictDisplay(v);
-  const blocked = launchBlocked || v === "PIVOT";
+  const verdictKey = (verdict ?? "adjust").toLowerCase();
+  const display = getVerdictDisplay(verdictKey);
+  const blocked = launchBlocked || verdictKey === "pivot";
 
   const msg =
-    v === "PROCEED"
+    verdictKey === "proceed"
       ? "You can proceed. Your direction is validated."
-      : v === "PIVOT"
+      : verdictKey === "pivot"
         ? LANGUAGE.validation.pivotBlocked
         : "Adjustments recommended. Review the recommended path.";
 

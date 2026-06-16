@@ -11,6 +11,7 @@ import { stopExecutionContinuitySchedulers } from "./ExecutionContinuitySchedule
 import { startValidationWorkerSchedules } from "../workers/ValidationWorkers.js";
 import { runHealthCheck } from "../engines/health/SystemHealthEngine.js";
 import { queueEisScanForActiveBlueprints } from "../workers/EISWorker.js";
+import { OrchestrationHealthMonitor, ORCHESTRATION_HEALTH_INTERVAL_MS } from "../engines/orchestration/OrchestrationHealthMonitor.js";
 
 const timers: ReturnType<typeof setInterval>[] = [];
 
@@ -41,6 +42,10 @@ export function startProductionSchedulers(): void {
       payload: { findings: findings.length },
       idempotencyKey: `health_scan:${Math.floor(Date.now() / 300000)}`,
     }).catch(() => null);
+  });
+
+  schedule(ORCHESTRATION_HEALTH_INTERVAL_MS, "orchestration_health", async () => {
+    await OrchestrationHealthMonitor.runCycle().catch(() => null);
   });
 
   schedule(30 * 60 * 1000, "dead_letter_review", async () => {

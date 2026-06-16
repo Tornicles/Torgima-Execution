@@ -1,6 +1,10 @@
 import type { DashboardProjection } from "@/lib/dashboard-types";
 import { getDashboardUiState } from "@/lib/dashboard-types";
-import { INTERNAL_TERM_LABELS, LANGUAGE } from "@/lib/language";
+import { LANGUAGE } from "@/lib/language";
+import {
+  CONDITION_DESCRIPTIONS,
+  getConditionLabel,
+} from "@/lib/language-map";
 import type {
   DashboardControlProjection,
   DependencyAlert,
@@ -43,6 +47,9 @@ function mapOrderSummary(action: Record<string, unknown> | null | undefined): Or
     orderId,
     title: String(action.title ?? "Next step"),
     instruction: String(action.instruction ?? ""),
+    whyItMatters: String(action.whyItMatters ?? action.priorityReason ?? ""),
+    expectedOutput: String(action.expectedOutput ?? ""),
+    definitionOfDone: String(action.definitionOfDone ?? ""),
     difficulty: String(action.difficulty ?? "moderate"),
     timeEstimate:
       (action.timeEstimate as number | undefined) ??
@@ -50,6 +57,7 @@ function mapOrderSummary(action: Record<string, unknown> | null | undefined): Or
       null,
     timeEstimateMinutes: action.timeEstimateMinutes as number | undefined,
     proofRequired: Boolean(action.proofRequired),
+    proofType: (action.proofType as string | null | undefined) ?? null,
     allowedActions: allowed,
     priorityReason:
       (action.priorityReason as string | null | undefined) ??
@@ -64,17 +72,34 @@ function mapOrderSummary(action: Record<string, unknown> | null | undefined): Or
 }
 
 function mapSignalSummary(state: DashboardProjection): SignalSummaryStrip {
-  const sig = state.signals as { completionRate?: number; momentum?: number; trend?: string } | undefined;
+  const sig = state.signals as { completionRate?: number; momentum?: number; trend?: string; weightedScore?: number } | undefined;
   const breakdown = state.signal_breakdown;
-  const sigProj = state.signalProjection as { trend?: string } | undefined;
+  const sigProj = state.signalProjection as { trend?: string; weightedScore?: number } | undefined;
   return {
     completionRate:
       breakdown?.completion_rate ??
       (sig?.completionRate != null ? Number(sig.completionRate) : undefined),
+    weightedScore:
+      breakdown?.weighted_score ??
+      sigProj?.weightedScore ??
+      (sig?.weightedScore != null ? Number(sig.weightedScore) : undefined),
     momentum: breakdown?.momentum ?? (sig?.momentum != null ? Number(sig.momentum) : undefined),
     trend: breakdown?.trend ?? sig?.trend ?? sigProj?.trend,
     label: state.simplifiedSignalLabel ?? undefined,
   };
+}
+
+function mapConditionRestrictions(state: DashboardProjection): string[] {
+  const blocked = state.activeCondition?.blocked_actions ?? [];
+  const recovery = state.activeCondition?.recovery_required;
+  const messages: string[] = [];
+  if (recovery) {
+    messages.push("Phase advancement is paused during recovery.");
+  }
+  if (blocked.length > 0) {
+    messages.push("Advanced tasks unlock once your project is On Track.");
+  }
+  return messages;
 }
 
 export function toDashboardControlProjection(
@@ -86,12 +111,13 @@ export function toDashboardControlProjection(
     (state.signals as { condition?: string } | undefined)?.condition ??
     "stability";
   const condition = String(conditionRaw);
-  const conditionKey = condition.toLowerCase() as keyof typeof INTERNAL_TERM_LABELS;
+  const conditionKey = condition.toLowerCase();
   const conditionLabel =
-    (state as { conditionLabel?: string }).conditionLabel ??
-    (conditionKey in INTERNAL_TERM_LABELS
-      ? INTERNAL_TERM_LABELS[conditionKey]
-      : LANGUAGE.condition.states.stability.label);
+    (state as { conditionLabel?: string }).conditionLabel ?? getConditionLabel(conditionKey);
+  const conditionExplanation =
+    state.activeCondition?.condition != null
+      ? CONDITION_DESCRIPTIONS[conditionKey] ?? undefined
+      : CONDITION_DESCRIPTIONS[conditionKey];
 
   const alerts = state.alerts ?? [];
   const dependencyAlert: DependencyAlert | undefined = alerts.find((a) =>
@@ -119,6 +145,8 @@ export function toDashboardControlProjection(
 
   const identity = state.identity;
   const reward = state.latestReward;
+  const outcome = (state as { outcomeIntegrity?: { openFlags?: unknown[]; canAdvancePhase?: boolean; blockers?: string[] } })
+    .outcomeIntegrity;
 
   return {
     stateVersion: state.stateVersion ?? 0,
@@ -128,6 +156,12 @@ export function toDashboardControlProjection(
       null,
     condition,
     conditionLabel,
+    conditionPanel: {
+      conditionKey,
+      label: conditionLabel,
+      explanation: conditionExplanation,
+      restrictions: mapConditionRestrictions(state),
+    },
     currentAction: mapOrderSummary(
       (state.currentAction as Record<string, unknown> | null | undefined) ?? null,
     ),
@@ -156,6 +190,13 @@ export function toDashboardControlProjection(
           message:
             (reward as { message?: string }).message ??
             (reward as { description?: string }).description,
+        }
+      : undefined,
+    outcomeSummary: outcome
+      ? {
+          openFlagCount: Array.isArray(outcome.openFlags) ? outcome.openFlags.length : 0,
+          canAdvancePhase: outcome.canAdvancePhase !== false,
+          blockers: Array.isArray(outcome.blockers) ? outcome.blockers.map(String) : [],
         }
       : undefined,
   };

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import {
-  fetchBhudhiInsights,
-  fetchBhudhiRecommendations,
-  generateBhudhiRecommendations,
-  runBhudhiInvestigate,
-} from "@/lib/bhudhi-api";
-import type { BhudhiRecommendation } from "@/lib/bhudhi-api";
+  fetchIntelligenceInsights,
+  fetchIntelligenceRecommendations,
+  generateIntelligenceRecommendations,
+  runIntelligenceInvestigate,
+  type IntelligenceRecommendation,
+} from "@/lib/intelligence-bridge";
 
 export function IntelligenceSection({ blueprintId }: { blueprintId: string }) {
-  const [recommendations, setRecommendations] = useState<BhudhiRecommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<IntelligenceRecommendation[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -20,8 +20,8 @@ export function IntelligenceSection({ blueprintId }: { blueprintId: string }) {
     setError(null);
     try {
       const [recs, ins] = await Promise.all([
-        fetchBhudhiRecommendations(blueprintId),
-        fetchBhudhiInsights(blueprintId),
+        fetchIntelligenceRecommendations(blueprintId),
+        fetchIntelligenceInsights(blueprintId),
       ]);
       setRecommendations(recs?.recommendations ?? []);
       setInsights(ins?.insights ?? []);
@@ -58,7 +58,7 @@ export function IntelligenceSection({ blueprintId }: { blueprintId: string }) {
             type="button"
             className="underline text-gray-600"
             disabled={!!busy}
-            onClick={() => void runAction("investigate", () => runBhudhiInvestigate(blueprintId))}
+            onClick={() => void runAction("investigate", () => runIntelligenceInvestigate(blueprintId))}
           >
             Investigate
           </button>
@@ -66,7 +66,7 @@ export function IntelligenceSection({ blueprintId }: { blueprintId: string }) {
             type="button"
             className="underline text-gray-600"
             disabled={!!busy}
-            onClick={() => void runAction("recommend", () => generateBhudhiRecommendations(blueprintId))}
+            onClick={() => void runAction("recommend", () => generateIntelligenceRecommendations(blueprintId))}
           >
             Generate recommendations
           </button>

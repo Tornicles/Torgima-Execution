@@ -34,6 +34,7 @@ import { db, validations } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { TorgimaError } from "../lib/errors.js";
 import { BlueprintLaunchService } from "../services/BlueprintLaunchService.js";
+import { invalidateDashboardCache } from "../services/DashboardService.js";
 import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
 import { ensureTierPreviewsPresent } from "../lib/ensureTierPreviews.js";
 
@@ -405,6 +406,7 @@ const blueprintLaunchHandler = async (req: import("express").Request, res: impor
       selectedPathType: selectedPathType.data,
       selectedBlueprintLevel: body.selectedBlueprintLevel,
     });
+    invalidateDashboardCache(auth.userId);
     success(res, result);
   } catch (err) {
     handleError(req, res, err);

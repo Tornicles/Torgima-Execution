@@ -10,6 +10,7 @@ import { logger } from "../lib/logger.js";
 import { deadLetterEvent } from "../engines/events/DeadLetterHandler.js";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
 import { EventTypes } from "../types/eventContracts.js";
+import { DecisionTraceService } from "../engines/decision/DecisionTraceService.js";
 
 export type DeadLetterFailureCategory =
   | "VALIDATION"
@@ -42,6 +43,7 @@ const CRITICAL_BLOCKING = new Set<string>([
   EventTypes.CONDITION_EVALUATED,
   EventTypes.TASK_GENERATION_REQUESTED,
   EventTypes.ENFORCEMENT_PACKAGE_CREATED,
+  EventTypes.ORDER_AVAILABLE,
 ]);
 
 function payloadHash(payload: unknown): string {
@@ -197,6 +199,21 @@ export class DeadLetterQueue {
         reviewed_at: new Date(),
       })
       .where(eq(deadLetterEvents.id, dlqId));
+
+    if (dlq.user_id && dlq.blueprint_id) {
+      await DecisionTraceService.write({
+        userId: dlq.user_id,
+        blueprintId: dlq.blueprint_id,
+        decisionType: "ADMIN_REPAIR",
+        decisionKey: `dlq_replay:${dlqId}`,
+        selectedOption: "REPLAY",
+        optionsConsidered: ["REPLAY", "CANCEL"],
+        rationaleSummary: `Dead letter event ${dlq.event_type} replayed for repair`,
+        sourceEngine: "DeadLetterQueue",
+        confidence: "HIGH",
+        causationEventId: dlq.original_event_id,
+      }).catch(() => null);
+    }
 
     return { replayed: true, eventId: dlq.original_event_id };
   }

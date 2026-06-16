@@ -12,6 +12,7 @@ import { API_BASE_URL } from "@/lib/api-base";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { UpgradeGate } from "@/components/UpgradeGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { StaleBanner } from "@/components/shared/StaleBanner";
 import { useSessionGuard } from "@/hooks/useSessionGuard";
 import { AuthProvider } from "@/providers/AuthProvider";
 
@@ -37,6 +38,8 @@ const OnboardingReviewPage = lazy(() => import("@/pages/onboarding/review"));
 const OnboardingValidatingPage = lazy(() => import("@/pages/onboarding/validating"));
 const OnboardingResultsRedirectPage = lazy(() => import("@/pages/onboarding/results"));
 const OnboardingSelectBlueprintPage = lazy(() => import("@/pages/onboarding/select-blueprint"));
+const OnboardingIntakePage = lazy(() => import("@/pages/onboarding/intake"));
+const OnboardingIntakeReportPage = lazy(() => import("@/pages/onboarding/intake-report"));
 const ErectorDashboard = lazy(() => import("@/pages/erector-dashboard"));
 const AcademyPage = lazy(() => import("@/pages/academy"));
 const ValidatePage = lazy(() => import("@/pages/validate"));
@@ -102,8 +105,9 @@ setBaseUrl(API_BASE_URL);
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: 2,
       staleTime: 30_000,
+      gcTime: 5 * 60_000,
       refetchOnWindowFocus: true,
     },
   },
@@ -174,9 +178,10 @@ const ProtectedOnboardingReview = protect(OnboardingReviewPage);
 const ProtectedOnboardingValidating = protect(OnboardingValidatingPage);
 const ProtectedOnboardingResults = protect(OnboardingResultsRedirectPage);
 const ProtectedOnboardingSelectBlueprint = protect(OnboardingSelectBlueprintPage);
+const ProtectedOnboardingIntake = protect(OnboardingIntakePage);
+const ProtectedOnboardingIntakeReport = protect(OnboardingIntakeReportPage);
 const ProtectedErectorDashboard = protect(ErectorDashboard);
 const ProtectedAcademyPage = protect(AcademyPage);
-const ProtectedValidate = protect(ValidatePage);
 const ProtectedValidationResults = protect(ValidationResultsPage);
 const ProtectedValidationBlueprint = protect(ValidationBlueprintPage);
 const ProtectedValidationScores = protect(ValidationScoresPage);
@@ -243,7 +248,8 @@ const OnboardingReviewRoute = withOnboardingLayout(ProtectedOnboardingReview);
 const OnboardingValidatingRoute = withOnboardingLayout(ProtectedOnboardingValidating);
 const OnboardingResultsRoute = withOnboardingLayout(ProtectedOnboardingResults);
 const OnboardingSelectBlueprintRoute = withOnboardingLayout(ProtectedOnboardingSelectBlueprint);
-const ValidateRoute = withOnboardingLayout(ProtectedValidate);
+const OnboardingIntakeRoute = withOnboardingLayout(ProtectedOnboardingIntake);
+const OnboardingIntakeReportRoute = withOnboardingLayout(ProtectedOnboardingIntakeReport);
 const ValidationResultsRoute = withOnboardingLayout(ProtectedValidationResults);
 const ValidationBlueprintRoute = ProtectedValidationBlueprint;
 const ValidationScoresRoute = ProtectedValidationScores;
@@ -327,7 +333,8 @@ function AppRoutes() {
         <Route path="/notifications/unsubscribe" component={UnsubscribePage} />
 
         <Route path="/upgrade" component={UpgradeRoute} />
-        <Route path="/validate" component={ValidateRoute} />
+        <Route path="/validate" component={ValidatePage} />
+        <Route path="/project-intelligence" component={ValidatePage} />
         <Route path="/validation/:id/results" component={ValidationResultsRoute} />
         <Route path="/validation/:id/blueprint" component={ValidationBlueprintRoute} />
         <Route path="/onboarding" component={OnboardingRoute} />
@@ -337,6 +344,8 @@ function AppRoutes() {
         <Route path="/onboarding/validating" component={OnboardingValidatingRoute} />
         <Route path="/onboarding/results" component={OnboardingResultsRoute} />
         <Route path="/onboarding/select-blueprint" component={OnboardingSelectBlueprintRoute} />
+        <Route path="/onboarding/intake" component={OnboardingIntakeRoute} />
+        <Route path="/onboarding/intake/report/:validationId" component={OnboardingIntakeReportRoute} />
         <Route path="/onboarding/goal" component={OnboardingRoute} />
         <Route path="/erector" component={ErectorRoute} />
         <Route path="/academy" component={AcademyRoute} />
@@ -433,6 +442,7 @@ export default function App() {
               </UpgradeGate>
             </WouterRouter>
             <Toaster />
+            <StaleBanner />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>

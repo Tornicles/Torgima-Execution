@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Users, User, Zap, TrendingUp, Crown } from "lucide-react";
 import { apiGet } from "@/lib/torgima-api";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 
 export type TierId = "starter" | "growth" | "ultimate";
 export type ModeId = "individual" | "team";
@@ -63,9 +64,9 @@ export function BlueprintSelectionPanel({
     void apiGet<SelectionCatalog>("/api/blueprints/selection-catalog")
       .then((body) => {
         if (body) setCatalog(body);
-        else setLoadError("Could not load blueprint options.");
+        else setLoadError(`Could not load ${BLUEPRINT_LABELS.blueprint.toLowerCase()} options.`);
       })
-      .catch(() => setLoadError("Could not load blueprint options."));
+      .catch(() => setLoadError(`Could not load ${BLUEPRINT_LABELS.blueprint.toLowerCase()} options.`));
   }, []);
 
   const tiers = catalog?.tiers ?? [];
@@ -76,10 +77,10 @@ export function BlueprintSelectionPanel({
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="text-xl font-bold text-gray-900">Choose your blueprint type</h2>
+        <h2 className="text-xl font-bold text-gray-900">Choose your {BLUEPRINT_LABELS.blueprint.toLowerCase()} type</h2>
         <p className="text-sm text-gray-600 mt-1">
           Structure stays fixed. Tier changes depth and intelligence. Mode changes how execution is
-          distributed. You must confirm before the blueprint can launch.
+          distributed. You must confirm before the {BLUEPRINT_LABELS.blueprint.toLowerCase()} can launch.
         </p>
         {loadError && <p className="text-sm text-red-600 mt-2">{loadError}</p>}
       </section>

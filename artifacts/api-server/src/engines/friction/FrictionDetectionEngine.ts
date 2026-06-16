@@ -1,7 +1,10 @@
+/**
+ * DOC25 — FrictionDetectionEngine orchestration, evidence loading, and adaptation routing.
+ */
+
 import {
   db,
   feedback,
-  orders,
   behaviorPatterns,
   cognitiveLoadScores,
   behaviorEvents,
@@ -9,17 +12,44 @@ import {
 import { and, desc, eq, gte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
+import { routeAdaptation } from "./AdaptationRouter.js";
+import { FrictionClassifier } from "./FrictionClassifier.js";
+import { loadFrictionEvidence } from "./FrictionEvidence.js";
+import {
+  DOC25_FRICTION_TYPES,
+  FRICTION_TYPES,
+  LEGACY_FRICTION_TYPES,
+  SEVERITY_ORDER,
+  type Doc25FrictionType,
+  type FrictionContext,
+  type FrictionDetectionResult,
+  type FrictionSeverity,
+  type FrictionType,
+} from "./frictionTypes.js";
 
-export const FRICTION_TYPES = [
-  "TIME_FRICTION",
-  "DIFFICULTY_FRICTION",
-  "CLARITY_FRICTION",
-  "MOTIVATION_FRICTION",
-  "DEPENDENCY_FRICTION",
-  "COGNITIVE_FRICTION",
-] as const;
+export {
+  DOC25_FRICTION_TYPES,
+  FRICTION_TYPES,
+  LEGACY_FRICTION_TYPES,
+  SEVERITY_ORDER,
+  type Doc25FrictionType,
+  type FrictionType,
+  type FrictionContext,
+  type FrictionDetectionResult,
+  type FrictionSeverity,
+};
 
-export type FrictionType = (typeof FRICTION_TYPES)[number];
+export { FrictionClassifier } from "./FrictionClassifier.js";
+export {
+  ADAPTATION_MATRIX,
+  ADAPTATION_CYCLE_LIMIT,
+  routeAdaptation,
+  resolveAdaptationEvent,
+  shouldTriggerRootCauseReview,
+  adaptationIncreasesDifficulty,
+  isUserCorrectionTaskEvent,
+} from "./AdaptationRouter.js";
+export { loadFrictionEvidence, buildFrictionEvidenceFromParts, type FrictionEvidence } from "./FrictionEvidence.js";
 
 function blockerKeys(nonNull: unknown): number {
   if (nonNull && typeof nonNull === "object" && !Array.isArray(nonNull)) {
@@ -28,111 +58,177 @@ function blockerKeys(nonNull: unknown): number {
   return 0;
 }
 
-function readBlockerField(
-  blocker: Record<string, unknown> | null,
-  key: string,
-): string | undefined {
-  const v = blocker?.[key];
-  return typeof v === "string" ? v : undefined;
+async function writeFrictionBehaviorEvents(params: {
+  userId: string;
+  blueprintId: string;
+  feedbackId?: string;
+  detected: Array<{ type: Doc25FrictionType; severity: FrictionSeverity; reason: string }>;
+}): Promise<void> {
+  for (const friction of params.detected) {
+    await db
+      .insert(behaviorEvents)
+      .values({
+        user_id: params.userId,
+        blueprint_id: params.blueprintId,
+        feedback_id: params.feedbackId,
+        event_type: "FRICTION_SPIKE",
+        data_json: {
+          friction_type: friction.type,
+          severity: friction.severity,
+          reason: friction.reason,
+          spec_label: friction.type,
+        },
+      })
+      .catch(() => null);
+  }
 }
 
-/** IL4 — per-feedback friction signals (never blocks generation). */
+async function checkRepeatedFriction(
+  userId: string,
+  blueprintId: string,
+  frictionType: Doc25FrictionType,
+): Promise<boolean> {
+  const since = new Date(Date.now() - 7 * 86400000);
+  const rows = await db
+    .select({ data_json: behaviorEvents.data_json })
+    .from(behaviorEvents)
+    .where(
+      and(
+        eq(behaviorEvents.user_id, userId),
+        eq(behaviorEvents.blueprint_id, blueprintId),
+        gte(behaviorEvents.detected_at, since),
+      ),
+    )
+    .limit(50);
+
+  const count = rows.filter((row) => {
+    const data = row.data_json as { friction_type?: string };
+    return data.friction_type === frictionType;
+  }).length;
+
+  return count >= 2;
+}
+
+async function recordAdaptationApplied(params: {
+  userId: string;
+  blueprintId: string;
+  feedbackId?: string;
+  frictionType: Doc25FrictionType;
+  adaptationEvent: string;
+}): Promise<void> {
+  await db
+    .insert(behaviorEvents)
+    .values({
+      user_id: params.userId,
+      blueprint_id: params.blueprintId,
+      feedback_id: params.feedbackId,
+      event_type: "friction_adaptation_applied",
+      data_json: {
+        friction_type: params.frictionType,
+        adaptation_event: params.adaptationEvent,
+      },
+    })
+    .catch(() => null);
+}
+
+/** DOC25 Task 3 — primary friction detection and adaptation flow. */
+export async function runFrictionDetection(
+  context: FrictionContext,
+): Promise<FrictionDetectionResult | null> {
+  const evidence = await loadFrictionEvidence(context);
+  if (!evidence) return null;
+
+  const detected = FrictionClassifier.classify(evidence);
+  if (detected.length === 0) {
+    return { detected: [], primary: null, adaptationRouted: false };
+  }
+
+  const primary = FrictionClassifier.selectPrimary(detected);
+  if (!primary) {
+    return { detected, primary: null, adaptationRouted: false };
+  }
+
+  await writeFrictionBehaviorEvents({
+    userId: context.userId,
+    blueprintId: context.blueprintId,
+    feedbackId: context.feedbackId,
+    detected,
+  });
+
+  const repeated = await checkRepeatedFriction(
+    context.userId,
+    context.blueprintId,
+    primary.type,
+  );
+  if (repeated) {
+    await writeEvent({
+      eventType: EVENT_TYPES.PATTERN_SCAN_REQUESTED,
+      entityType: "blueprint",
+      entityId: context.blueprintId,
+      userId: context.userId,
+      blueprintId: context.blueprintId,
+      payload: { reason: `repeated_${primary.type}`, friction_type: primary.type },
+      idempotencyKey: `pattern_scan:friction:${context.blueprintId}:${primary.type}`,
+    }).catch(() => null);
+  }
+
+  const route = await routeAdaptation({
+    frictionType: primary.type,
+    severity: primary.severity,
+    context,
+    adaptationCycleCount: evidence.adaptationCycleCount,
+    reason: primary.reason,
+  });
+
+  if (route.routed) {
+    await recordAdaptationApplied({
+      userId: context.userId,
+      blueprintId: context.blueprintId,
+      feedbackId: context.feedbackId,
+      frictionType: primary.type,
+      adaptationEvent: route.adaptationEvent,
+    });
+  }
+
+  logger.info(
+    {
+      blueprintId: context.blueprintId,
+      feedbackId: context.feedbackId,
+      primary: primary.type,
+      severity: primary.severity,
+      adaptationEvent: route.adaptationEvent,
+    },
+    "[FrictionDetectionEngine] Friction detected and routed",
+  );
+
+  return {
+    detected,
+    primary,
+    adaptationRouted: route.routed,
+    adaptationEvent: route.adaptationEvent,
+    rootCauseReview: route.rootCauseReview,
+  };
+}
+
+/** Feedback hook — runs DOC25 flow plus 14-day friction map for generation. */
 export async function detectFrictionForFeedback(params: {
   userId: string;
   blueprintId: string;
   feedbackId: string;
 }): Promise<{ frictions: FrictionType[]; adaptationRequested: boolean }> {
   const [fb] = await db
-    .select()
+    .select({ order_id: feedback.order_id })
     .from(feedback)
     .where(eq(feedback.id, params.feedbackId))
     .limit(1);
 
-  if (!fb) return { frictions: [], adaptationRequested: false };
-
-  const [order] = fb.order_id
-    ? await db
-        .select({
-          time_estimate_minutes: orders.time_estimate_minutes,
-          difficulty: orders.difficulty,
-        })
-        .from(orders)
-        .where(eq(orders.id, fb.order_id))
-        .limit(1)
-    : [undefined];
-
-  const blocker = (fb.blocker_json ?? {}) as Record<string, unknown>;
-  const hadBlocker = blockerKeys(blocker) > 0;
-  const blockerType = readBlockerField(blocker, "blocker_type");
-
-  const frictions: FrictionType[] = [];
-
-  const submittedHours =
-    fb.submitted_hours_after_completion ??
-    (fb.duration_minutes && order?.time_estimate_minutes
-      ? Math.max(0, (fb.duration_minutes - order.time_estimate_minutes) / 60)
-      : null);
-
-  if (submittedHours != null && submittedHours > 4) {
-    frictions.push("TIME_FRICTION");
-  } else if (
-    fb.duration_minutes != null &&
-    order?.time_estimate_minutes &&
-    fb.duration_minutes > order.time_estimate_minutes * 2
-  ) {
-    frictions.push("TIME_FRICTION");
-  }
-
-  const difficultyFelt =
-    fb.difficulty_felt ??
-    readBlockerField(blocker, "difficulty_felt") ??
-    (fb.friction_score != null && fb.friction_score >= 4 ? "very_hard" : undefined);
-
-  if (difficultyFelt === "very_hard") {
-    frictions.push("DIFFICULTY_FRICTION");
-  }
-
-  if (hadBlocker && blockerType === "unclear_instruction") {
-    frictions.push("CLARITY_FRICTION");
-  }
-
-  if (fb.completion_status === "skipped" && !hadBlocker) {
-    frictions.push("MOTIVATION_FRICTION");
-  }
-
-  if (hadBlocker && blockerType && blockerType !== "unclear_instruction") {
-    frictions.push("DEPENDENCY_FRICTION");
-  }
-
-  for (const frictionType of frictions) {
-    await db.insert(behaviorEvents).values({
-      user_id: params.userId,
-      blueprint_id: params.blueprintId,
-      feedback_id: params.feedbackId,
-      event_type: "friction_detected",
-      data_json: { friction_type: frictionType, spec_label: frictionType },
-    });
-  }
-
-  const adaptationRequested = frictions.length >= 2;
-  if (adaptationRequested) {
-    await writeEvent({
-      eventType: EVENT_TYPES.FRICTION_ADAPTATION_REQUESTED,
-      entityType: "feedback",
-      entityId: params.feedbackId,
-      userId: params.userId,
-      blueprintId: params.blueprintId,
-      payload: { frictions, severity: "MEDIUM", reason: "multi_signal_friction" },
-      idempotencyKey: `friction_adapt:${params.feedbackId}`,
-    });
-  }
-
-  if (frictions.length > 0) {
-    logger.info(
-      { feedbackId: params.feedbackId, frictions, adaptationRequested },
-      "[FrictionDetectionEngine] Feedback friction scan",
-    );
-  }
+  const result = await runFrictionDetection({
+    userId: params.userId,
+    blueprintId: params.blueprintId,
+    feedbackId: params.feedbackId,
+    orderId: fb?.order_id ?? undefined,
+    trigger: "feedback",
+  });
 
   const { buildFrictionMap, emitStrongFrictionAdaptations } = await import(
     "./frictionWindowScoring.js"
@@ -147,7 +243,11 @@ export async function detectFrictionForFeedback(params: {
     frictionMap,
   });
 
-  return { frictions, adaptationRequested };
+  const frictions = (result?.detected.map((d) => d.type) ?? []) as FrictionType[];
+  return {
+    frictions,
+    adaptationRequested: Boolean(result?.adaptationRouted),
+  };
 }
 
 /** Phase 5 — friction map for TaskGenerationEngine (reduces, never eliminates). */
@@ -159,14 +259,27 @@ export async function getFrictionMapForGeneration(params: {
   return buildFrictionMap(params);
 }
 
-/** Window-level friction (aggregate) — retained for dashboard scans. */
+/** Window-level friction summary for dashboard/API. */
 export async function detectFriction(params: {
   userId: string;
   blueprintId: string;
 }): Promise<{ frictionType: string | null; severity: string; adaptationNeeded: boolean }> {
   const since = new Date(Date.now() - 7 * 86400000);
 
-  const [feedbackRows, patterns, cogRow] = await Promise.all([
+  const [spikeRows, feedbackRows, patterns, cogRow] = await Promise.all([
+    db
+      .select({ data_json: behaviorEvents.data_json })
+      .from(behaviorEvents)
+      .where(
+        and(
+          eq(behaviorEvents.user_id, params.userId),
+          eq(behaviorEvents.blueprint_id, params.blueprintId),
+          eq(behaviorEvents.event_type, "FRICTION_SPIKE"),
+          gte(behaviorEvents.detected_at, since),
+        ),
+      )
+      .orderBy(desc(behaviorEvents.detected_at))
+      .limit(10),
     db
       .select()
       .from(feedback)
@@ -202,6 +315,19 @@ export async function detectFriction(params: {
       .limit(1),
   ]);
 
+  if (spikeRows.length > 0) {
+    const latest = spikeRows[0]!.data_json as {
+      friction_type?: string;
+      severity?: FrictionSeverity;
+    };
+    const severity = latest.severity ?? "MEDIUM";
+    return {
+      frictionType: latest.friction_type ?? null,
+      severity,
+      adaptationNeeded: SEVERITY_ORDER[severity] >= SEVERITY_ORDER.MEDIUM,
+    };
+  }
+
   if (feedbackRows.length === 0) {
     return { frictionType: null, severity: "LOW", adaptationNeeded: false };
   }
@@ -232,7 +358,7 @@ export async function detectFriction(params: {
     frictionType = "COGNITIVE_FRICTION";
     frictionScore = (cogRow[0]?.load_score ?? 0) * 10;
   } else if (avgFriction >= 3) {
-    frictionType = "TIME_FRICTION";
+    frictionType = "TIMING_FRICTION";
     frictionScore = avgFriction * 2;
   }
 
@@ -267,4 +393,8 @@ export class FrictionDetectionEngine {
 
 export const frictionDetectionEngine = new FrictionDetectionEngine();
 
-export { buildFrictionMap, highFrictionTaskTypes, computeFrictionScore } from "./frictionWindowScoring.js";
+export {
+  buildFrictionMap,
+  highFrictionTaskTypes,
+  computeFrictionScore,
+} from "./frictionWindowScoring.js";

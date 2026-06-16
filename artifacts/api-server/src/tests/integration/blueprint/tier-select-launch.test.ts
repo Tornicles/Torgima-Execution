@@ -5,6 +5,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect, afterAll } from "vitest";
+import {
+  DOC29_KEY_API_ROUTES,
+} from "../../../lib/doc29-route-inventory.js";
 import { db, validations, blueprints, blueprintTierPreviews, plans } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { BlueprintStatus } from "@workspace/state-machine";
@@ -44,8 +47,9 @@ describe("Blueprint tier select-and-launch", () => {
     });
 
     it("OpenAPI health manifest lists tier endpoints", () => {
+      expect(DOC29_KEY_API_ROUTES).toContain("POST /api/blueprints/select-tier");
       const health = readRepo("artifacts/api-server/src/routes/health.ts");
-      expect(health).toContain("POST /api/blueprints/select-tier");
+      expect(health).toContain("DOC29_KEY_API_ROUTES");
       expect(health).toContain("GET /api/blueprints/:id/tier-preview");
     });
   });

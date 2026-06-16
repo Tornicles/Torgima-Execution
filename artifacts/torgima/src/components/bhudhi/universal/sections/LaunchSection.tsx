@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
-  fetchBhudhiLaunchConfig,
-  fetchBhudhiLaunchStatus,
-  type BhudhiLaunchConfig,
-} from "@/lib/bhudhi-launch-api";
+  fetchIntelligenceLaunchConfig,
+  fetchIntelligenceLaunchStatus,
+  type IntelligenceLaunchConfig,
+} from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 
 export function LaunchSection({ blueprintId }: { blueprintId: string }) {
-  const [config, setConfig] = useState<BhudhiLaunchConfig | null>(null);
+  const [config, setConfig] = useState<IntelligenceLaunchConfig | null>(null);
   const [status, setStatus] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,8 +18,8 @@ export function LaunchSection({ blueprintId }: { blueprintId: string }) {
     setError(null);
     try {
       const [cfg, st] = await Promise.all([
-        fetchBhudhiLaunchConfig(),
-        fetchBhudhiLaunchStatus(),
+        fetchIntelligenceLaunchConfig(),
+        fetchIntelligenceLaunchStatus(),
       ]);
       setConfig(cfg);
       setStatus(st);
@@ -50,7 +51,7 @@ export function LaunchSection({ blueprintId }: { blueprintId: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-light mb-2">Bhudhi Launch</h1>
+        <h1 className="text-4xl font-light mb-2">{INTELLIGENCE_COPY.launchTitle}</h1>
         <p className="text-gray-600 text-sm">
           Environment, pricing tiers, telemetry, and deployment readiness (Prompt 40).
         </p>
@@ -118,7 +119,7 @@ export function LaunchSection({ blueprintId }: { blueprintId: string }) {
           href="/app/bhudhi/onboarding"
           className="text-slate-800 underline hover:no-underline"
         >
-          Complete Bhudhi onboarding →
+          {INTELLIGENCE_COPY.onboardingComplete}
         </Link>
         <a
           href="https://github.com/Tornicles/Torgima-Execution/blob/main/docs/DEPLOYMENT_CHECKLIST.md"

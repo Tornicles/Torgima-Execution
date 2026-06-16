@@ -1,4 +1,5 @@
 import { ConditionState } from "@workspace/state-machine";
+import { BLUEPRINT_LABELS, getConditionLabel } from "@/lib/language-map";
 
 interface HierarchyPlan {
   id: string;
@@ -36,7 +37,7 @@ export function OperationalStateIndicator({ condition }: { condition?: string | 
   return (
     <div className="flex items-center gap-2">
       <span className={`w-2.5 h-2.5 rounded-full ${colors[c] ?? colors[ConditionState.NOTHINGNESS]}`} />
-      <span className="text-xs font-semibold text-slate-700 capitalize">{c}</span>
+      <span className="text-xs font-semibold text-slate-700">{getConditionLabel(c)}</span>
     </div>
   );
 }
@@ -99,7 +100,7 @@ export function BlueprintExecutionContext({
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <DomainContextBanner domain={domain} missionSummary={missionSummary} />
       <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-center gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Operational state</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{BLUEPRINT_LABELS.conditions}</p>
         <OperationalStateIndicator condition={condition} />
         <ExecutionProgressBar pct={progressPct} />
       </div>

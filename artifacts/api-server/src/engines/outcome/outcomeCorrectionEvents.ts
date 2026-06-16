@@ -3,7 +3,7 @@
  */
 
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
-import type { ValidationStatus } from "./OutcomeValidationEngine.js";
+import type { ValidationStatus } from "./outcomeTypes.js";
 import type { FalseProgressPattern } from "../intelligence/FalseProgressDetectionEngine.js";
 
 export async function emitOutcomeCorrectionEvents(params: {

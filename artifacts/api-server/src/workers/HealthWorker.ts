@@ -1,6 +1,6 @@
 import { workerRegistry } from "./WorkerRegistry.js";
 import { handleWorkerJob } from "./BaseWorkerHandler.js";
-import { runIntegrityChecks, processFindings } from "../services/SystemHealthService.js";
+import { runHealthMonitoringCycle } from "../engines/execution-loop/SystemHealthMonitor.js";
 import { logger } from "../lib/logger.js";
 
 // HealthWorker — runs full integrity sweep every time a system_health_event
@@ -18,21 +18,19 @@ workerRegistry.register({
   handler: async (jobs) => {
     for (const job of jobs) {
       await handleWorkerJob(job, "HealthWorker", async () => {
-        logger.info("[HealthWorker] Running integrity checks...");
+        logger.info("[HealthWorker] Running health monitoring cycle (DOC17)...");
 
-        const findings = await runIntegrityChecks();
-        await processFindings(findings);
+        const result = await runHealthMonitoringCycle();
 
         logger.info(
           {
-            total: findings.length,
-            critical: findings.filter((f) =>
-              ["CRITICAL", "FATAL"].includes(f.severity),
-            ).length,
-            errors: findings.filter((f) => f.severity === "ERROR").length,
-            warnings: findings.filter((f) => f.severity === "WARN").length,
+            findings: result.findingsCount,
+            integrityOk: result.integrityOk,
+            alertsEmitted: result.alertsEmitted,
+            degraded: result.metrics.degraded_mode,
+            pendingBacklog: result.metrics.pending_event_backlog,
           },
-          "[HealthWorker] Integrity checks complete",
+          "[HealthWorker] Health monitoring cycle complete",
         );
 
         return { success: true };
@@ -48,8 +46,7 @@ export function startScheduledHealthChecks(): void {
   if (scheduledTimer) return;
 
   const runSweep = async () => {
-    const findings = await runIntegrityChecks();
-    await processFindings(findings);
+    await runHealthMonitoringCycle();
   };
 
   void runSweep().catch((error) => {

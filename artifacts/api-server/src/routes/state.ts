@@ -25,8 +25,13 @@ const router = Router();
 router.get("/state/dashboard", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
+    const limited = await DashboardService.getLimitedDashboardStateIfNeeded(auth.userId);
+    if (limited) {
+      success(res, limited);
+      return;
+    }
     const payload = await DashboardService.getDashboardState(auth.userId);
-    success(res, payload);
+    success(res, { ...payload, mode: "full" });
   } catch (err) {
     handleError(req, res, err);
   }

@@ -1,8 +1,13 @@
 /**
- * Phase 5 / DOC 24 — task value formula and signal urgency weights.
+ * Phase 5 / DOC 24 — legacy exports delegating to TaskValueScorer.
  */
 
 import type { PriorityCandidate, PriorityContext } from "./PriorityEngine.js";
+import {
+  computeLegacyTaskValueScore,
+  score,
+  TASK_VALUE_WEIGHTS,
+} from "./TaskValueScorer.js";
 
 export const SIGNAL_URGENCY_WEIGHTS: Record<string, number> = {
   nothingness: 0.3,
@@ -11,14 +16,6 @@ export const SIGNAL_URGENCY_WEIGHTS: Record<string, number> = {
   stability: 0.5,
   power: 0.4,
   affluence: 0.3,
-};
-
-const DIFFICULTY_RANK: Record<string, number> = {
-  very_easy: 1,
-  easy: 2,
-  moderate: 3,
-  hard: 4,
-  very_hard: 5,
 };
 
 export function signalUrgencyForCondition(condition: string): number {
@@ -33,6 +30,13 @@ export function capabilityMatchScore(
   candidate: PriorityCandidate,
   context: PriorityContext,
 ): number {
+  const DIFFICULTY_RANK: Record<string, number> = {
+    very_easy: 1,
+    easy: 2,
+    moderate: 3,
+    hard: 4,
+    very_hard: 5,
+  };
   const rec = context.capability?.difficulty_recommendation ?? "moderate";
   const orderDiff = candidate.difficulty ?? "moderate";
   const recRank = DIFFICULTY_RANK[rec] ?? 3;
@@ -53,35 +57,29 @@ export function timeSensitivityScore(candidate: PriorityCandidate): number {
 }
 
 export function difficultyProgressionScore(candidate: PriorityCandidate): number {
+  const DIFFICULTY_RANK: Record<string, number> = {
+    very_easy: 1,
+    easy: 2,
+    moderate: 3,
+    hard: 4,
+    very_hard: 5,
+  };
   const rank = DIFFICULTY_RANK[candidate.difficulty ?? "moderate"] ?? 3;
   return Math.min(1, rank / 5);
 }
 
-/** DOC 24 weighted task value (0–1 scale, multiplied to 0–100 for ranking). */
+/** DOC 24 weighted task value (0–1 scale). */
 export function computeTaskValueScore(
   candidate: PriorityCandidate,
   context: PriorityContext,
 ): number {
-  const condition = context.condition ?? "stability";
-  const raw =
-    0.35 * blueprintAlignmentScore(candidate) +
-    0.25 * signalUrgencyForCondition(condition) +
-    0.2 * capabilityMatchScore(candidate, context) +
-    0.15 * timeSensitivityScore(candidate) +
-    0.05 * difficultyProgressionScore(candidate);
-
-  if (context.falseProgressActive && candidate.task_type === "execution") {
-    return Math.max(0, raw - 0.25);
-  }
-
-  return Math.min(1, Math.max(0, raw));
+  return computeLegacyTaskValueScore(candidate, context);
 }
 
 export function taskValueScoreToRank(score: number): number {
   return Math.round(score * 100);
 }
 
-/** Recovery override during danger / nothingness. */
 export function isRecoveryPriorityOverride(
   candidate: PriorityCandidate,
   condition: string,
@@ -91,3 +89,5 @@ export function isRecoveryPriorityOverride(
     (condition === "danger" || condition === "nothingness")
   );
 }
+
+export { TASK_VALUE_WEIGHTS, score as scoreTaskValueComposite };

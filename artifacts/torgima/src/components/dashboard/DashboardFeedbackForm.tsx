@@ -4,6 +4,7 @@ import { apiFetchEnvelope } from "@/lib/torgima-api";
 import { afterMutationSuccess } from "@/lib/mutations";
 import { buttons } from "@/design";
 import type { TaskRealityState } from "@/lib/structured-feedback-api";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 
 const TASK_STATES: TaskRealityState[] = [
   "Finished",
@@ -35,7 +36,7 @@ export function DashboardFeedbackForm({
       return;
     }
     if (!blueprintId) {
-      setError("Blueprint context missing.");
+      setError(`${BLUEPRINT_LABELS.blueprint} context missing.`);
       return;
     }
 

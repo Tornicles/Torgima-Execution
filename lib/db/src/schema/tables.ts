@@ -90,6 +90,8 @@ export const users = pgTable("users", {
   communication_profile: jsonb("communication_profile"),
   metadata: jsonb("metadata"),
   active: boolean("active").notNull().default(true),
+  dashboard_mode: text("dashboard_mode").notNull().default("limited"),
+  erector_tier: text("erector_tier"),
   notification_preferences: jsonb("notification_preferences")
     .notNull()
     .default(
@@ -463,6 +465,12 @@ export const blueprints = pgTable(
     // FK enforced in Postgres; omit Drizzle `.references()` to avoid circular infer() with `validations`.
     validation_id: uuid("validation_id"),
     erector_validation_id: uuid("erector_validation_id"),
+    erector_intake_session_id: uuid("erector_intake_session_id"),
+    erector_state: text("erector_state").notNull().default("not_started"),
+    erector_simulation_id: uuid("erector_simulation_id"),
+    erector_archetype: text("erector_archetype"),
+    erector_launch_contract_id: uuid("erector_launch_contract_id"),
+    blueprint_source: text("blueprint_source").notNull().default("onboarding"),
     primary_archetype_id: uuid("primary_archetype_id").references(() => economicArchetypes.id),
     reality_score: doublePrecision("reality_score"),
     blueprint_tier: text("blueprint_tier"),
@@ -1812,6 +1820,10 @@ export const academyTasks = pgTable(
     proof_description: text("proof_description"),
     status: text("status").notNull().default("pending"),
     blocks_execution: boolean("blocks_execution").notNull().default(false),
+    capability_gap_id: uuid("capability_gap_id"),
+    learning_type: text("learning_type"),
+    execution_requirement: text("execution_requirement"),
+    erector_evidence_id: uuid("erector_evidence_id"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp("completed_at", { withTimezone: true }),
   },
@@ -1836,6 +1848,10 @@ export const academyProof = pgTable(
     validation_status: text("validation_status").notNull().default("pending"),
     rejection_reason: text("rejection_reason"),
     validated_at: timestamp("validated_at", { withTimezone: true }),
+    evidence_ledger_id: uuid("evidence_ledger_id"),
+    evidence_class: text("evidence_class"),
+    signal_validated: boolean("signal_validated").notNull().default(false),
+    capability_confirmed: boolean("capability_confirmed").notNull().default(false),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("idx_academy_proof_task_id").on(t.academy_task_id)],
@@ -1891,6 +1907,12 @@ export const outcomeValidations = pgTable(
     alignment_score: doublePrecision("alignment_score").notNull().default(0),
     verdict: text("verdict"),
     notes: text("notes"),
+    outcome_movement_score: integer("outcome_movement_score").notNull().default(0),
+    archetype_false_progress_patterns: text("archetype_false_progress_patterns")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    correction_path_id: uuid("correction_path_id"),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1921,6 +1943,10 @@ export const falseProgressFlags = pgTable(
     }),
     resolved: boolean("resolved").notNull().default(false),
     resolved_at: timestamp("resolved_at", { withTimezone: true }),
+    archetype_pattern: text("archetype_pattern"),
+    evidence_ids: text("evidence_ids").array().notNull().default(sql`ARRAY[]::text[]`),
+    correction_path_id: uuid("correction_path_id"),
+    false_progress_score: integer("false_progress_score").notNull().default(0),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

@@ -5,8 +5,9 @@ import type { FreshnessState } from "@/types/signals-panel";
 const BADGE_CLASS: Record<FreshnessState, string> = {
   live: "bg-emerald-50 text-emerald-800 border-emerald-200",
   recent: "bg-sky-50 text-sky-800 border-sky-200",
-  warming: "bg-amber-50 text-amber-900 border-amber-200 cursor-pointer",
-  stale: "bg-orange-50 text-orange-900 border-orange-200 cursor-pointer",
+  warming: "bg-slate-50 text-slate-700 border-slate-200",
+  stale: "bg-amber-50 text-amber-900 border-amber-200 cursor-pointer",
+  outdated: "bg-amber-50 text-amber-900 border-amber-200 cursor-pointer",
   updating: "bg-violet-50 text-violet-800 border-violet-200",
 };
 
@@ -22,7 +23,7 @@ export function StateFreshnessBadge({
   const ageMs = lastFetchedAt ? Date.now() - lastFetchedAt : Number.POSITIVE_INFINITY;
   const state = freshnessFromAgeMs(ageMs, pendingSync);
   const label = LANGUAGE.signalsPanel.freshness[state];
-  const clickable = (state === "warming" || state === "stale") && onRefresh;
+  const clickable = (state === "stale" || state === "outdated") && onRefresh;
 
   return (
     <button

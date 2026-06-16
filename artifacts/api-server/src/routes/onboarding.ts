@@ -4,8 +4,8 @@ import { requireAuth } from "../lib/auth.js";
 import { BlueprintService } from "../services/BlueprintService.js";
 import { ValidationLaunchService } from "../services/ValidationLaunchService.js";
 import { ValidationService } from "../services/ValidationService.js";
-import { db, users, blueprints } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, users, blueprints, erectorIntakeSessions } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { success, failure, handleError } from "../lib/utils.js";
 import { isTorgimaError } from "../lib/errors.js";
 import { adaptOnboardingGoalRequest, flatToParsedGoal } from "../lib/onboardingGoalAdapter.js";
@@ -48,6 +48,22 @@ router.get("/onboarding/status", async (req, res) => {
       const activeBlueprint = await BlueprintService.findActive(auth.userId);
       const hasActiveBlueprint = Boolean(activeBlueprint);
 
+      const [latestIntake] = await db
+        .select({
+          id: erectorIntakeSessions.id,
+          status: erectorIntakeSessions.status,
+          currentSection: erectorIntakeSessions.current_section,
+          sectionsCompleted: erectorIntakeSessions.sections_completed,
+        })
+        .from(erectorIntakeSessions)
+        .where(eq(erectorIntakeSessions.user_id, auth.userId))
+        .orderBy(desc(erectorIntakeSessions.started_at))
+        .limit(1);
+
+      const hasIntake = Boolean(latestIntake);
+      const intakeInProgress = latestIntake?.status === "in_progress";
+      const intakeSessionId = latestIntake?.id ?? null;
+
       let onboardingStep: string = "welcome";
       if (hasActiveBlueprint) onboardingStep = "active";
       else if (onboardingComplete) onboardingStep = "done";
@@ -57,6 +73,11 @@ router.get("/onboarding/status", async (req, res) => {
         completed: onboardingComplete,
         onboardingComplete,
         hasActiveBlueprint,
+        hasIntake,
+        intakeInProgress,
+        intakeSessionId,
+        intakeCurrentSection: latestIntake?.currentSection ?? null,
+        intakeSectionsCompleted: latestIntake?.sectionsCompleted ?? [],
         step: onboardingStep,
         onboardingStep,
         blueprintId: activeBlueprint?.id ?? null,
@@ -75,6 +96,11 @@ router.get("/onboarding/status", async (req, res) => {
         completed: false,
         onboardingComplete: false,
         hasActiveBlueprint: false,
+        hasIntake: false,
+        intakeInProgress: false,
+        intakeSessionId: null,
+        intakeCurrentSection: null,
+        intakeSectionsCompleted: [],
         step: "goal",
         onboardingStep: "goal",
         blueprintId: null,

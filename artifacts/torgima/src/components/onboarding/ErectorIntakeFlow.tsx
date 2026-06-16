@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
 import {
   BUSINESS_MODELS,
@@ -223,7 +224,7 @@ export function ErectorIntakeFlow({
                 {fieldError("primaryGoal")}
                 {form.primaryGoal.length > 30 && (
                   <p className="mt-2 text-xs text-blue-400/90">
-                    Bhudhi detected structured intent — full evaluation runs during validation.
+                    {INTELLIGENCE_COPY.intakeDetected}
                   </p>
                 )}
               </div>
@@ -544,7 +545,7 @@ export function ErectorIntakeFlow({
                 <p><span className="text-gray-500">Archetype:</span> {archetype?.name ?? "Pending country"}</p>
                 <p><span className="text-gray-500">Commitment:</span> {form.commitmentLevel}</p>
                 <p><span className="text-gray-500">Engines:</span> 9/9 ready</p>
-                <p><span className="text-gray-500">Bhudhi calls:</span> 10</p>
+                <p><span className="text-gray-500">{INTELLIGENCE_COPY.intakeCalls}</span> 10</p>
                 <p><span className="text-gray-500">Estimated runtime:</span> ~45 seconds</p>
               </div>
               <div className="flex flex-wrap gap-3 pt-2">
@@ -592,7 +593,7 @@ export function ErectorIntakeFlow({
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-lg border border-[#1B1F2E] bg-[#10121A] p-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-widest text-gray-500">Bhudhi intelligence</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-gray-500">{INTELLIGENCE_COPY.intakeLabel}</p>
             <ul className="space-y-2 text-xs">
               <li className="flex justify-between"><span className="text-gray-500">Goal clarity</span><span className="text-gray-200">{goalClarity}</span></li>
               <li className="flex justify-between"><span className="text-gray-500">Purpose strength</span><span className="text-gray-200">{purposeStrength}</span></li>

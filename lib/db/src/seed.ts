@@ -175,6 +175,15 @@ async function main() {
   await seedDevUsers();
   await seedGlobalKnowledge();
   await seedBhudhiIntelligenceCatalog();
+  try {
+    const { seedErectorCatalog } = await import("./erector-seed.js");
+    await seedErectorCatalog(db);
+  } catch (err) {
+    console.warn(
+      "Erector rule-table seed skipped — apply migrations 0041–0048 first:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
   console.log("Seed complete.");
 }
 

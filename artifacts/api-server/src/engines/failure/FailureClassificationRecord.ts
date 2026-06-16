@@ -10,7 +10,7 @@ import {
   FAILURE_CATEGORIES,
 } from "./FailureClassificationEngine.js";
 import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
-import { emitFailureCorrectionEvents } from "./failureCorrectionEvents.js";
+import { emitFailureCorrectionEventsFromResult } from "./failureCorrectionEvents.js";
 import { routeBhudhiRequest } from "../../bhudhi/TriggerRouter.js";
 import { runDebate } from "../../bhudhi/DebateEngine.js";
 
@@ -90,7 +90,7 @@ export async function classifyFailureWithRecord(params: {
     idempotencyKey: `failure_classified:${params.feedbackId}`,
   });
 
-  await emitFailureCorrectionEvents({
+  await emitFailureCorrectionEventsFromResult({
     userId: params.userId,
     blueprintId: params.blueprintId,
     orderId: params.orderId,

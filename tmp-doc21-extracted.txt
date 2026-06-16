@@ -1,0 +1,167 @@
+﻿TORGIMA
+ENGINE PROMPT 11 — DOC 21
+Pattern Learning and Burnout Detection Engine
+9 Pattern Types · 4 Burnout Risk Levels · Pattern Scoring · Adaptation Triggers · Resolution Rules
+
+
+PREREQUISITE: Engines 1-10 must pass. Pattern learning reads from feedback, orders, inactivity records, signals, conditions, capability, and rewards — all of which must exist before patterns can be detected.
+
+OBJECTIVE
+Build the PatternLearningEngine that observes repeated execution behavior, detects 9 behavior pattern types, calculates burnout risk across 4 levels, triggers adaptation events to the correct downstream engine, and resolves patterns when behavior improves. The engine must detect trajectory before collapse — not just after.
+
+SURGICAL RULE
+The behavior_patterns and behavior_events tables exist from DOC 02. Build the engine that reads and writes to them. Never diagnose medical burnout. Never shame the user. Pattern detection is observation, not judgment. Language must reflect what the system can measure, not what it assumes about the person.
+
+FILES TO CREATE
+src/engines/pattern/PatternLearningEngine.ts — CREATE
+src/engines/pattern/BehaviorEvidenceNormalizer.ts — CREATE
+src/engines/pattern/BurnoutRiskScorer.ts — CREATE
+src/engines/pattern/PatternResolver.ts — CREATE
+
+TASK 1 — DETECTION WINDOWS
+WINDOW
+USE
+RULE
+3-day
+Fast fatigue, sudden change detection
+Used for early warning only — no severe patterns from 3-day alone
+7-day
+Primary Phase 1 pattern detection
+Most pattern detection and burnout scoring runs here
+14-day
+Repeated behavior, HIGH confidence patterns
+Used to confirm DIFFICULTY_FAILURE and ABANDONMENT_RISK
+30-day
+Long-term trends, identity and capability context
+Used for CONSISTENT_EXECUTION and VOLATILE_EXECUTION only
+
+TASK 2 — PATTERN DETECTION RULES
+// PatternLearningEngine.ts — detection rules for all 9 pattern types
+ 
+// CONSISTENT_EXECUTION:
+// Evidence: accepted_feedback_count_7d >= 5 AND consistency_7d >= 70%
+// AND no DIFFICULTY_FAILURE or FATIGUE_RISK pattern active
+// Response: emit identity_evaluation_requested + capability_review_requested
+ 
+// DELAY_PATTERN:
+// Evidence: count feedback.submitted_hours_after_start > 18 hours >= 3 times in 7 days
+// AND not explained by inactivity record (inactivity_record exists = not delay, it's absence)
+// Response: emit adaptation_requested with type=TIMING_FRICTION
+ 
+// DIFFICULTY_FAILURE:
+// Evidence: >= 3 FAILED or BLOCKED feedback on tasks with difficulty >= 'hard' in 14 days
+// AND capability_profile.difficulty_handling != 'expert'
+// Response: emit capability_review_requested + difficulty_downgrade_requested
+ 
+// TASK_TYPE_AVOIDANCE:
+// Evidence: same task_type has >= 3 skipped OR failed in 7 days
+// AND other task types are completing normally
+// Response: emit friction_review_requested targeting that task type
+ 
+// LOW_VALUE_COMPLETION:
+// Evidence: acceptance_rate >= 80% in 7 days BUT outcome_movement_score < 20
+// AND false_progress_signal > 50 from erector_signals
+// Response: emit priority_review_requested + outcome_correction event
+ 
+// RECOVERY_SUCCESS:
+// Evidence: user has had >= 2 InactivityRecords in 30 days AND each resolved within 3 days
+// Response: learn this recovery path and use earlier next time
+//   → write behavior pattern, emit recovery_pattern_learned event
+ 
+// ABANDONMENT_RISK:
+// Evidence: signal.trend = 'declining' for 2+ consecutive snapshots
+// AND completion_rate < 40% in 7-day window
+// AND no inactivity record yet (approaching abandonment, not yet abandoned)
+// Response: emit recovery_task_requested before inactivity is detected
+ 
+// FATIGUE_RISK:
+// Evidence: frictionScore rising + confidenceScore falling across 3 feedback records
+// AND avg duration per task increasing (takes longer to do same difficulty)
+// AND completion_rate not improving
+// Response: emit load_reduction_requested + condition_evaluation_requested
+ 
+// VOLATILE_EXECUTION:
+// Evidence: completion_rate swings > 40 points between any 2 consecutive 7-day windows
+// AND pattern persists across >= 2 such swings
+// Response: emit stabilization_requested to ControlEngine
+
+TASK 3 — BURNOUT RISK SCORER
+// BurnoutRiskScorer.ts
+// Calculates 0-100 risk score from 8 behavioral indicators
+ 
+// INDICATORS AND WEIGHTS:
+const INDICATORS = {
+  rising_friction:       { weight: 20, detect: 'frictionScoreAvg increasing 3+ consecutive feedback' },
+  falling_confidence:    { weight: 15, detect: 'confidenceScore declining 3+ consecutive feedback' },
+  longer_duration:       { weight: 15, detect: 'avg duration per task type increasing 20%+ in 7d vs prior 7d' },
+  completion_decline:    { weight: 20, detect: 'completion_rate dropped > 25 points in 7d vs prior 7d' },
+  more_failures:         { weight: 10, detect: 'FAILED feedback count > 40% of total in 7-day window' },
+  more_blockers:         { weight: 10, detect: 'BLOCKED feedback count > 30% of total in 7-day window' },
+  inactivity_after_hard: { weight: 5,  detect: 'InactivityRecord created within 24h of hard task failure' },
+  recovery_failing:      { weight: 5,  detect: 'Recovery task FAILED or SKIPPED in last 7 days' },
+};
+ 
+// RISK LEVEL THRESHOLDS:
+// 0-24: LOW → observe only
+// 25-49: MEDIUM → reduce friction or adjust task wording
+// 50-74: HIGH → recovery task + difficulty cap + condition review
+// 75-100: CRITICAL → protective execution path + load reduction + admin notification
+ 
+// CRITICAL PROTECTION RULE:
+// CRITICAL burnout risk → set enforcement_package.force_recovery = true
+// → TaskGeneration must use recovery type only until risk drops below HIGH
+// → Write SystemHealthLog entry for admin visibility
+// → NEVER use language like 'you are burned out' — use 'protected rest period' or
+//   'your system has reduced load for this session'
+
+TASK 4 — PATTERN RESOLVER
+// PatternResolver.ts — resolves active patterns when behavior improves
+ 
+// RESOLUTION CONDITIONS BY PATTERN:
+// DELAY_PATTERN: no delayed feedback (> 18h) for 5 consecutive feedback submissions
+// DIFFICULTY_FAILURE: 3 consecutive accepted feedback on same difficulty level
+// TASK_TYPE_AVOIDANCE: 2 completions of previously-avoided task type
+// LOW_VALUE_COMPLETION: outcome_movement_score > 40 on next outcome validation
+// ABANDONMENT_RISK: InactivityRecord not created for 7 days after pattern detected
+// FATIGUE_RISK: frictionScore decreasing AND completion_rate >= 60% for 5 feedback records
+// VOLATILE_EXECUTION: completion_rate stays within 20-point band for 2 consecutive 7-day windows
+ 
+// OVER-REACTION PREVENTION:
+// Single isolated miss does NOT create DELAY_PATTERN (requires 3 events minimum)
+// Single failed task does NOT create DIFFICULTY_FAILURE (requires 3 at same difficulty)
+// Pattern.severity escalates only after 2+ detection cycles, not 1
+// Pattern scan is idempotent: same window + same evidence = same result
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep 'pattern-learning'
+ 
+-- TEST 1: Single miss does NOT create DELAY_PATTERN
+-- Input: 1 feedback submitted 20h after task start
+-- Expected: no BehaviorPattern created
+ 
+-- TEST 2: 3 delayed submissions DO create DELAY_PATTERN
+-- Input: 3 feedback records each submitted 20h+ after task start in 7 days
+-- Expected: BehaviorPattern DELAY_PATTERN created, severity=MEDIUM
+ 
+-- TEST 3: FATIGUE_RISK at HIGH triggers load reduction
+-- Input: burnoutRiskScore >= 50
+-- Expected: load_reduction_requested event emitted to ControlEngine
+ 
+-- TEST 4: CRITICAL triggers force_recovery
+-- Input: burnoutRiskScore >= 75
+-- Expected: enforcement_package.force_recovery = true, SystemHealthLog written
+ 
+-- TEST 5: Pattern resolution on improved behavior
+-- Setup: DELAY_PATTERN active
+-- Input: 5 consecutive on-time feedback submissions
+-- Expected: BehaviorPattern.status = 'RESOLVED'
+
+ACCEPTANCE CRITERIA
+All 9 pattern types detected at correct evidence thresholds
+Burnout risk scored from 8 weighted indicators, 4 correct risk levels
+CRITICAL burnout sets force_recovery in enforcement without shame language
+Single isolated events never create HIGH or CRITICAL patterns
+All 7 pattern resolution conditions implemented
+Pattern scans are idempotent for same window and evidence
+COMMIT: feat(pattern): build pattern learning and burnout detection engine with 9 patterns, 4 risk levels, adaptation triggers, and resolution rules
+

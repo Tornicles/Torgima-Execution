@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { z } from "zod/v4";
 import { db, events, eventLogs, deadLetterEvents, systemHealthLogs, bhudhiLogs, blueprints } from "@workspace/db";
+import { BudgetController } from "../lib/bhudhi/BudgetController.js";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
 import { dispatchPendingEvents, getEventSystemHealth } from "../services/EventDispatcher.js";
+import { getWorkerMonitoringHealth } from "../workers/WorkerDispatcher.js";
+import { replayDeadLetteredEvent } from "../workers/DeadLetterHandler.js";
 import { deadLetterQueue } from "../services/DeadLetterQueue.js";
 import { systemHealthMonitor } from "../engines/state/SystemHealthMonitor.js";
 import { collectProductionMetrics } from "../services/MonitoringMetricsService.js";
@@ -17,6 +20,15 @@ import { evaluateReward } from "../engines/reward/RewardEngine.js";
 import { evaluateIdentity } from "../engines/identity/IdentityEngine.js";
 import { scanForInactivity } from "../engines/inactivity/InactivityDetectionEngine.js";
 import { routeBhudhiRequest } from "../bhudhi/TriggerRouter.js";
+import { processFeedbackSubmission } from "../engines/feedback/submitFeedbackPhase1.js";
+import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
+import { scanPatterns } from "../engines/pattern/PatternLearningEngine.js";
+import { classifyFailure } from "../engines/failure/FailureClassificationEngine.js";
+import { detectFrictionForFeedback } from "../engines/friction/FrictionDetectionEngine.js";
+import { selectHighestValueTask } from "../engines/priority/PriorityEngine.js";
+import { checkExecutability } from "../engines/dependency/DependencyEngine.js";
+import { OrchestrationHealthMonitor } from "../engines/orchestration/OrchestrationHealthMonitor.js";
+import { acquireWorkflowLocks } from "../engines/orchestration/OrchestrationService.js";
 import { getContract } from "../bhudhi/PromptRegistry.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
@@ -122,14 +134,24 @@ router.get(["/internal/dead-letter", "/v1/internal/events/dead-letter"], async (
   }
 });
 
-// POST /api/internal/dead-letter/:id/resolve
-router.post("/internal/dead-letter/:id/resolve", async (req, res) => {
+// POST /api/internal/dead-letter/:id/resolve — DOC16 + Phase 2 aliases
+router.post(
+  ["/internal/dead-letter/:id/resolve", "/v1/internal/events/dead-letter/:id/resolve"],
+  async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
-    const { id } = req.params;
+    const dlId = String(req.params.id);
     const schema = z.object({
-      action: z.enum(["skip", "mark_resolved", "replay", "rebuild", "escalate"]),
+      action: z.enum([
+        "skip",
+        "mark_resolved",
+        "replay",
+        "rebuild",
+        "escalate",
+        "manual_repair",
+      ]),
       reason: z.string().min(1),
+      resolution: z.enum(["replay", "skip", "manual_repair"]).optional(),
     });
     const result = schema.safeParse(req.body);
     if (!result.success) {
@@ -137,10 +159,19 @@ router.post("/internal/dead-letter/:id/resolve", async (req, res) => {
       return;
     }
 
+    const action =
+      result.data.resolution === "manual_repair"
+        ? "manual_repair"
+        : result.data.resolution === "replay"
+          ? "replay"
+          : result.data.resolution === "skip"
+            ? "skip"
+            : result.data.action;
+
     const [dlEvent] = await db
       .select()
       .from(deadLetterEvents)
-      .where(eq(deadLetterEvents.id, id))
+      .where(eq(deadLetterEvents.id, dlId))
       .limit(1);
 
     if (!dlEvent) {
@@ -148,32 +179,33 @@ router.post("/internal/dead-letter/:id/resolve", async (req, res) => {
       return;
     }
 
-    if (result.data.action === "replay" && dlEvent.original_event_id) {
-      await db
-        .update(events)
-        .set({ status: "pending", retry_count: 0, process_after: new Date() })
-        .where(eq(events.id, dlEvent.original_event_id));
+    if (action === "replay" && dlEvent.original_event_id) {
+      await replayDeadLetteredEvent(dlEvent.original_event_id);
       await dispatchPendingEvents();
     }
 
     const resolutionStatus =
-      result.data.action === "replay" ? "REPLAYING"
-      : result.data.action === "rebuild" ? "REBUILT"
-      : result.data.action === "escalate" ? "OPEN"
+      action === "replay" ? "REPLAYING"
+      : action === "rebuild" || action === "manual_repair" ? "REBUILT"
+      : action === "escalate" ? "OPEN"
       : "RESOLVED";
 
     await db
       .update(deadLetterEvents)
       .set({
-        resolved: result.data.action !== "escalate",
+        resolved: action !== "escalate",
         reviewed: true,
         reviewed_at: new Date(),
         resolved_at: new Date(),
         resolution_status: resolutionStatus,
+        failure_reason:
+          action === "manual_repair"
+            ? `${dlEvent.failure_reason} | manual_repair: ${result.data.reason}`
+            : dlEvent.failure_reason,
       })
-      .where(eq(deadLetterEvents.id, id));
+      .where(eq(deadLetterEvents.id, dlId));
 
-    success(res, { resolved: true, action: result.data.action, reason: result.data.reason });
+    success(res, { resolved: true, action, reason: result.data.reason });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -194,8 +226,11 @@ router.get("/internal/metrics", async (req, res) => {
 router.get(["/internal/events/health", "/v1/internal/events/health"], async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
-    const health = await getEventSystemHealth();
-    success(res, health);
+    const [health, workerHealth] = await Promise.all([
+      getEventSystemHealth(),
+      getWorkerMonitoringHealth(),
+    ]);
+    success(res, { ...health, ...workerHealth });
   } catch (err) {
     handleError(req, res, err);
   }
@@ -292,49 +327,22 @@ router.post("/internal/bhudhi/trigger", async (req, res) => {
 router.get("/internal/bhudhi/usage", async (req, res) => {
   try {
     await requireAuth(req, "INTERNAL_SERVICE");
+    const report = await BudgetController.getDailyUsageReport();
     const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    if (userId) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const [{ todayCount } = { todayCount: 0 }] = await db
+        .select({ todayCount: sql<number>`count(*)::int` })
+        .from(bhudhiLogs)
+        .where(and(eq(bhudhiLogs.user_id, userId), gte(bhudhiLogs.created_at, todayStart)));
 
-    const userCond = userId ? eq(bhudhiLogs.user_id, userId) : sql`true`;
+      success(res, { ...report, user_calls_today: todayCount ?? 0, userId });
+      return;
+    }
 
-    const [{ todayCount } = { todayCount: 0 }] = await db
-      .select({ todayCount: sql<number>`count(*)::int` })
-      .from(bhudhiLogs)
-      .where(and(userCond, gte(bhudhiLogs.created_at, todayStart)));
-
-    const [agg] = await db
-      .select({
-        inSum:  sql<number>`coalesce(sum(${bhudhiLogs.token_count_in}),0)::int`,
-        outSum: sql<number>`coalesce(sum(${bhudhiLogs.token_count_out}),0)::int`,
-      })
-      .from(bhudhiLogs)
-      .where(userCond);
-
-    const recentLogs = await db
-      .select({
-        trigger_type:   bhudhiLogs.trigger_type,
-        validation_status: bhudhiLogs.validation_status,
-        latency_ms:     bhudhiLogs.latency_ms,
-        created_at:     bhudhiLogs.created_at,
-        output_json:    bhudhiLogs.output_json,
-      })
-      .from(bhudhiLogs)
-      .where(userCond)
-      .orderBy(desc(bhudhiLogs.created_at))
-      .limit(20);
-
-    const inSum  = agg?.inSum ?? 0;
-    const outSum = agg?.outSum ?? 0;
-    const totalCost = inSum * 0.000003 + outSum * 0.000015;
-
-    success(res, {
-      today:        todayCount ?? 0,
-      totalTokens:  inSum + outSum,
-      totalCost,
-      recentLogs,
-    });
+    success(res, report);
   } catch (err) {
     handleError(req, res, err);
   }
@@ -579,6 +587,191 @@ router.post("/internal/inactivity/scan", async (req, res) => {
     await requireAuth(req, "INTERNAL_SERVICE");
     const result = await scanForInactivity();
     success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const feedbackProcessSchema = z.object({
+  userId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  completion: z.enum(["COMPLETED", "PARTIAL", "FAILED", "BLOCKED", "SKIPPED"]),
+  clientStateVersion: z.number().int(),
+  idempotencyKey: z.string().min(8),
+  proofType: z.enum(["NONE", "TEXT", "FILE", "LINK", "CHECKLIST", "OUTPUT"]).optional(),
+  proofText: z.string().optional(),
+  userNotes: z.string().optional(),
+});
+
+router.post("/internal/feedback/process", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = feedbackProcessSchema.parse(req.body);
+    const result = await processFeedbackSubmission(input.userId, {
+      orderId: input.orderId,
+      completion: input.completion,
+      clientStateVersion: input.clientStateVersion,
+      idempotencyKey: input.idempotencyKey,
+      proofType: input.proofType,
+      proofText: input.proofText,
+      userNotes: input.userNotes,
+    });
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const guaranteeSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  generationMode: z.string().optional(),
+  generationTrigger: z.string().optional(),
+});
+
+router.post("/internal/execution/guarantee", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = guaranteeSchema.parse(req.body);
+    const result = await guaranteeTask(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const patternScanSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  windowDays: z.number().int().min(1).max(90).optional(),
+});
+
+router.post("/internal/patterns/scan", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = patternScanSchema.parse(req.body);
+    const result = await scanPatterns(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const classifyFailureSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  feedbackId: z.string().uuid(),
+});
+
+router.post("/internal/failures/classify", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = classifyFailureSchema.parse(req.body);
+    const result = await classifyFailure(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const frictionEvaluateSchema = z.object({
+  userId: z.string().uuid(),
+  blueprintId: z.string().uuid(),
+  feedbackId: z.string().uuid(),
+});
+
+router.post("/internal/friction/evaluate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = frictionEvaluateSchema.parse(req.body);
+    const result = await detectFrictionForFeedback(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const priorityEvaluateSchema = z.object({
+  blueprintId: z.string().uuid(),
+  userId: z.string().uuid(),
+  condition: z.string().optional(),
+  candidates: z
+    .array(
+      z.object({
+        id: z.string(),
+        task_type: z.string(),
+        title: z.string().optional(),
+        dependency_blocked: z.boolean().optional(),
+      }),
+    )
+    .min(1),
+});
+
+router.post("/internal/priority/evaluate", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = priorityEvaluateSchema.parse(req.body);
+    const result = await selectHighestValueTask(input.candidates, {
+      blueprintId: input.blueprintId,
+      userId: input.userId,
+      condition: input.condition ?? "stable",
+      allowedActions: [],
+      falseProgressActive: false,
+      capability: null,
+    });
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const dependencyMapSchema = z.object({
+  blueprintId: z.string().uuid(),
+  userId: z.string().uuid(),
+  orderId: z.string().uuid(),
+});
+
+router.post("/internal/dependencies/map", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = dependencyMapSchema.parse(req.body);
+    const result = await checkExecutability(input);
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+const orchestrationStartSchema = z.object({
+  blueprintId: z.string().uuid(),
+  userId: z.string().uuid(),
+  workflowName: z
+    .enum(["FEEDBACK_COMPLETION", "INACTIVITY_DETECTION", "FAILURE_CORRECTION"])
+    .default("FEEDBACK_COMPLETION"),
+});
+
+router.post("/internal/orchestration/start", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const input = orchestrationStartSchema.parse(req.body);
+    const locks = await acquireWorkflowLocks({
+      entityId: input.blueprintId,
+      blueprintId: input.blueprintId,
+      userId: input.userId,
+      workflowName: input.workflowName,
+    });
+    success(res, { started: true, workflow: input.workflowName, locks });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+router.get("/internal/bhudhi/usage/summary", async (req, res) => {
+  try {
+    await requireAuth(req, "INTERNAL_SERVICE");
+    const report = await BudgetController.getDailyUsageReport();
+    success(res, report);
   } catch (err) {
     handleError(req, res, err);
   }

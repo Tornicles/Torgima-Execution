@@ -256,11 +256,16 @@ export async function collectDoc36PostLoopDbState(
   };
 }
 
-export async function collectDoc36GlobalIntegrity(): Promise<{ pendingEvents: number; orphanedOrders: number }> {
+export async function collectDoc36GlobalIntegrity(): Promise<{
+  pendingEvents: number;
+  orphanedOrders: number;
+  criticalHealthLogs: number;
+  unreviewedDeadLetters: number;
+}> {
   const [{ pending }] = await db
     .select({ pending: sql<number>`count(*)::int` })
     .from(events)
-    .where(sql`${events.status} = 'PENDING' AND ${events.created_at} < NOW() - INTERVAL '5 minutes'`);
+    .where(sql`lower(${events.status}) = 'pending' AND ${events.process_after} < NOW()`);
 
   const sample = await db
     .select({ blueprint_id: orders.blueprint_id })
@@ -271,5 +276,24 @@ export async function collectDoc36GlobalIntegrity(): Promise<{ pendingEvents: nu
   );
   const orphanedOrders = sample.filter((o) => o.blueprint_id && !bpIds.has(o.blueprint_id)).length;
 
-  return { pendingEvents: pending ?? 0, orphanedOrders };
+  const healthResult = await db.execute(sql`
+    SELECT COUNT(*)::int AS critical_health
+    FROM system_health_logs
+    WHERE status = 'critical' AND created_at > NOW() - INTERVAL '1 hour'
+  `);
+  const criticalHealth = Number((healthResult.rows[0] as { critical_health?: number })?.critical_health ?? 0);
+
+  const dlqResult = await db.execute(sql`
+    SELECT COUNT(*)::int AS unreviewed_dlq
+    FROM dead_letter_events
+    WHERE reviewed = false
+  `);
+  const unreviewedDlq = Number((dlqResult.rows[0] as { unreviewed_dlq?: number })?.unreviewed_dlq ?? 0);
+
+  return {
+    pendingEvents: pending ?? 0,
+    orphanedOrders,
+    criticalHealthLogs: criticalHealth,
+    unreviewedDeadLetters: unreviewedDlq,
+  };
 }

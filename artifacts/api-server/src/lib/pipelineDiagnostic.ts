@@ -122,53 +122,42 @@ async function layerDatabaseTables(dbOk: boolean): Promise<PipelineLayerResult> 
 
 async function layerAnthropic(): Promise<PipelineLayerResult> {
   const started = Date.now();
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey =
+    process.env.ANTHROPIC_API_KEY?.trim() ||
+    process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
     return { ok: false, detail: "ANTHROPIC_API_KEY not set", durationMs: Date.now() - started };
   }
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
-        max_tokens: 8,
-        messages: [{ role: "user", content: "Reply: ok" }],
-      }),
+    const { ProviderAdapter } = await import("./bhudhi/ProviderAdapter.js");
+    await ProviderAdapter.call({
+      systemPrompt: "Reply with JSON only.",
+      userPrompt: "Reply: ok",
+      maxTokens: 8,
+      temperature: 0,
+      timeoutMs: 15_000,
     });
-
-    if (response.status === 401) {
+    return {
+      ok: true,
+      detail: "Anthropic API reachable via ProviderAdapter",
+      durationMs: Date.now() - started,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("401") || message.toLowerCase().includes("authentication")) {
       return { ok: false, detail: "ANTHROPIC_API_KEY invalid (401)", durationMs: Date.now() - started };
     }
-    if (response.status === 529) {
+    if (message.includes("529") || message.toLowerCase().includes("overloaded")) {
       return {
         ok: true,
         detail: "API key accepted — Anthropic overloaded (529)",
         durationMs: Date.now() - started,
       };
     }
-    if (!response.ok) {
-      const body = sanitizeDatabaseErrorMessage(await response.text().catch(() => ""));
-      return {
-        ok: false,
-        detail: `Anthropic HTTP ${response.status}: ${body.slice(0, 120)}`,
-        durationMs: Date.now() - started,
-      };
-    }
-    return {
-      ok: true,
-      detail: `Anthropic API reachable (HTTP ${response.status})`,
-      durationMs: Date.now() - started,
-    };
-  } catch (err) {
     return {
       ok: false,
-      detail: sanitizeDatabaseErrorMessage(err instanceof Error ? err.message : String(err)),
+      detail: `Anthropic via ProviderAdapter failed: ${message.slice(0, 120)}`,
       durationMs: Date.now() - started,
     };
   }

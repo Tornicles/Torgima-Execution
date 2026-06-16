@@ -135,6 +135,7 @@ export type BhudhiTriggerType =
   | "SIGNAL_INTERPRETATION"
   | "RECOVERY_SUGGESTION"
   | "BLOCKER_CLASSIFICATION"
+  | "PROOF_RELEVANCE_CHECK"
   | "INACTIVITY_MESSAGE"
   | "EVIDENCE_SUMMARY"
   | "FALSE_PROGRESS_REVIEW"
@@ -150,13 +151,19 @@ export type BhudhiTriggerType =
   | "VALIDATION_ANALYZE_DEMAND"
   | "VALIDATION_BUILD_PATHS"
   | "ERECTOR_ACADEMY_CONTENT"
-  | "ERECTOR_SIMULATION_EVENT";
+  | "ERECTOR_SIMULATION_EVENT"
+  | "ERECTOR_FREE_VALIDATION"
+  | "ERECTOR_PAID_VALIDATION"
+  | "ERECTOR_STATE_EXPLANATION"
+  | "ERECTOR_VERDICT_EXPLANATION"
+  | "ERECTOR_FREE_VERDICT_EXPLAIN";
 
 export type BhudhiOutputType =
   | "structured_goal"
   | "reality_intelligence"
   | "task_copy"
   | "blocker_classification"
+  | "proof_relevance"
   | "clarification_request"
   | "recovery_copy"
   | "state_explanation"
@@ -193,7 +200,10 @@ export type BhudhiOutputType =
   | "purpose_refinement"
   | "validation_competitor_deep"
   | "validation_explanations"
-  | "blueprint_tier_preview";
+  | "blueprint_tier_preview"
+  | "erector_free_report"
+  | "erector_paid_report"
+  | "erector_verdict_explanation";
 
 export interface BhudhiContextPacket {
   userId:                 string;

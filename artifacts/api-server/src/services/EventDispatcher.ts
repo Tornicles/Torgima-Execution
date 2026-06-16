@@ -477,6 +477,7 @@ export async function dispatchPendingEvents(
 export async function getEventSystemHealth(): Promise<{
   pending_events: number;
   unresolved_dead_letters: number;
+  worker_count: number;
 }> {
   const pendingResult = await pool.query<{ count: string }>(
     `SELECT COUNT(*) as count FROM events WHERE status = '${EventStatus.PENDING}'`,
@@ -484,9 +485,11 @@ export async function getEventSystemHealth(): Promise<{
   const dlResult = await pool.query<{ count: string }>(
     "SELECT COUNT(*) as count FROM dead_letter_events WHERE resolved = false",
   );
+  const { listDoc16Workers } = await import("../workers/WorkerRegistry.js");
   return {
     pending_events: parseInt(pendingResult.rows[0]?.count ?? "0", 10),
     unresolved_dead_letters: parseInt(dlResult.rows[0]?.count ?? "0", 10),
+    worker_count: listDoc16Workers().length,
   };
 }
 

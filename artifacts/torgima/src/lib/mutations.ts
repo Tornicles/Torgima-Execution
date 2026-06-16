@@ -6,8 +6,9 @@ import type { QueryClient } from "@tanstack/react-query";
 import { apiRequest, generateIdempotencyKey, redirectToLogin } from "@/api/client";
 import type { ApiResponse } from "@/api/types";
 import { getDashboardStateVersion, useDashboardStore } from "@/store/dashboardStore";
-import { invalidateDashboardProjection } from "@/lib/query-keys";
+import { invalidateDashboardProjection, invalidateAfterFeedback } from "@/lib/query-keys";
 import { isStaleStateConflict } from "@/lib/stale-state-retry";
+import { handleStaleStateConflict } from "@/lib/state-version";
 
 export type MutationResult<T> =
   | { ok: true; data: T }
@@ -45,8 +46,7 @@ export async function runDashboardMutation<T>(
   }
 
   if (res.error?.code === "STALE_STATE") {
-    useDashboardStore.getState().invalidate();
-    await invalidateDashboardProjection(queryClient);
+    await handleStaleStateConflict(queryClient);
     return {
       ok: false,
       code: "STALE_STATE",
@@ -57,7 +57,7 @@ export async function runDashboardMutation<T>(
   if (res.ok) {
     if (!options?.skipInvalidate) {
       useDashboardStore.getState().invalidate();
-      await invalidateDashboardProjection(queryClient);
+      await invalidateAfterFeedback(queryClient);
     }
     return toMutationResult(res);
   }
@@ -76,8 +76,7 @@ export async function onMutationError(
   err: unknown,
 ): Promise<"stale" | "auth" | "other"> {
   if (isStaleStateConflict(err)) {
-    useDashboardStore.getState().invalidate();
-    await invalidateDashboardProjection(queryClient);
+    await handleStaleStateConflict(queryClient);
     return "stale";
   }
   const code =

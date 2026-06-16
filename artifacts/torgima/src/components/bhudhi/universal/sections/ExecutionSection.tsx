@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchKernelContext, fetchKernelEvents, runBhudhiKernelCycle } from "@/lib/bhudhi-kernel-api";
-import { fetchBhudhiNextTask } from "@/lib/bhudhi-api";
+import { fetchKernelContext, fetchKernelEvents } from "@/lib/bhudhi-kernel-api";
+import {
+  fetchIntelligenceNextTask,
+  intelligencePath,
+  runIntelligenceKernelCycle,
+} from "@/lib/intelligence-bridge";
 import {
   fetchExecutionHistory,
   fetchExecutionStats,
@@ -8,7 +12,6 @@ import {
   type ExecutionType,
 } from "@/lib/bhudhi-runtime-api";
 import { Link } from "wouter";
-import { bhudhiPath } from "@/hooks/useBhudhiBlueprint";
 
 export function ExecutionSection({ blueprintId }: { blueprintId: string }) {
   const [context, setContext] = useState<Record<string, unknown> | null>(null);
@@ -39,12 +42,12 @@ export function ExecutionSection({ blueprintId }: { blueprintId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const cycle = await runBhudhiKernelCycle(blueprintId);
+      const cycle = await runIntelligenceKernelCycle(blueprintId);
       const ctx = await fetchKernelContext(blueprintId);
       setContext(ctx.context);
       const ev = await fetchKernelEvents(blueprintId, cycle.chainId);
       setEvents(ev.events);
-      const nextOrderRec = await fetchBhudhiNextTask(blueprintId);
+      const nextOrderRec = await fetchIntelligenceNextTask(blueprintId);
       setNextTask(nextOrderRec as Record<string, unknown> | null);
       await loadRuntime();
     } catch (e) {
@@ -216,7 +219,7 @@ export function ExecutionSection({ blueprintId }: { blueprintId: string }) {
       )}
 
       <p className="text-sm text-gray-500">
-        <Link href={bhudhiPath("protocol", blueprintId)} className="underline">
+        <Link href={intelligencePath("protocol", blueprintId)} className="underline">
           Protocol
         </Link>{" "}
         and kernel cycle steps are recorded as BHUDHI:// messages.

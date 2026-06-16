@@ -1,0 +1,150 @@
+TORGIMA
+ENGINE PROMPT 8 — DOC 17
+State Integrity and System Health
+Integrity Checks · Health Monitor · Repair Triggers · Degraded Mode · System Health Log
+
+
+PREREQUISITE: Engines 1-7 must pass. State integrity monitoring runs after the event system is fully operational.
+
+OBJECTIVE
+Build the State Integrity and System Health system. It detects corrupted or inconsistent system state, monitors critical system metrics, triggers repair when integrity violations are found, manages degraded mode when subsystems fail, and maintains SystemHealthLog for admin visibility. The system should fix problems before the customer notices them.
+
+FILES TO CREATE
+src/engines/execution-loop/StateIntegrityEngine.ts — CREATE
+src/engines/execution-loop/SystemHealthMonitor.ts — CREATE
+src/engines/execution-loop/RepairEngine.ts — CREATE
+src/workers/health-worker.ts — CREATE or EXTEND
+
+TASK 1 — STATE INTEGRITY CHECKS
+// StateIntegrityEngine.ts
+// Run these checks on a schedule AND after every major state change
+ 
+// CHECK 1: ORPHAN_TASK
+// Orders with status=&apos;active&apos; but no corresponding active blueprint
+// Fix: emit task_generation_requested with recovery mode
+ 
+// CHECK 2: MISSING_CURRENT_SIGNAL
+// Blueprint is active but no signal_snapshot has is_current=true
+// Fix: emit signal_recalculation_requested
+ 
+// CHECK 3: MISSING_CURRENT_CONDITION
+// Blueprint is active but no condition has is_current=true
+// Fix: emit condition_evaluation_requested
+ 
+// CHECK 4: MISSING_CURRENT_ENFORCEMENT
+// Blueprint is active but no enforcement_package has is_current=true
+// Fix: emit enforcement_package_requested
+ 
+// CHECK 5: TASK_WITHOUT_BLUEPRINT_LINK
+// Orders exist with no blueprint_id or invalid blueprint_id
+// Fix: attempt to link OR cancel the orphaned order
+ 
+// CHECK 6: FEEDBACK_WITHOUT_SIGNAL_EVENT
+// Feedback with validation_status=&apos;accepted&apos; but no downstream signal event
+// Fix: emit signal_recalculation_requested for that feedback
+ 
+// CHECK 7: DOUBLE_ACTIVE_ORDER
+// More than 1 order with status=&apos;active&apos; for same user/blueprint
+// Fix: pause all but the most recently created; emit task_generation_requested
+ 
+// CHECK 8: STALE_STATE_VERSION
+// Blueprint state_version has not changed in 24h but blueprint is active
+// AND user has been active (has feedback in last 24h)
+// Fix: rebuild state from canonical tables
+
+TASK 2 — SYSTEM HEALTH MONITOR
+// SystemHealthMonitor.ts
+// Runs every 5 minutes via scheduled worker
+ 
+// METRICS TO MONITOR:
+ 
+// EVENT BACKLOG:
+// Count events WHERE status=&apos;pending&apos; AND process_after &lt; NOW()
+// If &gt; 100 pending: WARN — emit system_health_degraded
+// If &gt; 500 pending: ERROR — emit system_health_degraded with severity=critical
+ 
+// DEAD LETTER RATE:
+// Count dead_letter_events WHERE created_at &gt; last hour
+// If &gt; 10/hour: WARN
+// If &gt; 50/hour: ERROR
+ 
+// BHUDHI FAILURE RATE:
+// Count bhudhi_logs WHERE status=&apos;failed&apos; AND created_at &gt; last hour
+// If &gt; 20% failure rate: WARN — switch to deterministic fallback mode
+// If &gt; 50% failure rate: ERROR — disable non-critical Bhudhi calls
+ 
+// FEEDBACK PROCESSING LATENCY:
+// Avg time from feedback_submitted event to order_available event
+// If &gt; 10 seconds: WARN
+// If &gt; 30 seconds: ERROR
+ 
+// DATABASE INTEGRITY:
+// Run StateIntegrityEngine checks
+// Log violations to system_health_logs
+
+TASK 3 — DEGRADED MODE
+// When system_health_degraded is emitted:
+// 1. Write SystemHealthLog record with details
+// 2. Set feature_flags.degraded_mode = true
+// 3. DEGRADED MODE BEHAVIORS:
+//    - All Bhudhi calls use fallbacks (no API calls)
+//    - Task generation uses template tasks only
+//    - Dashboard shows &apos;System is updating&apos; message
+//    - Feedback still accepted (never block the human)
+//    - Signal calculation still runs (mathematical, not AI)
+//    - New user signups continue (no data lost)
+ 
+// DEGRADED MODE RECOVERY:
+// When subsystem recovers: set feature_flags.degraded_mode = false
+// Replay any events that accumulated during degraded mode
+// Refresh all dashboard projections
+
+TASK 4 — REPAIR ENGINE
+// RepairEngine.ts
+// Repairs specific integrity violations found by StateIntegrityEngine
+ 
+export async function repairMissingSignal(blueprintId: string): Promise&lt;void&gt; {
+  // Load most recent feedback from last 7 days
+  // If exists: trigger signal recalculation
+  // If no feedback: assign nothingness condition directly
+}
+ 
+export async function repairDoubleActiveOrder(userId: string, blueprintId: string): Promise&lt;void&gt; {
+  // Load all active orders for user/blueprint
+  // Keep the most recent one as active
+  // Set all others to status=&apos;paused&apos;
+  // Write BlueprintMutation record for repair
+  // Emit system_health_log entry for audit
+}
+ 
+// All repair functions:
+// - Write to SystemHealthLog before and after repair
+// - Write to BlueprintMutation when structural repair occurs
+// - Never silently delete data — always log what happened
+
+VERIFICATION
+pnpm typecheck &amp;&amp; pnpm build
+pnpm test -- --grep &apos;state-integrity&apos;
+ 
+-- TEST 1: Double active order detected and repaired
+-- Create 2 active orders for same user/blueprint
+-- Run StateIntegrityEngine
+-- Expected: DOUBLE_ACTIVE_ORDER detected, one paused, SystemHealthLog written
+ 
+-- TEST 2: Missing signal triggers recalculation
+-- Active blueprint with no current signal_snapshot
+-- Expected: signal_recalculation_requested event emitted
+ 
+-- TEST 3: Degraded mode activates on high failure rate
+-- Emit system_health_degraded with severity=critical
+-- Expected: feature_flags.degraded_mode = true
+-- Expected: next Bhudhi call returns fallback without API call
+
+ACCEPTANCE CRITERIA
+All 8 integrity checks implemented and detected correctly
+System health monitor runs on schedule and emits events
+Degraded mode activates on system_health_degraded event
+Bhudhi calls use fallbacks in degraded mode
+Repair functions fix violations without data loss
+All repairs written to SystemHealthLog and BlueprintMutation
+COMMIT: feat(health): build state integrity engine, system health monitor, degraded mode, and repair engine

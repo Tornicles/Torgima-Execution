@@ -1,0 +1,147 @@
+﻿TORGIMA
+ENGINE PROMPT 6 — DOC 15
+State Management and Versioning
+State Version Fields · Mutation Wrappers · Stale Rejection · Blueprint Versioning · Frontend Sync
+
+
+PREREQUISITE: Engines 1-5 must pass. State versioning wraps all mutations — it must be added after engines are working correctly.
+
+OBJECTIVE
+Build the state management and versioning system as specified in DOC 15. Add state_version tracking to blueprints. Wrap all critical mutations in version-checked transactions. Implement stale rejection for feedback, order actions, and AI output. Build the BlueprintVersion and BlueprintMutation writers. Add stateVersion to the dashboard projection response.
+
+FILES TO CREATE OR MODIFY
+src/lib/state/StateMutationService.ts — CREATE
+src/lib/state/StateVersionValidator.ts — CREATE
+src/lib/state/BlueprintVersionWriter.ts — CREATE
+src/engines/ (all mutation points) — ADD state version checks
+src/routes/state.ts — CREATE or MODIFY (add stateVersion to responses)
+
+TASK 1 — STATE VERSION ON BLUEPRINTS
+// Add state_version field to blueprints table if not already present:
+ALTER TABLE blueprints ADD COLUMN IF NOT EXISTS state_version INTEGER NOT NULL DEFAULT 1;
+ 
+// state_version increments when ANY of these change:
+// - feedback accepted (order status changes)
+// - signal snapshot created (new current signal)
+// - condition record created (new current condition)
+// - enforcement package created (new current package)
+// - order published (new active task)
+// - blueprint structure updated (plan/phase/project/action change)
+
+TASK 2 — STATEMUTATION SERVICE
+// StateMutationService.ts
+// All critical state mutations go through this service
+ 
+export async function applyMutation&lt;T&gt;(
+  blueprintId: string,
+  expectedStateVersion: number,
+  mutationType: string,
+  mutationFn: (tx: PrismaTransaction) =&gt; Promise&lt;T&gt;,
+): Promise&lt;StateMutationResult&lt;T&gt;&gt; {
+ 
+  return await prisma.$transaction(async (tx) =&gt; {
+    // 1. Load current state version with lock
+    const blueprint = await tx.blueprint.findUnique({
+      where: { id: blueprintId },
+      select: { state_version: true, id: true },
+    });
+ 
+    // 2. Check for stale state
+    if (blueprint.state_version !== expectedStateVersion) {
+      return {
+        ok: false,
+        result: &apos;REJECTED_STALE&apos;,
+        previousStateVersion: blueprint.state_version,
+        error: &apos;STATE_VERSION_MISMATCH&apos;,
+      };
+    }
+ 
+    // 3. Apply the mutation
+    const data = await mutationFn(tx);
+ 
+    // 4. Increment state version
+    const newVersion = expectedStateVersion + 1;
+    await tx.blueprint.update({
+      where: { id: blueprintId },
+      data: { state_version: newVersion },
+    });
+ 
+    // 5. Write BlueprintMutation record
+    await tx.blueprintMutation.create({
+      data: {
+        blueprint_id: blueprintId,
+        mutation_type: mutationType,
+        previous_version: expectedStateVersion,
+        new_version: newVersion,
+        applied_at: new Date(),
+      }
+    });
+ 
+    return { ok: true, result: &apos;APPLIED&apos;,
+      previousStateVersion: expectedStateVersion,
+      newStateVersion: newVersion, data };
+  });
+}
+
+TASK 3 — APPLY STATE VERSIONING TO CRITICAL ROUTES
+// FEEDBACK ROUTE: POST /api/orders/:orderId/feedback
+// Add expectedStateVersion to request body
+// Wrap FeedbackProcessingEngine call in StateMutationService.applyMutation()
+// Return 409 CONFLICT if REJECTED_STALE
+// Response body: { error: &apos;STATE_CHANGED&apos;, currentStateVersion, message: &apos;Refreshing...&apos; }
+ 
+// ORDER ROUTES: POST /api/orders/:id/start, /api/orders/:id/block
+// Same pattern — check expectedStateVersion before changing order.status
+ 
+// BHUDHI OUTPUT USAGE:
+// When any engine uses Bhudhi output to mutate state:
+// Verify output.stateVersion === current blueprint.state_version
+// If stale: discard Bhudhi output, do not apply mutation
+// Bhudhi will regenerate on the next trigger with fresh context
+
+TASK 4 — DASHBOARD PROJECTION WITH VERSIONS
+// Add to GET /api/state/dashboard response:
+return {
+  ...existingDashboardData,
+  stateVersion: blueprint.state_version,
+  projectionVersion: Date.now(),  // unique per render
+  pendingSync: false,
+};
+ 
+// Frontend uses stateVersion to detect stale state:
+// If mutation returns REJECTED_STALE:
+//   Invalidate dashboard query
+//   Refetch with current stateVersion
+//   Show &apos;Refreshing...&apos; while loading
+//   Never show fake success to user
+
+VERIFICATION
+pnpm typecheck &amp;&amp; pnpm build
+pnpm test -- --grep &apos;state-management&apos;
+ 
+-- TEST 1: Valid mutation accepted
+-- Input: expectedStateVersion = current version
+-- Expected: mutation applied, state_version incremented
+ 
+-- TEST 2: Stale mutation rejected
+-- Input: expectedStateVersion = (current - 1)
+-- Expected: REJECTED_STALE, state_version not changed
+ 
+-- TEST 3: Concurrent mutations — only one succeeds
+-- Two simultaneous feedback submissions for same order
+-- Expected: one succeeds, one returns REJECTED_STALE
+ 
+-- TEST 4: Dashboard includes stateVersion
+-- GET /api/state/dashboard
+-- Expected: response.stateVersion is integer &gt;= 1
+
+ACCEPTANCE CRITERIA
+state_version field exists on blueprints table
+StateMutationService wraps all critical mutations
+REJECTED_STALE returned when expectedStateVersion does not match
+state_version increments after every accepted mutation
+BlueprintMutation record written for every structural change
+Dashboard projection includes stateVersion and projectionVersion
+Bhudhi output rejected if stateVersion is stale
+COMMIT: feat(state): build state management and versioning — mutation wrappers, stale rejection, blueprint versioning, and projection versions
+

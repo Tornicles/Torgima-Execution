@@ -9,6 +9,7 @@ import {
   runDoc36FullLoop,
 } from "../../helpers/doc36-loop-runner.js";
 import { DOC36_LOOP_BUDGET_MS } from "../../helpers/doc36-constants.js";
+import { ensureDoc36E2eReady } from "./global-setup.js";
 
 const run = integrationEnabled();
 
@@ -16,6 +17,7 @@ describe.skipIf(!run)("DOC 36 — Full execution loop", () => {
   let userId: string;
 
   beforeAll(async () => {
+    await ensureDoc36E2eReady();
     const reset = await resetDoc36TestUser();
     userId = reset.userId;
     expect(await doc36HasActiveBlueprint(userId)).toBe(false);

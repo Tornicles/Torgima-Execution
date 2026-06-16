@@ -18,6 +18,10 @@ export type TaskExecutionView = {
   disabledReason?: string;
   timeEstimateMinutes?: number | null;
   proofRequired: boolean;
+  status?: string;
+  whyItMatters?: string | null;
+  expectedOutput?: string | null;
+  definitionOfDone?: string | null;
 };
 
 function normalizeProofType(raw: string | null | undefined, proofRequired: boolean): TaskExecutionView["proofType"] {
@@ -60,32 +64,8 @@ export function buildTaskExecutionView(params: {
   }
 
   const allowed: FeedbackCompletionType[] = ["COMPLETED", "PARTIAL", "FAILED", "SKIPPED"];
-  if (blocked) {
-    return {
-      orderId: params.order.id,
-      stateVersion: params.stateVersion,
-      title: params.order.title,
-      instruction: params.order.instruction,
-      successCriteria,
-      taskType: params.order.task_type,
-      difficulty: params.order.difficulty,
-      proofType,
-      proofInstruction:
-        params.order.proof_description?.trim() ||
-        params.commandContextProof?.trim() ||
-        "Evidence may be required when you can resume.",
-      allowedFeedbackTypes: ["BLOCKED", "FAILED"],
-      priorityReason: params.order.why_it_matters,
-      blocked: true,
-      disabledReason:
-        params.order.blocker_description?.trim() ||
-        "This step is blocked until a dependency is resolved.",
-      timeEstimateMinutes: params.order.time_estimate_minutes,
-      proofRequired,
-    };
-  }
 
-  return {
+  const base = {
     orderId: params.order.id,
     stateVersion: params.stateVersion,
     title: params.order.title,
@@ -98,10 +78,34 @@ export function buildTaskExecutionView(params: {
       params.order.proof_description?.trim() ||
       params.commandContextProof?.trim() ||
       (proofRequired ? "Submit evidence of what you completed." : "No proof required for this step."),
+    priorityReason: params.order.why_it_matters,
+    timeEstimateMinutes: params.order.time_estimate_minutes,
+    proofRequired,
+    status: params.order.status,
+    whyItMatters: params.order.why_it_matters,
+    expectedOutput: params.order.expected_output,
+    definitionOfDone: params.order.definition_of_done,
+  };
+
+  if (blocked) {
+    return {
+      ...base,
+      proofInstruction:
+        params.order.proof_description?.trim() ||
+        params.commandContextProof?.trim() ||
+        "Evidence may be required when you can resume.",
+      allowedFeedbackTypes: ["BLOCKED", "FAILED"] as FeedbackCompletionType[],
+      blocked: true,
+      disabledReason:
+        params.order.blocker_description?.trim() ||
+        "This step is blocked until a dependency is resolved.",
+    };
+  }
+
+  return {
+    ...base,
     allowedFeedbackTypes: allowed,
     priorityReason: params.order.why_it_matters,
     blocked: false,
-    timeEstimateMinutes: params.order.time_estimate_minutes,
-    proofRequired,
   };
 }

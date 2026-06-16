@@ -29,6 +29,10 @@ import {
   applyEnforcementTierOverrides,
   loadBlueprintTierContext,
 } from "../blueprint/tierEngineAwareness.js";
+import {
+  computeTierEnforcementLimits,
+  normalizeBlueprintTierName,
+} from "../../lib/tier-rules.js";
 
 // Task limit resolution order:
 // 1. Base condition matrix (CONDITION_BASE_RULES)
@@ -433,6 +437,15 @@ export async function generateEnforcementPackage(params: {
     taskMin: Math.min(rules.taskMin, rules.taskMax),
   };
 
+  const blueprintTier = normalizeBlueprintTierName(tier);
+  const tierEnforcement = computeTierEnforcementLimits(blueprintTier, params.condition);
+  rules = {
+    ...rules,
+    taskMin: tierEnforcement.taskMin,
+    taskMax: tierEnforcement.taskMax,
+    difficultyCap: tierEnforcement.difficultyCap,
+  };
+
   const frameworkCap = tierCtx?.tierConfig.framework_activations_max;
   const featurePermissions = {
     ...buildFeaturePermissions(params.condition, tier, rules.allowedActions),
@@ -500,6 +513,7 @@ export async function generateEnforcementPackage(params: {
           condition_mode: tierCtx?.conditionMode ?? "full",
           framework_activations_max: frameworkCap ?? null,
           forecast_condition: forecastCondition ?? null,
+          ...tierEnforcement.tierOverrideFlags,
         },
         cognitive_load_score: enforcementCognitiveLoad,
         is_current: true,

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { useBlueprintStore } from "@/store/blueprintStore";
-import { bhudhiPath } from "@/hooks/useBhudhiBlueprint";
+import { intelligencePath } from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 
 export function SettingsSection({ blueprintId }: { blueprintId: string }) {
   const setActiveBlueprint = useBlueprintStore((s) => s.setActiveBlueprintId);
@@ -9,7 +10,7 @@ export function SettingsSection({ blueprintId }: { blueprintId: string }) {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-light mb-2">Settings</h1>
-        <p className="text-gray-600">Blueprint and Bhudhi configuration</p>
+        <p className="text-gray-600">{INTELLIGENCE_COPY.configHint}</p>
       </div>
 
       <div className="border border-gray-200 rounded-lg p-6 space-y-4 text-sm">
@@ -67,8 +68,8 @@ export function SettingsSection({ blueprintId }: { blueprintId: string }) {
             </Link>
           </li>
           <li>
-            <Link href={bhudhiPath("", blueprintId)} className="underline">
-              Bhudhi overview
+            <Link href={intelligencePath("", blueprintId)} className="underline">
+              {INTELLIGENCE_COPY.overviewLink}
             </Link>
           </li>
         </ul>

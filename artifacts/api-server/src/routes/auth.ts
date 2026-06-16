@@ -6,8 +6,8 @@ import {
   revokeSession,
   getUser,
 } from "../services/AuthService.js";
-import { requireAuth } from "../lib/auth.js";
-import { SESSION_COOKIE_NAME } from "../lib/auth.js";
+import { buildSessionResponse } from "../lib/session-contract.js";
+import { requireAuth, SESSION_COOKIE_NAME } from "../lib/auth.js";
 import { success, failure, handleError } from "../lib/utils.js";
 import { logger } from "../lib/logger.js";
 import { resolveAppUrl } from "../lib/app-url.js";
@@ -278,7 +278,7 @@ router.get("/session", async (req, res) => {
       );
       user = {
         id: auth.userId,
-        email: "",
+        email: auth.email ?? "",
         displayName: null,
         mode: auth.userMode,
         tier: auth.userTier,
@@ -288,10 +288,15 @@ router.get("/session", async (req, res) => {
         activeBlueprintId: null,
         timezone: "UTC",
         notificationPreferences: {},
+        dashboardMode: auth.dashboardMode ?? "limited",
+        erectorTier: auth.erectorTier ?? null,
       };
     }
 
+    const session = buildSessionResponse(auth, user);
+
     success(res, {
+      ...session,
       authenticated: true,
       userId: auth.userId,
       sessionId: auth.sessionId,

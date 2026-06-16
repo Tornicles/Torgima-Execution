@@ -7,7 +7,7 @@ import { API_BASE_URL } from "@/lib/api-base";
 import { getAuthToken } from "@/lib/auth-token";
 import type { ApiRequestOptions, ApiResponse } from "./types";
 
-const AUTH_PUBLIC_PATHS = ["/login", "/verify", "/auth/callback", "/signup", "/landing", "/"];
+const AUTH_PUBLIC_PATHS = ["/login", "/verify", "/auth/callback", "/signup", "/landing", "/validate", "/project-intelligence", "/"];
 
 function resolveUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -48,6 +48,10 @@ export async function apiRequest<T>(
     Accept: "application/json",
     ...extraHeaders,
   };
+
+  if (!headers["X-Request-Id"] && typeof crypto !== "undefined" && crypto.randomUUID) {
+    headers["X-Request-Id"] = crypto.randomUUID();
+  }
 
   // Attach Supabase JWT when present (set by useSessionGuard on auth state change)
   const token = getAuthToken();

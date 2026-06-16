@@ -1,7 +1,7 @@
 import { Link } from "wouter";
-import { useBhudhiDashboard } from "@/hooks/useBhudhiDashboard";
+import { useIntelligenceDashboard, intelligencePath } from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { formatConfidence, getSignalColor, getSignalLabel } from "@/lib/bhudhi-signals";
-import { bhudhiPath } from "@/hooks/useBhudhiBlueprint";
 import { fetchMemoryStats } from "@/lib/bhudhi-memory-api";
 import { fetchProtocolHistory } from "@/lib/bhudhi-protocol-api";
 import { useEffect, useState } from "react";
@@ -34,7 +34,7 @@ function QuickLink({
 }
 
 export function OverviewSection({ blueprintId }: { blueprintId: string }) {
-  const { status, signals, loading, error, reload } = useBhudhiDashboard(blueprintId);
+  const { status, signals, loading, error, reload } = useIntelligenceDashboard(blueprintId);
   const [memoryNodes, setMemoryNodes] = useState<number | null>(null);
   const [protocolCount, setProtocolCount] = useState<number | null>(null);
 
@@ -50,7 +50,7 @@ export function OverviewSection({ blueprintId }: { blueprintId: string }) {
 
   if (!blueprintId) {
     return (
-      <p className="text-gray-500 text-sm">Select a blueprint from your dashboard to use Bhudhi.</p>
+      <p className="text-gray-500 text-sm">{INTELLIGENCE_COPY.selectBlueprint}</p>
     );
   }
 
@@ -69,7 +69,7 @@ export function OverviewSection({ blueprintId }: { blueprintId: string }) {
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-light mb-2">Bhudhi Overview</h1>
+          <h1 className="text-4xl font-light mb-2">{INTELLIGENCE_COPY.overviewTitle}</h1>
           <p className="text-gray-600">Unified intelligence dashboard</p>
         </div>
         <button type="button" onClick={() => void reload()} className="text-sm underline text-gray-600">
@@ -125,22 +125,22 @@ export function OverviewSection({ blueprintId }: { blueprintId: string }) {
         <QuickLink
           title="Execution"
           description="Kernel context, phase, and execution state"
-          href={bhudhiPath("execution", blueprintId)}
+          href={intelligencePath("execution", blueprintId)}
         />
         <QuickLink
           title="Intelligence"
           description="Investigations and recommendations"
-          href={bhudhiPath("intelligence", blueprintId)}
+          href={intelligencePath("intelligence", blueprintId)}
         />
         <QuickLink
           title="Governance"
           description="Signals, conditions, and controls"
-          href={bhudhiPath("governance", blueprintId)}
+          href={intelligencePath("governance", blueprintId)}
         />
         <QuickLink
           title="Memory"
           description="Knowledge graph and timeline"
-          href={bhudhiPath("memory", blueprintId)}
+          href={intelligencePath("memory", blueprintId)}
         />
       </div>
     </div>

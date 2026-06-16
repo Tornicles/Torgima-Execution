@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-13T05:35:50.554Z",
-  "routeCount": 702,
+  "generatedAt": "2026-06-16T00:12:20.663Z",
+  "routeCount": 716,
   "routes": [
     {
       "method": "GET",
@@ -331,6 +331,11 @@
       "method": "GET",
       "path": "/analytics/velocity/:userId",
       "file": "analytics.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/upgrade",
+      "file": "index.ts"
     },
     {
       "method": "POST",
@@ -1713,9 +1718,19 @@
       "file": "condition.ts"
     },
     {
+      "method": "POST",
+      "path": "/consume",
+      "file": "handoff.ts"
+    },
+    {
       "method": "GET",
       "path": "/content-guidance/today",
       "file": "principles.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/create",
+      "file": "handoff.ts"
     },
     {
       "method": "GET",
@@ -2208,6 +2223,11 @@
       "file": "internal.ts"
     },
     {
+      "method": "GET",
+      "path": "/internal/bhudhi/usage/summary",
+      "file": "internal.ts"
+    },
+    {
       "method": "POST",
       "path": "/internal/blueprints/:id/complete",
       "file": "internal.ts"
@@ -2219,7 +2239,7 @@
     },
     {
       "method": "POST",
-      "path": "/internal/dead-letter/:id/resolve",
+      "path": "/internal/dependencies/map",
       "file": "internal.ts"
     },
     {
@@ -2229,7 +2249,27 @@
     },
     {
       "method": "POST",
+      "path": "/internal/execution/guarantee",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/failures/classify",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
       "path": "/internal/false-progress/:id/resolve",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/feedback/process",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/friction/evaluate",
       "file": "internal.ts"
     },
     {
@@ -2269,7 +2309,22 @@
     },
     {
       "method": "POST",
+      "path": "/internal/orchestration/start",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
       "path": "/internal/outcomes/validate",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/patterns/scan",
+      "file": "internal.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/internal/priority/evaluate",
       "file": "internal.ts"
     },
     {
@@ -2286,6 +2341,11 @@
       "method": "GET",
       "path": "/knowledge/:domain/:actionType",
       "file": "executionRoutes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/link",
+      "file": "external.ts"
     },
     {
       "method": "POST",
@@ -2979,6 +3039,11 @@
     },
     {
       "method": "POST",
+      "path": "/upload",
+      "file": "external.ts"
+    },
+    {
+      "method": "POST",
       "path": "/uploads/proof",
       "file": "doc29-routes.ts"
     },
@@ -3494,6 +3559,11 @@
     },
     {
       "method": "POST",
+      "path": "/webhooks/:source",
+      "file": "external.ts"
+    },
+    {
+      "method": "POST",
       "path": "/workers/trigger-compression",
       "file": "workers.ts"
     },
@@ -3513,5 +3583,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 680
+  "openApiPathCount": 694
 }

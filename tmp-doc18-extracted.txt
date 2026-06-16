@@ -1,0 +1,229 @@
+﻿TORGIMA
+ENGINE PROMPT 9 — DOC 18
+Identity Continuity and Transformation Engine
+Identity Stages · Transformation Evidence · Stage Advancement · Regression Detection · Identity Panel
+
+
+PREREQUISITE: Engines 1-8 must pass. Identity depends on correct feedback, signals, and patterns being operational.
+
+OBJECTIVE
+Build the Identity Continuity and Transformation Engine as specified in DOC 18. Track 8 identity stages from UNFORMED to INTEGRATED and RESTARTING. Evaluate transformation evidence after relevant events. Advance, hold, or regress identity stage based on verified execution data. Feed the identity panel on the dashboard. Never allow Bhudhi to invent transformation evidence.
+
+SURGICAL RULE
+The user_identity_states and identity_history tables exist from DOC 02. The milestones table exists. DO NOT recreate these tables. Build the engine that reads and writes to them. Identity advancement must be blocked when false_progress_flags are open.
+
+FILES TO CREATE
+src/engines/identity/IdentityEngine.ts — CREATE
+src/engines/identity/TransformationEvidenceCollector.ts — CREATE
+src/engines/identity/IdentityStageEvaluator.ts — CREATE
+src/engines/identity/IdentityPanelProjection.ts — CREATE
+
+TASK 1 — IDENTITY STAGES
+STAGE
+MEANING
+MINIMUM EVIDENCE REQUIRED
+BLOCKED BY
+UNFORMED
+No execution identity established yet
+None — starting state
+Nothing
+INITIATING
+Beginning repeated execution
+3+ accepted feedback in any 7-day window
+Nothing
+BUILDING
+Showing repeatable execution pattern
+7+ accepted feedback, consistency > 50% for 14 days
+Open CRITICAL false progress flag
+STABILIZING
+Maintaining execution under friction
+14+ days at consistency > 65%, 1+ recovery from failure
+Open false progress flags
+EXPANDING
+Handling increased difficulty or scope
+Capability upgrade proven, difficulty increased, outcome validated
+Any open false progress flag
+INTEGRATED
+Execution aligns with goal across time
+30+ days sustained, milestone validated, outcome truth confirmed
+Any open false progress flag
+REGRESSING
+Current behavior contradicts prior stage
+3+ missed windows OR CRITICAL false progress flag
+Cannot be blocked — regression can always trigger
+RESTARTING
+Re-entering after drift or collapse
+At least 1 recovery task completed with accepted feedback
+Nothing — restart should always be possible
+
+TASK 2 — IDENTITY STAGE EVALUATOR
+// IdentityStageEvaluator.ts
+// Called after: accepted feedback, signal update, pattern detection, milestone achieved
+ 
+export async function evaluateIdentityStage(
+  userId: string,
+  blueprintId: string,
+): Promise<IdentityEvaluationResult> {
+ 
+  // 1. Load current identity state
+  const currentState = await loadCurrentIdentityState(userId, blueprintId);
+ 
+  // 2. Load evidence
+  const evidence = await TransformationEvidenceCollector.collect(userId, blueprintId);
+ 
+  // 3. Check for regression conditions first (always checked regardless of current stage)
+  const regressionTriggered = (
+    evidence.missed_windows_last_7_days >= 3 ||
+    evidence.critical_false_progress_open === true
+  );
+ 
+  if (regressionTriggered && !['REGRESSING','UNFORMED'].includes(currentState.stage)) {
+    return await advanceToStage(userId, blueprintId, 'REGRESSING', currentState, evidence);
+  }
+ 
+  // 4. Check for restart conditions (after regression)
+  if (currentState.stage === 'REGRESSING' && evidence.recovery_tasks_completed >= 1) {
+    return await advanceToStage(userId, blueprintId, 'RESTARTING', currentState, evidence);
+  }
+ 
+  // 5. Check advancement conditions in order
+  const nextStage = determineNextStage(currentState.stage, evidence);
+ 
+  if (nextStage && nextStage !== currentState.stage) {
+    // 6. Check if any false progress flags block advancement
+    const openFlags = await getOpenFalseProgressFlags(userId, blueprintId);
+    const advancementBlocked = STAGES_BLOCKED_BY_FALSE_PROGRESS.includes(nextStage)
+      && openFlags.length > 0;
+ 
+    if (advancementBlocked) {
+      return { evaluated: true, advanced: false, held: true,
+        hold_reason: 'false_progress_flag_open', currentStage: currentState.stage };
+    }
+ 
+    return await advanceToStage(userId, blueprintId, nextStage, currentState, evidence);
+  }
+ 
+  return { evaluated: true, advanced: false, currentStage: currentState.stage };
+}
+ 
+const STAGES_BLOCKED_BY_FALSE_PROGRESS = ['BUILDING','STABILIZING','EXPANDING','INTEGRATED'];
+
+TASK 3 — TRANSFORMATION EVIDENCE COLLECTOR
+// TransformationEvidenceCollector.ts
+// Gathers all evidence needed for stage evaluation
+ 
+export async function collect(userId: string, blueprintId: string) {
+  return {
+    // Feedback cadence
+    accepted_feedback_count_7d: await countAcceptedFeedback(userId, 7),
+    accepted_feedback_count_14d: await countAcceptedFeedback(userId, 14),
+    accepted_feedback_count_30d: await countAcceptedFeedback(userId, 30),
+    consistency_7d: await calculateConsistency(userId, 7),
+    consistency_14d: await calculateConsistency(userId, 14),
+ 
+    // Recovery and resilience
+    recovery_tasks_completed: await countRecoveryTasksCompleted(userId, blueprintId),
+    returned_after_inactivity: await hasReturnedAfterInactivity(userId, blueprintId),
+ 
+    // Difficulty and capability
+    current_difficulty_level: await getCurrentDifficultyLevel(userId, blueprintId),
+    capability_upgrades_proven: await countCapabilityUpgrades(userId, blueprintId),
+ 
+    // Progress and outcomes
+    milestones_completed: await countMilestonesCompleted(userId, blueprintId),
+    outcomes_validated: await countValidatedOutcomes(userId, blueprintId),
+ 
+    // False progress
+    critical_false_progress_open: await hasCriticalFalseProgressFlag(userId, blueprintId),
+    any_false_progress_open: await hasAnyFalseProgressFlag(userId, blueprintId),
+ 
+    // Inactivity
+    missed_windows_last_7_days: await countMissedWindows(userId, 7),
+    days_since_last_activity: await getDaysSinceLastActivity(userId, blueprintId),
+  };
+}
+
+TASK 4 — IDENTITY PANEL PROJECTION
+// IdentityPanelProjection.ts
+// Builds the customer-facing identity panel data
+// Called by dashboard projection builder
+ 
+// CUSTOMER-FACING STAGE LABELS (never show internal stage names):
+const STAGE_CUSTOMER_LABELS = {
+  UNFORMED:    'Getting Started',
+  INITIATING:  'Building Momentum',
+  BUILDING:    'Developing Consistency',
+  STABILIZING: 'Finding Your Rhythm',
+  EXPANDING:   'Growing Your Capacity',
+  INTEGRATED:  'Operating at Your Best',
+  REGRESSING:  'Time to Refocus',
+  RESTARTING:  'Restarting Strong',
+};
+ 
+// IDENTITY PANEL DATA CONTRACT:
+interface IdentityPanelView {
+  stage_label: string;          // customer-facing label
+  stage_description: string;    // plain language description of what this means
+  consistency_score: number;    // 0-100
+  days_active_this_month: number;
+  milestones_completed: number;
+  current_streak_days: number;  // consecutive days with accepted feedback
+  next_stage_label: string;     // what comes next
+  progress_to_next: number;     // 0-100 progress toward next stage
+  transformation_message: string; // encouraging message in customer language
+}
+ 
+// IMPORTANT: Never expose internal stage names, evidence IDs,
+// or formula details in the panel projection.
+
+TASK 5 — WIRE IDENTITY TO EVENT SYSTEM
+// Add 'identity_evaluation_requested' event handling to WorkerRegistry
+// IdentityWorker consumes: ['identity_evaluation_requested',
+//   'pattern_detected', 'milestone_achieved', 'inactivity_resolved']
+// IdentityWorker produces: ['identity_stage_advanced', 'identity_stage_held',
+//   'identity_regression_detected']
+ 
+// EMIT identity_evaluation_requested after:
+// - Accepted feedback (in FeedbackWorker, after signal_recalculation_requested)
+// - Pattern detected (in PatternLearningEngine)
+// - Inactivity resolved (in InactivityDetectionEngine)
+// - Milestone achieved (in milestone completion flow)
+
+VERIFICATION
+pnpm typecheck && pnpm build
+pnpm test -- --grep 'identity'
+ 
+-- TEST 1: UNFORMED → INITIATING
+-- Input: 3 accepted feedback in 7 days
+-- Expected: identity_stage advanced to INITIATING
+-- Expected: identity_history record created
+ 
+-- TEST 2: False progress blocks advancement
+-- Input: evidence meets BUILDING threshold
+-- But: open CRITICAL false_progress_flag exists
+-- Expected: stage held, hold_reason='false_progress_flag_open'
+ 
+-- TEST 3: Regression triggered
+-- Input: 3 missed windows in last 7 days
+-- Expected: stage set to REGRESSING regardless of previous stage
+ 
+-- TEST 4: Restart after regression
+-- Input: stage=REGRESSING, recovery task completed with accepted feedback
+-- Expected: stage advanced to RESTARTING
+ 
+-- TEST 5: Identity panel uses customer labels
+-- Expected: panel.stage_label = 'Building Momentum' not 'INITIATING'
+-- Expected: panel.stage_label never contains internal stage enum values
+
+ACCEPTANCE CRITERIA
+All 8 identity stages implemented with correct evidence requirements
+Regression always triggers when 3+ missed windows or CRITICAL flag
+False progress flags block advancement for BUILDING through INTEGRATED
+Restart always possible after REGRESSING with 1 recovery task
+Identity panel uses customer-facing labels — never internal enum names
+identity_history record written on every stage change
+Identity evaluation triggered by feedback, patterns, and milestones
+Bhudhi cannot create or invent identity evidence
+pnpm typecheck — zero errors
+COMMIT: feat(identity): build identity continuity engine with 8 stages, transformation evidence, regression detection, and customer-facing panel
+

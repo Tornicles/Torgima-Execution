@@ -32,6 +32,10 @@ import { behaviorPatternEngine } from "../behavior/BehaviorPatternEngine.js";
 import { runBhudhiFeedbackCycle } from "../../bhudhi/integration/TorgimaIntegration.js";
 import type { TaskFeedbackBhudhiResult } from "../../bhudhi/integration/TorgimaIntegration.js";
 import { calculateConfidenceWeight } from "./confidenceWeight.js";
+import {
+  applyVersionedMutation,
+  throwIfStaleMutation,
+} from "../../lib/state/StateMutationService.js";
 
 export interface FeedbackInput {
   orderId: string;
@@ -253,73 +257,91 @@ export async function processFeedback(input: FeedbackInput): Promise<FeedbackRes
 
   let feedbackIdOut = "";
 
-  const eventId = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(feedback)
-      .values({
+  const mutationResponse = await applyVersionedMutation(
+    {
+      userId: input.userId,
+      blueprintId: input.blueprintId,
+      expectedStateVersion: input.expectedStateVersion,
+      mutationType: "feedback_submitted",
+      entityType: "feedback",
+      entityId: input.orderId,
+      idempotencyKey: `feedback:${input.orderId}:${input.idempotencyKey}`,
+      payload: {
         order_id: input.orderId,
-        blueprint_id: input.blueprintId,
-        user_id: input.userId,
         completion_status: input.completionStatus,
-        score: input.score,
-        confidence_weight: weight,
-        weighted_score: weightedScore,
-        reflection: ref,
-        friction_score: input.frictionScore ?? null,
-        confidence_score: input.confidenceScore ?? null,
-        duration_minutes: input.durationMinutes ?? null,
-        proof_json: input.proofJson ?? {},
-        blocker_json: input.blockerJson ?? {},
-        difficulty_felt: input.difficultyFelt ?? null,
-        gaming_flag: flagged,
-        gaming_reason: gamingReason ?? null,
-        late_penalty_applied: latePenalty,
-        validity: flagged ? "flagged" : "valid",
-        interrogation_json: requiresInterrogation
-          ? {
-              requires_interrogation: true,
-              question: interrogationQuestion ?? null,
-            }
-          : null,
-      })
-      .returning({ id: feedback.id });
-
-    if (!row) throw new Error("Failed to create feedback");
-    feedbackIdOut = row.id;
-
-    await tx
-      .update(orders)
-      .set({
-        status: newOrderStatus as typeof orders.$inferInsert["status"],
-        finished_at: new Date(),
-        completed_at: newOrderStatus === "completed" ? new Date() : null,
-        output_summary: ref.slice(0, 500),
-      })
-      .where(eq(orders.id, input.orderId));
-
-    return writeEventInTx(
-      {
-        eventType: EVENT_TYPES.FEEDBACK_SUBMITTED,
-        entityType: "feedback",
-        entityId: row.id,
-        userId: input.userId,
-        blueprintId: input.blueprintId,
-        idempotencyKey: `feedback_submitted:${row.id}`,
-        payload: {
-          feedback_id: row.id,
-          order_id: input.orderId,
-          weighted_score: weightedScore,
-          confidence,
-          requires_interrogation: requiresInterrogation,
-          completion_status: input.completionStatus,
-          idempotency_key_input: input.idempotencyKey,
-          proof_score_normalized: proofScore.normalized,
-          proof_score_formula: proofScore.formula,
-        },
+        idempotency_key: input.idempotencyKey,
       },
-      tx,
-    );
-  });
+    },
+    async (tx) => {
+      const [row] = await tx
+        .insert(feedback)
+        .values({
+          order_id: input.orderId,
+          blueprint_id: input.blueprintId,
+          user_id: input.userId,
+          completion_status: input.completionStatus,
+          score: input.score,
+          confidence_weight: weight,
+          weighted_score: weightedScore,
+          reflection: ref,
+          friction_score: input.frictionScore ?? null,
+          confidence_score: input.confidenceScore ?? null,
+          duration_minutes: input.durationMinutes ?? null,
+          proof_json: input.proofJson ?? {},
+          blocker_json: input.blockerJson ?? {},
+          difficulty_felt: input.difficultyFelt ?? null,
+          gaming_flag: flagged,
+          gaming_reason: gamingReason ?? null,
+          late_penalty_applied: latePenalty,
+          validity: flagged ? "flagged" : "valid",
+          interrogation_json: requiresInterrogation
+            ? {
+                requires_interrogation: true,
+                question: interrogationQuestion ?? null,
+              }
+            : null,
+        })
+        .returning({ id: feedback.id });
+
+      if (!row) throw new Error("Failed to create feedback");
+      feedbackIdOut = row.id;
+
+      await tx
+        .update(orders)
+        .set({
+          status: newOrderStatus as typeof orders.$inferInsert["status"],
+          finished_at: new Date(),
+          completed_at: newOrderStatus === "completed" ? new Date() : null,
+          output_summary: ref.slice(0, 500),
+        })
+        .where(eq(orders.id, input.orderId));
+
+      return writeEventInTx(
+        {
+          eventType: EVENT_TYPES.FEEDBACK_SUBMITTED,
+          entityType: "feedback",
+          entityId: row.id,
+          userId: input.userId,
+          blueprintId: input.blueprintId,
+          idempotencyKey: `feedback_submitted:${row.id}`,
+          payload: {
+            feedback_id: row.id,
+            order_id: input.orderId,
+            weighted_score: weightedScore,
+            confidence,
+            requires_interrogation: requiresInterrogation,
+            completion_status: input.completionStatus,
+            idempotency_key_input: input.idempotencyKey,
+            proof_score_normalized: proofScore.normalized,
+            proof_score_formula: proofScore.formula,
+          },
+        },
+        tx,
+      );
+    },
+  );
+
+  const eventId = throwIfStaleMutation(mutationResponse);
 
   if (input.completionStatus === "completed" && !requiresInterrogation) {
     const { BlueprintPositionEngine } = await import(

@@ -4,11 +4,15 @@ import { OrderService } from "../services/OrderService.js";
 import { processFeedback } from "../engines/feedback/FeedbackProcessingEngine.js";
 import { assertFeedbackPayloadWithinLimit } from "../lib/feedback-payload-limit.js";
 import { requireAuth } from "../lib/auth.js";
+import { authMiddleware, requireFullMode } from "../middleware/auth.js";
+import type { AuthContext } from "../types/auth.js";
 import { success, failure } from "../lib/utils.js";
 import {
   handleRouteError,
   requireExplicitIdempotencyKey,
 } from "../lib/route-helpers.js";
+import { isTorgimaError } from "../lib/errors.js";
+import { respondStaleState, resolveStaleCurrentVersion } from "../lib/state/StateVersionValidator.js";
 import { dispatchPendingEvents } from "../services/EventDispatcher.js";
 import { invalidateDashboardCache } from "../services/DashboardService.js";
 import { buildTaskExecutionView } from "../lib/taskExecutionView.js";
@@ -53,6 +57,10 @@ function buildOrderCommandContext(params: {
   };
 }
 
+const startBodySchema = z.object({
+  expectedStateVersion: z.number().optional(),
+});
+
 const feedbackBodySchema = z.object({
   completionStatus: z.enum(["completed", "partial", "failed", "skipped"]),
   score: z.number().int().min(0).max(10),
@@ -90,9 +98,9 @@ const blockBodySchema = z.object({
   expectedStateVersion: z.number().optional(),
 });
 
-router.get("/orders/current", async (req, res) => {
+router.get("/orders/current", authMiddleware, requireFullMode, async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = (req as typeof req & { auth: AuthContext }).auth;
     const task = await OrderService.getPrimaryDashboardTask(auth.userId);
     if (!task) {
       success(res, { order: null });
@@ -224,18 +232,38 @@ router.get("/orders/:id", async (req, res) => {
 });
 
 router.post("/orders/:id/start", async (req, res) => {
+  let userId: string | undefined;
   try {
     const auth = await requireAuth(req, "USER_SESSION");
-    void requireExplicitIdempotencyKey(req, req.body as Record<string, unknown>);
+    userId = auth.userId;
     const id = req.params.id!;
-    await OrderService.startPendingOrder(id, auth.userId);
+    const parsed = startBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      failure(res, "VALIDATION_ERROR", "Invalid input", 422);
+      return;
+    }
+    const idempotencyKey = requireExplicitIdempotencyKey(req, req.body as Record<string, unknown>);
+    await OrderService.startPendingOrder(id, auth.userId, {
+      expectedStateVersion: parsed.data.expectedStateVersion,
+      idempotencyKey,
+    });
+    invalidateDashboardCache(auth.userId);
     success(res, { started: true, orderId: id });
   } catch (e) {
+    if (isTorgimaError(e) && e.code === "STALE_STATE") {
+      const blueprintId = userId
+        ? await OrderService.getBlueprintIdForOrder(req.params.id!, userId)
+        : null;
+      const currentStateVersion = await resolveStaleCurrentVersion(blueprintId);
+      respondStaleState(res, currentStateVersion);
+      return;
+    }
     handleRouteError(req, res, e);
   }
 });
 
 router.post("/orders/:id/feedback", async (req, res) => {
+  let blueprintId: string | null = null;
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
@@ -250,7 +278,7 @@ router.post("/orders/:id/feedback", async (req, res) => {
     }
     const body = parsed.data;
 
-    const blueprintId = await OrderService.getBlueprintIdForOrder(id, auth.userId);
+    blueprintId = await OrderService.getBlueprintIdForOrder(id, auth.userId);
     if (!blueprintId) {
       failure(res, "NOT_FOUND", "Order not found", 404);
       return;
@@ -299,6 +327,11 @@ router.post("/orders/:id/feedback", async (req, res) => {
       { stateChanged: true },
     );
   } catch (e) {
+    if (isTorgimaError(e) && e.code === "STALE_STATE") {
+      const currentStateVersion = await resolveStaleCurrentVersion(blueprintId);
+      respondStaleState(res, currentStateVersion);
+      return;
+    }
     handleRouteError(req, res, e);
   }
 });
@@ -325,6 +358,7 @@ router.post("/orders/:id/finish", async (req, res) => {
 });
 
 router.post("/orders/:id/block", async (req, res) => {
+  let blueprintId: string | null = null;
   try {
     const auth = await requireAuth(req, "USER_SESSION");
     const id = req.params.id!;
@@ -333,9 +367,16 @@ router.post("/orders/:id/block", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid input", 422);
       return;
     }
+    blueprintId = await OrderService.getBlueprintIdForOrder(id, auth.userId);
     await OrderService.blockOrder(id, auth.userId, parsed.data);
+    invalidateDashboardCache(auth.userId);
     success(res, { blocked: true, orderId: id });
   } catch (e) {
+    if (isTorgimaError(e) && e.code === "STALE_STATE") {
+      const currentStateVersion = await resolveStaleCurrentVersion(blueprintId);
+      respondStaleState(res, currentStateVersion);
+      return;
+    }
     handleRouteError(req, res, e);
   }
 });

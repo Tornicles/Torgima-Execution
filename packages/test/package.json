@@ -1,0 +1,12 @@
+{
+  "name": "@workspace/test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./setup/e2e": "./setup/e2e.setup.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*"
+  }
+}

@@ -1,10 +1,10 @@
 import { useAppRouteGuard } from "@/hooks/useAppRouteGuard";
 import { useBhudhiBlueprint } from "@/hooks/useBhudhiBlueprint";
 import {
-  BhudhiUniversalLayout,
-  parseBhudhiSection,
+  IntelligenceUniversalLayout,
+  parseIntelligenceSection,
 } from "@/components/bhudhi/universal/BhudhiUniversalLayout";
-import { BhudhiHubView } from "@/components/bhudhi/BhudhiHubView";
+import { IntelligenceHubView } from "@/components/bhudhi/BhudhiHubView";
 import { OverviewSection } from "@/components/bhudhi/universal/sections/OverviewSection";
 import { ExecutionSection } from "@/components/bhudhi/universal/sections/ExecutionSection";
 import { IntelligenceSection } from "@/components/bhudhi/universal/sections/IntelligenceSection";
@@ -50,7 +50,7 @@ function SectionContent({ section, blueprintId }: { section: string; blueprintId
     case "settings":
       return <SettingsSection blueprintId={blueprintId} />;
     default:
-      return <BhudhiHubView blueprintId={blueprintId} />;
+      return <IntelligenceHubView blueprintId={blueprintId} />;
   }
 }
 
@@ -58,7 +58,7 @@ export default function BhudhiUniversalPage() {
   const { checking } = useAppRouteGuard("post-launch");
   const blueprintId = useBhudhiBlueprint();
   const [location] = useLocation();
-  const section = parseBhudhiSection(location);
+  const section = parseIntelligenceSection(location);
 
   if (checking) {
     return (
@@ -69,12 +69,12 @@ export default function BhudhiUniversalPage() {
   }
 
   if (section === "overview") {
-    return <BhudhiHubView blueprintId={blueprintId} />;
+    return <IntelligenceHubView blueprintId={blueprintId} />;
   }
 
   return (
-    <BhudhiUniversalLayout blueprintId={blueprintId} section={section}>
+    <IntelligenceUniversalLayout blueprintId={blueprintId} section={section}>
       <SectionContent section={section} blueprintId={blueprintId} />
-    </BhudhiUniversalLayout>
+    </IntelligenceUniversalLayout>
   );
 }

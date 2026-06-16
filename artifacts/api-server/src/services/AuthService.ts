@@ -199,6 +199,9 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
           userActive: users.active,
           userMode: users.mode,
           userTier: users.tier,
+          email: users.email,
+          dashboardMode: users.dashboard_mode,
+          erectorTier: users.erector_tier,
         })
         .from(users)
         .where(eq(users.id, kvSession.userId))
@@ -217,6 +220,9 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
         userMode: userRow.userMode as "individual" | "team",
         userTier: userRow.userTier,
         isInternal: false,
+        email: userRow.email,
+        dashboardMode: userRow.dashboardMode ?? "limited",
+        erectorTier: userRow.erectorTier ?? null,
       };
     }
   }
@@ -232,6 +238,9 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
       userActive: users.active,
       userMode: users.mode,
       userTier: users.tier,
+      email: users.email,
+      dashboardMode: users.dashboard_mode,
+      erectorTier: users.erector_tier,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.user_id, users.id))
@@ -283,6 +292,9 @@ export async function validateSession(sessionToken: string): Promise<AuthContext
     userMode: row.userMode as "individual" | "team",
     userTier: row.userTier,
     isInternal: false,
+    email: row.email,
+    dashboardMode: row.dashboardMode ?? "limited",
+    erectorTier: row.erectorTier ?? null,
   };
 }
 
@@ -372,5 +384,7 @@ function toSafeUser(user: typeof users.$inferSelect, activeBlueprintId: string |
     activeBlueprintId,
     timezone: user.timezone,
     notificationPreferences: (user.notification_preferences as Record<string, unknown>) ?? {},
+    dashboardMode: user.dashboard_mode ?? "limited",
+    erectorTier: user.erector_tier ?? null,
   };
 }

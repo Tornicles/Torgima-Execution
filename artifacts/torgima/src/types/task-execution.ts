@@ -9,11 +9,27 @@ export type FeedbackCompletion =
 
 export type ProofType = "NONE" | "TEXT" | "FILE" | "LINK" | "STEPS" | "OUTPUT";
 
+export type OrderExecutionStatus =
+  | "active"
+  | "needs_feedback"
+  | "completed"
+  | "blocked"
+  | "pending"
+  | "paused"
+  | "failed"
+  | "skipped"
+  | string;
+
+export type DifficultyFelt = "too_easy" | "about_right" | "hard" | "too_hard";
+
 export type TaskExecutionView = {
   orderId: string;
   stateVersion: number;
   title: string;
   instruction: string;
+  whyItMatters?: string | null;
+  expectedOutput?: string | null;
+  definitionOfDone?: string | null;
   successCriteria: string[];
   taskType: string;
   difficulty: string;
@@ -25,11 +41,15 @@ export type TaskExecutionView = {
   disabledReason?: string;
   timeEstimateMinutes?: number | null;
   proofRequired?: boolean;
+  status?: OrderExecutionStatus;
+  completionSummary?: string | null;
 };
 
 export type ProofState = {
   proofText?: string;
   proofFileIds: string[];
+  proofFileId?: string | null;
+  proofFileName?: string | null;
   proofLinks: string[];
   stepAnswers: Array<{ itemId: string; completed: boolean }>;
   outputFields?: Record<string, string>;
@@ -46,5 +66,5 @@ export type FeedbackFormState = {
   userNotes?: string;
   reflection?: string;
   score?: number;
-  difficultyFelt?: string;
+  difficultyFelt?: DifficultyFelt;
 };

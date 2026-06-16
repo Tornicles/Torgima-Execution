@@ -20,18 +20,36 @@ export async function emitPatternResponseEvent(params: {
   };
 
   switch (params.pattern) {
-    case "FATIGUE_RISK":
-    case "BURNOUT_RISK":
+    case "DELAY_PATTERN":
       await writeEvent({
         ...base,
         eventType: EVENT_TYPES.ADAPTATION_REQUESTED,
         payload: {
-          type: "reduce_load",
+          type: "TIMING_FRICTION",
+          target: "ControlEngine",
+          pattern_id: params.patternId,
+        },
+        idempotencyKey: `adaptation_timing:${params.blueprintId}`,
+      }).catch(() => null);
+      break;
+    case "FATIGUE_RISK":
+    case "BURNOUT_RISK":
+      await writeEvent({
+        ...base,
+        eventType: EVENT_TYPES.LOAD_REDUCTION_REQUESTED,
+        payload: {
+          reason: "fatigue_risk",
           target: "ControlEngine",
           risk_score: params.riskScore,
           pattern_id: params.patternId,
         },
-        idempotencyKey: `adaptation_reduce_load:${params.blueprintId}:${Math.floor(Date.now() / 3600000)}`,
+        idempotencyKey: `load_reduction_pattern:${params.blueprintId}:${Math.floor(Date.now() / 3600000)}`,
+      }).catch(() => null);
+      await writeEvent({
+        ...base,
+        eventType: EVENT_TYPES.CONDITION_EVALUATION_REQUESTED,
+        payload: { trigger: "fatigue_risk", pattern_id: params.patternId },
+        idempotencyKey: `condition_eval:fatigue:${params.blueprintId}`,
       }).catch(() => null);
       await writeEvent({
         ...base,
@@ -48,13 +66,27 @@ export async function emitPatternResponseEvent(params: {
         payload: { pattern: params.pattern },
         idempotencyKey: `capability_review:${params.blueprintId}:${params.pattern}`,
       }).catch(() => null);
+      await writeEvent({
+        ...base,
+        eventType: EVENT_TYPES.ADAPTATION_REQUESTED,
+        payload: {
+          type: "DIFFICULTY_DOWNGRADE",
+          pattern: params.pattern,
+          target: "ControlEngine",
+        },
+        idempotencyKey: `difficulty_downgrade:${params.blueprintId}:${params.pattern}`,
+      }).catch(() => null);
       break;
     case "TASK_TYPE_AVOIDANCE":
       await writeEvent({
         ...base,
-        eventType: EVENT_TYPES.FRICTION_ADAPTATION_REQUESTED,
-        payload: { reason: "task_type_avoidance", pattern: params.pattern },
-        idempotencyKey: `friction_avoid:${params.blueprintId}`,
+        eventType: EVENT_TYPES.ADAPTATION_REQUESTED,
+        payload: {
+          type: "FRICTION_REVIEW",
+          pattern: params.pattern,
+          target: "ControlEngine",
+        },
+        idempotencyKey: `friction_review:${params.blueprintId}`,
       }).catch(() => null);
       break;
     case "LOW_VALUE_COMPLETION":
@@ -63,6 +95,12 @@ export async function emitPatternResponseEvent(params: {
         eventType: EVENT_TYPES.PRIORITY_REVIEW_REQUESTED,
         payload: { pattern: params.pattern },
         idempotencyKey: `priority_review:${params.blueprintId}:low_value`,
+      }).catch(() => null);
+      await writeEvent({
+        ...base,
+        eventType: EVENT_TYPES.OUTCOME_VALIDATION_REQUESTED,
+        payload: { trigger: "outcome_correction", pattern: params.pattern },
+        idempotencyKey: `outcome_correction:${params.blueprintId}`,
       }).catch(() => null);
       break;
     case "ABANDONMENT_RISK":
@@ -88,13 +126,23 @@ export async function emitPatternResponseEvent(params: {
         payload: { reason: "consistent_execution", window_days: 14 },
         idempotencyKey: `identity:consistent:${params.blueprintId}`,
       }).catch(() => null);
+      await writeEvent({
+        ...base,
+        eventType: EVENT_TYPES.CAPABILITY_REVIEW_REQUESTED,
+        payload: { reason: "consistent_execution" },
+        idempotencyKey: `capability:consistent:${params.blueprintId}`,
+      }).catch(() => null);
       break;
     case "VOLATILE_EXECUTION":
       await writeEvent({
         ...base,
-        eventType: EVENT_TYPES.CONDITION_EVALUATION_REQUESTED,
-        payload: { trigger: "volatile_execution" },
-        idempotencyKey: `condition_eval:volatile:${params.blueprintId}`,
+        eventType: EVENT_TYPES.ADAPTATION_REQUESTED,
+        payload: {
+          type: "STABILIZATION",
+          trigger: "volatile_execution",
+          target: "ControlEngine",
+        },
+        idempotencyKey: `stabilization:${params.blueprintId}`,
       }).catch(() => null);
       break;
     default:

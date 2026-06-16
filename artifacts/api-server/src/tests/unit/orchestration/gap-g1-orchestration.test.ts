@@ -32,7 +32,7 @@ describe("GAP G1 — event contracts", () => {
   it("worker queues align with EVENT_QUEUE_MAP targets", () => {
     expect(WorkerQueues.FEEDBACK_PROCESSING).toBe("feedback_processing_requested");
     expect(EVENT_QUEUE_MAP[EventTypes.FEEDBACK_SUBMITTED]).toBe(WorkerQueues.FEEDBACK_PROCESSING);
-    expect(EVENT_QUEUE_MAP[EventTypes.SIGNAL_CALCULATED]).toBe(WorkerQueues.CONDITION_EVALUATION);
+    expect(EVENT_QUEUE_MAP[EventTypes.SIGNAL_CALCULATED]).toBe(WorkerQueues.ERECTOR_SIGNAL_BRIDGE);
     expect(EVENT_QUEUE_MAP[EventTypes.CONDITION_EVALUATED]).toBe(WorkerQueues.ENFORCEMENT_PACKAGE);
     expect(EVENT_QUEUE_MAP[EventTypes.ENFORCEMENT_PACKAGE_CREATED]).toBe(WorkerQueues.TASK_GENERATION);
     expect(EVENT_QUEUE_MAP[EventTypes.TASK_GENERATION_COMPLETED]).toBe(WorkerQueues.TASK_GUARANTEE);

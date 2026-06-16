@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./types/bhudhi": "./src/types/bhudhi.ts",
-    "./bhudhi-seed-data": "./src/bhudhi-seed-data.ts"
+    "./bhudhi-seed-data": "./src/bhudhi-seed-data.ts",
+    "./schema-erector": "./src/schema-erector.ts",
+    "./erector-seed": "./src/erector-seed.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
@@ -16,6 +18,8 @@
     "check": "drizzle-kit check --config ./drizzle.config.ts",
     "seed": "tsx src/seed.ts",
     "seed:bhudhi": "tsx src/bhudhi-seed.ts",
+    "seed:erector": "tsx src/erector-seed.ts",
+    "verify:erector": "tsx src/erector-seed.ts --verify-only",
     "verify": "tsx src/verify-db.ts",
     "verify:bhudhi": "tsx src/bhudhi-seed.ts --verify-only"
   },

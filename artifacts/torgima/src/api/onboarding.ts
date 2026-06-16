@@ -6,6 +6,11 @@ export function fetchOnboardingStatus(): Promise<
     completed?: boolean;
     onboardingComplete?: boolean;
     hasActiveBlueprint?: boolean;
+    hasIntake?: boolean;
+    intakeInProgress?: boolean;
+    intakeSessionId?: string | null;
+    intakeCurrentSection?: number | null;
+    intakeSectionsCompleted?: number[];
     step?: string;
     onboardingStep?: string;
     blueprintId?: string | null;

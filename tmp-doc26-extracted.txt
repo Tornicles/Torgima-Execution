@@ -1,0 +1,195 @@
+﻿TORGIMA
+ENGINE PROMPT 16 — DOC 26
+Dependency Mapping and Resolution Engine
+9 Dependency Types · Executability Check · Unlock Value Scoring · Resolution Task Generation
+
+
+PREREQUISITE: Engines 1-15 must pass. The dependency engine uses task generation output, blueprint chain structure, feedback blockers, and system health records.
+
+OBJECTIVE
+Build the DependencyEngine that maps structural and task-level dependencies before any task is published, checks executability of every candidate task, creates dependency records, calculates unlock value for the Priority Engine, and generates resolution tasks when dependencies block execution. A task is executable only when its dependencies are satisfied.
+
+FILES TO CREATE
+src/engines/dependency/DependencyEngine.ts — CREATE
+src/engines/dependency/ExecutabilityChecker.ts — CREATE
+src/engines/dependency/DependencyResolver.ts — CREATE
+
+TASK 1 — 9 DEPENDENCY TYPES
+DEPENDENCY TYPE
+DEFINITION
+RESOLUTION PATH
+BLOCKING BY DEFAULT
+SEQUENCE
+Prior blueprint step must complete first
+Complete prerequisite task
+YES — cannot skip sequence
+DECISION
+A choice must be made before proceeding
+Decision/clarification task
+YES — ambiguity blocks execution
+INFORMATION
+Required input, context, or data is missing
+Information collection task
+YES if critical, NO if supplementary
+ASSET
+File, document, link, or credential is missing
+Asset upload/collection task
+YES if proof required
+PERMISSION
+Authorization to proceed is missing
+Permission repair path
+YES — cannot work without access
+EXTERNAL_RESPONSE
+Outside person/system must respond
+Wait/checkin/followup task
+SOFT — reduces to low priority
+CAPABILITY
+Skill must be proven first
+Academy task
+YES if blocks_execution = true
+SYSTEM_STATE
+System repair or sync required
+System repair task
+YES until resolved
+OUTCOME_PROOF
+Outcome evidence needed before advancing
+Evidence submission task
+YES for phase advancement
+
+TASK 2 — EXECUTABILITY CHECKER
+// ExecutabilityChecker.ts
+// Called by TaskGenerationEngine AND TaskGuaranteeEngine before publishing any task
+ 
+export async function checkExecutability(
+  candidateTask: CandidateTask,
+  blueprintId: string,
+  userId: string,
+): Promise<ExecutabilityResult> {
+ 
+  const blockingDependencies: BlockingDependency[] = [];
+ 
+  // CHECK 1: SEQUENCE dependency
+  // Does candidateTask.action_id have a prerequisite action that is not complete?
+  const actionDeps = await loadProjectDependencies(candidateTask.action_id);
+  for (const dep of actionDeps) {
+    if (dep.status === 'OPEN' && dep.blocking === true) {
+      blockingDependencies.push({
+        type: 'SEQUENCE', dependencyId: dep.id,
+        description: `Action requires ${dep.required_entity_id} to be complete first`,
+        resolutionStrategy: 'complete_prerequisite_task',
+      });
+    }
+  }
+ 
+  // CHECK 2: CAPABILITY dependency
+  // Does this task type require a capability the user has not proven?
+  const capGap = await getOpenCapabilityGap(userId, blueprintId, candidateTask.task_type);
+  if (capGap && capGap.blocks_execution) {
+    blockingDependencies.push({
+      type: 'CAPABILITY', dependencyId: capGap.id,
+      description: `Requires ${capGap.capability_id} which is not yet proven`,
+      resolutionStrategy: 'academy_task',
+    });
+  }
+ 
+  // CHECK 3: SYSTEM_STATE dependency
+  // Is there an open system health issue that blocks this blueprint?
+  const healthLock = await getActiveHealthLock(blueprintId);
+  if (healthLock) {
+    blockingDependencies.push({
+      type: 'SYSTEM_STATE', dependencyId: healthLock.id,
+      description: 'System state requires repair before task can be published safely',
+      resolutionStrategy: 'system_repair',
+    });
+  }
+ 
+  // CHECK 4: ORDER-LEVEL dependency
+  const orderDeps = await getOpenOrderDependencies(candidateTask.id);
+  for (const dep of orderDeps.filter(d => d.blocking)) {
+    blockingDependencies.push({ type: dep.dependency_type, dependencyId: dep.id,
+      description: dep.resolution_strategy, resolutionStrategy: dep.resolution_strategy });
+  }
+ 
+  return {
+    executable: blockingDependencies.length === 0,
+    blockingDependencies,
+    unlock_value: blockingDependencies.length === 0 ? 0 : calculateUnlockValue(blockingDependencies),
+  };
+}
+
+TASK 3 — UNLOCK VALUE FOR PRIORITY ENGINE
+// calculateUnlockValue() — higher = more valuable to resolve this dependency
+ 
+// Base score starts at 0
+// For each task blocked by this dependency: score += 20 (max 60 — 3 blocked tasks)
+// If dependency type = SEQUENCE: score += 15 (critical path)
+// If dependency type = CAPABILITY: score += 10
+// If dependency type = SYSTEM_STATE: score += 25 (affects whole system)
+// If the blocked task has a phase gate or milestone: score += 15
+// Clamp to 100
+ 
+// This unlock_value is returned to PriorityEngine as the dependency_unlock dimension score
+
+TASK 4 — RESOLUTION TASK GENERATION
+// DependencyResolver.ts
+// When task is not executable: create the resolution task instead
+ 
+async function generateResolutionTask(
+  dependency: BlockingDependency,
+  context: DependencyContext,
+): Promise<void> {
+ 
+  // Map dependency type to task type:
+  const taskTypeMap = {
+    SEQUENCE: 'blocker_resolution',
+    DECISION: 'clarification',
+    INFORMATION: 'clarification',
+    ASSET: 'clarification',
+    PERMISSION: 'blocker_resolution',
+    EXTERNAL_RESPONSE: 'blocker_resolution',
+    CAPABILITY: 'academy',  // CapabilityGapDetector handles this
+    SYSTEM_STATE: 'system_repair',  // StateIntegrityEngine handles this
+    OUTCOME_PROOF: 'phase_checkpoint',
+  };
+ 
+  // Emit the correct event for TaskGenerationEngine or the right engine:
+  const event = dependency.type === 'CAPABILITY' ? 'erector_capability_gap_detected'
+    : dependency.type === 'SYSTEM_STATE' ? 'system_repair_requested'
+    : 'dependency_resolution_task_requested';
+ 
+  await emitEvent({ event_type: event, payload: {
+    dependency_id: dependency.dependencyId,
+    dependency_type: dependency.type,
+    resolution_strategy: dependency.resolutionStrategy,
+    blocked_task_id: context.candidateTaskId,
+  }});
+}
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep 'dependency'
+ 
+-- TEST 1: SEQUENCE dependency blocks task publication
+-- Input: candidate task has incomplete prerequisite action
+-- Expected: executable=false, blockingDependencies has SEQUENCE entry
+-- Expected: dependency_resolution_task_requested emitted
+ 
+-- TEST 2: CAPABILITY dependency routes to academy
+-- Input: task requires copywriting capability, user has gap with blocks_execution=true
+-- Expected: erector_capability_gap_detected emitted
+ 
+-- TEST 3: Unlock value scales with blocked task count
+-- Input: dependency blocks 3 other tasks
+-- Expected: unlock_value >= 60 (20 per blocked task)
+ 
+-- TEST 4: No dependencies = executable
+-- Expected: executable=true, blockingDependencies=[]
+
+ACCEPTANCE CRITERIA
+All 9 dependency types defined with correct resolution paths
+ExecutabilityChecker runs 4 checks: sequence, capability, system state, order-level
+Unlock value calculated correctly and fed to PriorityEngine
+Resolution task routed to correct engine per dependency type
+CAPABILITY routes to academy, SYSTEM_STATE routes to integrity engine
+Blocked task never published — resolution task published instead
+COMMIT: feat(dependency): build dependency mapping and resolution engine with executability check, 9 dependency types, unlock value scoring, and resolution routing
+

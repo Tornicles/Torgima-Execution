@@ -20,6 +20,7 @@ import type {
 } from "@/lib/validation-launch-context";
 import { EXECUTION_UNIT, LANGUAGE } from "@/lib/language";
 import { TIER_CARD_TAGLINES } from "@/lib/onboarding-doc32";
+import { BlueprintLaunchConfirmation } from "@/components/onboarding/BlueprintLaunchConfirmation";
 import { TorgimaPreLaunchLogo } from "./TorgimaPreLaunchLogo";
 
 const CARD = "rounded-[20px] border border-[#ECECF4] bg-white shadow-sm";
@@ -251,6 +252,17 @@ export function BlueprintLaunchInputScreen({
           {context.directionLabel} · {context.goal.slice(0, 80)}
           {context.goal.length > 80 ? "…" : ""}
         </div>
+
+        {launchEnabled && selectedTier && onLaunch ? (
+          <BlueprintLaunchConfirmation
+            goalStatement={context.goal}
+            selectedPath={context.selectedPath}
+            onLaunch={onLaunch}
+            launching={launching}
+            launchError={launchError}
+            disabled={cardsLocked}
+          />
+        ) : null}
       </main>
 
       {launchError ? (

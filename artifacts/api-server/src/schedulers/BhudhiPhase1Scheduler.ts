@@ -4,6 +4,7 @@ import { logger } from "../lib/logger.js";
 import { runOvernightCycle } from "../workers/OvernightWorker.js";
 import { runWorldStateUpdate } from "../workers/WorldStateWorker.js";
 import { runCompressionCycle } from "../workers/CompressionWorker.js";
+import { runRetentionCleanup } from "../services/erector/PrivacySecurityLayer.js";
 import { BhudhiMemoryService } from "../bhudhi/BhudhiMemoryService.js";
 import { getBoss } from "../lib/queue.js";
 import { MEMORY_EXPIRY_QUEUE } from "../workers/MemoryExpiryWorker.js";
@@ -50,6 +51,11 @@ export function startBhudhiPhase1Schedulers(): void {
 
   schedule(7 * 24 * 60 * 60 * 1000, "memory_compression", async () => {
     await forEachActiveUser(userId => runCompressionCycle(userId).then(() => undefined));
+  });
+
+  schedule(24 * 60 * 60 * 1000, "erector_retention_cleanup", async () => {
+    const result = await runRetentionCleanup();
+    logger.info(result, "[BhudhiPhase1Scheduler] erector_retention_cleanup complete");
   });
 
   schedule(24 * 60 * 60 * 1000, "memory_expiry_scan", async () => {

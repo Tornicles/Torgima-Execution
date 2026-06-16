@@ -11,10 +11,18 @@ import { EventTypes } from "../../types/eventContracts.js";
 const CRITICAL_EVENT_TYPES = new Set<string>([
   EventTypes.FEEDBACK_SUBMITTED,
   EventTypes.TASK_GENERATION_REQUESTED,
-  EventTypes.ENFORCEMENT_PACKAGE_CREATED,
   EventTypes.SIGNAL_RECALCULATION_REQUESTED,
+  EventTypes.ORDER_AVAILABLE,
+  EventTypes.ENFORCEMENT_PACKAGE_CREATED,
   EventTypes.CONDITION_EVALUATED,
 ]);
+
+/** DOC16 — exported critical event list for DLQ health alerts. */
+export const CRITICAL_EVENTS = [...CRITICAL_EVENT_TYPES] as const;
+
+export function isCriticalEventType(eventType: string): boolean {
+  return CRITICAL_EVENT_TYPES.has(eventType);
+}
 
 export async function deadLetterEvent(
   eventId: string,
@@ -58,25 +66,25 @@ export async function deadLetterEvent(
       .where(eq(events.id, eventId));
 
     if (CRITICAL_EVENT_TYPES.has(event.event_type)) {
-        const dlqMessage = `Critical event ${event.event_type} dead-lettered after ${event.retry_count} attempts: ${reason}`;
-        await tx.insert(systemHealthLogs).values({
+      const dlqMessage = `Critical event ${event.event_type} dead-lettered after ${event.retry_count} attempts: ${reason}`;
+      await tx.insert(systemHealthLogs).values({
+        area: "EVENT_SYSTEM",
+        severity: "CRITICAL",
+        blueprint_id: event.blueprint_id,
+        user_id: event.user_id,
+        check_type: "CRITICAL_EVENT_DEAD_LETTERED",
+        message: dlqMessage,
+        status: "OPEN",
+        details_json: {
           area: "EVENT_SYSTEM",
           severity: "CRITICAL",
-          blueprint_id: event.blueprint_id,
-          user_id: event.user_id,
-          check_type: "CRITICAL_EVENT_DEAD_LETTERED",
+          event_type: event.event_type,
+          event_id: eventId,
           message: dlqMessage,
-          status: "OPEN",
-          details_json: {
-            area: "EVENT_SYSTEM",
-            severity: "CRITICAL",
-            event_type: event.event_type,
-            event_id: eventId,
-            message: dlqMessage,
-            last_error: lastError,
-          },
-          issues_detected: ["CRITICAL_EVENT_DEAD_LETTERED"],
-        });
+          last_error: lastError,
+        },
+        issues_detected: ["CRITICAL_EVENT_DEAD_LETTERED"],
+      });
     }
   });
 

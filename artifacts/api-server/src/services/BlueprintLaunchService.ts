@@ -1,4 +1,4 @@
-import { blueprints, db } from "@workspace/db";
+import { blueprints, db, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { BlueprintEngine } from "../engines/blueprint/BlueprintEngine.js";
 import { TorgimaError } from "../lib/errors.js";
@@ -26,6 +26,12 @@ import {
   ValidationFinalizationService,
 } from "./ValidationFinalizationService.js";
 import { ensureBlueprintReadyForLaunch } from "../lib/transitionBlueprintToPathSelection.js";
+import {
+  enforceLaunchContract,
+  markContractConsumed,
+} from "../engines/erector/LaunchContractEnforcer.js";
+import { transition } from "../engines/erector/erectorStateMachine.js";
+import { injectErectorIntelligence } from "./erector/blueprint-feed-service.js";
 
 function assertValidationReadyForLaunch(
   row: Awaited<ReturnType<typeof ValidationService.getValidationByContractId>>,
@@ -89,6 +95,15 @@ export const BlueprintLaunchService = {
       throw new TorgimaError("BLUEPRINT_ALREADY_ACTIVE", "Blueprint is already active");
     }
 
+    const launchEnforcement = await enforceLaunchContract(input.blueprintId, input.userId);
+    if (!launchEnforcement.permitted) {
+      throw new TorgimaError(
+        "FORBIDDEN",
+        launchEnforcement.user_message ?? "Launch blocked by Project Intelligence contract.",
+        false,
+      );
+    }
+
     const selectedBlueprintLevel = (input.selectedBlueprintLevel ??
       blueprint.selected_blueprint_level ??
       blueprint.tier ??
@@ -142,6 +157,11 @@ export const BlueprintLaunchService = {
       input.validationContractId,
     );
 
+    const blueprintSource =
+      validationRow.validation_kind === ValidationKind.ERECTOR
+        ? "erector_authenticated"
+        : "onboarding";
+
     const handoff = validationRow.handoff_package as Record<string, unknown> | null;
     const goalFromHandoff = (handoff?.goal_final as string) ?? validationRow.goal_final;
     const purposeFromHandoff = (handoff?.purpose_final as string) ?? validationRow.purpose_final;
@@ -176,6 +196,35 @@ export const BlueprintLaunchService = {
       input.userId,
       input.validationContractId,
     );
+
+    await db
+      .update(blueprints)
+      .set({ blueprint_source: blueprintSource })
+      .where(eq(blueprints.id, input.blueprintId));
+
+    if (launchEnforcement.contract_id) {
+      await injectErectorIntelligence(
+        input.blueprintId,
+        launchEnforcement.contract_id,
+        input.userId,
+      );
+    }
+
+    await transition(
+      input.blueprintId,
+      input.userId,
+      "BLUEPRINT_ACTIVE",
+      "blueprint_activation",
+    );
+
+    if (launchEnforcement.contract_id) {
+      await markContractConsumed(launchEnforcement.contract_id);
+    }
+
+    await db
+      .update(users)
+      .set({ dashboard_mode: "full" })
+      .where(eq(users.id, input.userId));
 
     await recordExecutionStructureFromBlueprint(input.blueprintId, selectedBlueprintLevel).catch(() => null);
     // Signal auto-bootstrap is gated behind ENABLE_SIGNAL_AUTO_BOOTSTRAP.

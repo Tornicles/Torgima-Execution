@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TORGIMA Phase 1A — Verification Status Report</title>
+  <style>
+    @page { margin: 18mm 14mm; }
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { font-size: 22pt; border-bottom: 3px solid #2563eb; padding-bottom: 8px; color: #1e3a8a; margin-top: 0; }
+    h2 { font-size: 13pt; margin-top: 26px; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; page-break-after: avoid; }
+    h3 { font-size: 11pt; margin-top: 16px; color: #334155; page-break-after: avoid; }
+    .meta { background: #f1f5f9; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 16px 0; }
+    .pass { color: #15803d; font-weight: 600; }
+    .fail { color: #b91c1c; font-weight: 600; }
+    .warn { color: #b45309; font-weight: 600; }
+    .pending { color: #64748b; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 9.5pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .summary-box { background: #fef2f2; border: 1px solid #fecaca; padding: 14px 16px; margin: 16px 0; border-radius: 4px; }
+    .summary-box.ok { background: #f0fdf4; border-color: #bbf7d0; }
+    ul { margin: 6px 0 12px 18px; }
+    li { margin-bottom: 4px; }
+    code { font-family: Consolas, monospace; font-size: 9pt; background: #f1f5f9; padding: 1px 4px; }
+    .small { font-size: 9pt; color: #64748b; }
+    .page-break { page-break-before: always; }
+    .root-cause { color: #7c2d12; }
+  </style>
+</head>
+<body>
+
+<h1>TORGIMA Phase 1A — Verification Status Report</h1>
+
+<div class="meta">
+  <strong>Report date:</strong> 14 June 2026<br />
+  <strong>Repository:</strong> Torgima-Execution<br />
+  <strong>Corrected paths used:</strong> <code>artifacts/api-server/src/</code>, <code>artifacts/torgima/src/</code>, <code>INTERNAL_AUTH_SECRET</code>, Vite/React Router frontend<br />
+  <strong>Overall verdict:</strong> <span class="fail">NOT READY FOR PART 14 (commit &amp; push blocked)</span><br />
+  <strong>Resume point:</strong> STEP 1.3 completed; verification progressed through Parts 1–3 (mostly pass), Part 4 (fail), Parts 5–13 incomplete
+</div>
+
+<div class="summary-box">
+  <strong>Executive summary</strong>
+  <p>
+    Environment and database schema verification <strong>passed</strong> after migrations and env configuration.
+    TypeScript typecheck and production build <strong>passed</strong> (0 type errors).
+    The gate fails on <strong>frontend language policy (Part 3.4)</strong>, <strong>26 unit/integration test failures (Part 4)</strong>,
+    and <strong>unexecuted E2E chains (Part 12)</strong>. Part 14 commit/push must not proceed until all checklist items are zero failures.
+  </p>
+</div>
+
+<h2>1. Overall progress by part</h2>
+<table>
+  <thead>
+    <tr><th>Part</th><th>Scope</th><th>Result</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Part 1</td><td>Environment &amp; infrastructure</td><td class="pass">PASS</td><td>Node v22, pnpm 11, env keys present, DB connections OK</td></tr>
+    <tr><td>Part 2</td><td>Database schema</td><td class="pass">PASS</td><td>42+ tables, 6 indexes, 29 erector tables, seeds, flags disabled</td></tr>
+    <tr><td>Part 3</td><td>TypeScript &amp; build</td><td class="warn">PARTIAL</td><td>3.1–3.3 PASS; 3.4 FAIL; 3.5 PASS</td></tr>
+    <tr><td>Part 4</td><td>Unit tests</td><td class="fail">FAIL</td><td>26 failed / 2033 passed / 121 skipped (2179 total)</td></tr>
+    <tr><td>Part 5</td><td>API routes</td><td class="pending">NOT FORMALLY RUN</td><td>Structural grep suggests routes exist; doc29 manifest test fails</td></tr>
+    <tr><td>Part 6</td><td>Bhudhi system</td><td class="fail">FAIL</td><td>Router DB test, memory mocks, fallback schema test failures</td></tr>
+    <tr><td>Part 7</td><td>Erector integration</td><td class="pending">PARTIAL</td><td>Code present; launch-path unit test fails on DB mock</td></tr>
+    <tr><td>Part 8</td><td>Frontend verification</td><td class="fail">FAIL</td><td>Internal terms in components; limited-dashboard language test fails</td></tr>
+    <tr><td>Part 9</td><td>Workers &amp; events</td><td class="fail">FAIL</td><td>Worker registry count/metadata tests fail (11 vs 10 expected)</td></tr>
+    <tr><td>Part 10</td><td>Security</td><td class="pending">PARTIAL</td><td>.gitignore OK; UUID Zod structural test fails</td></tr>
+    <tr><td>Part 11</td><td>System laws</td><td class="pending">NOT RUN</td><td>Blocked by Part 4</td></tr>
+    <tr><td>Part 12</td><td>E2E chain trace</td><td class="pending">NOT RUN</td><td>Requires live API + full env; not attempted</td></tr>
+    <tr><td>Part 13</td><td>DOC 37 checklist</td><td class="fail">FAIL</td><td>Multiple upstream failures</td></tr>
+    <tr><td>Part 14</td><td>Commit &amp; push</td><td class="fail">BLOCKED</td><td>Requires zero failures in Parts 1–13</td></tr>
+  </tbody>
+</table>
+
+<h2>2. Part 1 — Environment (PASS)</h2>
+<h3>STEP 1.3 — Database connection</h3>
+<table>
+  <tr><th>Connection</th><th>Port</th><th>Result</th></tr>
+  <tr><td>DATABASE_URL (pooler)</td><td>6543</td><td class="pass">PASS — PostgreSQL 17.6</td></tr>
+  <tr><td>DIRECT_URL (direct)</td><td>5432</td><td class="pass">PASS — PostgreSQL 17.6</td></tr>
+</table>
+
+<h3>STEP 1.4 — Required env keys</h3>
+<table>
+  <tr><th>Key</th><th>Status</th></tr>
+  <tr><td>DATABASE_URL</td><td class="pass">PASS</td></tr>
+  <tr><td>DIRECT_URL</td><td class="pass">PASS</td></tr>
+  <tr><td>ANTHROPIC_API_KEY</td><td class="pass">PASS</td></tr>
+  <tr><td>SUPABASE_URL</td><td class="pass">PASS</td></tr>
+  <tr><td>SUPABASE_ANON_KEY</td><td class="pass">PASS</td></tr>
+  <tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td class="pass">PASS</td></tr>
+  <tr><td>RESEND_API_KEY</td><td class="pass">PASS</td></tr>
+  <tr><td>INTERNAL_AUTH_SECRET</td><td class="pass">PASS</td></tr>
+  <tr><td>BHUDHI_MODEL</td><td class="pass">PASS</td></tr>
+  <tr><td>ERECTOR_VALIDATION_MODEL_VERSION</td><td class="pass">PASS</td></tr>
+  <tr><td>FRONTEND_URL</td><td class="pass">PASS</td></tr>
+</table>
+
+<h2>3. Part 2 — Database schema (PASS)</h2>
+<table>
+  <tr><th>Step</th><th>Expected</th><th>Actual</th><th>Result</th></tr>
+  <tr><td>2.1 Original tables</td><td>≥42</td><td>373</td><td class="pass">PASS</td></tr>
+  <tr><td>2.2 Partial unique indexes</td><td>6</td><td>6</td><td class="pass">PASS</td></tr>
+  <tr><td>2.3 Erector tables</td><td>27</td><td>29</td><td class="pass">PASS</td></tr>
+  <tr><td>2.4 Modified columns</td><td>all present</td><td>all present</td><td class="pass">PASS</td></tr>
+  <tr><td>2.5 Seed data</td><td>minimum counts</td><td>all met</td><td class="pass">PASS</td></tr>
+  <tr><td>2.6 Phase 2 flags</td><td>all disabled</td><td>all false</td><td class="pass">PASS</td></tr>
+</table>
+<p class="small"><strong>Note:</strong> <code>pnpm db:migrate</code> + <code>pnpm db:apply-manual</code> were required. Two manual SQL migrations failed (RLS + unlock-stuck-blueprints) but did not block Erector schema checks.</p>
+
+<h2>4. Part 3 — TypeScript &amp; build</h2>
+<table>
+  <tr><th>Step</th><th>Expected</th><th>Actual</th><th>Result</th></tr>
+  <tr><td>3.1 typecheck</td><td>0 errors</td><td>0 errors</td><td class="pass">PASS</td></tr>
+  <tr><td>3.2 build</td><td>clean</td><td>api-server, torgima, marketing built</td><td class="pass">PASS</td></tr>
+  <tr><td>3.3 no direct Anthropic</td><td>0 in prod src</td><td>0 (test files only)</td><td class="pass">PASS</td></tr>
+  <tr><td>3.4 no internal terms</td><td>0 in components</td><td>30+ files with matches</td><td class="fail">FAIL</td></tr>
+  <tr><td>3.5 language-map</td><td>all mappings</td><td>7 conditions, 8 erector states, 8 identity stages</td><td class="pass">PASS</td></tr>
+</table>
+
+<h3>Why Part 3.4 fails</h3>
+<p>The runbook requires <strong>zero</strong> matches for internal terms in <code>artifacts/torgima/src/components/</code>:</p>
+<p><code>nothingness | enforcement | Bhudhi | erector_state | PROCEED | ADJUST | PIVOT</code></p>
+<p><strong>Root causes:</strong></p>
+<ul>
+  <li><strong>Bhudhi product surfaces</strong> — The Bhudhi Hub, dashboard, and universal sections intentionally display “Bhudhi” as the product name (~20 files under <code>components/bhudhi/</code>).</li>
+  <li><strong>Validation verdict UI</strong> — <code>VerdictPanel.tsx</code> compares raw enum values <code>PROCEED</code>, <code>PIVOT</code> instead of customer labels from <code>language-map.ts</code>.</li>
+  <li><strong>Condition keys in logic</strong> — <code>SignalsDashboardView.tsx</code>, <code>LaunchNothingnessDashboard.tsx</code>, <code>ConditionStatusPanel.tsx</code> use internal condition keys like <code>nothingness</code> for styling/routing (some already map labels via language-map for display).</li>
+  <li><strong>Enforcement package data</strong> — <code>DashboardPanels.tsx</code> reads <code>state.enforcement</code> and renders allowed/blocked actions using internal field names.</li>
+  <li><strong>Onboarding copy</strong> — <code>ErectorIntakeFlow.tsx</code> and validation dashboards reference Bhudhi and internal validation language.</li>
+</ul>
+<p><strong>Fix required:</strong> Migrate all customer-visible strings to <code>artifacts/torgima/src/lib/language-map.ts</code>; keep internal keys only in non-UI logic or map at render time. Bhudhi-branded pages may need a runbook exception or a renamed customer label (e.g. “Project Intelligence”).</p>
+
+<div class="page-break"></div>
+
+<h2>5. Part 4 — Unit tests (FAIL)</h2>
+<p><strong>Last run:</strong> 26 failed | 2033 passed | 121 skipped — 18 test files failing</p>
+<p><strong>Part 4.2 coverage (≥80%):</strong> <span class="pending">NOT RUN</span> — blocked by failures</p>
+
+<h3>All failing tests and root causes</h3>
+<table>
+  <thead>
+    <tr><th>Test</th><th>Root cause</th><th>Category</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>errors.proof-validation</code> EDGE 5 — long text proof</td>
+      <td class="root-cause"><code>ProofValidator.repeatedWords()</code> rejects highly structured repetitive long text as “Proof does not describe expected output”. Test data still triggers repetition heuristics despite length &gt;5000 chars.</td>
+      <td>Test / validator mismatch</td>
+    </tr>
+    <tr>
+      <td><code>errors.security</code> — UUID Zod structural</td>
+      <td class="root-cause">Test greps route source for <code>z.string().uuid()</code> but orders routes use Zod v4 import (<code>zod/v4</code>) or different validation patterns; structural assertion is outdated.</td>
+      <td>Test drift</td>
+    </tr>
+    <tr>
+      <td><code>b1-trigger-router</code> — fallback when API key absent</td>
+      <td class="root-cause"><code>BudgetController.checkAndReserve()</code> queries <code>bhudhi_logs</code> on real Postgres; test env has no local DB (<code>ECONNREFUSED 127.0.0.1:5432</code>). Budget layer should be mocked or use in-memory DB in unit tests.</td>
+      <td>Missing DB mock</td>
+    </tr>
+    <tr>
+      <td><code>bhudhi-memory-doc14</code> (2 tests)</td>
+      <td class="root-cause"><code>BhudhiMemoryService.loadForTrigger()</code> receives non-iterable mock DB rows (<code>rows is not iterable</code>). Test mock chain does not match Drizzle select return shape.</td>
+      <td>Broken test mock</td>
+    </tr>
+    <tr>
+      <td><code>phase4-prompt</code> TEST 12 — fallback registry</td>
+      <td class="root-cause"><code>ERECTOR_VERDICT_EXPLANATION</code> trigger added in gap fixes but output validator schema <code>erector_verdict_explanation</code> not registered in FallbackLibrary / OutputValidator map.</td>
+      <td>Missing schema registration</td>
+    </tr>
+    <tr>
+      <td><code>phase6-prompt</code> TEST 1b — forbidden UI phrases</td>
+      <td class="root-cause">Standalone word <code>task</code> found in <code>FeedbackPendingState.tsx</code> and <code>VariantB_DirectSignup.tsx</code>; policy requires <code>BLUEPRINT_LABELS.orders</code> (“Tasks”) from language-map.</td>
+      <td>Language-map violation</td>
+    </tr>
+    <tr>
+      <td><code>limited-dashboard</code> — internal verdict tokens</td>
+      <td class="root-cause"><code>VariantA_PostFreeValidation.tsx</code> contains substring <code>blueprint</code> in TypeScript import/types or copy; test scans entire file content including identifiers.</td>
+      <td>Language-map / test scope</td>
+    </tr>
+    <tr>
+      <td><code>event-system-doc16</code> (2 tests)</td>
+      <td class="root-cause">WorkerRegistry now registers <strong>11 workers</strong> (includes <code>ErectorSignalBridgeWorker</code>) but DOC16 tests expect exactly <strong>10</strong>. Health snapshot metadata shape also drifted.</td>
+      <td>Test outdated after gap fix #4</td>
+    </tr>
+    <tr>
+      <td><code>external-doc27</code> (4 tests)</td>
+      <td class="root-cause">(1) Trust scorer returns <code>HIGH</code> where test expects <code>MEDIUM</code> after scoring rule changes. (2) Webhook duplicate check reads <code>row.payload.external_id</code> but mock DB returns rows without <code>payload</code> object. (3) File upload path fails <code>result.ok</code> — likely incomplete mocks after EvidenceLedger refactor.</td>
+      <td>Test mocks + scoring drift</td>
+    </tr>
+    <tr>
+      <td><code>failure-doc22</code> TEST 2</td>
+      <td class="root-cause">CAPABILITY_FAILURE scoring weights/thresholds changed; repeated hard failure pattern no longer scores highest category as test expects.</td>
+      <td>Engine / test drift</td>
+    </tr>
+    <tr>
+      <td><code>friction-doc25</code> (2 tests)</td>
+      <td class="root-cause">Friction detection event types or classification routing changed; tests expect specific event emission (<code>clarification_requested</code>, repair vs correction) that no longer matches implementation.</td>
+      <td>Engine / test drift</td>
+    </tr>
+    <tr>
+      <td><code>dependency-doc26</code> TEST 1</td>
+      <td class="root-cause">Dependency resolution event type or publication gate behavior changed; test expects resolution event on SEQUENCE block that is not emitted in current flow.</td>
+      <td>Engine / test drift</td>
+    </tr>
+    <tr>
+      <td><code>pattern-doc21</code> TEST 3</td>
+      <td class="root-cause">Burnout risk level mapping at score ≥50 expects <code>HIGH</code>; current <code>riskLevelFromScore</code> thresholds differ (e.g. CRITICAL at 75 only in boundaries test).</td>
+      <td>Scoring threshold drift</td>
+    </tr>
+    <tr>
+      <td><code>reward-doc19</code> T5</td>
+      <td class="root-cause">Danger condition should cap reward intensity HIGH→MEDIUM; condition key or cap logic not applied in test scenario.</td>
+      <td>Engine / test drift</td>
+    </tr>
+    <tr>
+      <td><code>state-integrity-doc17</code> (2 tests)</td>
+      <td class="root-cause">RepairEngine routing for <code>MISSING_CURRENT_SIGNAL</code> and Bhudhi forced-fallback path require DB or env mocks not satisfied in unit test environment (long-running tests ~10s suggest timeout/retry against real services).</td>
+      <td>Missing mocks / DB</td>
+    </tr>
+    <tr>
+      <td><code>doc29-api-routes</code> — health manifest</td>
+      <td class="root-cause"><code>health.ts</code> KEY_API_ROUTES uses <code>/api/v1/onboarding/select-blueprint</code> but test expects legacy string <code>POST /api/onboarding/select-blueprint</code>.</td>
+      <td>Route manifest drift</td>
+    </tr>
+    <tr>
+      <td><code>tier-select-launch</code> — OpenAPI manifest</td>
+      <td class="root-cause">Same route inventory mismatch; tier endpoint paths documented under v1 prefix not reflected in test expectations.</td>
+      <td>Route manifest drift</td>
+    </tr>
+    <tr>
+      <td><code>blueprint-launch-path</code></td>
+      <td class="root-cause"><code>LaunchContractEnforcer.enforceLaunchContract()</code> calls <code>db.select()</code> but unit test mocks incomplete DB (<code>db.select is not a function</code>). Launch gate added in gap fix #3 not wired in test doubles.</td>
+      <td>Missing DB mock</td>
+    </tr>
+    <tr>
+      <td><code>memory.bench.test.ts</code> — p99 &lt;50ms</td>
+      <td class="root-cause">Benchmark timing flaky or mock graph query slower than threshold on Windows CI-like environment.</td>
+      <td>Benchmark flake</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Failure categories (summary)</h3>
+<table>
+  <tr><th>Category</th><th>Count (approx)</th><th>Fix approach</th></tr>
+  <tr><td>Test mocks outdated (DB, webhooks, memory)</td><td>8</td><td>Update vitest mocks to match Drizzle/LaunchContractEnforcer/EvidenceLedger</td></tr>
+  <tr><td>Test expectations drift (routes, workers, scoring)</td><td>10</td><td>Align tests with gap fixes #4 (signal bridge), v1 routes, new thresholds</td></tr>
+  <tr><td>Frontend language-map policy</td><td>3</td><td>Replace hardcoded terms; use language-map helpers</td></tr>
+  <tr><td>Missing Bhudhi schema registration</td><td>1</td><td>Register ERECTOR_VERDICT_EXPLANATION in OutputValidator</td></tr>
+  <tr><td>Validator / test data mismatch</td><td>2</td><td>Fix proof repetition test data or relax validator for long structured text</td></tr>
+  <tr><td>Benchmark flake</td><td>1</td><td>Increase threshold or run only in CI perf job</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>6. Parts 5–13 — Status &amp; why not complete</h2>
+
+<h3>Part 5 — API routes (not formally gated)</h3>
+<p>Structural inspection shows 60+ route registrations under <code>artifacts/api-server/src/routes/</code>. Critical paths exist in <code>doc29-route-inventory.ts</code> and route files. Formal PASS blocked because <code>doc29-api-routes.test.ts</code> fails on manifest string mismatches (v1 vs legacy paths).</p>
+
+<h3>Part 6 — Bhudhi (FAIL)</h3>
+<ul>
+  <li>Trigger router unit test hits real database for budget accounting.</li>
+  <li>Memory service tests have broken Drizzle mocks.</li>
+  <li>ERECTOR_VERDICT_EXPLANATION fallback not registered in output validator.</li>
+</ul>
+
+<h3>Part 7 — Erector integration (PARTIAL)</h3>
+<p>Code paths exist (<code>LaunchContractEnforcer</code>, <code>loadArchetypeContext</code>, free tier scoring, handoff tokens). Unit test for blueprint launch fails because enforcer DB calls are not mocked.</p>
+
+<h3>Part 8 — Frontend (FAIL)</h3>
+<p>Vite pages exist at corrected paths (e.g. <code>artifacts/torgima/src/pages/dashboard.tsx</code>). Component existence checks would largely pass. Language policy and limited-dashboard tests fail — see Part 3.4.</p>
+
+<h3>Part 9 — Workers (FAIL)</h3>
+<p><code>WorkerRegistry.ts</code> registers all 11 required workers including <code>ErectorSignalBridgeWorker</code>, but DOC16 tests still assert 10 workers from pre-gap-fix spec.</p>
+
+<h3>Part 10 — Security (PARTIAL)</h3>
+<ul>
+  <li class="pass">No secrets in tracked source; .gitignore covers .env.local, .dev.vars</li>
+  <li class="fail">UUID validation structural grep test outdated for Zod v4 patterns</li>
+</ul>
+
+<h3>Part 11 — System laws (NOT RUN)</h3>
+<p>Grep-based enforcement checks deferred until Part 4 passes. Code review indicates LaunchContractEnforcer is wired before activation.</p>
+
+<h3>Part 12 — E2E chains (NOT RUN)</h3>
+<p><strong>Why not run:</strong> Requires live API server, worker dispatch, and full Supabase/Anthropic integration. 21-step Erector intake chain and feedback loop timing tests were not executed. Cannot verify launch→order→feedback→signal→condition→next task under 10 seconds without running services.</p>
+
+<h3>Part 13 — DOC 37 checklist (FAIL)</h3>
+<p>Checklist items that depend on Parts 3.4, 4, 5, 8, 12 cannot be marked PASS. Items confirmed from earlier steps: typecheck, build, schema, seeds, flags, no direct Anthropic in prod code.</p>
+
+<h2>7. What passed (ready foundations)</h2>
+<ul>
+  <li>Supabase Postgres connectivity (pooler + direct)</li>
+  <li>Full env secret configuration (11 required keys)</li>
+  <li>Database migrations applied; Erector schema + seeds verified</li>
+  <li>Phase 2 feature flags disabled</li>
+  <li>Monorepo TypeScript: <strong>0 errors</strong></li>
+  <li>Production build: api-server + torgima + marketing</li>
+  <li>2033 unit tests passing (93% of executed tests)</li>
+  <li>No direct Anthropic API calls in production api-server source</li>
+  <li><code>language-map.ts</code> present with condition, erector, identity mappings</li>
+</ul>
+
+<h2>8. Recommended fix order</h2>
+<ol>
+  <li><strong>Update test mocks</strong> — LaunchContractEnforcer, BudgetController, bhudhi memory, external webhooks (fastest path to green unit suite).</li>
+  <li><strong>Align test expectations</strong> — Worker count (11), route manifest v1 paths, scoring thresholds after gap fixes.</li>
+  <li><strong>Register Bhudhi fallback schema</strong> — ERECTOR_VERDICT_EXPLANATION output type.</li>
+  <li><strong>Frontend language-map migration</strong> — Part 3.4; prioritize dashboard, signals, validation panels over Bhudhi-branded pages or document exception.</li>
+  <li><strong>Run Part 12 E2E</strong> — Start API + workers with full env; trace 21-step intake and feedback loop.</li>
+  <li><strong>Re-run full verification</strong> — <code>pnpm typecheck</code>, <code>pnpm build</code>, <code>pnpm test</code>, Parts 5–13, then Part 14 only if zero failures.</li>
+</ol>
+
+<h2>9. Part 14 — Commit &amp; push</h2>
+<div class="summary-box">
+  <strong>Status: BLOCKED</strong>
+  <p>Do not commit or push until Parts 1–13 report zero failures. Current blockers: 26 test failures, Part 3.4 language policy, Part 12 E2E not executed.</p>
+</div>
+
+<p class="small">Generated for TORGIMA Phase 1A verification session. Paths corrected per project layout (artifacts/api-server, artifacts/torgima, INTERNAL_AUTH_SECRET).</p>
+
+</body>
+</html>

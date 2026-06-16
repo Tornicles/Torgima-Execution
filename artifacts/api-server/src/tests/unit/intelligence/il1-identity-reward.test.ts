@@ -68,13 +68,13 @@ describe("IL1 — IdentityContinuityEngine", () => {
 
   it("T6: dashboard identity defaults when no row", () => {
     const d = toDashboardIdentity(null);
-    expect(d.stage).toBe("UNFORMED");
+    expect(d.stage).toBe("Getting Started");
     expect(d.stabilityScore).toBe(0);
     expect(d.regressionRisk).toBe("LOW");
     expect(typeof d.transformationScore).toBe("number");
   });
 
-  it("T6: dashboard maps DB stage to IL1 public stage", () => {
+  it("T6: dashboard maps DB stage to customer-facing label", () => {
     const d = toDashboardIdentity({
       stage: "building",
       stability_score: 72,
@@ -82,7 +82,7 @@ describe("IL1 — IdentityContinuityEngine", () => {
       regression_risk: "LOW",
       transformation_score: 65,
     } as never);
-    expect(d.stage).toBe("BUILDING");
+    expect(d.stage).toBe("Developing Consistency");
     expect(d.stabilityScore).toBe(72);
   });
 

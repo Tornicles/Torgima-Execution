@@ -64,4 +64,22 @@ describe("DOC 37 — security error shape", () => {
     const err = new TorgimaError("FORBIDDEN", "Internal route not accessible from browser");
     expect(err.message).not.toMatch(/postgres|secret|INTERNAL_AUTH/i);
   });
+
+  it("SQL injection in UUID param rejected by Zod (structural)", async () => {
+    const fs = await import("node:fs");
+    const read = (rel: string) =>
+      fs.readFileSync(new URL(rel, import.meta.url), "utf8");
+    const orders = read("../../../routes/orders.ts");
+    const executionRoutes = read("../../../routes/executionRoutes.ts");
+    const uuidPattern = /z\.string\(\)\.uuid|z\.uuid\(\)|z\.string\(\)\.pipe\(z\.uuid\(\)\)/;
+    expect(orders + executionRoutes).toMatch(uuidPattern);
+  });
+
+  it("tier loaded from DB not JWT (structural)", async () => {
+    const auth = await import("node:fs").then((fs) =>
+      fs.readFileSync(new URL("../../../services/AuthService.ts", import.meta.url), "utf8"),
+    );
+    expect(auth).toMatch(/tier|users\./i);
+    expect(auth).not.toMatch(/jwt\.tier|token\.tier/i);
+  });
 });

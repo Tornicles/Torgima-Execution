@@ -6,13 +6,34 @@ import type {
   TaskExecutionView,
 } from "@/types/task-execution";
 
+/** DOC 34 — customer-facing completion labels */
 export const COMPLETION_LABELS: Record<FeedbackCompletion, string> = {
-  COMPLETED: "I completed this task",
-  PARTIAL: "I partially completed this task",
-  FAILED: "I attempted but could not complete it",
-  BLOCKED: "I was blocked and could not start",
-  SKIPPED: "I skipped this task",
+  COMPLETED: "Completed",
+  PARTIAL: "Partially done",
+  FAILED: "Tried but failed",
+  BLOCKED: "Blocked by something",
+  SKIPPED: "Skipped this one",
 };
+
+export const DIFFICULTY_FELT_LABELS: Record<
+  import("@/types/task-execution").DifficultyFelt,
+  string
+> = {
+  too_easy: "Too Easy",
+  about_right: "About Right",
+  hard: "Hard",
+  too_hard: "Too Hard",
+};
+
+export const REFLECTION_MIN_LENGTH = 20;
+
+export function reflectionValid(text?: string): boolean {
+  return (text?.trim().length ?? 0) >= REFLECTION_MIN_LENGTH;
+}
+
+export function scoreRequiredFor(completion: FeedbackCompletion | null): boolean {
+  return completion === "COMPLETED" || completion === "PARTIAL" || completion === "FAILED";
+}
 
 export function parseTaskExecutionView(data: unknown): TaskExecutionView | null {
   if (!data || typeof data !== "object") return null;
@@ -23,14 +44,34 @@ export function parseTaskExecutionView(data: unknown): TaskExecutionView | null 
       : root;
   const orderId = String(inner.orderId ?? root.id ?? "");
   if (!orderId) return null;
+  const definitionOfDone =
+    (inner.definitionOfDone as string | null) ??
+    (root.definitionOfDone as string | null) ??
+    null;
+  const expectedOutput =
+    (inner.expectedOutput as string | null) ?? (root.expectedOutput as string | null) ?? null;
+  const successCriteria = Array.isArray(inner.successCriteria)
+    ? inner.successCriteria.map(String)
+    : definitionOfDone
+      ? definitionOfDone
+          .split(/\n|•|;/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
   return {
     orderId,
     stateVersion: Number(inner.stateVersion ?? root.stateVersion ?? 0),
     title: String(inner.title ?? root.title ?? ""),
     instruction: String(inner.instruction ?? root.instruction ?? ""),
-    successCriteria: Array.isArray(inner.successCriteria)
-      ? inner.successCriteria.map(String)
-      : [],
+    whyItMatters:
+      (inner.whyItMatters as string | null) ??
+      (inner.priorityReason as string | null) ??
+      (root.whyItMatters as string | null) ??
+      null,
+    expectedOutput,
+    definitionOfDone,
+    successCriteria,
     taskType: String(inner.taskType ?? root.taskType ?? "execution"),
     difficulty: String(inner.difficulty ?? root.difficulty ?? "moderate"),
     proofType: normalizeProofType(String(inner.proofType ?? root.proofType ?? "NONE")),
@@ -42,13 +83,15 @@ export function parseTaskExecutionView(data: unknown): TaskExecutionView | null 
       : ["COMPLETED", "PARTIAL", "FAILED", "SKIPPED"],
     priorityReason:
       (inner.priorityReason as string | null) ?? (root.whyItMatters as string | null) ?? null,
-    blocked: Boolean(inner.blocked),
+    blocked: Boolean(inner.blocked ?? root.status === "blocked"),
     disabledReason: inner.disabledReason as string | undefined,
     timeEstimateMinutes:
       (inner.timeEstimateMinutes as number | null) ??
       (root.timeEstimateMinutes as number | null) ??
       null,
     proofRequired: Boolean(inner.proofRequired ?? root.proofRequired),
+    status: String(inner.status ?? root.status ?? "active"),
+    completionSummary: (inner.completionSummary as string | null) ?? null,
   };
 }
 
@@ -77,7 +120,9 @@ export function proofValid(order: TaskExecutionView, proof: ProofState): boolean
   if (type === "TEXT" || (order.proofRequired && type === "NONE")) {
     return (proof.proofText?.trim().length ?? 0) >= 20;
   }
-  if (type === "FILE") return proof.proofFileIds.length > 0;
+  if (type === "FILE") {
+    return proof.proofFileIds.length > 0 || Boolean(proof.proofFileId);
+  }
   if (type === "LINK") return proof.proofLinks.some((l) => isValidUrl(l.trim()));
   if (type === "STEPS") {
     return proof.stepAnswers.length > 0 && proof.stepAnswers.every((a) => a.completed);
@@ -129,11 +174,20 @@ export function buildFeedbackPayload(
       payload.proofJson = { text: form.proof.proofText.trim() };
     }
   }
-  if (order.proofType === "FILE" && form.proof.proofFileIds.length) {
-    payload.proofJson = { fileIds: form.proof.proofFileIds };
+  if (order.proofType === "FILE") {
+    const fileIds = form.proof.proofFileIds.length
+      ? form.proof.proofFileIds
+      : form.proof.proofFileId
+        ? [form.proof.proofFileId]
+        : [];
+    if (fileIds.length) {
+      payload.proofJson = { fileIds };
+      payload.proof_file_id = fileIds[0];
+    }
   }
   if (order.proofType === "LINK" && form.proof.proofLinks[0]) {
     payload.proofJson = { link: form.proof.proofLinks[0] };
+    payload.proof_link = form.proof.proofLinks[0];
   }
   if (order.proofType === "STEPS") {
     payload.proofJson = { steps: form.proof.stepAnswers };
@@ -163,6 +217,8 @@ export function initialProofState(proofType: ProofType): ProofState {
     return {
       proofText: "",
       proofFileIds: [],
+      proofFileId: null,
+      proofFileName: null,
       proofLinks: [],
       stepAnswers: DEFAULT_PROOF_STEPS.map((i) => ({
         itemId: i.itemId,
@@ -175,6 +231,8 @@ export function initialProofState(proofType: ProofType): ProofState {
     return {
       proofText: "",
       proofFileIds: [],
+      proofFileId: null,
+      proofFileName: null,
       proofLinks: [],
       stepAnswers: [],
       outputFields: { result: "", notes: "" },
@@ -183,6 +241,8 @@ export function initialProofState(proofType: ProofType): ProofState {
   return {
     proofText: "",
     proofFileIds: [],
+    proofFileId: null,
+    proofFileName: null,
     proofLinks: [""],
     stepAnswers: [],
     outputFields: {},

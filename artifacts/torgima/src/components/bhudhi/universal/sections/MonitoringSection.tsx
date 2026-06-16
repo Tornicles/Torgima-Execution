@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  fetchBhudhiMonitoringHealth,
-  fetchBhudhiMonitoringMetrics,
+  fetchIntelligenceMonitoringHealth,
+  fetchIntelligenceMonitoringMetrics,
   fetchPlatformHealth,
-  type BhudhiMonitoringHealth,
-  type BhudhiMonitoringMetrics,
-} from "@/lib/bhudhi-monitoring-api";
+  type IntelligenceMonitoringHealth,
+  type IntelligenceMonitoringMetrics,
+} from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 
 function statusBorder(status: string | undefined): string {
   if (status === "healthy") return "border-green-200 bg-green-50";
@@ -14,18 +15,18 @@ function statusBorder(status: string | undefined): string {
 }
 
 export function MonitoringSection({ blueprintId }: { blueprintId: string }) {
-  const [health, setHealth] = useState<BhudhiMonitoringHealth | null>(null);
+  const [health, setHealth] = useState<IntelligenceMonitoringHealth | null>(null);
   const [platformHealth, setPlatformHealth] = useState<Record<string, unknown> | null>(null);
-  const [metrics, setMetrics] = useState<BhudhiMonitoringMetrics | null>(null);
+  const [metrics, setMetrics] = useState<IntelligenceMonitoringMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
       const [h, p, m] = await Promise.all([
-        fetchBhudhiMonitoringHealth(),
+        fetchIntelligenceMonitoringHealth(),
         fetchPlatformHealth(),
-        fetchBhudhiMonitoringMetrics(),
+        fetchIntelligenceMonitoringMetrics(),
       ]);
       setHealth(h);
       setPlatformHealth(p);
@@ -50,7 +51,7 @@ export function MonitoringSection({ blueprintId }: { blueprintId: string }) {
       <div>
         <h1 className="text-4xl font-light mb-2">Monitoring</h1>
         <p className="text-gray-600 text-sm">
-          Production health for Bhudhi layers and platform API
+          {INTELLIGENCE_COPY.monitoringHealth}
           {blueprintId ? ` · blueprint ${blueprintId.slice(0, 8)}…` : ""}
         </p>
       </div>
@@ -60,7 +61,7 @@ export function MonitoringSection({ blueprintId }: { blueprintId: string }) {
       )}
 
       <div className={`border rounded-lg p-6 ${statusBorder(health?.status)}`}>
-        <h2 className="text-lg font-medium mb-4">Bhudhi layer health</h2>
+        <h2 className="text-lg font-medium mb-4">{INTELLIGENCE_COPY.layerHealth}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
           <div>
             <div className="text-gray-600">Status</div>
@@ -118,7 +119,7 @@ export function MonitoringSection({ blueprintId }: { blueprintId: string }) {
 
       {metrics?.bhudhi && (
         <div className="border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">Bhudhi metrics (24h)</h2>
+          <h2 className="text-lg font-medium mb-4">{INTELLIGENCE_COPY.metrics24h}</h2>
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-gray-600">Kernel events</dt>

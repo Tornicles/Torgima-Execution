@@ -42,6 +42,7 @@ export default defineConfig({
     "./src/schema/sequenceTables.ts",
     "./src/schema/growthTables.ts",
     "./src/schema/ultimateTables.ts",
+    "./src/schema/erectorTables.ts",
   ],
   out: "../../migrations",
   dialect: "postgresql",

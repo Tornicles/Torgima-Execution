@@ -33,7 +33,23 @@ function buildInternalContext(): AuthContext {
   };
 }
 
-const profileSelect = { id: users.id, mode: users.mode, tier: users.tier };
+const profileSelect = {
+  id: users.id,
+  mode: users.mode,
+  tier: users.tier,
+  email: users.email,
+  dashboard_mode: users.dashboard_mode,
+  erector_tier: users.erector_tier,
+};
+
+type UserProfileRow = {
+  id: string;
+  mode: string;
+  tier: string;
+  email?: string;
+  dashboard_mode?: string;
+  erector_tier?: string | null;
+};
 
 /**
  * Look up a public.users row for a Supabase auth user.
@@ -43,7 +59,7 @@ const profileSelect = { id: users.id, mode: users.mode, tier: users.tier };
 async function resolveUserFromSupabase(
   supabaseId: string,
   email: string,
-): Promise<{ id: string; mode: string; tier: string } | null> {
+): Promise<UserProfileRow | null> {
   const normalizedEmail = email.toLowerCase().trim();
   try {
     const [bySupabaseId] = await db
@@ -74,7 +90,7 @@ async function resolveUserFromSupabase(
 
 function buildSupabaseJwtContext(
   supabaseUser: { userId: string; email: string },
-  profile: { id: string; mode: string; tier: string },
+  profile: UserProfileRow,
   degraded = false,
 ): AuthContext {
   return {
@@ -83,6 +99,9 @@ function buildSupabaseJwtContext(
     userMode: (profile.mode === "team" ? "team" : "individual") as "individual" | "team",
     userTier: String(profile.tier ?? "starter"),
     isInternal: false,
+    email: profile.email ?? supabaseUser.email,
+    dashboardMode: profile.dashboard_mode ?? "limited",
+    erectorTier: profile.erector_tier ?? null,
   };
 }
 
@@ -97,6 +116,9 @@ function buildDegradedSupabaseJwtContext(supabaseUser: {
     userMode: "individual",
     userTier: "starter",
     isInternal: false,
+    email: supabaseUser.email,
+    dashboardMode: "limited",
+    erectorTier: null,
   };
 }
 
@@ -107,7 +129,7 @@ function buildDegradedSupabaseJwtContext(supabaseUser: {
 async function createUserFromSupabase(
   supabaseId: string,
   email: string,
-): Promise<{ id: string; mode: string; tier: string }> {
+): Promise<UserProfileRow> {
   const normalizedEmail = email.toLowerCase().trim();
 
   // Link existing legacy profile (magic-link era) by email.
@@ -143,7 +165,14 @@ async function createUserFromSupabase(
       target: users.email,
       set: { supabase_id: supabaseId, updated_at: new Date() },
     })
-    .returning({ id: users.id, mode: users.mode, tier: users.tier });
+    .returning({
+      id: users.id,
+      mode: users.mode,
+      tier: users.tier,
+      email: users.email,
+      dashboard_mode: users.dashboard_mode,
+      erector_tier: users.erector_tier,
+    });
 
   if (!user) {
     throw new TorgimaError("INTERNAL_ERROR", "Failed to create user profile");

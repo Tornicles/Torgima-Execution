@@ -5,6 +5,7 @@ import { db, academyTasks, academyProof, orders, feedback } from "@workspace/db"
 import { and, eq, gte } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { TorgimaError } from "../../lib/errors.js";
+import { evidenceLedgerService } from "../../services/erector/evidence/EvidenceLedgerService.js";
 
 export async function detectRepeatedFailurePattern(
   userId: string,
@@ -106,18 +107,81 @@ export async function validateAcademyProof(
   const hasOutput = Boolean(proofData.outputUrl?.trim());
   const approved = reflection.length >= 50 || hasOutput;
 
-  await db.insert(academyProof).values({
-    academy_task_id: academyTaskId,
-    user_id: task.user_id,
+  const proofJson = {
+    output_url: proofData.outputUrl ?? null,
     reflection: reflection || null,
-    proof_json: { output_url: proofData.outputUrl ?? null },
-    validation_status: approved ? "approved" : "rejected",
-    rejection_reason: approved ? null : "Proof must be 50+ characters or include execution output",
-    validated_at: new Date(),
-  });
+    type: hasOutput ? undefined : "text_explanation",
+  };
+
+  const [proofRow] = await db
+    .insert(academyProof)
+    .values({
+      academy_task_id: academyTaskId,
+      user_id: task.user_id,
+      reflection: reflection || null,
+      proof_json: proofJson,
+      validation_status: approved ? "approved" : "rejected",
+      rejection_reason: approved ? null : "Proof must be 50+ characters or include execution output",
+      validated_at: new Date(),
+    })
+    .returning({ id: academyProof.id });
 
   if (!approved) {
     return { approved: false, reason: "Proof must demonstrate applied learning (50+ chars or output)" };
+  }
+
+  if (proofRow && task.capability_gap_id) {
+    const { validateErectorAcademyProof } = await import(
+      "../erector/academy/AcademyProofValidator.js"
+    );
+    const erectorResult = await validateErectorAcademyProof({
+      academyTaskId,
+      userId: task.user_id,
+      academyProofId: proofRow.id,
+      proofJson,
+      reflection,
+    });
+
+    if (!erectorResult.validated) {
+      await db
+        .update(academyProof)
+        .set({
+          validation_status: "rejected",
+          rejection_reason: "Evidence does not meet capability proof requirements",
+        })
+        .where(eq(academyProof.id, proofRow.id));
+      return {
+        approved: false,
+        reason: "Evidence does not meet capability proof requirements",
+      };
+    }
+
+    if (!erectorResult.capability_confirmed) {
+      return {
+        approved: true,
+        reason: "Evidence recorded; continue building capability signal",
+      };
+    }
+  } else if (proofRow) {
+    try {
+      const evidenceResult = await evidenceLedgerService.submit({
+        userId: task.user_id,
+        blueprintId: task.blueprint_id,
+        academyTaskId,
+        sourceType: "user_upload",
+        contentJson: proofJson,
+        contentSummary: reflection.substring(0, 200),
+      });
+      await db
+        .update(academyProof)
+        .set({
+          evidence_ledger_id: evidenceResult.evidence_id,
+          evidence_class: evidenceResult.evidence_class,
+        })
+        .where(eq(academyProof.id, proofRow.id));
+    } catch (err) {
+      logger.warn({ err, academyTaskId }, "[AcademyEngine] Evidence ledger submit failed");
+    }
   }
 
   await db

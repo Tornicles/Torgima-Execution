@@ -1,14 +1,10 @@
 import {
   db,
   decisionTraces,
-  cognitiveLoadScores,
-  orders,
-  feedback,
   blueprints,
 } from "@workspace/db";
-import { and, count, eq, gte, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
-import { writeEvent, EVENT_TYPES } from "../../services/EventService.js";
 
 export const IL4_DECISION_TYPES = {
   CONTROL_OUTPUT: "CONTROL_OUTPUT",
@@ -95,6 +91,25 @@ export async function traceControlOutput(params: {
     rationale: `Condition ${params.condition} determines allowed behavior.`,
     outcome: `package:${params.packageId}`,
     stateVersion: params.stateVersion,
+  }).then(async (traceId) => {
+    const { DecisionTraceService } = await import("../decision/DecisionTraceService.js");
+    await DecisionTraceService.write({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      decisionType: "SYSTEM_CONTROL",
+      decisionKey: `enforcement_package:${params.packageId}`,
+      selectedOption: `task_limit:${params.taskMin}-${params.taskMax}`,
+      optionsConsidered: [
+        `condition:${params.condition}`,
+        `difficulty_cap:${params.difficultyCap}`,
+      ],
+      rationaleSummary: `Enforcement package restricts tasks to ${params.taskMin}-${params.taskMax} at ${params.difficultyCap}.`,
+      sourceEngine: "ControlEngine",
+      confidence: "HIGH",
+      stateVersion: params.stateVersion,
+      causationEventId: params.packageId,
+    }).catch(() => null);
+    return traceId;
   });
 }
 
@@ -152,134 +167,20 @@ export async function calculateCognitiveLoad(params: {
   blueprintId: string;
   userId: string;
 }): Promise<{ loadScore: number; loadLevel: string; loadCategory: string }> {
-  const last24h = new Date(Date.now() - 24 * 3600000);
-
-  const [recentDecisions, recentFeedback, activeOrdersRows, recentTraces] = await Promise.all([
-    db
-      .select({ c: count() })
-      .from(decisionTraces)
-      .where(
-        and(
-          eq(decisionTraces.blueprint_id, params.blueprintId),
-          gte(decisionTraces.created_at, last24h),
-        ),
-      ),
-    db
-      .select({
-        friction_score: feedback.friction_score,
-        confidence_score: feedback.confidence_score,
-      })
-      .from(feedback)
-      .where(
-        and(
-          eq(feedback.blueprint_id, params.blueprintId),
-          eq(feedback.user_id, params.userId),
-          gte(feedback.created_at, last24h),
-        ),
-      ),
-    db
-      .select({ c: count() })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.blueprint_id, params.blueprintId),
-          eq(orders.user_id, params.userId),
-          inArray(orders.status, ["pending", "active"]),
-        ),
-      ),
-    db
-      .select({ decision_type: decisionTraces.decision_type })
-      .from(decisionTraces)
-      .where(
-        and(
-          eq(decisionTraces.blueprint_id, params.blueprintId),
-          gte(decisionTraces.created_at, last24h),
-        ),
-      )
-      .limit(50),
-  ]);
-
-  const recentDecisionsCount = Number(recentDecisions[0]?.c ?? 0);
-  const activeOrders = Number(activeOrdersRows[0]?.c ?? 0);
-
-  const rf = recentFeedback;
-  const avgFriction =
-    rf.length > 0
-      ? rf.reduce((s, f) => s + (f.friction_score ?? 0), 0) / rf.length / 5
-      : 0;
-  const avgConfidence =
-    rf.length > 0
-      ? 1 -
-        rf.reduce((s, f) => s + (f.confidence_score ?? 5), 0) / rf.length / 5
-      : 0;
-
-  const loadScore = Math.min(
-    1.0,
-    (recentDecisionsCount / 20) * 0.3 +
-      (activeOrders / 5) * 0.3 +
-      avgFriction * 0.2 +
-      avgConfidence * 0.2,
-  );
-
-  const loadLevel =
-    loadScore >= 0.8
-      ? "CRITICAL"
-      : loadScore >= 0.6
-        ? "HIGH"
-        : loadScore >= 0.4
-          ? "MEDIUM"
-          : "LOW";
+  const { evaluateAndPersistCognitiveLoad } = await import("../decision/CognitiveLoadScorer.js");
+  const assessment = await evaluateAndPersistCognitiveLoad(params);
 
   const loadCategory =
-    loadScore >= 0.8
-      ? "OVERLOAD"
-      : loadScore >= 0.6
-        ? "HIGH"
-        : loadScore >= 0.4
-          ? "MODERATE"
-          : "LOW";
+    assessment.level === "CRITICAL" ? "OVERLOAD"
+    : assessment.level === "HIGH" ? "HIGH"
+    : assessment.level === "MEDIUM" ? "MODERATE"
+    : "LOW";
 
-  const priorityTypes = recentTraces.filter(
-    (t) => t.decision_type === IL4_DECISION_TYPES.PRIORITY_SELECTION,
-  ).length;
-  const reversalCount = Math.max(0, priorityTypes - 1);
-  const ambiguousTypes = new Set<string>([
-    IL4_DECISION_TYPES.FAILURE_ROUTING,
-    IL4_DECISION_TYPES.PRIORITY_SELECTION,
-  ]);
-  const ambiguityFlags = recentTraces.filter((t) => ambiguousTypes.has(t.decision_type)).length;
-
-  try {
-    await db.insert(cognitiveLoadScores).values({
-      blueprint_id: params.blueprintId,
-      user_id: params.userId,
-      load_score: loadScore,
-      active_tasks: activeOrders,
-      choice_count: recentDecisionsCount,
-      decision_latency_ms: null,
-      reversal_count: reversalCount,
-      ambiguity_flags: ambiguityFlags,
-      load_category: loadCategory,
-      complexity_level: loadLevel.toLowerCase(),
-      recommendation: loadLevel === "CRITICAL" ? "reduce_load" : undefined,
-    });
-  } catch (err) {
-    logger.warn({ err }, "[DecisionTrace] cognitive_load insert failed");
-  }
-
-  if (["HIGH", "CRITICAL"].includes(loadLevel)) {
-    await writeEvent({
-      eventType: EVENT_TYPES.COGNITIVE_LOAD_HIGH,
-      entityType: "blueprint",
-      entityId: params.blueprintId,
-      userId: params.userId,
-      blueprintId: params.blueprintId,
-      payload: { load_level: loadLevel, load_score: loadScore, load_category: loadCategory },
-      idempotencyKey: `cognitive_load:${params.blueprintId}:${Math.floor(Date.now() / 3600000)}`,
-    });
-  }
-
-  return { loadScore, loadLevel, loadCategory };
+  return {
+    loadScore: assessment.score / 100,
+    loadLevel: assessment.level,
+    loadCategory,
+  };
 }
 
 export async function getBlueprintStateVersion(blueprintId: string): Promise<number> {

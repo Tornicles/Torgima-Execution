@@ -1,0 +1,6 @@
+DOC16 — Event System and Dead Letter Queue
+- WorkerRegistry: 10 workers with consumes/produces/lockScope/retryPolicy/timeoutMs
+- RetryPolicy: STANDARD, CRITICAL, FAST, BHUDHI with explicit backoff arrays
+- Dead letter after max retries; CRITICAL_EVENTS emit system_health_degraded
+- Idempotency on emit + NOOP_DUPLICATE in workers
+- DLQ routes: GET /api/internal/dead-letter, POST resolve (replay/skip/manual_repair)

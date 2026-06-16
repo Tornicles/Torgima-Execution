@@ -1,0 +1,223 @@
+TORGIMA / ERECTOR
+ERECTOR CURSOR PROMPT 1
+Migrations, Seeds, and Connection Verification
+Run First — Gates All Other Prompts — Nothing Else Can Run Until This Passes
+
+
+This prompt runs all 3 schema migrations, seeds all required tables, verifies connections to existing system, and confirms TypeScript compiles. Zero failures allowed before moving to Prompt 2.
+
+OBJECTIVE
+Create all Erector database tables across 3 migration files, seed all rule tables with v0.1 data, add Erector columns to existing tables without breaking anything, and verify the full schema is consistent with Torgima's existing 42 tables.
+
+SURGICAL RULE
+DO NOT modify any existing migration file. DO NOT change any existing table structure beyond adding new nullable columns where specified. DO NOT touch any engine file, route file, or frontend file in this prompt. Schema only.
+
+SCOPE — FILES TOUCHED
+packages/db/src/schema.ts (or equivalent Drizzle schema file) — ADD new table definitions
+packages/db/src/migrations/ — CREATE 3 new migration files
+packages/db/src/seed.ts — ADD seed functions for rule tables
+packages/db/src/schema-erector.ts — CREATE this new file for all Erector table definitions
+
+TASK 1 — CREATE MIGRATION: erector_schema_1_core_runtime
+Create a new migration file. Add all tables and column additions from Schema 1 document. Run in exact order to avoid FK violations.
+-- Migration order for Schema 1:
+-- 1. ALTER TABLE users ADD COLUMNS (no FK dependency)
+-- 2. ALTER TABLE blueprints ADD COLUMNS (no FK dependency)
+-- 3. CREATE erector_verdict_rules (no FK dependency)
+-- 4. CREATE erector_threshold_matrix (no FK dependency)
+-- 5. CREATE erector_archetype_rule_packs (no FK dependency)
+-- 6. CREATE erector_framework_veto_rules (no FK dependency)
+-- 7. CREATE erector_intake_sessions (FK: users)
+-- 8. CREATE erector_user_reality_profiles (FK: users, erector_intake_sessions)
+-- 9. CREATE erector_validation_runs (FK: users, blueprints, intake_sessions, reality_profiles)
+-- 10. CREATE erector_verdict_decisions (FK: validation_runs, verdict_rules)
+-- 11. CREATE erector_archetype_classifications (FK: users, validation_runs, blueprints)
+-- 12. CREATE erector_simulation_runs (FK: users, validation_runs, blueprints, archetype_classifications)
+-- 13. CREATE erector_evidence_ledger (FK: users, blueprints, validation_runs)
+-- 14. CREATE erector_signals (FK: users, blueprints, validation_runs)
+-- 15. CREATE erector_correction_paths (FK: users, blueprints, validation_runs)
+-- 16. CREATE erector_blueprint_launch_contracts (FK: users, blueprints, validation_runs, simulation_runs, archetype_classifications)
+
+TASK 2 — CREATE MIGRATION: erector_schema_2_execution_intelligence
+-- Migration order for Schema 2:
+-- 1. ALTER TABLE academy_tasks ADD COLUMNS
+-- 2. ALTER TABLE academy_proof ADD COLUMNS
+-- 3. ALTER TABLE outcome_validations ADD COLUMNS
+-- 4. ALTER TABLE false_progress_flags ADD COLUMNS
+-- 5. CREATE erector_capability_graph (no FK dependency)
+-- 6. CREATE erector_false_progress_patterns (no FK dependency)
+-- 7. CREATE erector_capability_profiles (FK: users, erector_capability_graph)
+-- 8. CREATE erector_capability_gaps (FK: users, blueprints, erector_capability_graph)
+-- 9. CREATE erector_phase_gates (FK: users, blueprints, phases, erector_correction_paths)
+-- 10. CREATE erector_resimulation_runs (FK: users, blueprints, erector_simulation_runs)
+
+TASK 3 — CREATE MIGRATION: erector_schema_3_governance
+-- Migration order for Schema 3:
+-- 1. CREATE erector_model_versions (no FK dependency)
+-- 2. CREATE erector_decision_audits (FK: users, blueprints)
+-- 3. CREATE erector_user_facing_explanations (FK: users, erector_decision_audits)
+-- 4. CREATE erector_integrity_flags (FK: users, blueprints, erector_evidence_ledger)
+-- 5. CREATE erector_manual_review_cases (FK: users, blueprints, erector_decision_audits)
+-- 6. CREATE erector_system_error_records (FK: users, blueprints)
+-- 7. CREATE erector_observability_logs (FK: users, blueprints)
+
+TASK 4 — SEED ALL RULE TABLES
+After migrations run, seed in this exact order:
+Seed erector_model_versions — 10 rows, all components at v0.1
+Seed erector_threshold_matrix — 3 rows, one per tier with v0.1 thresholds
+Seed erector_archetype_rule_packs — 10 rows, one per economic archetype
+Seed erector_verdict_rules — minimum 40 rows covering all dimensions and tiers
+Seed erector_framework_veto_rules — 4 rows for active Individual Access frameworks
+Seed erector_capability_graph — minimum 20 capability nodes covering core domains
+Seed erector_false_progress_patterns — 10 rows, one per archetype
+
+Critical Seed: erector_verdict_rules v0.1
+These are the minimum required verdict rules. Insert all of them:
+RULE ID
+DIMENSION
+CONDITION
+THRESHOLD
+SEVERITY
+VERDICT EFFECT
+VR-001
+global
+overall_validation_score >= proceed_threshold for tier
+tier-dependent
+INFO
+NONE
+VR-002
+global
+overall_validation_score < pivot_threshold for tier
+tier-dependent
+HARD_BLOCKER
+PIVOT
+VR-003
+global
+overall_validation_score between adjust and proceed
+tier-dependent
+SOFT_BLOCKER
+ADJUST
+VR-010
+demand
+demand_proof_class < archetype_minimum
+archetype rule pack
+HARD_BLOCKER
+ADJUST or PIVOT
+VR-011
+demand
+demand_proof_class = 0 (no evidence at all)
+0
+HARD_BLOCKER
+PIVOT
+VR-020
+feasibility
+feasibility_rating = BLOCKED
+blocked
+HARD_BLOCKER
+PIVOT
+VR-021
+feasibility
+feasibility_rating = UNLIKELY
+unlikely
+SOFT_BLOCKER
+ADJUST
+VR-030
+market
+market_viability_score < 20
+20
+HARD_BLOCKER
+PIVOT
+VR-031
+market
+market_viability_score between 21-40
+40
+SOFT_BLOCKER
+ADJUST
+VR-040
+context
+contradiction_score > 70 (goal contradicts context)
+70
+HARD_BLOCKER
+PIVOT
+VR-041
+context
+resource_goal_mismatch with no correction path
+uncorrectable
+HARD_BLOCKER
+PIVOT
+VR-050
+global
+required_fields missing (goal, purpose, timeframe, commitment)
+any missing
+HARD_BLOCKER
+ADJUST
+VR-060
+simulation
+framework_hard_veto = true (any framework)
+any veto
+HARD_BLOCKER
+PIVOT
+VR-070
+simulation
+probability_proceed < 25 (Ultimate tier)
+25
+HARD_BLOCKER
+PIVOT
+
+TASK 5 — VERIFY CONNECTIONS TO EXISTING SYSTEM
+Run these SQL checks after migration. All must pass:
+-- Verify new columns on existing tables
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'users'
+AND column_name IN ('dashboard_mode', 'erector_tier');
+-- EXPECTED: 2 rows
+ 
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'blueprints'
+AND column_name IN ('erector_state','erector_validation_id','erector_simulation_id',
+  'erector_archetype','erector_launch_contract_id','blueprint_source');
+-- EXPECTED: 6 rows
+ 
+-- Verify all new tables exist
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name LIKE 'erector_%'
+ORDER BY table_name;
+-- EXPECTED: 27 tables
+ 
+-- Verify seed data
+SELECT COUNT(*) FROM erector_threshold_matrix;  -- EXPECTED: 3
+SELECT COUNT(*) FROM erector_archetype_rule_packs;  -- EXPECTED: 10
+SELECT COUNT(*) FROM erector_verdict_rules WHERE active = true;  -- EXPECTED: >= 14
+SELECT COUNT(*) FROM erector_model_versions;  -- EXPECTED: 10
+SELECT COUNT(*) FROM erector_false_progress_patterns;  -- EXPECTED: 10
+ 
+-- Verify FK integrity (no broken links)
+SELECT COUNT(*) FROM erector_blueprint_launch_contracts blc
+JOIN blueprints b ON b.id = blc.blueprint_id;
+-- EXPECTED: 0 (no contracts yet) — confirms FK works without error
+
+TASK 6 — TYPECHECK AND BUILD
+pnpm typecheck  -- MUST: zero errors
+pnpm build      -- MUST: clean build
+ 
+-- If typecheck fails on Drizzle types:
+-- Run: pnpm db:generate (or equivalent Drizzle type generation)
+-- Then re-run typecheck
+
+ACCEPTANCE CRITERIA
+27 new erector_ tables exist in database
+users table has 2 new columns: dashboard_mode, erector_tier
+blueprints table has 6 new columns
+academy_tasks has 4 new columns
+academy_proof has 4 new columns
+outcome_validations has 5 new columns
+false_progress_flags has 4 new columns
+All 4 seed tables populated with v0.1 data
+All SQL verification checks return expected row counts
+pnpm typecheck — zero errors
+pnpm build — clean
+No existing table structure modified beyond approved column additions
+
+COMMIT: feat(erector): run all 3 schema migrations and seed v0.1 rule tables
+DO NOT PROCEED TO PROMPT 2 UNTIL ALL ACCEPTANCE CRITERIA PASS.

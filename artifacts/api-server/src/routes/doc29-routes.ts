@@ -31,7 +31,7 @@ import { getCurrentIdentityState, getIdentityHistory } from "../engines/identity
 import { OrderService } from "../services/OrderService.js";
 import { checkExecutability } from "../engines/dependency/DependencyMappingEngine.js";
 import { generateUploadUrl } from "../engines/chat/PersonalChatEngine.js";
-import { answerInterrogation } from "../engines/feedback/InterrogationService.js";
+import { processFeedbackClarification } from "../engines/feedback/submitFeedbackPhase1.js";
 import { ERECTOR_ARCHETYPE_SEEDS } from "../engines/erector/archetypeData.js";
 
 const router = Router();
@@ -556,12 +556,20 @@ router.get("/feedback/:id", async (req, res) => {
   }
 });
 
-const clarifyBodySchema = z.object({
-  answer: z.string().min(5).max(5000),
-  idempotencyKey: z.string().min(8).max(128).optional(),
-});
+const clarifyBodySchema = z
+  .object({
+    answer: z.string().min(5).max(5000).optional(),
+    clarification_text: z.string().min(30).max(5000).optional(),
+    idempotencyKey: z.string().min(8).max(128).optional(),
+  })
+  .refine(
+    (data) =>
+      (data.clarification_text?.trim().length ?? 0) >= 30 ||
+      (data.answer?.trim().length ?? 0) >= 5,
+    { message: "clarification_text (30+) or answer (5+) required" },
+  );
 
-// POST /api/feedback/:id/clarify — alias for interrogation answer (DOC 29 §11)
+// POST /api/feedback/:id/clarify — DOC 10 clarification re-evaluation (DOC 29 alias)
 router.post("/feedback/:id/clarify", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");
@@ -571,13 +579,12 @@ router.post("/feedback/:id/clarify", async (req, res) => {
       failure(res, "VALIDATION_ERROR", "Invalid clarify body", 422);
       return;
     }
-    const result = await answerInterrogation({
+    const clarificationText = parsed.data.clarification_text ?? parsed.data.answer ?? "";
+    const result = await processFeedbackClarification(
+      auth.userId,
       feedbackId,
-      userId: auth.userId,
-      answer: parsed.data.answer,
-      idempotencyKey:
-        parsed.data.idempotencyKey ?? `clarify:${feedbackId}:${parsed.data.answer.slice(0, 32)}`,
-    });
+      clarificationText,
+    );
     success(res, { ...result, clarified: true });
   } catch (e) {
     if (isTorgimaError(e)) {

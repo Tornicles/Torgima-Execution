@@ -7,6 +7,7 @@ import type { BhudhiProvider } from "./bhudhiProviders.js";
 import { providerForTrigger } from "./bhudhiProviders.js";
 import { registerErectorEnrichedPrompts } from "./erectorEnrichedPrompts.js";
 import { ensureDoc3PromptsRegistered } from "./registerDoc3Prompts.js";
+import { registerErectorValidationPrompts } from "./registerErectorValidationPrompts.js";
 
 export interface PromptContract {
   name:            string;
@@ -394,6 +395,39 @@ Ask ONE precise question to get the missing information. Return ONLY this JSON:
     "answerType": "TEXT|NUMBER|DATE|BOOLEAN|CHOICE",
     "choices": [],
     "whyNeeded": "user-facing reason (max 80 chars)"
+  },
+  "missingFields": [],
+  "warnings": [],
+  "forbiddenActionRequested": false
+}`,
+});
+
+registry.set("PROOF_RELEVANCE_CHECK", {
+  name:         "feedback.proof_relevance.v1",
+  version:      "1.0",
+  triggerType:  "PROOF_RELEVANCE_CHECK",
+  mode:         "INTERPRET",
+  outputType:   "proof_relevance",
+  maxTokens:    200,
+  temperature:  0.1,
+  memoryAllowed: false,
+  fallbackKey:  "fallback.proof_relevance",
+  systemPrompt: STANDARD_SYSTEM_HEADER,
+  buildUserPrompt: (ctx) => `
+Task title: "${String(ctx["task_title"] ?? ctx["taskTitle"] ?? "")}"
+Expected output: "${String(ctx["expected_output"] ?? ctx["expectedOutput"] ?? ctx["requiredOutput"] ?? "")}"
+Proof submitted: "${String(ctx["proof_description"] ?? ctx["proofDescription"] ?? ctx["proofText"] ?? ctx["proof"] ?? "")}"
+
+Assess whether the proof is relevant to the task's expected output. Return ONLY this JSON:
+{
+  "outputType": "proof_relevance",
+  "contractVersion": "1.0",
+  "stateVersion": ${ctx["stateVersion"] ?? 0},
+  "confidence": "LOW|MEDIUM|HIGH",
+  "data": {
+    "relevant": true,
+    "confidence": "LOW|MEDIUM|HIGH",
+    "reason": "short user-facing reason (max 200 chars)"
   },
   "missingFields": [],
   "warnings": [],
@@ -1249,3 +1283,4 @@ export const PromptRegistry = {
 };
 
 ensureDoc3PromptsRegistered(PromptRegistry);
+registerErectorValidationPrompts((contract) => PromptRegistry.register(contract));

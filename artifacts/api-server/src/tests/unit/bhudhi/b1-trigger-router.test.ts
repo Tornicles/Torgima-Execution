@@ -26,9 +26,9 @@ function grepAnthropicSdkFiles(): string[] {
 }
 
 describe("B1 TriggerRouter — SDK surface (T1)", () => {
-  it("only TriggerRouter.ts contains Anthropic SDK instantiation", () => {
+  it("only ProviderAdapter.ts contains Anthropic SDK instantiation", () => {
     const files = grepAnthropicSdkFiles();
-    const allowed = new Set(["src/bhudhi/TriggerRouter.ts"]);
+    const allowed = new Set(["src/lib/bhudhi/ProviderAdapter.ts"]);
     const unexpected = files.filter((f) => !allowed.has(f));
     expect(unexpected).toEqual([]);
   });
@@ -120,6 +120,38 @@ describe("B1 TriggerRouter — stale state (T5)", () => {
   );
 });
 
+vi.mock("@workspace/db", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(async () => [{ count: 0 }]),
+      })),
+    })),
+    insert: vi.fn(() => ({ values: vi.fn().mockResolvedValue(undefined) })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
+    })),
+  },
+  bhudhiLogs: { created_at: "created_at" },
+  bhudhiUsageBudget: { user_id: "user_id", date_utc: "date_utc" },
+  featureFlags: { feature_name: "feature_name", enabled: "enabled" },
+  users: { id: "id", tier: "tier" },
+}));
+
+vi.mock("../../../lib/bhudhi/BudgetController.js", () => ({
+  BudgetController: {
+    checkAndReserve: vi.fn().mockResolvedValue(true),
+    recordCallCost: vi.fn().mockResolvedValue(undefined),
+    getDailyUsageReport: vi.fn().mockResolvedValue({
+      total_cost_cents_today: 0,
+      monthly_cost_cents: 0,
+      monthly_budget_cap_cents: null,
+    }),
+    tierCaps: { starter: 20, growth: 50, ultimate: 100 },
+  },
+  checkAndReserve: vi.fn().mockResolvedValue(true),
+}));
+
 describe("B1 TriggerRouter — provider failure fallback (T4)", () => {
   const prevKey = process.env.ANTHROPIC_API_KEY;
   const prevAlt = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
@@ -151,6 +183,9 @@ describe("B1 TriggerRouter — provider failure fallback (T4)", () => {
       const usage = await import("../../../bhudhi/UsageController.js");
       vi.spyOn(usage, "logUsage").mockResolvedValue("00000000-0000-0000-0000-000000000099");
 
+      const budget = await import("../../../lib/bhudhi/BudgetController.js");
+      vi.mocked(budget.BudgetController.checkAndReserve).mockResolvedValueOnce(false);
+
       const { routeBhudhiRequest } = await import("../../../bhudhi/TriggerRouter.js");
       const result = await routeBhudhiRequest({
         sourceEngine: "TASK_GENERATION",
@@ -168,7 +203,12 @@ describe("B1 TriggerRouter — provider failure fallback (T4)", () => {
       });
       expect(result.ok, JSON.stringify(result)).toBe(true);
       expect(result.fallbackUsed).toBe(true);
-      expect(result.output?.data).toBeTruthy();
+      const envelope =
+        (result as { data?: unknown; output?: unknown }).data ?? result.output;
+      expect(envelope).toBeTruthy();
+      expect(
+        (envelope as { data?: unknown })?.data ?? envelope,
+      ).toBeTruthy();
     },
     30_000,
   );

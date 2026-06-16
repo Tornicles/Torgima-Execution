@@ -1,5 +1,6 @@
 import { db, bhudhiLogs, bhudhiUsageBudget, users } from "@workspace/db";
 import { and, eq, gte, sql } from "drizzle-orm";
+import { BudgetController } from "../lib/bhudhi/BudgetController.js";
 import { logger } from "../lib/logger.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { mapBhudhiTriggerToDbEnum, mapBhudhiTriggerToRequestType } from "./bhudhiLogMapping.js";
@@ -20,6 +21,8 @@ const TRIGGER_MAX_TOKENS: Record<string, number> = {
   ACADEMY_SUPPORT: 700,
   ROOT_CAUSE_ASSIST: 500,
   CLARIFICATION_PROMPT: 300,
+  PROOF_RELEVANCE_CHECK: 200,
+  BLOCKER_CLASSIFICATION: 300,
   INACTIVITY_RESTART: 400,
 };
 
@@ -29,7 +32,7 @@ const BHUDHI_DAILY_CAP = parseInt(process.env.BHUDHI_DAILY_CAP ?? "200", 10);
 const DAILY_CAPS: Record<string, { maxCalls: number; maxCostCents: number }> = {
   starter: { maxCalls: 20, maxCostCents: 5 },
   growth: { maxCalls: 50, maxCostCents: 20 },
-  ultimate: { maxCalls: 150, maxCostCents: 75 },
+  ultimate: { maxCalls: 100, maxCostCents: 75 },
 };
 
 function dailyCallCapForTier(tier: string): number {
@@ -303,6 +306,8 @@ export async function logUsage(params: {
 
 export async function updateBhudhiLog(params: {
   logId: string;
+  userId?: string;
+  triggerType?: string;
   inputTokens?: number;
   outputTokens?: number;
   latencyMs?: number;
@@ -314,6 +319,7 @@ export async function updateBhudhiLog(params: {
   if (!params.logId) return;
 
   const cost = estimatedCostUsd(params.inputTokens ?? 0, params.outputTokens ?? 0);
+  const costCents = BudgetController.estimateCostCents(params.inputTokens ?? 0, params.outputTokens ?? 0);
   const patch: Record<string, unknown> = {
     validation_status: params.status,
     validation_notes: params.fallbackReason ?? params.errorCode,
@@ -322,7 +328,7 @@ export async function updateBhudhiLog(params: {
   if (params.inputTokens !== undefined) patch["token_count_in"] = params.inputTokens;
   if (params.outputTokens !== undefined) patch["token_count_out"] = params.outputTokens;
   if (params.latencyMs !== undefined) patch["latency_ms"] = params.latencyMs;
-  patch["output_json"] = params.outputJson ?? { estimated_cost_usd: cost };
+  patch["output_json"] = params.outputJson ?? { estimated_cost_usd: cost, estimated_cost_cents: costCents };
   if (params.outputJson?.web_search_calls != null) {
     patch["web_search_calls"] = Number(params.outputJson.web_search_calls);
   }
@@ -340,4 +346,13 @@ export async function updateBhudhiLog(params: {
     .update(bhudhiLogs)
     .set(patch as typeof bhudhiLogs.$inferInsert)
     .where(eq(bhudhiLogs.id, params.logId));
+
+  if (params.inputTokens !== undefined && params.outputTokens !== undefined) {
+    await BudgetController.recordCallCost({
+      inputTokens: params.inputTokens,
+      outputTokens: params.outputTokens,
+      triggerType: params.triggerType,
+      userId: params.userId,
+    }).catch(() => undefined);
+  }
 }

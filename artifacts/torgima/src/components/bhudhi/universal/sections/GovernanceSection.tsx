@@ -1,9 +1,9 @@
-import { useBhudhiDashboard } from "@/hooks/useBhudhiDashboard";
+import { useIntelligenceDashboard } from "@/lib/intelligence-bridge";
 import { formatConfidence, getSignalColor, getSignalLabel } from "@/lib/bhudhi-signals";
 import { Link } from "wouter";
 
 export function GovernanceSection({ blueprintId }: { blueprintId: string }) {
-  const { signals, loading, error, refreshSignals, reload } = useBhudhiDashboard(blueprintId);
+  const { signals, loading, error, refreshSignals, reload } = useIntelligenceDashboard(blueprintId);
 
   return (
     <div className="space-y-8">
@@ -68,7 +68,7 @@ export function GovernanceSection({ blueprintId }: { blueprintId: string }) {
         >
           Open governance console
         </Link>{" "}
-        for enforcement packages and conditions.
+        for action rules and conditions.
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { BhudhiOutputEnvelope, BhudhiOutputType } from "../types/bhudhi.js";
 import { logger } from "../lib/logger.js";
 import { getContractByName, PromptRegistry } from "./PromptRegistry.js";
+import { ErectorFreeOutputSchema, ErectorPaidOutputSchema } from "./schemas/erector-schemas.js";
 
 export interface ValidationResult {
   ok:     boolean;
@@ -79,6 +80,12 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       if (!VALID_BLOCKER_CAT.includes(d["blockerCategory"] as string)) errors.push("blocker: invalid blockerCategory");
       if (!VALID_SEVERITY.includes(d["severity"] as string))           errors.push("blocker: invalid severity");
       if (!d["summary"])                                                errors.push("blocker: missing summary");
+      break;
+
+    case "proof_relevance":
+      if (typeof d["relevant"] !== "boolean") errors.push("proof_relevance: missing relevant boolean");
+      if (!VALID_CONFIDENCE.includes(d["confidence"] as string)) errors.push("proof_relevance: invalid confidence");
+      if (!d["reason"]) errors.push("proof_relevance: missing reason");
       break;
 
     case "state_explanation":
@@ -318,6 +325,53 @@ export function validateOutput(raw: unknown, expectedType: BhudhiOutputType, exp
       const td = d["tierDescriptions"];
       if (!td || typeof td !== "object") {
         errors.push("blueprint_tier_preview: missing tierDescriptions");
+      }
+      break;
+    }
+    case "erector_free_report": {
+      const parsed = ErectorFreeOutputSchema.safeParse(d);
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          errors.push(`erector_free_report: ${issue.path.join(".")} ${issue.message}`);
+        }
+      }
+      break;
+    }
+    case "erector_paid_report": {
+      const parsed = ErectorPaidOutputSchema.safeParse(d);
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          errors.push(`erector_paid_report: ${issue.path.join(".")} ${issue.message}`);
+        }
+      }
+      break;
+    }
+    case "erector_verdict_explanation": {
+      const summary = d["user_facing_summary"];
+      const reason = d["plain_language_reason"];
+      if (typeof summary !== "string" || summary.trim().length < 10) {
+        errors.push("erector_verdict_explanation: user_facing_summary too short");
+      }
+      if (typeof summary === "string" && summary.length > 400) {
+        errors.push("erector_verdict_explanation: user_facing_summary too long");
+      }
+      if (typeof reason !== "string" || reason.trim().length < 10) {
+        errors.push("erector_verdict_explanation: plain_language_reason too short");
+      }
+      if (typeof reason === "string" && reason.length > 300) {
+        errors.push("erector_verdict_explanation: plain_language_reason too long");
+      }
+      if (d["correction_required"] != null && typeof d["correction_required"] !== "string") {
+        errors.push("erector_verdict_explanation: invalid correction_required");
+      }
+      if (typeof d["correction_required"] === "string" && d["correction_required"].length > 200) {
+        errors.push("erector_verdict_explanation: correction_required too long");
+      }
+      if (d["next_allowed_action"] != null && typeof d["next_allowed_action"] !== "string") {
+        errors.push("erector_verdict_explanation: invalid next_allowed_action");
+      }
+      if (typeof d["next_allowed_action"] === "string" && d["next_allowed_action"].length > 200) {
+        errors.push("erector_verdict_explanation: next_allowed_action too long");
       }
       break;
     }

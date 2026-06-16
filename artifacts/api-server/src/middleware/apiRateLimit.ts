@@ -8,7 +8,10 @@ const ROUTE_LIMITS: RouteLimit[] = [
   { prefix: "/api/auth", max: 5, windowMs: 60_000, key: authEmailKey },
   { prefix: "/api/v1/validation", max: 5, windowMs: 60_000 },
   { prefix: "/api/v1/erector", max: 20, windowMs: 60_000 },
+  { prefix: "/api/feedback", max: 30, windowMs: 60_000, key: sessionOrIpKey },
   { prefix: "/api/orders", max: 30, windowMs: 60_000, key: sessionOrIpKey },
+  { prefix: "/api/uploads", max: 20, windowMs: 60 * 60_000, key: sessionOrIpKey },
+  { prefix: "/api/external/upload", max: 20, windowMs: 60 * 60_000, key: sessionOrIpKey },
   { prefix: "/api/onboarding", max: 20, windowMs: 60_000 },
 ];
 
@@ -49,7 +52,7 @@ export async function apiRateLimitMiddleware(
     return;
   }
 
-  const allowed = await checkRateLimit(`api:general:${generalKey(req)}`, 100, 60_000);
+  const allowed = await checkRateLimit(`api:general:${generalKey(req)}`, 120, 60_000);
   if (!allowed) {
     failure(res, "RATE_LIMITED", "Too many requests. Please try again later.", 429, {
       retryable: true,

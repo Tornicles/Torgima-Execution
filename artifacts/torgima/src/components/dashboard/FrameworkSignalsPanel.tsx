@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 
 type SignalCard = {
   value: number;
@@ -86,7 +87,7 @@ export function FrameworkSignalsPanel({ blueprintId }: { blueprintId?: string | 
 
   if (!blueprintId) return null;
   if (loading && !data?.frameworkSignals) {
-    return <p className="text-sm text-muted-foreground">Loading signals…</p>;
+    return <p className="text-sm text-muted-foreground">Loading {BLUEPRINT_LABELS.signals.toLowerCase()}…</p>;
   }
 
   const framework = data?.frameworkSignals;
@@ -96,7 +97,7 @@ export function FrameworkSignalsPanel({ blueprintId }: { blueprintId?: string | 
     <section className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Signal intelligence
+          Signal intelligence ({BLUEPRINT_LABELS.signals})
         </p>
         {data?.conditionDisplay && (
           <span className="text-[10px] text-muted-foreground">

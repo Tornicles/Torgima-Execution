@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { fetchCompletionSummary } from "@/lib/dashboard-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 
 interface CompletionScreenProps {
   blueprintId: string;
@@ -44,7 +45,7 @@ export function CompletionScreen({ blueprintId }: CompletionScreenProps) {
     <div className="fixed inset-0 z-[100] overflow-auto bg-background">
       <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-10 p-10 pt-14">
         <header className="space-y-2 border-b border-border pb-6">
-          <p className="text-xs font-mono uppercase tracking-widest text-primary">BLUEPRINT_CLOSED</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-primary">PROJECT_CLOSED</p>
           <h1 className="text-3xl font-bold uppercase tracking-tight">Execution completed</h1>
           <p className="text-sm text-muted-foreground">
             Completed {formatMaybeDate(data.completedAt)}
@@ -58,7 +59,7 @@ export function CompletionScreen({ blueprintId }: CompletionScreenProps) {
         </section>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat label="Orders completed" value={String(data.tasksCompleted)} />
+          <Stat label={`${BLUEPRINT_LABELS.orders} completed`} value={String(data.tasksCompleted)} />
           <Stat label="Avg score" value={data.averageScore.toFixed(1)} />
           <Stat label="Capability" value={data.finalCapabilityLevel} />
           <Stat label="Identity" value={data.finalIdentityStage} />
@@ -85,7 +86,7 @@ export function CompletionScreen({ blueprintId }: CompletionScreenProps) {
 
         <div className="mt-auto flex flex-col gap-3 border-t border-border pt-8 sm:flex-row">
           <Link href="/onboarding">
-            <Button className="w-full font-mono uppercase text-xs sm:w-auto">Start new blueprint</Button>
+            <Button className="w-full font-mono uppercase text-xs sm:w-auto">Start new {BLUEPRINT_LABELS.blueprint.toLowerCase()}</Button>
           </Link>
           <Link href="/dashboard">
             <Button variant="outline" className="w-full font-mono uppercase text-xs sm:w-auto">

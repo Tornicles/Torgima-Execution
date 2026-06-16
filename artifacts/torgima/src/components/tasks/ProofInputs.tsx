@@ -33,7 +33,11 @@ export function ProofInputs({
         sizeBytes: file.size,
         orderId: order.orderId,
       });
-      onChange({ proofFileIds: [...proof.proofFileIds, fileId] });
+      onChange({
+        proofFileIds: [...proof.proofFileIds, fileId],
+        proofFileId: fileId,
+        proofFileName: file.name,
+      });
     } catch {
       setUploadError(LANGUAGE.feedback.uploadFailed);
     } finally {

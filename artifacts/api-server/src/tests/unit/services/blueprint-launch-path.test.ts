@@ -48,10 +48,67 @@ vi.mock("../../../lib/transitionBlueprintToPathSelection.js", () => ({
   transitionBlueprintToPathSelection: vi.fn().mockResolvedValue(undefined),
 }));
 
+const launchContractFixture = {
+  id: "contract-1",
+  blueprint_id: "bp-1",
+  launch_permission: "PERMITTED",
+  consumed: false,
+};
+
 vi.mock("@workspace/db", () => ({
-  db: { update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) })) },
-  blueprints: {},
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([
+            {
+              blueprint_source: "onboarding",
+              erector_intake_session_id: "sess-1",
+              erector_validation_id: "val-1",
+            },
+          ]),
+        })),
+      })),
+    })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) })),
+  },
+  blueprints: {
+    id: "id",
+    user_id: "user_id",
+    blueprint_source: "blueprint_source",
+    erector_intake_session_id: "erector_intake_session_id",
+    erector_validation_id: "erector_validation_id",
+  },
+  erectorBlueprintLaunchContracts: {
+    id: "id",
+    blueprint_id: "blueprint_id",
+    consumed: "consumed",
+    launch_permission: "launch_permission",
+  },
+  erectorCorrectionPaths: { id: "id", blueprint_id: "blueprint_id", status: "status", correction_type: "correction_type" },
+  users: { id: "id", dashboard_mode: "dashboard_mode" },
 }));
+
+vi.mock("../../../engines/erector/erectorStateMachine.js", () => ({
+  transition: vi.fn().mockResolvedValue(undefined),
+  getBlueprintErectorState: vi.fn().mockResolvedValue({ state: "BLUEPRINT_ACTIVE" }),
+}));
+
+vi.mock("../../../services/erector/blueprint-feed-service.js", () => ({
+  injectErectorIntelligence: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../../engines/erector/LaunchContractEnforcer.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../engines/erector/LaunchContractEnforcer.js")>();
+  return {
+    ...actual,
+    loadActiveLaunchContract: vi.fn().mockResolvedValue(launchContractFixture),
+    enforceLaunchContract: vi.fn().mockResolvedValue({
+      permitted: true,
+      contract_id: "contract-1",
+    }),
+  };
+});
 
 vi.mock("../../../services/SequenceTrackingService.js", () => ({
   SequenceTrackingService: {

@@ -1,4 +1,9 @@
 import { BhudhiCore, invokeBhudhiModel, runBhudhiPipeline } from "./BhudhiCore.js";
+import {
+  bhudhiTriggerRouter,
+  doc12ResultToTriggerResult,
+  isDoc12Trigger,
+} from "../lib/bhudhi/BhudhiTriggerRouter.js";
 import { getDoc3TriggerEntry } from "./doc3TriggerRegistry.js";
 import { buildContextPacket } from "./ContextBuilder.js";
 import { getActiveAgentsForTrigger } from "./AgentRegistry.js";
@@ -178,10 +183,59 @@ export async function routeBhudhiRequest<T = unknown>(
   const stateVersion =
     request.stateVersion > 0 ? request.stateVersion : currentWorldVersion;
 
-  return runBhudhiPipeline<T>(
-    { ...request, stateVersion },
-    { invokeModel: invokeBhudhiModel },
-  );
+  const routedRequest = { ...request, stateVersion };
+
+  if (isDoc12Trigger(request.triggerType)) {
+    const doc12Result = await bhudhiTriggerRouter.trigger({
+      triggerType: request.triggerType,
+      sourceEngine: request.sourceEngine,
+      userId: request.userId,
+      blueprintId: request.blueprintId,
+      stateVersion,
+      facts: request.facts,
+      input: request.facts,
+      userInput: request.userInput,
+      requestedMode: request.requestedMode,
+      idempotencyKey: request.idempotencyKey,
+    });
+    const mapped = doc12ResultToTriggerResult(doc12Result) as BhudhiTriggerResult<T>;
+    if (mapped.ok && mapped.output && request.blueprintId) {
+      const { DecisionTraceService } = await import("../engines/decision/DecisionTraceService.js");
+      await DecisionTraceService.write({
+        userId: request.userId,
+        blueprintId: request.blueprintId,
+        decisionType: "AI_ASSISTED",
+        decisionKey: `bhudhi:${request.triggerType}:${request.idempotencyKey ?? mapped.logId}`,
+        selectedOption: request.triggerType,
+        optionsConsidered: [request.requestedMode ?? "INTERPRET"],
+        rationaleSummary: `Bhudhi ${request.triggerType} produced user-facing output`,
+        sourceEngine: request.sourceEngine,
+        confidence: mapped.fallbackUsed ? "LOW" : "HIGH",
+        stateVersion,
+        causationEventId: mapped.logId || undefined,
+      }).catch(() => null);
+    }
+    return mapped;
+  }
+
+  const pipelineResult = await runBhudhiPipeline<T>(routedRequest, { invokeModel: invokeBhudhiModel });
+  if (pipelineResult.ok && pipelineResult.output && request.blueprintId) {
+    const { DecisionTraceService } = await import("../engines/decision/DecisionTraceService.js");
+    await DecisionTraceService.write({
+      userId: request.userId,
+      blueprintId: request.blueprintId,
+      decisionType: "AI_ASSISTED",
+      decisionKey: `bhudhi:${request.triggerType}:${request.idempotencyKey ?? pipelineResult.logId}`,
+      selectedOption: request.triggerType,
+      optionsConsidered: [request.requestedMode ?? "INTERPRET"],
+      rationaleSummary: `Bhudhi ${request.triggerType} produced user-facing output`,
+      sourceEngine: request.sourceEngine,
+      confidence: pipelineResult.fallbackUsed ? "LOW" : "HIGH",
+      stateVersion,
+      causationEventId: pipelineResult.logId || undefined,
+    }).catch(() => null);
+  }
+  return pipelineResult;
 }
 
 export async function explainState(params: {

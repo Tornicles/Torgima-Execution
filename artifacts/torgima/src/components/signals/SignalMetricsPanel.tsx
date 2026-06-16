@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp } from "lucide-react";
 import { LANGUAGE } from "@/lib/language";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 import type { SignalPanelItem } from "@/types/signals-panel";
 import { ExplainStateDrawer } from "./ExplainStateDrawer";
 
@@ -26,7 +27,9 @@ export function SignalMetricsPanel({
   return (
     <>
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution signals</p>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Execution {BLUEPRINT_LABELS.signals.toLowerCase()}
+        </p>
         <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
           {signals.map((sig) => {
             const isOpen = expanded === sig.key;

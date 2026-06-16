@@ -1,0 +1,174 @@
+﻿TORGIMA
+ENGINE PROMPT 15 — DOC 25
+Execution Friction Detection and Adaptation Engine
+9 Friction Types · Severity Scoring · Adaptation Matrix · BehaviorEvent Writer · Boundary Rules
+
+
+PREREQUISITE: Engines 1-14 must pass. Friction detection reads from feedback, orders, inactivity, patterns, cognitive load, dependencies, and outcomes.
+
+OBJECTIVE
+Build the FrictionDetectionEngine that identifies 9 types of execution friction from behavioral evidence, assigns severity and confidence, selects the correct adaptation from the adaptation matrix, and routes the adaptation event to the right downstream engine. Friction is not failure — it is execution resistance that the system must adapt around.
+
+FILES TO CREATE
+src/engines/friction/FrictionDetectionEngine.ts — CREATE
+src/engines/friction/FrictionClassifier.ts — CREATE
+src/engines/friction/AdaptationRouter.ts — CREATE
+
+TASK 1 — 9 FRICTION TYPES WITH DETECTION RULES
+FRICTION TYPE
+DETECTION LOGIC
+SEVERITY RULE
+CLARITY_FRICTION
+reflection mentions 'unclear/confused' OR proof_description missing AND proof required
+MEDIUM if once, HIGH if 2+ consecutive
+SIZE_FRICTION
+time_estimate_minutes < actual duration by 2x AND score < 7
+MEDIUM — task was larger than designed
+DIFFICULTY_FRICTION
+difficulty >= 'hard' AND score <= 4 AND NOT CAPABILITY_FAILURE already classified
+HIGH — difficulty mismatch needs immediate adaptation
+TIMING_FRICTION
+submitted_hours_after_start > 36h AND not LIFE_EVENT inactivity type
+MEDIUM — timing not working, need reschedule
+DEPENDENCY_FRICTION
+completion = BLOCKED AND dependency confirmed by DependencyEngine
+HIGH — execution path physically blocked
+COGNITIVE_FRICTION
+CognitiveLoadScore.loadLevel >= HIGH in last 30 minutes
+HIGH — decision burden blocking execution
+EMOTIONAL_FRICTION
+reflection tone negative (Bhudhi INTERPRET) AND score <= 5 AND not DIFFICULTY_FRICTION
+MEDIUM — not a capability issue, engagement issue
+SYSTEM_FRICTION
+StateIntegrityEngine issue logged in last 2 hours AND reflection mentions system/app/error
+HIGH — do not blame user for product failure
+OUTCOME_FRICTION
+task completed (ACCEPTED) BUT outcome_movement_score < 15 AND false_progress_signal > 50
+HIGH — completing tasks but not moving needle
+
+TASK 2 — ADAPTATION MATRIX
+// AdaptationRouter.ts — routes to correct system based on friction type
+ 
+const ADAPTATION_MATRIX = {
+  CLARITY_FRICTION: {
+    event: 'clarification_task_requested',
+    target: 'TaskGenerationEngine',
+    action: 'Generate a clarification task that asks exactly what was unclear',
+  },
+  SIZE_FRICTION: {
+    event: 'task_split_requested',
+    target: 'TaskGenerationEngine',
+    action: 'Split the current task into 2 smaller steps with shorter time estimates',
+  },
+  DIFFICULTY_FRICTION: {
+    event: 'difficulty_downgrade_requested',
+    target: 'ControlEngine',
+    action: 'Temporarily cap difficulty 1 level lower for next 3 tasks',
+  },
+  TIMING_FRICTION: {
+    event: 'timing_adaptation_requested',
+    target: 'TaskGenerationEngine',
+    action: 'Reduce task scope OR reframe task for shorter time windows',
+  },
+  DEPENDENCY_FRICTION: {
+    event: 'dependency_resolution_requested',
+    target: 'DependencyEngine',
+    action: 'Create dependency resolution task and block original task',
+  },
+  COGNITIVE_FRICTION: {
+    event: 'simplification_requested',
+    target: 'SimplificationEngine',
+    action: 'Reduce decision count and simplify next task presentation',
+  },
+  EMOTIONAL_FRICTION: {
+    event: 'recovery_task_requested',
+    target: 'TaskGenerationEngine',
+    action: 'Generate recovery or low-stakes task with identity reinforcement',
+  },
+  SYSTEM_FRICTION: {
+    event: 'system_repair_requested',
+    target: 'StateIntegrityEngine',
+    action: 'Trigger integrity check and notify frontend of potential state issue',
+  },
+  OUTCOME_FRICTION: {
+    event: 'priority_review_requested',
+    target: 'PriorityEngine',
+    action: 'Review if current tasks align with active target — may need reorientation',
+  },
+};
+ 
+// ADAPTATION BOUNDARIES (never violate these):
+// 1. Adaptation NEVER increases difficulty when friction is HIGH
+// 2. Adaptation NEVER bypasses proof requirements
+// 3. Repeated adaptation without improvement after 3 cycles → root_cause_review_requested
+// 4. SYSTEM_FRICTION never blames user — always routes to repair, not correction task
+// 5. Adaptations obey enforcement package — cannot unlock blocked actions
+
+TASK 3 — FRICTION DETECTION FLOW
+// FrictionDetectionEngine.ts
+// Triggered after: FAILED/BLOCKED feedback, inactivity, failure classification,
+// cognitive load spike, pattern detection
+ 
+export async function detectFriction(context: FrictionContext): Promise<void> {
+  // 1. Load all evidence (feedback, order, capability, condition, inactivity,
+  //    patterns, cognitive load, dependencies, outcome validations)
+  const evidence = await loadFrictionEvidence(context);
+ 
+  // 2. Run FrictionClassifier — returns list of detected frictions with severity
+  const detectedFrictions = await FrictionClassifier.classify(evidence);
+  if (detectedFrictions.length === 0) return;
+ 
+  // 3. Select primary friction type (highest severity, then highest confidence)
+  const primary = detectedFrictions.sort(
+    (a, b) => SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity]
+  )[0];
+ 
+  // 4. Write BehaviorEvent for friction evidence
+  await prisma.behaviorEvent.create({ data: {
+    user_id: context.userId, blueprint_id: context.blueprintId,
+    event_type: 'FRICTION_SPIKE', source_type: 'FEEDBACK',
+    source_id: context.feedbackId,
+    metadata: { friction_type: primary.type, severity: primary.severity },
+  }});
+ 
+  // 5. Check if repeated friction (same type 2+ times in 7 days)
+  const isRepeated = await checkRepeatedFriction(context.userId, primary.type);
+  if (isRepeated) {
+    // Emit pattern_scan_requested to PatternLearningEngine
+    await emitEvent({ event_type: 'pattern_scan_requested',
+      payload: { reason: `repeated_${primary.type}` } });
+  }
+ 
+  // 6. Route adaptation
+  await AdaptationRouter.route(primary.type, context);
+}
+ 
+const SEVERITY_ORDER = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+
+VERIFICATION
+pnpm typecheck && pnpm build && pnpm test -- --grep 'friction-detection'
+ 
+-- TEST 1: CLARITY_FRICTION detected and clarification requested
+-- Input: FAILED feedback, reflection='I was confused about what to deliver'
+-- Expected: CLARITY_FRICTION detected, clarification_task_requested emitted
+ 
+-- TEST 2: SYSTEM_FRICTION routes to repair not correction task
+-- Input: StateIntegrityEngine logged issue 1 hour ago, user mentions 'app error'
+-- Expected: system_repair_requested emitted, NO correction task created
+ 
+-- TEST 3: DIFFICULTY_FRICTION does NOT increase difficulty
+-- Expected: adaptation event = difficulty_downgrade, not upgrade
+ 
+-- TEST 4: 3 adaptation cycles without improvement → root cause review
+-- Setup: TIMING_FRICTION adapted 3 times, still appearing
+-- Expected: root_cause_review_requested emitted instead of another timing adaptation
+
+ACCEPTANCE CRITERIA
+All 9 friction types detected with correct evidence signals
+Adaptation matrix routes to correct engine for each friction type
+Adaptation never increases difficulty when HIGH friction detected
+SYSTEM_FRICTION never generates user-facing correction task
+Repeated friction after 3 adaptation cycles triggers root cause review
+BehaviorEvent written for every detected friction
+COMMIT: feat(friction): build friction detection and adaptation engine with 9 friction types, severity scoring, adaptation matrix, and boundary enforcement
+

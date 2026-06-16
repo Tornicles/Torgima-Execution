@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { bhudhiPath } from "@/hooks/useBhudhiBlueprint";
+import { intelligencePath } from "@/lib/intelligence-bridge";
 
 const NAV_ITEMS = [
   { section: "", icon: "○", label: "Overview" },
@@ -45,7 +45,7 @@ function NavLink({
   );
 }
 
-export function BhudhiUniversalLayout({
+export function IntelligenceUniversalLayout({
   children,
   blueprintId,
   section,
@@ -84,7 +84,7 @@ export function BhudhiUniversalLayout({
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.section || "overview"}
-              href={bhudhiPath(item.section, blueprintId)}
+              href={intelligencePath(item.section, blueprintId)}
               icon={item.icon}
               label={item.label}
               open={sidebarOpen}
@@ -109,8 +109,8 @@ export function BhudhiUniversalLayout({
   );
 }
 
-/** Parse current Bhudhi section from location path. */
-export function parseBhudhiSection(location: string): string {
+/** Parse current intelligence section from location path. */
+export function parseIntelligenceSection(location: string): string {
   const path = location.split("?")[0];
   const appMatch = path.match(/^\/app\/bhudhi\/?([^/]*)/);
   if (appMatch) {

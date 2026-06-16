@@ -17,6 +17,10 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, inArray, count } from "drizzle-orm";
 import { writeEvent, EVENT_TYPES } from "./EventService.js";
+import {
+  applyVersionedMutation,
+  throwIfStaleMutation,
+} from "../lib/state/StateMutationService.js";
 import { computeOrderPriorityDimensions } from "../engines/order/OrderPrioritizationEngine.js";
 import { ApiOrderStatus, OrderStatus } from "@workspace/state-machine";
 
@@ -346,9 +350,13 @@ export const OrderService = {
     return { order, joined, linkRows };
   },
 
-  async startPendingOrder(orderId: string, userId: string): Promise<void> {
+  async startPendingOrder(
+    orderId: string,
+    userId: string,
+    opts?: { expectedStateVersion?: number; idempotencyKey?: string },
+  ): Promise<void> {
     const [pending] = await db
-      .select({ id: ordersTable.id })
+      .select({ id: ordersTable.id, blueprint_id: ordersTable.blueprint_id })
       .from(ordersTable)
       .where(
         and(
@@ -361,10 +369,28 @@ export const OrderService = {
     if (!pending) {
       throw new TorgimaError("NOT_FOUND", "Order not found", false);
     }
-    await db
-      .update(ordersTable)
-      .set({ status: OrderStatus.ACTIVE, started_at: new Date() })
-      .where(eq(ordersTable.id, orderId));
+
+    const idempotencyKey = opts?.idempotencyKey ?? `order_start:${orderId}`;
+    const mutation = await applyVersionedMutation(
+      {
+        userId,
+        blueprintId: pending.blueprint_id,
+        expectedStateVersion: opts?.expectedStateVersion,
+        mutationType: "order_started",
+        entityType: "order",
+        entityId: orderId,
+        idempotencyKey,
+        payload: { order_id: orderId },
+      },
+      async (tx) => {
+        await tx
+          .update(ordersTable)
+          .set({ status: OrderStatus.ACTIVE, started_at: new Date() })
+          .where(eq(ordersTable.id, orderId));
+        return { started: true };
+      },
+    );
+    throwIfStaleMutation(mutation);
   },
 
   async finishOrder(
@@ -412,6 +438,7 @@ export const OrderService = {
       blockerDescription: string;
       dependencyReference?: string;
       idempotencyKey: string;
+      expectedStateVersion?: number;
     },
   ): Promise<{ blueprintId: string }> {
     const [order] = await db
@@ -429,15 +456,36 @@ export const OrderService = {
       throw new TorgimaError("NOT_FOUND", "Order not found", false);
     }
 
-    await db
-      .update(ordersTable)
-      .set({
-        status: "blocked",
-        blocker_type: input.blockerType,
-        blocker_description: input.blockerDescription,
-        dependency_reference: input.dependencyReference ?? null,
-      })
-      .where(eq(ordersTable.id, orderId));
+    const mutation = await applyVersionedMutation(
+      {
+        userId,
+        blueprintId: order.blueprint_id,
+        expectedStateVersion: input.expectedStateVersion,
+        mutationType: "order_blocked",
+        entityType: "order",
+        entityId: orderId,
+        idempotencyKey: `order_block:${orderId}:${input.idempotencyKey}`,
+        payload: {
+          order_id: orderId,
+          blocker_type: input.blockerType,
+        },
+      },
+      async (tx) => {
+        await tx
+          .update(ordersTable)
+          .set({
+            status: "blocked",
+            blocker_type: input.blockerType,
+            blocker_description: input.blockerDescription,
+            dependency_reference: input.dependencyReference ?? null,
+          })
+          .where(eq(ordersTable.id, orderId));
+
+        return { blueprintId: order.blueprint_id };
+      },
+    );
+
+    const result = throwIfStaleMutation(mutation);
 
     await writeEvent({
       eventType: EVENT_TYPES.TASK_GENERATION_REQUESTED,
@@ -453,7 +501,7 @@ export const OrderService = {
       idempotencyKey: `block_task_gen:${orderId}:${input.idempotencyKey}`,
     });
 
-    return { blueprintId: order.blueprint_id };
+    return result;
   },
 
   async unblockOrder(orderId: string, userId: string): Promise<void> {

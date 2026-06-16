@@ -1,9 +1,10 @@
 import { X } from "lucide-react";
-import type { BhudhiExplainResponse } from "@/lib/bhudhi-hub-types";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
+import type { IntelligenceExplainResponse } from "@/lib/intelligence-bridge";
 
 const PURPLE = "#5B21FF";
 
-export function BhudhiExplainDrawer({
+export function IntelligenceExplainDrawer({
   open,
   onClose,
   loading,
@@ -12,7 +13,7 @@ export function BhudhiExplainDrawer({
   open: boolean;
   onClose: () => void;
   loading: boolean;
-  data: BhudhiExplainResponse | null;
+  data: IntelligenceExplainResponse | null;
 }) {
   if (!open) return null;
 
@@ -22,7 +23,7 @@ export function BhudhiExplainDrawer({
       <aside className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-[#0F172A]">
-            {loading ? "Bhudhi is reading your system…" : data?.explanation.title ?? "Explanation"}
+            {loading ? INTELLIGENCE_COPY.readingSystem : data?.explanation.title ?? "Explanation"}
           </h2>
           <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Close panel">
             <X className="w-5 h-5" />
@@ -54,13 +55,13 @@ export function BhudhiExplainDrawer({
               )}
               <p className="text-[10px] text-[#94A3B8]">
                 Confidence {Math.round(data.explanation.confidence * 100)}%
-                {data.fallbackUsed ? " · grounded in system facts" : " · Bhudhi enrichment applied"}
+                {data.fallbackUsed ? INTELLIGENCE_COPY.groundedFacts : INTELLIGENCE_COPY.enrichmentApplied}
               </p>
             </>
           )}
         </div>
         <div className="px-5 py-4 border-t border-gray-100 text-xs text-center font-medium" style={{ color: PURPLE }}>
-          {data?.principle ?? "Bhudhi explains. You decide. You execute."}
+          {data?.principle ?? INTELLIGENCE_COPY.tagline}
         </div>
       </aside>
     </div>

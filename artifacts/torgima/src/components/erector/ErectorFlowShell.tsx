@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { ChevronLeft, Sparkles } from "lucide-react";
 
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
+
 const NAV = [
   { href: "/dashboard", label: "Home" },
-  { href: "/bhudhi", label: "Bhudhi" },
+  { href: "/bhudhi", label: INTELLIGENCE_COPY.navLabel },
   { href: "/erector", label: "Erector", active: true },
   { href: "/signals", label: "Signals" },
   { href: "/onboarding", label: "Validate" },

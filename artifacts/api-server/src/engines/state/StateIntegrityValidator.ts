@@ -20,6 +20,7 @@ import {
   getIntegrityChecker,
   type IntegrityChecker,
 } from "../health/IntegrityChecker.js";
+import { runStateIntegrityEngine } from "../execution-loop/StateIntegrityEngine.js";
 import type { HealthFinding } from "../../services/SystemHealthService.js";
 
 export interface IntegrityCheckResult {
@@ -32,8 +33,10 @@ export class StateIntegrityValidator {
   constructor(private readonly checker: IntegrityChecker = getIntegrityChecker()) {}
 
   async runAllChecks(): Promise<IntegrityCheckResult> {
+    const engineResult = await runStateIntegrityEngine();
     const findings: HealthFinding[] = [
       ...(await this.checker.runAllChecks()),
+      ...engineResult.findings,
       ...(await this.checkBlueprintConditionAlignment()),
       ...(await this.checkEnforcementPackageFreshness()),
       ...(await this.checkActiveOrderCountVsEnforcement()),
@@ -57,7 +60,7 @@ export class StateIntegrityValidator {
           check_type: "state_integrity_validator",
           message: "All state integrity checks passed",
           status: "ok",
-          details_json: { checks_run: 7 },
+          details_json: { checks_run: 7 + engineResult.checksRun },
         })
         .catch(() => null);
     }
@@ -70,7 +73,7 @@ export class StateIntegrityValidator {
     return {
       ok: !hasCritical,
       findings,
-      checksRun: 7,
+      checksRun: 7 + engineResult.checksRun,
     };
   }
 

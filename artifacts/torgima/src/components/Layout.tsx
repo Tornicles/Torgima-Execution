@@ -21,6 +21,7 @@ import {
   Target,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import { apiGet } from "@/lib/torgima-api";
 import type { FeatureStatusPayload } from "@/lib/feature-gate";
 import { LANGUAGE } from "@/lib/language";
@@ -211,7 +212,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 shrink-0" style={{ color: HOME_PURPLE }} />
               <div>
-                <p className="text-sm font-bold text-gray-900">Bhudhi</p>
+                <p className="text-sm font-bold text-gray-900">{INTELLIGENCE_COPY.name}</p>
                 <p className="text-[10px] text-gray-500">Your intelligence layer</p>
               </div>
             </div>
@@ -220,7 +221,7 @@ export function Layout({ children, pageTitle, pageSubtitle }: LayoutProps) {
               Active
             </p>
             <p className="text-[10px] text-[#64748B] mt-2 italic leading-snug">
-              Bhudhi explains. You decide. You execute.
+              {INTELLIGENCE_COPY.tagline}
             </p>
           </div>
         ) : location === "/erector" ? (

@@ -28,6 +28,9 @@ export type ErrorCode =
   | "PHASE_NOT_READY"
   | "BHUDHI_LOG_FAILURE"
   | "ENFORCEMENT_PACKAGE_MISSING"
+  | "TIER_INSUFFICIENT"
+  | "DASHBOARD_LIMITED"
+  | "USER_NOT_FOUND"
   | "INTERNAL";
 
 export class TorgimaError extends Error {
@@ -51,9 +54,12 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
     case "UNAUTHENTICATED":
       return 401;
     case "FORBIDDEN":
+    case "TIER_INSUFFICIENT":
+    case "DASHBOARD_LIMITED":
       return 403;
     case "NOT_FOUND":
     case "CONTRACT_NOT_FOUND":
+    case "USER_NOT_FOUND":
       return 404;
     case "VALIDATION_ERROR":
     case "VALIDATION_PAYLOAD_CORRUPT":

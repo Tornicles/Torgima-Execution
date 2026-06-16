@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/design-system/PageHeader";
 import { StatCard } from "@/components/design-system/StatCard";
 import { ProgressBar } from "@/components/design-system/ProgressBar";
 import { DonutProgress } from "@/components/design-system/DonutProgress";
+import { BLUEPRINT_LABELS } from "@/lib/language-map";
 
 interface HierarchyProject {
   id: string;
@@ -92,7 +93,7 @@ export function BlueprintOverviewView() {
 
   const activePhase = phases[activeIdx];
   const blueprintTitle =
-    (dash?.activeBlueprint as { title?: string } | null)?.title ?? "Blueprint";
+    (dash?.activeBlueprint as { title?: string } | null)?.title ?? BLUEPRINT_LABELS.blueprint;
 
   const donutSegments = useMemo(() => {
     let done = 0;
@@ -117,7 +118,7 @@ export function BlueprintOverviewView() {
   if (!blueprintId) {
     return (
       <div className="p-8 max-w-lg mx-auto text-center space-y-4">
-        <p className="text-gray-700 font-medium">No active blueprint</p>
+        <p className="text-gray-700 font-medium">No active {BLUEPRINT_LABELS.blueprint.toLowerCase()}</p>
         <Link href="/validate">
           <span className="inline-block bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer">
             Start validation
@@ -143,7 +144,7 @@ export function BlueprintOverviewView() {
   if (isError || !cc) {
     return (
       <div className="p-8 text-center space-y-3">
-        <p className="text-red-600 text-sm">Could not load blueprint.</p>
+        <p className="text-red-600 text-sm">Could not load {BLUEPRINT_LABELS.blueprint.toLowerCase()}.</p>
         <button type="button" onClick={() => void refetch()} className="text-emerald-600 underline text-sm">
           Retry
         </button>
@@ -156,7 +157,7 @@ export function BlueprintOverviewView() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 bg-[#f9fafb] min-h-full">
       <PageHeader
-        title="Blueprint Overview"
+        title={`${BLUEPRINT_LABELS.blueprint} Overview`}
         subtitle="Your execution plan. Structured. Prioritized. Progressive."
         actions={
           <select className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" defaultValue={blueprintTitle}>
@@ -180,7 +181,7 @@ export function BlueprintOverviewView() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Execution Blueprint</h2>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Execution {BLUEPRINT_LABELS.blueprint}</h2>
             <button
               type="button"
               className="text-sm text-emerald-600 font-medium"
@@ -303,7 +304,7 @@ export function BlueprintOverviewView() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm text-center">
             <div className="flex items-center gap-2 justify-center mb-4">
-              <h3 className="font-bold text-gray-900">Blueprint Summary</h3>
+              <h3 className="font-bold text-gray-900">{BLUEPRINT_LABELS.blueprint} Summary</h3>
               <Info className="w-4 h-4 text-gray-400" />
             </div>
             <DonutProgress value={overallPct} />
@@ -335,7 +336,7 @@ export function BlueprintOverviewView() {
               onClick={() => setLocation("/signals")}
               className="mt-4 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
             >
-              View Signals →
+              View {BLUEPRINT_LABELS.signals} →
             </button>
           </div>
         </div>

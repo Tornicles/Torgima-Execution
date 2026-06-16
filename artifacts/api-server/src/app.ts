@@ -5,6 +5,7 @@ import router from "./routes/index.js";
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import webhooksRouter from "./routes/webhooks.js";
+import externalRouter from "./routes/external.js";
 import { logger } from "./lib/logger.js";
 import { isCloudflareRuntime } from "./lib/cloudflare-runtime.js";
 import { bhudhiRateLimitMiddleware } from "./middleware/bhudhiRateLimit.js";
@@ -108,6 +109,12 @@ export async function createApp(): Promise<Express> {
       limit: "2mb",
     }),
     webhooksRouter,
+  );
+
+  app.use(
+    "/api/external",
+    express.json({ limit: "11mb" }),
+    externalRouter,
   );
 
   app.use(express.json({ limit: "1mb" }));

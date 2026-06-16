@@ -1,40 +1,44 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
-const docs = process.argv.slice(2);
-if (docs.length === 0) {
-  console.error("Usage: node scripts/extract-docx-text.mjs <docx> [out.txt]");
+const docxPath = process.argv[2];
+const outputPath = process.argv[3];
+const cacheKey = process.argv[4] ?? "default";
+
+if (!docxPath) {
+  console.error("Usage: node extract-docx-text.mjs <path-to-docx> [output.txt] [cache-key]");
   process.exit(1);
 }
 
-const docx = docs[0];
-const out = docs[1] ?? docx.replace(/\.docx$/i, "_extracted.txt");
+const tempDir = path.join(os.tmpdir(), `erector_docx_${cacheKey}`);
+const extractDir = path.join(tempDir, "extracted");
+const xmlPath = path.join(extractDir, "word", "document.xml");
 
-const { execSync } = await import("child_process");
-const tmp = path.join(path.dirname(out), `_tmp_${path.basename(docx, ".docx")}`);
-fs.mkdirSync(tmp, { recursive: true });
-const zipPath = path.join(tmp, "doc.zip");
-fs.copyFileSync(docx, zipPath);
-execSync(
-  `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${tmp.replace(/'/g, "''")}' -Force"`,
-  { stdio: "inherit" },
-);
-
-const xmlPath = path.join(tmp, "word", "document.xml");
-const xml = fs.readFileSync(xmlPath, "utf8");
-const texts = [...xml.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => m[1]);
-const lines = [];
-let buf = "";
-for (const t of texts) {
-  if (!t) continue;
-  if (t.endsWith("\n") || /^Route\s+\d+/i.test(t) || /^POST |^GET |^PATCH |^DELETE /i.test(t)) {
-    if (buf.trim()) lines.push(buf.trim());
-    buf = t;
-  } else {
-    buf += (buf && !buf.endsWith(" ") ? " " : "") + t;
-  }
+if (!fs.existsSync(xmlPath)) {
+  fs.mkdirSync(extractDir, { recursive: true });
+  fs.copyFileSync(docxPath, path.join(tempDir, "doc.zip"));
+  const { execSync } = await import("node:child_process");
+  execSync(
+    `powershell -NoProfile -Command "Expand-Archive -Path '${path.join(tempDir, "doc.zip").replace(/'/g, "''")}' -DestinationPath '${extractDir.replace(/'/g, "''")}' -Force"`,
+    { stdio: "inherit" },
+  );
 }
-if (buf.trim()) lines.push(buf.trim());
 
-fs.writeFileSync(out, lines.join("\n"), "utf8");
-console.log(`Wrote ${lines.length} lines to ${out}`);
+let xml = fs.readFileSync(xmlPath, "utf8");
+xml = xml
+  .replace(/<w:tab[^>]*\/>/g, "\t")
+  .replace(/<\/w:p>/g, "\n")
+  .replace(/<w:br[^>]*\/>/g, "\n")
+  .replace(/<[^>]+>/g, "")
+  .replace(/&lt;/g, "<")
+  .replace(/&gt;/g, ">")
+  .replace(/&amp;/g, "&")
+  .replace(/&quot;/g, '"')
+  .replace(/&apos;/g, "'");
+
+if (outputPath) {
+  fs.writeFileSync(outputPath, xml);
+} else {
+  console.log(xml);
+}

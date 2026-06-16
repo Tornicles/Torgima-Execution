@@ -3,8 +3,7 @@ import { events, eventLogs } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { EventStatus } from "@workspace/state-machine";
 import { logger } from "../lib/logger.js";
-import { getMaxAttempts, getNextRunAfter } from "../engines/events/RetryPolicy.js";
-import { deadLetterEvent } from "../engines/events/DeadLetterHandler.js";
+import { handleWorkerFailure } from "./WorkerDispatcher.js";
 
 export interface WorkerJobData {
   eventId: string;
@@ -22,7 +21,7 @@ export interface WorkerResult {
   reason?: string;
 }
 
-// Standard worker handler — handles idempotency, logging, retry, and dead-letter
+// Standard worker handler — idempotency, logging, retry (DOC16), and dead-letter
 export async function handleWorkerJob(
   job: { id: string | number; data: unknown },
   workerName: string,
@@ -37,7 +36,6 @@ export async function handleWorkerJob(
   );
 
   try {
-    // Idempotency check: has this event already been successfully processed?
     const [prevSuccess] = await db
       .select({ id: eventLogs.id })
       .from(eventLogs)
@@ -66,73 +64,27 @@ export async function handleWorkerJob(
       await writeEventLog(data.eventId, workerName, "success", startedAt);
       logger.info({ eventId: data.eventId }, `[${workerName}] Completed`);
     } else {
-      await handleFailure(data, workerName, startedAt, result);
+      await handleWorkerFailure({
+        eventId: data.eventId,
+        eventType: data.eventType,
+        workerName,
+        retryable: result.retryable !== false,
+        reason: result.reason,
+        startedAt,
+      });
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     logger.error({ eventId: data.eventId, error: errMsg }, `[${workerName}] Error`);
-    await handleFailure(data, workerName, startedAt, {
-      success: false,
+    await handleWorkerFailure({
+      eventId: data.eventId,
+      eventType: data.eventType,
+      workerName,
       retryable: true,
       reason: errMsg,
+      startedAt,
     });
-    throw err; // Re-throw so pg-boss applies retry policy
-  }
-}
-
-async function handleFailure(
-  data: WorkerJobData,
-  workerName: string,
-  startedAt: Date,
-  result: WorkerResult,
-): Promise<void> {
-  const [event] = await db
-    .select({
-      retryCount: events.retry_count,
-      maxRetries: events.max_retries,
-      eventType: events.event_type,
-      payload: events.payload,
-    })
-    .from(events)
-    .where(eq(events.id, data.eventId))
-    .limit(1);
-
-  if (!event) return;
-
-  const maxRetries = event.maxRetries ?? getMaxAttempts(event.eventType);
-  const nextRetryCount = event.retryCount + 1;
-
-  if (!result.retryable || nextRetryCount > maxRetries) {
-    await db
-      .update(events)
-      .set({ retry_count: nextRetryCount })
-      .where(eq(events.id, data.eventId))
-      .catch(() => null);
-
-    await deadLetterEvent(
-      data.eventId,
-      result.reason ?? "Unknown failure",
-      result.reason ?? "Unknown failure",
-      result.retryable === false ? "permanent" : "transient",
-    );
-
-    await writeEventLog(data.eventId, workerName, "dead_lettered", startedAt, result.reason);
-    logger.error(
-      { eventId: data.eventId, reason: result.reason },
-      `[${workerName}] Dead-lettered`,
-    );
-  } else {
-    const processAfter = getNextRunAfter(event.eventType, event.retryCount);
-    await db
-      .update(events)
-      .set({
-        status: EventStatus.RETRY_PENDING,
-        retry_count: nextRetryCount,
-        process_after: processAfter,
-      })
-      .where(eq(events.id, data.eventId))
-      .catch(() => null);
-    await writeEventLog(data.eventId, workerName, "retry", startedAt, result.reason);
+    throw err;
   }
 }
 

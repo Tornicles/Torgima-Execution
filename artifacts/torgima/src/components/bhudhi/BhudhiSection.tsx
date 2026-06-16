@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import type { BhudhiStatusPayload } from "@/lib/bhudhi-api";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
+import type { IntelligenceStatusPayload } from "@/lib/intelligence-bridge";
 
-interface BhudhiSectionProps {
+interface IntelligenceQuickPanelProps {
   blueprintId: string;
   isOpen: boolean;
   onClose: () => void;
-  status?: BhudhiStatusPayload | null;
+  status?: IntelligenceStatusPayload | null;
 }
 
-export function BhudhiSection({ blueprintId, isOpen, onClose, status }: BhudhiSectionProps) {
+export function IntelligenceQuickPanel({ blueprintId, isOpen, onClose, status }: IntelligenceQuickPanelProps) {
   const [expanded, setExpanded] = useState<string | null>("systems");
   const [askQuery, setAskQuery] = useState("");
 
@@ -21,12 +22,12 @@ export function BhudhiSection({ blueprintId, isOpen, onClose, status }: BhudhiSe
     <div
       className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
-      aria-labelledby="bhudhi-section-title"
+      aria-labelledby="intelligence-section-title"
     >
       <div className="bg-white rounded-t-2xl sm:rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 flex justify-between items-center z-10">
-          <h2 id="bhudhi-section-title" className="text-xl sm:text-2xl font-light">
-            BHUDHI Intelligence
+          <h2 id="intelligence-section-title" className="text-xl sm:text-2xl font-light">
+            {INTELLIGENCE_COPY.name.toUpperCase()} Intelligence
           </h2>
           <button
             type="button"
@@ -108,12 +109,12 @@ export function BhudhiSection({ blueprintId, isOpen, onClose, status }: BhudhiSe
             )}
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4" data-voice-command="ask-bhudhi-inline">
-            <label htmlFor="bhudhi-ask-inline" className="text-sm font-medium block mb-2">
-              Ask Bhudhi
+          <div className="bg-gray-50 rounded-lg p-4" data-voice-command="ask-intelligence-inline">
+            <label htmlFor="intelligence-ask-inline" className="text-sm font-medium block mb-2">
+              {INTELLIGENCE_COPY.askLabel}
             </label>
             <input
-              id="bhudhi-ask-inline"
+              id="intelligence-ask-inline"
               type="text"
               value={askQuery}
               onChange={(e) => setAskQuery(e.target.value)}
@@ -127,7 +128,7 @@ export function BhudhiSection({ blueprintId, isOpen, onClose, status }: BhudhiSe
             className="block text-center text-sm text-[var(--torgima-primary)] font-medium py-3 hover:underline"
             onClick={onClose}
           >
-            Open full Bhudhi dashboard →
+            {INTELLIGENCE_COPY.openDashboard}
           </Link>
         </div>
       </div>

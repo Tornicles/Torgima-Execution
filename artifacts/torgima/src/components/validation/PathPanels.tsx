@@ -1,4 +1,5 @@
 import type { TierId } from "@/components/blueprint/BlueprintSelectionPanel";
+import { PATH_DIRECTION_LABELS } from "@/lib/onboarding-doc32";
 
 export type PathKey = "current" | "adjusted" | "alternative";
 
@@ -40,26 +41,42 @@ export function PathPanels({
       : ["current"]
     : ["current", "adjusted", "alternative"];
 
+  const normalizedVerdict = (verdict ?? "").toLowerCase();
+  const pivotBlocksCurrent = normalizedVerdict === "pivot";
+
   const labels: Record<PathKey, { label: string; icon: string }> = {
-    current: { label: "Current Path", icon: "🚩" },
-    adjusted: { label: "Adjusted Path", icon: "⚙️" },
-    alternative: { label: "Alternative Path", icon: "↗️" },
+    current: { label: PATH_DIRECTION_LABELS.current, icon: "🚩" },
+    adjusted: { label: PATH_DIRECTION_LABELS.adjusted, icon: "⚙️" },
+    alternative: { label: PATH_DIRECTION_LABELS.alternative, icon: "↗️" },
   };
 
   return (
     <div className="space-y-3">
-      <h3 className="font-bold text-gray-900">Strategic Paths</h3>
+      <h3 className="font-bold text-gray-900">Choose your direction</h3>
       {visible.map((key) => {
         const path = paths[key];
         if (!path) return null;
         const isSelected = selectedPath === key;
+        const disabled = pivotBlocksCurrent && key === "current";
         return (
           <button
             key={key}
             type="button"
-            onClick={() => onSelectPath(key)}
+            disabled={disabled}
+            title={
+              disabled
+                ? "Your current direction needs a meaningful change before you can proceed with it."
+                : undefined
+            }
+            onClick={() => {
+              if (!disabled) onSelectPath(key);
+            }}
             className={`w-full text-left border-2 rounded-xl p-4 transition-all ${
-              isSelected ? "border-green-500 bg-white shadow-sm" : "border-gray-200 hover:border-gray-300"
+              disabled
+                ? "cursor-not-allowed border-gray-100 bg-gray-50 opacity-60"
+                : isSelected
+                  ? "border-green-500 bg-white shadow-sm"
+                  : "border-gray-200 hover:border-gray-300"
             }`}
           >
             <div className="flex items-center gap-2 mb-2">

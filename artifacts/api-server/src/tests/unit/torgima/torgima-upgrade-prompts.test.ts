@@ -5,9 +5,9 @@ import { applyTierToConditionRules } from "../../../services/TierDifferentiation
 import { toDashboardIdentity } from "../../../engines/intelligence/IdentityContinuityEngine.js";
 
 describe("TORGIMA upgrade prompts 1-4", () => {
-  it("P1: toDashboardIdentity returns UNFORMED when no row", () => {
+  it("P1: toDashboardIdentity returns customer label when no row", () => {
     const d = toDashboardIdentity(null);
-    expect(d.stage).toBe("UNFORMED");
+    expect(d.stage).toBe("Getting Started");
   });
 
   it("P2: detectFalseProgress flags activity without outcome", () => {

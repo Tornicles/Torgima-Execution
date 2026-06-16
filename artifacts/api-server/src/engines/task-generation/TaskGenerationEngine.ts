@@ -53,6 +53,7 @@ import {
 } from "../academy/CapabilityGapEngine.js";
 import { getBasicProfile } from "../../bhudhi/agents/BehavioralAgent.js";
 import { selectPackage, packageToInjection } from "../../bhudhi/agents/KnowledgeAgent.js";
+import { KnowledgeService } from "../growth/KnowledgeService.js";
 import { fetchRecoveryCoachingCopy } from "../../bhudhi/AdvancedIntelligenceBridge.js";
 import { MemoryWriter } from "../../bhudhi/MemoryWriter.js";
 import { enforceCapabilityDifficulty } from "../capability/CapabilityDifficulty.js";
@@ -63,6 +64,16 @@ import {
 } from "./taskLimits.js";
 import { loadBlueprintTierContext } from "../blueprint/tierEngineAwareness.js";
 import type { TierConfig } from "../blueprint/TierConfig.js";
+import {
+  applyArchetypeTaskOverride,
+  buildBhudhiArchetypeFacts,
+  formatArchetypeActionName,
+  isArchetypeFalseProgressRisk,
+  loadArchetypeContext,
+  resolveArchetypeTaskOverride,
+  type ArchetypeContext,
+  type ArchetypeTaskOverride,
+} from "./archetypeTaskProfiles.js";
 
 export const DIFFICULTY_ORDER = [
   "very_easy",
@@ -81,6 +92,8 @@ export interface GenerationResult {
   order_ids: string[];
   used_bhudhi: boolean;
   used_fallback: boolean;
+  blocked_by_capability_gap?: boolean;
+  gaps?: import("../erector/academy/types.js").CapabilityGapItem[];
 }
 
 // ── CONTEXT LOADING ───────────────────────────────────────────────────────────
@@ -312,6 +325,8 @@ async function loadContext(params: {
     max: Math.min(tierMax, Math.min(8, taskLimits.max + tierBonus)),
   };
   const overrideFlags = (pkg.override_flags as Record<string, unknown>) ?? {};
+  const knowledgeInjectionLevel = String(overrideFlags.knowledge_injection_level ?? "minimal");
+  const phaseProgressionType = String(overrideFlags.phase_progression_type ?? "linear");
 
   const allowedRaw = pkg.allowed_actions;
   const allowed_actions: string[] = Array.isArray(allowedRaw)
@@ -338,6 +353,9 @@ async function loadContext(params: {
       reality_score: blueprint.reality_score ?? undefined,
       archetype_difficulty_adj: blueprint.archetype_difficulty_adj ?? undefined,
       primary_archetype_id: blueprint.primary_archetype_id ?? undefined,
+      erector_archetype: blueprint.erector_archetype ?? undefined,
+      erector_launch_contract_id: blueprint.erector_launch_contract_id ?? undefined,
+      metadata: blueprint.metadata ?? undefined,
     },
     plan: currentPlan,
     phase: currentPhase,
@@ -353,6 +371,8 @@ async function loadContext(params: {
       recovery_required: Boolean(overrideFlags["recovery_required"]),
       feature_permissions: (pkg.feature_permissions as Record<string, boolean>) ?? {},
       condition_code: pkg.condition as string,
+      knowledge_injection_level: knowledgeInjectionLevel,
+      phase_progression_type: phaseProgressionType,
     },
     capability: {
       level: (capability?.level as string) ?? "beginner",
@@ -1068,6 +1088,51 @@ function buildExecutionCommandContextSnapshot(
   };
 }
 
+async function getKnowledgeForTask(params: {
+  blueprintId: string;
+  domain: string;
+  actionType: string;
+  injectionLevel: string;
+  userId: string;
+}) {
+  const { blueprintId, domain, actionType, injectionLevel, userId } = params;
+  type KnowledgeDomain = NonNullable<(typeof knowledgeObjects.$inferSelect)["domain"]>;
+  const domainFilter = (domain || "genesis") as KnowledgeDomain;
+  const knowledgeRows = await db
+    .select()
+    .from(knowledgeObjects)
+    .where(
+      and(
+        eq(knowledgeObjects.active, true),
+        or(
+          eq(knowledgeObjects.is_global, true),
+          eq(knowledgeObjects.blueprint_id, blueprintId),
+          eq(knowledgeObjects.domain, domainFilter),
+        ),
+      ),
+    )
+    .limit(8);
+
+  const cards = await KnowledgeService.getAllCards(blueprintId);
+  const knowledgePackage = await selectPackage({ domain, actionType, userId });
+
+  return {
+    level: injectionLevel,
+    objects: knowledgeRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      type: row.type,
+      domain: row.domain,
+    })),
+    cards: cards.slice(0, 5).map((card) => ({
+      id: card.id,
+      title: card.title,
+      category: card.category,
+    })),
+    package: knowledgePackage ? packageToInjection(knowledgePackage) : null,
+  };
+}
+
 async function enrichWithBhudhi(params: {
   content: BuiltContent;
   ctx: Awaited<ReturnType<typeof loadContext>>;
@@ -1075,6 +1140,9 @@ async function enrichWithBhudhi(params: {
   taskType: string;
   difficulty: string;
   commandContext: Record<string, unknown>;
+  archetypeContext?: ArchetypeContext | null;
+  archetypeTaskOverride?: ArchetypeTaskOverride | null;
+  effectiveActionType?: string;
 }): Promise<{ content: BuiltContent; commandContext: Record<string, unknown>; usedAi: boolean }> {
   const { ctx, userId, taskType, difficulty } = params;
   let next = { ...params.content };
@@ -1089,6 +1157,13 @@ async function enrichWithBhudhi(params: {
   const phaseTitle = ctx.phase?.name ?? "Current phase";
   const planTitle = ctx.plan?.name ?? "Current plan";
   const domain = ctx.blueprint.current_domain ?? "genesis";
+  const effectiveActionType =
+    params.effectiveActionType ?? ctx.action?.type ?? "Create";
+  const archetypeFacts = buildBhudhiArchetypeFacts(
+    params.archetypeContext ?? null,
+    params.archetypeTaskOverride ?? null,
+    effectiveActionType,
+  );
 
   const traceChain: CommandTraceChain =
     (commandContext.traceChain as CommandTraceChain | undefined) ??
@@ -1111,11 +1186,19 @@ async function enrichWithBhudhi(params: {
 
   const conditionProfile = await getBehavioralProfile(userId, blueprintId);
   const behavioralProfile = await getBasicProfile(userId);
-  const knowledgePackage = await selectPackage({
-    domain,
-    actionType: ctx.action?.type ?? "Create",
-    userId,
-  });
+
+  const injectionLevel = String(ctx.enforcement.knowledge_injection_level ?? "minimal");
+  let knowledgeContext: Awaited<ReturnType<typeof getKnowledgeForTask>> | null = null;
+
+  if (injectionLevel === "full" || injectionLevel === "advanced") {
+    knowledgeContext = await getKnowledgeForTask({
+      blueprintId,
+      domain,
+      actionType: ctx.action?.type ?? "Create",
+      injectionLevel,
+      userId,
+    });
+  }
 
   const result = await routeBhudhiRequest({
     sourceEngine:   "TaskGenerationEngine",
@@ -1128,6 +1211,7 @@ async function enrichWithBhudhi(params: {
       goal:           ctx.blueprint.goal,
       domain,
       taskType,
+      action_type:    effectiveActionType,
       actionContext:  actionTitle,
       actionTitle,
       projectTitle,
@@ -1143,7 +1227,8 @@ async function enrichWithBhudhi(params: {
       conditionTone: conditionProfile.taskTone,
       taskLanguageTone: conditionProfile.taskTone,
       behavioralProfile,
-      knowledgePackage: knowledgePackage ? packageToInjection(knowledgePackage) : null,
+      knowledgePackage: knowledgeContext?.package ?? null,
+      knowledge_context: knowledgeContext,
       controlRule: {
         maxDifficulty: conditionProfile.maxDifficulty,
         maxActiveTasks: conditionProfile.maxActiveTasks,
@@ -1154,6 +1239,7 @@ async function enrichWithBhudhi(params: {
       commandOrderMode,
       whereHint: commandOrderWhereHint(domain),
       stateVersion: bp?.state_version ?? 0,
+      ...archetypeFacts,
     },
   });
 
@@ -1322,6 +1408,18 @@ export async function generate(params: {
     planIdOverride: params.planIdOverride,
   });
 
+  const archetypeContext = await loadArchetypeContext(
+    {
+      id: ctx.blueprint.id,
+      erector_archetype: ctx.blueprint.erector_archetype ?? null,
+      erector_launch_contract_id: ctx.blueprint.erector_launch_contract_id ?? null,
+      tier: (ctx.blueprint.tier ?? null) as typeof blueprints.$inferSelect.tier,
+      metadata: ctx.blueprint.metadata ?? null,
+    },
+    ctx.phase?.name,
+    ctx.plan?.name,
+  );
+
   await emitArchetypeContextMissingIfNeeded({
     blueprintId: params.blueprintId,
     userId: params.userId,
@@ -1330,6 +1428,75 @@ export async function generate(params: {
       ? "background"
       : "primary",
   });
+
+  const nextActionType = ctx.action?.type?.toLowerCase();
+  if (nextActionType && nextActionType !== "academy") {
+    const { detectCapabilityGaps } = await import("../erector/academy/CapabilityGapDetector.js");
+    const { handleCapabilityGapDetected } = await import("../erector/academy/AcademyRuntime.js");
+    const { EVENT_TYPES, writeEvent } = await import("../../services/EventService.js");
+
+    const gapResult = await detectCapabilityGaps({
+      userId: params.userId,
+      blueprintId: params.blueprintId,
+      nextActionType,
+      domain: ctx.blueprint.current_domain ?? "genesis",
+      phase: ctx.phase?.name ?? "foundation",
+      tier: parseTier(ctx.blueprint.tier),
+    });
+
+    if (gapResult.should_block_task_generation) {
+      await writeEvent({
+        eventType: EVENT_TYPES.ERECTOR_CAPABILITY_GAP_DETECTED,
+        entityType: "erector_capability_gap",
+        entityId: params.blueprintId,
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        payload: {
+          gaps: gapResult.gaps,
+          blocked_task_type: nextActionType,
+          domain: ctx.blueprint.current_domain ?? "genesis",
+          phase: ctx.phase?.name ?? "foundation",
+          tier: parseTier(ctx.blueprint.tier),
+        },
+        idempotencyKey: `erector_capability_gap_detected:${params.blueprintId}:${nextActionType}:${gapResult.gaps.map((g) => g.capability_id).join(",")}`,
+      }).catch(() => null);
+
+      await handleCapabilityGapDetected({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        gaps: gapResult.gaps,
+        blockedTaskType: nextActionType,
+        domain: ctx.blueprint.current_domain ?? "genesis",
+        phase: ctx.phase?.name ?? "foundation",
+        tier: parseTier(ctx.blueprint.tier),
+      });
+
+      await insertGenerationLog({
+        blueprintId: params.blueprintId,
+        userId: params.userId,
+        generationTrigger: params.generationTrigger,
+        generationMode: params.generationMode,
+        conditionAtGeneration: ctx.enforcement.condition_code,
+        enforcementPackageId: ctx.enforcement_package_id,
+        capabilityLevel: ctx.capability.level,
+        domainAtGeneration: ctx.blueprint.current_domain ?? "delivery",
+        inputJson: { blocked_by_capability_gap: true, gaps: gapResult.gaps },
+        orderIds: [],
+        ordersGenerated: 0,
+        usedFallback: false,
+        aiUsed: false,
+      });
+
+      return {
+        orders_generated: 0,
+        order_ids: [],
+        used_bhudhi: false,
+        used_fallback: false,
+        blocked_by_capability_gap: true,
+        gaps: gapResult.gaps,
+      };
+    }
+  }
 
   let { enforcement } = ctx;
 
@@ -1509,6 +1676,51 @@ export async function generate(params: {
     taskType = "recovery";
   }
 
+  let archetypeTaskOverride: ArchetypeTaskOverride | null = null;
+  let effectiveAction = ctx.action
+    ? { name: ctx.action.name, type: ctx.action.type }
+    : null;
+
+  if (archetypeContext && taskType === "execution") {
+    const proposedActionType = ctx.action?.type ?? "execution";
+
+    if (isArchetypeFalseProgressRisk(proposedActionType, archetypeContext)) {
+      const { DecisionTraceService } = await import("../decision/DecisionTraceService.js");
+      await DecisionTraceService.write({
+        userId: params.userId,
+        blueprintId: params.blueprintId,
+        decisionType: "SYSTEM_GENERATION",
+        decisionKey: "archetype_false_progress_prevention",
+        selectedOption: "task_type_avoided",
+        optionsConsidered: [proposedActionType],
+        rationaleSummary: `Task type '${proposedActionType}' is a known false progress pattern for ${archetypeContext.archetype}. Generating higher-value alternative.`,
+        confidence: "HIGH",
+        sourceEngine: "TaskGenerationEngine",
+        causationEventId: params.causationEventId,
+      }).catch(() => null);
+
+      archetypeTaskOverride = await resolveArchetypeTaskOverride(
+        archetypeContext,
+        params.blueprintId,
+        params.userId,
+        true,
+      );
+    } else {
+      archetypeTaskOverride = await resolveArchetypeTaskOverride(
+        archetypeContext,
+        params.blueprintId,
+        params.userId,
+      );
+    }
+
+    if (archetypeTaskOverride) {
+      effectiveAction = {
+        name: formatArchetypeActionName(archetypeTaskOverride.action_type),
+        type: archetypeTaskOverride.action_type as NonNullable<typeof ctx.action>["type"],
+      };
+    }
+  }
+
   const requiredSkill = inferSkillFromActionType(
     ctx.action?.type ?? null,
     ctx.blueprint.current_domain,
@@ -1546,13 +1758,17 @@ export async function generate(params: {
   let content = buildTaskContent({
     task_type: taskType,
     goal: ctx.blueprint.goal,
-    action: ctx.action ? { name: ctx.action.name, type: ctx.action.type } : null,
+    action: effectiveAction,
     target: ctx.target ? { name: ctx.target.name } : null,
     phase: ctx.phase ? { name: ctx.phase.name } : null,
     project: ctx.project ? { name: ctx.project.name } : null,
     difficulty,
     domain: ctx.blueprint.current_domain ?? null,
   });
+
+  if (archetypeTaskOverride) {
+    content = applyArchetypeTaskOverride(content, archetypeTaskOverride, ctx.blueprint.goal);
+  }
   const eisTaskHint = await loadLatestEISTaskHint(params.userId);
   if (eisTaskHint && taskType === "execution") {
     content = {
@@ -1674,6 +1890,9 @@ export async function generate(params: {
           taskType,
           difficulty,
           commandContext,
+          archetypeContext,
+          archetypeTaskOverride,
+          effectiveActionType: effectiveAction?.type,
         }),
         new Promise<{ content: BuiltContent; commandContext: Record<string, unknown>; usedAi: boolean }>(
           (_, reject) => setTimeout(() => reject(new Error("timeout")), 5000),
@@ -1817,10 +2036,24 @@ export async function generate(params: {
         task_style: taskStyle,
         effort_score: Math.min(100, Math.round(valueScore * 12)),
         sequence_position: sequencePosition,
+        ...(archetypeTaskOverride
+          ? { archetype_priority_action: archetypeTaskOverride.action_type }
+          : {}),
       }
     : taskStyle === "condition_controlled" ?
-      { ...traceBase, task_style: taskStyle }
-    : traceBase;
+      {
+        ...traceBase,
+        task_style: taskStyle,
+        ...(archetypeTaskOverride
+          ? { archetype_priority_action: archetypeTaskOverride.action_type }
+          : {}),
+      }
+    : {
+        ...traceBase,
+        ...(archetypeTaskOverride
+          ? { archetype_priority_action: archetypeTaskOverride.action_type }
+          : {}),
+      };
 
   const orderId = await db.transaction(async (tx: Tx) => {
     const [order] = await tx

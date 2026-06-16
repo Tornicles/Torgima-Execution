@@ -3,6 +3,7 @@ import { ChevronRight, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import type { DashboardAlert, DashboardProjection } from "@/lib/dashboard-types";
 import { SignalPanel, type SignalBreakdown } from "@/components/SignalPanel";
 import { ConditionState } from "@workspace/state-machine";
+import { BLUEPRINT_LABELS, getConditionLabel, formatActionLabel, readActionRules } from "@/lib/language-map";
 
 const CONDITION_UI: Record<string, { icon: string; message: string; bg: string; color: string }> = {
   [ConditionState.STABILITY]: { icon: "🛡️", message: "Execution chain stable — maintain continuity.", bg: "bg-green-50", color: "text-green-700" },
@@ -18,26 +19,30 @@ export function ConditionPanel({ state }: { state: DashboardProjection }) {
   const detail = state.conditionDetail as { condition?: string } | undefined;
   const key = (detail?.condition ?? (state.signals as { condition?: string })?.condition ?? ConditionState.NOTHINGNESS).toLowerCase();
   const cfg = CONDITION_UI[key] ?? CONDITION_UI[ConditionState.NOTHINGNESS];
-  const enforcement = state.enforcement as { allowedActions?: string[]; blockedActions?: string[] } | null;
+  const actionRules = readActionRules(state);
 
   return (
     <section className={`rounded-2xl border border-gray-200 p-5 ${cfg.bg}`}>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Current condition</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+        {BLUEPRINT_LABELS.conditions}
+      </p>
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>{cfg.icon}</span>
-        <span className={`text-lg font-bold uppercase ${cfg.color}`}>{key.replace("_", " ")}</span>
+        <span className={`text-lg font-bold ${cfg.color}`}>{getConditionLabel(key)}</span>
       </div>
       <p className="text-xs text-gray-600 mt-2">{cfg.message}</p>
-      {enforcement && (
+      {actionRules && (
         <div className="mt-3 pt-3 border-t border-gray-200/60 space-y-1 text-xs text-gray-600">
-          {enforcement.allowedActions && enforcement.allowedActions.length > 0 && (
+          {actionRules.allowedActions && actionRules.allowedActions.length > 0 && (
             <p>
-              <span className="font-semibold">Allowed:</span> {enforcement.allowedActions.slice(0, 4).join(", ")}
+              <span className="font-semibold">Allowed:</span>{" "}
+              {actionRules.allowedActions.slice(0, 4).map(formatActionLabel).join(", ")}
             </p>
           )}
-          {enforcement.blockedActions && enforcement.blockedActions.length > 0 && (
+          {actionRules.blockedActions && actionRules.blockedActions.length > 0 && (
             <p>
-              <span className="font-semibold">Blocked:</span> {enforcement.blockedActions.slice(0, 4).join(", ")}
+              <span className="font-semibold">Blocked:</span>{" "}
+              {actionRules.blockedActions.slice(0, 4).map(formatActionLabel).join(", ")}
             </p>
           )}
         </div>
@@ -73,7 +78,9 @@ export function SignalSummaryPanel({ state }: { state: DashboardProjection }) {
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Signal summary</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {BLUEPRINT_LABELS.signals} summary
+      </p>
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
           <p className="text-2xl font-bold text-gray-900">{completion}%</p>
@@ -136,7 +143,9 @@ export function ProgressOverviewPanel({ state }: { state: DashboardProjection })
       <div className="flex justify-between items-center">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Progress</p>
         <Link href={`/blueprint/${(bp as { id?: string }).id ?? ""}`}>
-          <span className="text-xs text-green-600 font-medium cursor-pointer hover:underline">Blueprint map</span>
+          <span className="text-xs text-green-600 font-medium cursor-pointer hover:underline">
+            {BLUEPRINT_LABELS.blueprint} map
+          </span>
         </Link>
       </div>
       <p className="font-semibold text-gray-900 truncate">{bp.title ?? bp.rawGoal}</p>

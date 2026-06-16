@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
 import {
   executeConvergenceGoal,
   fetchConvergenceState,
@@ -65,10 +66,8 @@ export function ConvergenceSection({ blueprintId }: { blueprintId: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-light mb-2">Torgima ↔ Bhudhi Convergence</h1>
-        <p className="text-gray-600 text-sm">
-          Goal execution with Bhudhi intelligence — one flow from blueprint to order to feedback loop
-        </p>
+        <h1 className="text-4xl font-light mb-2">{INTELLIGENCE_COPY.convergenceTitle}</h1>
+        <p className="text-gray-600 text-sm">{INTELLIGENCE_COPY.convergenceBody}</p>
       </div>
 
       {error && (
@@ -96,7 +95,7 @@ export function ConvergenceSection({ blueprintId }: { blueprintId: string }) {
           )}
 
           <div className="border border-purple-200 bg-purple-50 rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">Bhudhi guidance</h2>
+            <h2 className="text-lg font-medium mb-4">{INTELLIGENCE_COPY.guidanceHeading}</h2>
             <p className="text-sm">
               {state.bhudhi.recommendation ?? "Run execute to generate recommendations from kernel cycle"}
             </p>
@@ -110,7 +109,7 @@ export function ConvergenceSection({ blueprintId }: { blueprintId: string }) {
             <ol className="text-sm space-y-2 list-decimal list-inside text-gray-700">
               <li>Torgima: goal → blueprint → order</li>
               <li>Convergence: map blueprint & sync orders</li>
-              <li>Bhudhi: kernel cycle → recommend → signal</li>
+              <li>{INTELLIGENCE_COPY.convergenceFlow}</li>
               <li>Feedback loop: complete order → learn → next cycle</li>
             </ol>
           </div>
@@ -122,7 +121,7 @@ export function ConvergenceSection({ blueprintId }: { blueprintId: string }) {
               onClick={() => void runExecute(false)}
               className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 disabled:opacity-50"
             >
-              Run Bhudhi cycle
+              {INTELLIGENCE_COPY.runCycle}
             </button>
             <button
               type="button"

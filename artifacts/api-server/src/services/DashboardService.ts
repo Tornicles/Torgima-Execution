@@ -1,5 +1,10 @@
 import { logger } from "../lib/logger.js";
-import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
+import { TorgimaError } from "../lib/errors.js";
+import {
+  getCachedDashboard,
+  invalidateDashboardCache,
+  setCachedDashboard,
+} from "./dashboard-cache.js";
 import { getUser } from "./AuthService.js";
 import { BlueprintService } from "./BlueprintService.js";
 import { OrderService } from "./OrderService.js";
@@ -22,8 +27,13 @@ import {
   frameworkActivations,
   frameworkDecisions,
   feedback as feedbackTable,
+  users,
+  erectorIntakeSessions,
+  erectorPaidValidations,
+  handoffTokens,
 } from "@workspace/db";
 import { checkAssumptionDrift } from "../engines/validation/AssumptionMonitoringService.js";
+import { degradedDashboardMessage } from "../engines/execution-loop/DegradedMode.js";
 import { buildDashboardAlerts, deriveDashboardUiState } from "./DashboardUiState.js";
 import {
   conditionUserLabel,
@@ -57,6 +67,11 @@ import { buildLaunchDashboardProjection } from "../lib/buildLaunchDashboardProje
 import { isLaunchMode } from "../lib/launch-mode.js";
 import { buildBlueprintPositionProjection } from "../lib/buildBlueprintPositionProjection.js";
 import { buildSignalBreakdownFromSnapshot } from "../engines/signal/SignalFormulaBreakdown.js";
+import {
+  buildLimitedDashboardContext,
+  type LimitedDashboardContext,
+  type LimitedDashboardVariant,
+} from "./limited-dashboard-context.js";
 
 async function buildNoActiveBlueprintDashboardState(userId: string) {
   const [user, signals, recentFeedback, activeOrders] = await Promise.all([
@@ -113,6 +128,7 @@ async function buildNoActiveBlueprintDashboardState(userId: string) {
     tasksCompletedToday: 0,
     tasksCompletedThisWeek: 0,
     stateVersion: 0,
+    projectionVersion: Date.now(),
     pivotReviewOpen: false,
     pivotReviewId: null,
     pivotReview: null,
@@ -368,6 +384,13 @@ async function computeDashboardState(userId: string) {
 
       for (const row of ffRows) {
         featureFlagMap[row.feature_name] = row.enabled;
+      }
+
+      if (featureFlagMap.degraded_mode) {
+        health = {
+          systemOperational: true,
+          message: degradedDashboardMessage(),
+        };
       }
 
       const enforcementPerm =
@@ -938,6 +961,7 @@ async function computeDashboardState(userId: string) {
       tasksCompletedThisWeek: completedThisWeek,
       // Prompt 15 — consolidated projection fields
       stateVersion,
+      projectionVersion: Date.now(),
       pivotReviewOpen,
       pivotReviewId,
       pivotReview,
@@ -982,57 +1006,179 @@ async function computeDashboardState(userId: string) {
 
 type DashboardStateResult = Awaited<ReturnType<typeof computeDashboardState>>;
 
-/**
- * Short-TTL per-user cache for the dashboard projection. The dashboard is the
- * hottest endpoint (the client polls it every few seconds in the background per
- * tab) and each call runs dozens of database queries plus AI calls. Caching the
- * projection for a few seconds collapses that into one computation per window —
- * a large Supabase egress reduction — while staying within the existing
- * eventually-consistent UX model (pendingSync polling + worker stateVersion bumps).
- *
- * Default: enabled only in the production Worker (5s). Disabled in node/tests
- * unless DASHBOARD_CACHE_TTL_MS is set, so repeated post-mutation reads in tests
- * always see fresh data. Set DASHBOARD_CACHE_TTL_MS=0 to disable in production.
- */
-const dashboardCache = new Map<string, { value: DashboardStateResult; expiresAt: number }>();
+export type LimitedDashboardState = {
+  mode: "limited" | "review";
+  user: { id: string; email: string; tier: string };
+  activeBlueprint: null;
+  currentAction: null;
+  message: string;
+  limited_variant: LimitedDashboardVariant;
+  limited_context: LimitedDashboardContext;
+  preview?: {
+    projectName?: string | null;
+    goal?: string | null;
+    blueprintTier?: string | null;
+    validationSummary?: string | null;
+  };
+};
 
-function dashboardCacheTtlMs(): number {
-  const raw = process.env.DASHBOARD_CACHE_TTL_MS;
-  if (raw !== undefined && raw.trim() !== "") {
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  }
-  return isCloudflareRuntime() ? 5_000 : 0;
+async function buildLimitedDashboardState(userId: string): Promise<LimitedDashboardState> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) throw new TorgimaError("NOT_FOUND", "USER_NOT_FOUND");
+
+  const { limited_variant, limited_context } = await buildLimitedDashboardContext(userId);
+
+  const [draftBlueprint] = await db
+    .select({
+      projectName: blueprints.project_name,
+      goal: blueprints.goal,
+      tier: blueprints.tier,
+      validationVerdict: blueprints.validation_verdict,
+      realityScore: blueprints.reality_score,
+    })
+    .from(blueprints)
+    .where(eq(blueprints.user_id, userId))
+    .orderBy(desc(blueprints.updated_at))
+    .limit(1);
+
+  const validationSummary =
+    limited_context.variant === "post_free_validation"
+      ? limited_context.free_verdict_label
+      : draftBlueprint?.validationVerdict || draftBlueprint?.realityScore != null
+        ? [
+            draftBlueprint.validationVerdict ? `Recommendation: ${draftBlueprint.validationVerdict}` : null,
+            draftBlueprint.realityScore != null
+              ? `Health score: ${Math.round(draftBlueprint.realityScore)}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : null;
+
+  const message =
+    limited_variant === "post_free_validation"
+      ? "Your Free Analysis"
+      : limited_variant === "intake_in_progress"
+        ? "Your analysis is in progress"
+        : "Complete Project Intelligence to activate your project";
+
+  return {
+    mode: "limited",
+    user: { id: user.id, email: user.email, tier: user.tier },
+    activeBlueprint: null,
+    currentAction: null,
+    message,
+    limited_variant,
+    limited_context,
+    preview: draftBlueprint
+      ? {
+          projectName: draftBlueprint.projectName,
+          goal: draftBlueprint.goal,
+          blueprintTier: draftBlueprint.tier,
+          validationSummary: validationSummary || null,
+        }
+      : limited_context.variant === "post_free_validation"
+        ? { validationSummary: limited_context.free_verdict_label }
+        : undefined,
+  };
 }
 
-function getCachedDashboard(userId: string): DashboardStateResult | undefined {
-  if (dashboardCacheTtlMs() <= 0) return undefined;
-  const hit = dashboardCache.get(userId);
-  if (hit && Date.now() < hit.expiresAt) return hit.value;
-  if (hit) dashboardCache.delete(userId);
-  return undefined;
-}
+async function buildReviewDashboardState(userId: string): Promise<LimitedDashboardState> {
+  const base = await buildLimitedDashboardState(userId);
+  const [intake] = await db
+    .select({
+      section1: erectorIntakeSessions.section_1_data,
+      handoffTokenId: erectorIntakeSessions.handoff_token_id,
+    })
+    .from(erectorIntakeSessions)
+    .where(
+      and(
+        eq(erectorIntakeSessions.user_id, userId),
+        eq(erectorIntakeSessions.prefilled_from_handoff, true),
+      ),
+    )
+    .orderBy(desc(erectorIntakeSessions.started_at))
+    .limit(1);
 
-function setCachedDashboard(userId: string, value: DashboardStateResult): void {
-  const ttl = dashboardCacheTtlMs();
-  if (ttl <= 0) return;
-  dashboardCache.set(userId, { value, expiresAt: Date.now() + ttl });
-  if (dashboardCache.size > 5_000) {
-    const now = Date.now();
-    for (const [key, entry] of dashboardCache) {
-      if (now >= entry.expiresAt) dashboardCache.delete(key);
+  const s1 =
+    intake?.section1 && typeof intake.section1 === "object"
+      ? (intake.section1 as Record<string, string>)
+      : null;
+
+  let validationSummary = base.preview?.validationSummary ?? null;
+  let paidValidationId: string | null = null;
+
+  if (intake?.handoffTokenId) {
+    const [handoff] = await db
+      .select({ data_json: handoffTokens.data_json })
+      .from(handoffTokens)
+      .where(eq(handoffTokens.id, intake.handoffTokenId))
+      .limit(1);
+    const data = (handoff?.data_json ?? {}) as Record<string, unknown>;
+    if (typeof data.validation_id === "string") paidValidationId = data.validation_id;
+    if (typeof data.verdict === "string" || typeof data.validation_score === "number") {
+      validationSummary = [
+        typeof data.verdict === "string" ? `Recommendation: ${data.verdict}` : null,
+        typeof data.validation_score === "number" ? `Health score: ${data.validation_score}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
     }
   }
+
+  if (paidValidationId && !validationSummary) {
+    const [paid] = await db
+      .select({
+        verdict: erectorPaidValidations.verdict,
+        validation_score: erectorPaidValidations.validation_score,
+      })
+      .from(erectorPaidValidations)
+      .where(eq(erectorPaidValidations.id, paidValidationId))
+      .limit(1);
+    if (paid) {
+      validationSummary = [
+        paid.verdict ? `Recommendation: ${paid.verdict}` : null,
+        paid.validation_score != null ? `Health score: ${paid.validation_score}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+  }
+
+  return {
+    ...base,
+    mode: "review",
+    message: "Review your Project Intelligence report, then activate your project",
+    limited_variant: base.limited_variant,
+    limited_context: base.limited_context,
+    preview: {
+      ...base.preview,
+      projectName: s1?.projectName ?? base.preview?.projectName ?? null,
+      goal: s1?.whatBuilding ?? base.preview?.goal ?? null,
+      validationSummary,
+    },
+  };
 }
 
-/** Clears a user's cached dashboard projection after a state-changing mutation. */
-export function invalidateDashboardCache(userId: string): void {
-  dashboardCache.delete(userId);
-}
+export { invalidateDashboardCache } from "./dashboard-cache.js";
 
 export const DashboardService = {
+  async getLimitedDashboardStateIfNeeded(
+    userId: string,
+  ): Promise<LimitedDashboardState | null> {
+    const [user] = await db
+      .select({ dashboard_mode: users.dashboard_mode })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user) throw new TorgimaError("NOT_FOUND", "USER_NOT_FOUND");
+    if (user.dashboard_mode === "review") return buildReviewDashboardState(userId);
+    if (user.dashboard_mode !== "limited") return null;
+    return buildLimitedDashboardState(userId);
+  },
+
   async getDashboardState(userId: string): Promise<DashboardStateResult> {
-    const cached = getCachedDashboard(userId);
+    const cached = getCachedDashboard<DashboardStateResult>(userId);
     if (cached !== undefined) {
       logger.info({ userId, cache: "hit" }, "DashboardService.getDashboardState");
       return cached;

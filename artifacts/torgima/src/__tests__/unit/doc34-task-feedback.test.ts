@@ -6,6 +6,8 @@ import {
   completionToApiStatus,
   parseTaskExecutionView,
   proofValid,
+  reflectionValid,
+  REFLECTION_MIN_LENGTH,
 } from "@/lib/task-feedback";
 import type { FeedbackFormState, TaskExecutionView } from "@/types/task-execution";
 import { initialProofState } from "@/lib/task-feedback";
@@ -14,12 +16,11 @@ const root = resolve(import.meta.dirname, "../../..");
 const readRepo = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("DOC 34 — Task execution & feedback", () => {
-  it("task page loads execution view and blocked state", () => {
+  it("task page uses TaskExecutionScreen and order detail", () => {
     const page = readRepo("src/pages/task.tsx");
     expect(page).toContain("fetchOrderDetail");
-    expect(page).toContain("parseTaskExecutionView");
+    expect(page).toContain("TaskExecutionScreen");
     expect(page).toContain("BlockedTaskState");
-    expect(page).toContain("FeedbackForm");
     expect(page).toContain("TaskSkeleton");
   });
 
@@ -32,6 +33,16 @@ describe("DOC 34 — Task execution & feedback", () => {
     expect(form).toContain("generateIdempotencyKey");
     expect(form).toContain("runDashboardMutation");
     expect(form).toContain("expectedStateVersion");
+    expect(form).toContain("InterrogationPrompt");
+    expect(form).toContain("ProofUpload");
+  });
+
+  it("ProofUpload auto-uploads and InterrogationPrompt clarifies", () => {
+    const proof = readRepo("src/components/tasks/ProofUpload.tsx");
+    expect(proof).toContain("uploadProofFile");
+    expect(proof).toContain("proofFileId");
+    const interrogation = readRepo("src/components/tasks/InterrogationPrompt.tsx");
+    expect(interrogation).toContain("submitFeedbackClarification");
   });
 
   it("proof validation enforces TEXT minimum length", () => {
@@ -104,5 +115,49 @@ describe("DOC 34 — Task execution & feedback", () => {
     expect(
       readFileSync(resolve(root, "../api-server/src/lib/taskExecutionView.ts"), "utf8"),
     ).toContain("buildTaskExecutionView");
+  });
+});
+
+describe("feedback-screen", () => {
+  it("disables submit when proof required and missing", () => {
+    const form = readRepo("src/components/tasks/FeedbackForm.tsx");
+    expect(form).toContain("proofOk");
+    expect(form).toContain("disabled={!canSubmit}");
+    expect(form).toContain("proofRequiredMessage");
+  });
+
+  it("enforces reflection minimum length with counter", () => {
+    expect(reflectionValid("short")).toBe(false);
+    expect(reflectionValid("x".repeat(REFLECTION_MIN_LENGTH))).toBe(true);
+    const form = readRepo("src/components/tasks/FeedbackForm.tsx");
+    expect(form).toContain("reflectionTooShort");
+    expect(form).toContain("REFLECTION_MIN_LENGTH");
+  });
+
+  it("shows interrogation overlay on clarification required", () => {
+    const form = readRepo("src/components/tasks/FeedbackForm.tsx");
+    expect(form).toContain("requiresInterrogation");
+    expect(form).toContain("InterrogationPrompt");
+  });
+
+  it("prevents double submit via submitting guard", () => {
+    const form = readRepo("src/components/tasks/FeedbackForm.tsx");
+    expect(form).toContain("if (submitting) return");
+    expect(form).toContain("setSubmitting(true)");
+  });
+
+  it("re-enables form on STALE_STATE", () => {
+    const form = readRepo("src/components/tasks/FeedbackForm.tsx");
+    expect(form).toContain('result.code === "STALE_STATE"');
+    expect(form).toContain("setSubmitting(false)");
+  });
+
+  it("TaskExecutionScreen renders DOC34 task card fields", () => {
+    const screen = readRepo("src/components/tasks/TaskExecutionScreen.tsx");
+    expect(screen).toContain("whyItMatters");
+    expect(screen).toContain("expectedOutput");
+    expect(screen).toContain("definitionOfDone");
+    expect(screen).toContain("finishedTask");
+    expect(screen).toContain("needs_feedback");
   });
 });

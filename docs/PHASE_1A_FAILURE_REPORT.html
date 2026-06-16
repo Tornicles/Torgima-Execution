@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TORGIMA Phase 1A — Verification Failure Report</title>
+  <style>
+    @page { margin: 2cm; }
+    body { font-family: "Segoe UI", Arial, sans-serif; font-size: 11pt; line-height: 1.45; color: #1a1a1a; max-width: 900px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22pt; border-bottom: 3px solid #c0392b; padding-bottom: 8px; color: #922b21; }
+    h2 { font-size: 14pt; margin-top: 28px; color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 4px; }
+    h3 { font-size: 12pt; margin-top: 18px; color: #34495e; }
+    .meta { background: #f8f9fa; border-left: 4px solid #3498db; padding: 12px 16px; margin: 16px 0; }
+    .fail { color: #c0392b; font-weight: bold; }
+    .pass { color: #27ae60; font-weight: bold; }
+    .warn { color: #d68910; font-weight: bold; }
+    .blocked { background: #fdecea; border: 1px solid #e74c3c; padding: 14px; margin: 16px 0; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 10pt; }
+    th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #ecf0f1; }
+    tr:nth-child(even) { background: #fafafa; }
+    code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }
+    ul { margin: 8px 0 16px 20px; }
+    li { margin: 4px 0; }
+    .footer { margin-top: 40px; font-size: 9pt; color: #7f8c8d; border-top: 1px solid #ddd; padding-top: 12px; }
+  </style>
+</head>
+<body>
+
+<h1>TORGIMA Phase 1A — Verification Failure Report</h1>
+
+<div class="meta">
+  <strong>Report date:</strong> 15 June 2026<br />
+  <strong>Repository:</strong> Torgima-Execution<br />
+  <strong>Verification runbook:</strong> TORGIMA PHASE 1A — Complete System Verification and Production Push<br />
+  <strong>Overall status:</strong> <span class="fail">FAILED — STOPPED AT STEP 1.2</span><br />
+  <strong>Production push:</strong> <span class="fail">NOT PERFORMED</span> (Part 14 blocked)
+</div>
+
+<div class="blocked">
+  <strong>Hard stop rule applied:</strong> The verification runbook states that if any required environment variable is missing or empty, verification must stop and report. No database checks, builds, tests, E2E chains, commit, or push to <code>main</code> may proceed until STEP 1.2 passes.
+</div>
+
+<h2>1. Executive summary</h2>
+<p>
+  Phase 1A pre-launch verification <strong>did not complete</strong>. The first blocking failure occurred at
+  <strong>STEP 1.2 — Environment variables</strong>. Only database connection strings are configured in
+  <code>.env.local</code>; eight other mandatory keys required by the runbook are absent.
+</p>
+<p>
+  Because of the hard stop, <strong>Parts 2 through 13 were never executed</strong>. This means schema validation,
+  typecheck, build, unit tests, API route audits, Bhudhi checks, Erector integration traces, frontend file checks,
+  security scans, system-law enforcement, and end-to-end chains were <strong>not verified in this session</strong>.
+</p>
+<p>
+  Additionally, the working tree contains <strong>~385 modified/untracked paths</strong> (large Phase 1A + Erector gap-fix work)
+  that has not been committed. Even if env were fixed, a production push would require full green verification first.
+</p>
+
+<h2>2. Verification progress by part</h2>
+<table>
+  <thead>
+    <tr><th>Part</th><th>Description</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Part 1</td><td>Environment &amp; infrastructure</td><td class="fail">PARTIAL FAIL</td><td>Stopped at 1.2</td></tr>
+    <tr><td>Part 2</td><td>Database schema verification</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 3</td><td>TypeScript &amp; build</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 4</td><td>Unit test suite</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 5</td><td>API route verification</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 6</td><td>Bhudhi system</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 7</td><td>Erector integration chain</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 8</td><td>Frontend verification</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 9</td><td>Worker &amp; event system</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 10</td><td>Security verification</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 11</td><td>System laws enforcement</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 12</td><td>End-to-end chain trace</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 13</td><td>DOC 37 readiness checklist</td><td class="warn">NOT RUN</td><td>Blocked by 1.2</td></tr>
+    <tr><td>Part 14</td><td>Commit &amp; push to main</td><td class="fail">NOT PERFORMED</td><td>Requires zero failures</td></tr>
+  </tbody>
+</table>
+
+<h2>3. Part 1 — Detailed results</h2>
+
+<h3>STEP 1.1 — Package manager and runtime</h3>
+<table>
+  <thead><tr><th>Check</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>node --version</code></td>
+      <td>v20+ (repo requires &gt;=22)</td>
+      <td><code>v22.22.3</code> via <code>pnpm node</code> (not on bare PATH initially)</td>
+      <td class="pass">PASS</td>
+    </tr>
+    <tr>
+      <td><code>pnpm --version</code></td>
+      <td>8+ (repo requires &gt;=11)</td>
+      <td><code>11.0.9</code></td>
+      <td class="pass">PASS</td>
+    </tr>
+    <tr>
+      <td><code>pnpm install</code></td>
+      <td>Clean install, no lockfile drift</td>
+      <td>Already up to date, 141ms, no errors</td>
+      <td class="pass">PASS</td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>Runtime note:</strong> <code>node</code> was not found on the system PATH at the start of verification. A recursive search of common install locations (Program Files\nodejs, nvm, scoop) returned no <code>node.exe</code>. Node was made available via <code>pnpm runtime set node 22 -g</code>, which installs Node 22.22.3 for pnpm-managed commands. Bare <code>node</code> may still fail in shells that do not use pnpm’s shim.</p>
+
+<h3>STEP 1.2 — Environment variables — <span class="fail">FAIL (ROOT CAUSE)</span></h3>
+<p>File checked: <code>.env.local</code> at repository root (gitignored).</p>
+
+<table>
+  <thead><tr><th>Variable</th><th>Required by runbook</th><th>Status in .env.local</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATABASE_URL</code></td><td>Supabase pooled (6543, pgbouncer)</td><td class="pass">Present (non-empty)</td></tr>
+    <tr><td><code>DIRECT_URL</code></td><td>Supabase direct (5432)</td><td class="pass">Present (non-empty)</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Bhudhi / Claude API</td><td class="fail">Missing</td></tr>
+    <tr><td><code>SUPABASE_URL</code></td><td>Auth &amp; client</td><td class="fail">Missing</td></tr>
+    <tr><td><code>SUPABASE_ANON_KEY</code></td><td>Public client auth</td><td class="fail">Missing</td></tr>
+    <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Server-side Supabase</td><td class="fail">Missing</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td>Email delivery</td><td class="fail">Missing</td></tr>
+    <tr><td><code>INTERNAL_ROUTE_SECRET</code></td><td>Internal route protection</td><td class="fail">Missing</td></tr>
+    <tr><td><code>BHUDHI_MODEL</code></td><td>Must be <code>claude-sonnet-4-6</code></td><td class="fail">Missing</td></tr>
+    <tr><td><code>ERECTOR_VALIDATION_MODEL_VERSION</code></td><td>Must be <code>v0.1</code></td><td class="fail">Missing</td></tr>
+  </tbody>
+</table>
+
+<p>Also present but not in runbook minimum list: <code>TEST_DATABASE_URL</code>.</p>
+
+<p><strong>Not found:</strong> <code>.dev.vars</code> (Cloudflare Workers secrets), <code>artifacts/api-server/.env</code>, <code>artifacts/torgima/.env.local</code>.</p>
+
+<h3>STEP 1.3 — Database connection</h3>
+<p class="warn">NOT EXECUTED — blocked by STEP 1.2 failure.</p>
+<p>Although <code>DATABASE_URL</code> and <code>DIRECT_URL</code> are set, the runbook requires all env keys before proceeding. Connection health was not validated in this session.</p>
+
+<h2>4. Why this blocks everything downstream</h2>
+<ul>
+  <li><strong>Bhudhi &amp; validation</strong> — Without <code>ANTHROPIC_API_KEY</code> and <code>BHUDHI_MODEL</code>, AI drafting, Erector verdict explanation, and task copy enrichment cannot run in production mode.</li>
+  <li><strong>Authentication</strong> — Without Supabase URL/keys, login, session, and tier-gated routes cannot be E2E-tested.</li>
+  <li><strong>Email &amp; notifications</strong> — Without <code>RESEND_API_KEY</code>, magic links and notification flows fail.</li>
+  <li><strong>Internal routes</strong> — Runbook expects <code>INTERNAL_ROUTE_SECRET</code>; codebase primarily uses <code>INTERNAL_AUTH_SECRET</code> (see Section 6). Internal/dead-letter routes cannot be verified without a configured secret.</li>
+  <li><strong>Erector model versioning</strong> — <code>ERECTOR_VALIDATION_MODEL_VERSION</code> is required for reproducible validation runs.</li>
+  <li><strong>E2E chains (Part 12)</strong> — Full intake → validation → launch → feedback loop requires all of the above services live.</li>
+</ul>
+
+<h2>5. Unverified work (not failures — unknown status)</h2>
+<p>The following were implemented locally during Phase 1A / gap fixes but <strong>were not executed or tested</strong> in this verification run:</p>
+<ul>
+  <li>Erector Gap Fix 1 — Free tier simplified scoring</li>
+  <li>Erector Gap Fix 2 — Handoff token pre-fill</li>
+  <li>Erector Gap Fix 3 — LIMITED dashboard three variants</li>
+  <li>Erector Gap Fix 4 — Erector signal recalculation bridge</li>
+  <li>Erector Gap Fix 5 — Archetype-aware task generation</li>
+  <li>Large Erector schema migrations (0041–0048) and seed data</li>
+  <li>DOC 34–37 task execution, error handling, production readiness tests</li>
+</ul>
+<p>These may pass once env is configured and full verification runs; their status is <strong>unknown</strong> for this report.</p>
+
+<h2>6. Runbook vs. repository mismatches (will cause false failures if unadjusted)</h2>
+<p>The Phase 1A prompt references paths that do not match this monorepo layout. Automated greps in the runbook will fail unless paths are mapped:</p>
+<table>
+  <thead><tr><th>Runbook path</th><th>Actual path in this repo</th></tr></thead>
+  <tbody>
+    <tr><td><code>packages/api/src/</code></td><td><code>artifacts/api-server/src/</code></td></tr>
+    <tr><td><code>packages/frontend/src/</code></td><td><code>artifacts/torgima/src/</code></td></tr>
+    <tr><td><code>packages/frontend/src/app/(app)/dashboard/page.tsx</code></td><td><code>artifacts/torgima/src/pages/dashboard.tsx</code> (Vite/React Router, not Next.js App Router)</td></tr>
+    <tr><td><code>INTERNAL_ROUTE_SECRET</code></td><td>Codebase uses <code>INTERNAL_AUTH_SECRET</code> in <code>artifacts/api-server</code></td></tr>
+    <tr><td><code>BHUDHI_MODEL=claude-sonnet-4-6</code></td><td><code>artifacts/api-server/.env.example</code> shows <code>claude-sonnet-4-20250514</code></td></tr>
+    <tr><td>Test file names like <code>*.spec</code></td><td>Vitest uses <code>*.test.ts</code> under <code>artifacts/api-server/src/tests/</code></td></tr>
+  </tbody>
+</table>
+
+<h2>7. Git / release readiness</h2>
+<ul>
+  <li><strong>Changed files:</strong> ~385 paths in <code>git status</code> (modified + untracked)</li>
+  <li><strong>Commit:</strong> None created during verification</li>
+  <li><strong>Push to main:</strong> Not performed (Part 14 gate)</li>
+  <li><strong>Risk:</strong> Pushing without full green verification would ship unvalidated schema, workers, and frontend changes</li>
+</ul>
+
+<h2>8. Remediation checklist (in order)</h2>
+<ol>
+  <li><strong>Complete <code>.env.local</code></strong> at repo root with all keys from STEP 1.2. Use real Supabase, Anthropic, and Resend credentials. Set:
+    <ul>
+      <li><code>BHUDHI_MODEL=claude-sonnet-4-6</code> (per runbook; align with product decision if example differs)</li>
+      <li><code>ERECTOR_VALIDATION_MODEL_VERSION=v0.1</code></li>
+      <li><code>INTERNAL_AUTH_SECRET</code> (and/or map <code>INTERNAL_ROUTE_SECRET</code> if runbook is updated)</li>
+    </ul>
+  </li>
+  <li><strong>Ensure Node on PATH</strong> — either install Node 22+ system-wide or always use <code>pnpm node</code> / <code>pnpm exec</code>.</li>
+  <li><strong>Re-run verification from STEP 1.3</strong> — database <code>SELECT version();</code> on both pooler and direct URLs.</li>
+  <li><strong>Run Parts 2–4</strong> — schema SQL, <code>pnpm typecheck</code>, <code>pnpm build</code>, <code>pnpm test</code>.</li>
+  <li><strong>Adjust runbook paths</strong> to <code>artifacts/api-server</code> and <code>artifacts/torgima</code> before grep-based checks.</li>
+  <li><strong>Run E2E chains (Part 12)</strong> only after API + workers + Bhudhi are live with full env.</li>
+  <li><strong>Commit and push (Part 14)</strong> only when Part 13 checklist shows zero failures.</li>
+</ol>
+
+<h2>9. Example <code>.env.local</code> template (fill values — do not commit secrets)</h2>
+<pre style="background:#f4f4f4;padding:12px;font-size:9pt;overflow-x:auto;">
+DATABASE_URL=postgresql://...pooler...:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://...direct...:5432/postgres
+ANTHROPIC_API_KEY=sk-ant-...
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+RESEND_API_KEY=re_...
+INTERNAL_AUTH_SECRET=your-32-char-minimum-secret
+BHUDHI_MODEL=claude-sonnet-4-6
+ERECTOR_VALIDATION_MODEL_VERSION=v0.1
+FRONTEND_URL=http://localhost:5173
+    </pre>
+
+<div class="footer">
+  Generated for TORGIMA Phase 1A verification failure analysis. This document reflects the state at verification time;
+  re-run checks after remediation. Secrets must never be committed — <code>.env.local</code> is listed in <code>.gitignore</code>.
+</div>
+
+</body>
+</html>

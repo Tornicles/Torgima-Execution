@@ -1,13 +1,21 @@
 import { Link } from "wouter";
 import { Rocket } from "lucide-react";
 import type { LaunchFirstLoadProjection } from "@/lib/dashboard-types";
-import { getConditionLabel, getDifficultyLabel, getTrendLabel, LANGUAGE } from "@/lib/language";
+import { getDifficultyLabel, getTrendLabel, LANGUAGE } from "@/lib/language";
+import {
+  BLUEPRINT_LABELS,
+  DEFAULT_CONDITION,
+  describeCondition,
+  getConditionLabel,
+} from "@/lib/language-map";
 
 const PURPLE = "#5B21FF";
 
 export function LaunchNothingnessDashboard({ launch }: { launch: LaunchFirstLoadProjection }) {
   const cond = launch.activeCondition;
-  const conditionDisplay = getConditionLabel(cond?.condition ?? "nothingness");
+  const conditionKey = cond?.condition ?? DEFAULT_CONDITION;
+  const conditionLabel = getConditionLabel(conditionKey);
+  const conditionDescription = describeCondition(conditionKey);
   const sig = launch.signals;
   const orders = launch.orders ?? [];
   const insights = launch.validationInsights;
@@ -16,14 +24,10 @@ export function LaunchNothingnessDashboard({ launch }: { launch: LaunchFirstLoad
     <div className="space-y-5">
       <section className="rounded-[20px] border border-[#4C1D95] bg-gradient-to-br from-[#1E1B4B] via-[#312E81] to-[#4C1D95] p-6 text-white shadow-lg">
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-violet-200">
-          {LANGUAGE.condition.title}
+          {BLUEPRINT_LABELS.conditions}
         </p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight">
-          {conditionDisplay.emoji} {conditionDisplay.label}
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-violet-100">
-          {conditionDisplay.description}
-        </p>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight">{conditionLabel}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-violet-100">{conditionDescription}</p>
         <div className="mt-5 grid gap-2 text-sm text-violet-50 sm:grid-cols-2">
           <p>✓ {cond?.taskLimitMax ?? 8} foundation steps are ready for you</p>
           <p>✓ Start with any step — complete it and submit feedback</p>
@@ -31,7 +35,7 @@ export function LaunchNothingnessDashboard({ launch }: { launch: LaunchFirstLoad
           <p>✓ The system will adapt your workload based on your progress</p>
         </div>
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-amber-200">
-          Next: {conditionDisplay.nextStep}
+          Next: {conditionDescription}
         </p>
       </section>
 

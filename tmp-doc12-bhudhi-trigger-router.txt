@@ -1,0 +1,289 @@
+﻿TORGIMA
+ENGINE PROMPT 3 â€” DOC 12
+Bhudhi Trigger Router and Architecture
+Trigger Registry Â· Context Builder Â· Provider Adapter Â· Output Validator Â· BhudhiLog Â· Fallback System
+
+
+PREREQUISITE: Engines 1-2 must pass. This engine replaces all direct Anthropic API calls in the codebase with governed calls through the Trigger Router. Critical â€” nothing should call Bhudhi directly after this.
+
+OBJECTIVE
+Build the complete Bhudhi Trigger Router as specified in DOC 12. Find every direct Anthropic API call in the codebase and replace it with a governed router call. Build the trigger registry, context builder, provider adapter with timeout and budget controls, output validator, BhudhiLog writer, and deterministic fallback library. No engine may bypass this router.
+
+SURGICAL RULE
+Search the entire codebase for direct calls to anthropic.messages.create() or fetch('https://api.anthropic.com'). Every one of these must be replaced with BhudhiTriggerRouter.trigger(). The router itself makes the API call. No exceptions.
+
+FILES TO CREATE OR MODIFY
+src/lib/bhudhi/BhudhiTriggerRouter.ts â€” CREATE (core router)
+src/lib/bhudhi/TriggerRegistry.ts â€” CREATE (approved triggers)
+src/lib/bhudhi/ContextBuilder.ts â€” CREATE (minimized context packets)
+src/lib/bhudhi/ProviderAdapter.ts â€” CREATE (Anthropic API wrapper)
+src/lib/bhudhi/OutputValidator.ts â€” CREATE (schema + rule validation)
+src/lib/bhudhi/BhudhiLogWriter.ts â€” CREATE (audit logging)
+src/lib/bhudhi/FallbackLibrary.ts â€” CREATE (deterministic fallbacks)
+src/lib/bhudhi/BudgetController.ts â€” CREATE (usage caps)
+src/engines/ (all files) â€” SEARCH AND REPLACE direct API calls
+
+TASK 1 â€” TRIGGER REGISTRY
+// TriggerRegistry.ts
+// All approved Bhudhi trigger types â€” if not registered here, call is blocked
+ 
+export const REGISTERED_TRIGGERS = {
+  // Goal and blueprint structuring
+  GOAL_STRUCTURING: {
+    mode: 'STRUCTURE',
+    allowedSources: ['ONBOARDING', 'BHUDHI_WORKER'],
+    requiredContext: ['raw_goal', 'raw_purpose', 'tier'],
+    forbiddenContext: ['signal_scores', 'condition_records', 'enforcement_packages'],
+    maxTokens: 800, timeoutMs: 12000,
+    outputType: 'structured_goal',
+  },
+  // Task generation
+  TASK_DRAFTING: {
+    mode: 'DRAFT',
+    allowedSources: ['TASK_GENERATION'],
+    requiredContext: ['action_type', 'domain', 'condition', 'tier'],
+    forbiddenContext: ['raw_enforcement_package', 'signal_calculation_formula'],
+    maxTokens: 600, timeoutMs: 10000,
+    outputType: 'task_copy',
+  },
+  // Feedback processing
+  BLOCKER_CLASSIFICATION: {
+    mode: 'INTERPRET',
+    allowedSources: ['FEEDBACK_PROCESSING'],
+    requiredContext: ['blocker_description', 'task_type'],
+    forbiddenContext: ['user_history', 'signal_scores'],
+    maxTokens: 300, timeoutMs: 8000,
+    outputType: 'blocker_classification',
+  },
+  // Clarification
+  CLARIFICATION_PROMPT: {
+    mode: 'DRAFT',
+    allowedSources: ['FEEDBACK_PROCESSING', 'TASK_GENERATION'],
+    requiredContext: ['missing_field', 'task_title'],
+    forbiddenContext: ['enforcement_package_id'],
+    maxTokens: 200, timeoutMs: 6000,
+    outputType: 'clarification_request',
+  },
+  // State explanation
+  STATE_EXPLANATION: {
+    mode: 'EXPLAIN',
+    allowedSources: ['DASHBOARD', 'INTERNAL_WORKER'],
+    requiredContext: ['condition', 'signal_summary', 'next_action'],
+    forbiddenContext: ['raw_db_records', 'enforcement_package_id'],
+    maxTokens: 400, timeoutMs: 8000,
+    outputType: 'state_explanation',
+  },
+  // Recovery copy
+  RECOVERY_COPY: {
+    mode: 'DRAFT',
+    allowedSources: ['TASK_GENERATION', 'INACTIVITY_DETECTION'],
+    requiredContext: ['inactivity_type', 'days_inactive', 'tier'],
+    forbiddenContext: ['raw_pattern_data', 'signal_formula'],
+    maxTokens: 300, timeoutMs: 8000,
+    outputType: 'recovery_copy',
+  },
+  // Academy content
+  ACADEMY_SUPPORT: {
+    mode: 'EXPLAIN',
+    allowedSources: ['TASK_GENERATION', 'ACADEMY_RUNTIME'],
+    requiredContext: ['capability_name', 'domain', 'learning_type'],
+    forbiddenContext: [],
+    maxTokens: 600, timeoutMs: 10000,
+    outputType: 'academy_instruction',
+  },
+  // Root cause
+  ROOT_CAUSE_ASSIST: {
+    mode: 'SUGGEST',
+    allowedSources: ['FAILURE_CLASSIFICATION'],
+    requiredContext: ['failure_evidence', 'task_type', 'condition'],
+    forbiddenContext: ['user_personal_notes'],
+    maxTokens: 400, timeoutMs: 8000,
+    outputType: 'root_cause_candidates',
+  },
+  // Evidence summary
+  OUTCOME_EVIDENCE_SUMMARY: {
+    mode: 'EXPLAIN',
+    allowedSources: ['OUTCOME_VALIDATION', 'INTERNAL_WORKER'],
+    requiredContext: ['evidence_class', 'evidence_summary', 'target_metric'],
+    forbiddenContext: ['raw_evidence_files'],
+    maxTokens: 300, timeoutMs: 8000,
+    outputType: 'evidence_summary',
+  },
+  // Proof relevance check
+  PROOF_RELEVANCE_CHECK: {
+    mode: 'INTERPRET',
+    allowedSources: ['FEEDBACK_PROCESSING'],
+    requiredContext: ['proof_description', 'task_title', 'expected_output'],
+    forbiddenContext: [],
+    maxTokens: 200, timeoutMs: 6000,
+    outputType: 'proof_relevance',
+  },
+} as const;
+ 
+// FORBIDDEN MODES â€” blocked regardless of trigger:
+const FORBIDDEN_MODES = ['DECIDE', 'MUTATE', 'OVERRIDE'] as const;
+
+TASK 2 â€” TRIGGER ROUTER
+// BhudhiTriggerRouter.ts
+// The ONLY way to call Bhudhi in Phase 1
+ 
+export interface BhudhiTriggerRequest {
+  triggerType: keyof typeof REGISTERED_TRIGGERS;
+  sourceEngine: string;
+  userId: string;
+  blueprintId?: string;
+  stateVersion: number;
+  input: Record<string, unknown>;
+  idempotencyKey: string;
+}
+ 
+export class BhudhiTriggerRouter {
+  async trigger(request: BhudhiTriggerRequest): Promise<BhudhiValidatedOutput> {
+ 
+    // 1. Look up registered trigger
+    const triggerDef = REGISTERED_TRIGGERS[request.triggerType];
+    if (!triggerDef) throw new BhudhiRejected('UNREGISTERED_TRIGGER');
+ 
+    // 2. Verify source engine is allowed
+    if (!triggerDef.allowedSources.includes(request.sourceEngine))
+      throw new BhudhiRejected('SOURCE_NOT_ALLOWED');
+ 
+    // 3. Check budget
+    const budgetOk = await BudgetController.checkAndReserve(request.userId);
+    if (!budgetOk) return FallbackLibrary.get(request.triggerType);
+ 
+    // 4. Build minimized context packet
+    const contextPacket = ContextBuilder.build(
+      request.input, triggerDef.requiredContext, triggerDef.forbiddenContext
+    );
+ 
+    // 5. Write BhudhiLog (pending)
+    const logId = await BhudhiLogWriter.startLog({
+      userId: request.userId, blueprintId: request.blueprintId,
+      triggerType: request.triggerType, sourceEngine: request.sourceEngine,
+      stateVersion: request.stateVersion,
+    });
+ 
+    try {
+      // 6. Call provider
+      const rawOutput = await ProviderAdapter.call({
+        systemPrompt: buildSystemPrompt(triggerDef.mode, request.triggerType),
+        userPrompt: JSON.stringify(contextPacket),
+        maxTokens: triggerDef.maxTokens,
+        timeoutMs: triggerDef.timeoutMs,
+      });
+ 
+      // 7. Parse and validate
+      const validated = OutputValidator.validate(
+        rawOutput, request.triggerType, request.stateVersion
+      );
+      if (!validated.ok) {
+        await BhudhiLogWriter.failLog(logId, validated.errors);
+        return FallbackLibrary.get(request.triggerType);
+      }
+ 
+      // 8. Complete log
+      await BhudhiLogWriter.completeLog(logId, validated.output);
+      return { ok: true, data: validated.output, logId };
+ 
+    } catch (error) {
+      await BhudhiLogWriter.failLog(logId, [error.message]);
+      return FallbackLibrary.get(request.triggerType);
+    }
+  }
+}
+
+TASK 3 â€” OUTPUT VALIDATOR
+// OutputValidator.ts
+// Validates every Bhudhi output before it can be used
+ 
+// VALIDATION LAYERS IN ORDER:
+// 1. Parse: must be valid JSON
+// 2. Schema: must match registered output schema
+// 3. State version: output.stateVersion must match current
+// 4. Forbidden actions: output must not request system mutations
+// 5. Authority claims: output must not claim it is making decisions
+// 6. Length: user-facing copy must be under 500 chars
+ 
+// FORBIDDEN OUTPUT PATTERNS (auto-reject if any present):
+const FORBIDDEN_PATTERNS = [
+  'I have updated', 'I have changed', 'I have set',  // mutation claims
+  'You must', 'You need to', 'You should immediately',  // authority claims
+  'bypass', 'override', 'ignore the rules',  // bypass attempts
+  'burnout', 'mentally', 'psychologically', 'clinical',  // medical language
+];
+ 
+// REPAIR POLICY:
+// Invalid JSON â†’ retry once with 'respond with valid JSON only' prefix
+// Missing field with deterministic default â†’ fill default, do not reject
+// Invalid enum â†’ reject, use fallback
+// Text too long â†’ trim to 500 chars (user-facing fields only)
+// Forbidden pattern â†’ reject immediately, no retry
+
+TASK 4 â€” BUDGET CONTROLLER
+// BudgetController.ts
+// Enforces daily Bhudhi call limits per user and globally
+ 
+// LIMITS BY TIER:
+// starter: 20 Bhudhi calls per day
+// growth: 50 Bhudhi calls per day
+// ultimate: 100 Bhudhi calls per day
+ 
+// GLOBAL EMERGENCY CAP:
+// If total system calls > configured limit: switch all to fallbacks
+// Log WARN to SystemHealthLog
+ 
+// COUNT METHOD:
+// Count BhudhiLog records WHERE user_id = userId AND created_at > today midnight
+// If count >= limit: return false (use fallback)
+// If count < limit: return true (proceed with call)
+
+TASK 5 â€” REPLACE ALL DIRECT API CALLS
+Search the entire codebase for direct Anthropic API calls and replace them:
+// SEARCH for any of these patterns:
+grep -r 'anthropic.messages.create' src/
+grep -r 'api.anthropic.com' src/
+grep -r 'new Anthropic()' src/
+ 
+// For each result found:
+// 1. Identify which engine is making the call
+// 2. Identify what it is asking Bhudhi to do
+// 3. Map to the correct trigger type from TriggerRegistry
+// 4. Replace with BhudhiTriggerRouter.trigger({ triggerType, ... })
+// 5. Remove the direct import of Anthropic client from that file
+ 
+// After replacing all: verify no direct API calls remain:
+grep -r 'anthropic.messages.create' src/  -- MUST return zero results
+
+VERIFICATION
+pnpm typecheck && pnpm build
+pnpm test -- --grep 'bhudhi-router'
+ 
+-- TEST 1: Unregistered trigger rejected
+-- Input: triggerType = 'UNKNOWN_TRIGGER'
+-- Expected: throws BhudhiRejected('UNREGISTERED_TRIGGER')
+ 
+-- TEST 2: Wrong source engine rejected
+-- Input: TASK_DRAFTING from source='FEEDBACK_PROCESSING' (not allowed)
+-- Expected: throws BhudhiRejected('SOURCE_NOT_ALLOWED')
+ 
+-- TEST 3: Budget exceeded â†’ fallback returned
+-- Input: user has 21 calls today (starter limit = 20)
+-- Expected: fallback returned, no API call made
+ 
+-- TEST 4: Forbidden output pattern rejected
+-- Mock provider returns output containing 'I have updated the database'
+-- Expected: output rejected, fallback returned, BhudhiLog shows failure
+ 
+-- TEST 5: Zero direct API calls remain
+grep -r 'anthropic.messages.create' src/  -- MUST return 0 results
+
+ACCEPTANCE CRITERIA
+All 9 trigger types registered in TriggerRegistry
+No engine makes direct Anthropic API calls â€” all go through router
+Budget limits enforced per tier with fallback on cap reached
+Forbidden output patterns rejected before returning to caller
+Every call logged in BhudhiLog with source, trigger, usage, status
+All existing engine behaviors preserved after replacing API calls
+COMMIT: feat(bhudhi): build Bhudhi Trigger Router â€” register all triggers, replace all direct API calls, enforce budget and output contracts
+

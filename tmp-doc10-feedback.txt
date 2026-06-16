@@ -1,0 +1,94 @@
+﻿TORGIMAENGINE PROMPT 1 â€” DOC 10Feedback Processing EngineDeep Feedback Validation Â· Interrogation Flow Â· Gaming Detection Â· Proof System Â· Blocker ClassificationPREREQUISITE: DOC 01-09 must pass.
+This engine extends and deepens the basic FeedbackProcessingEngine stub in DOC 04.
+Run after confirming the execution loop works end-to-end.
+OBJECTIVEBuild the complete FeedbackProcessingEngine as specified in DOC 10.
+The DOC 04 stub handles basic acceptance.
+This prompt adds the full interrogation flow, advanced gaming detection sequence, proof validation pipeline for all 5 proof types, blocker classification, late feedback handling, and the full verdict system with 7 outcomes.
+SURGICAL RULEThe existing FeedbackProcessingEngine.
+ts built in DOC 04 handles basic cases.
+This prompt EXTENDS it â€” do not rewrite from zero.
+Find the existing file, add missing validation layers, expand the verdict system, and add the interrogation flow.
+All existing tests must continue to pass.
+FILES TO MODIFY OR CREATEsrc/engines/execution-loop/FeedbackProcessingEngine.
+ts â€” EXTENDsrc/engines/execution-loop/feedback/ProofValidator.
+ts â€” CREATEsrc/engines/execution-loop/feedback/GamingDetector.
+ts â€” CREATEsrc/engines/execution-loop/feedback/InterrogationEngine.
+ts â€” CREATEsrc/engines/execution-loop/feedback/BlockerClassifier.
+ts â€” CREATEsrc/engines/execution-loop/feedback/FeedbackVerdictEngine.
+ts â€” CREATETASK 1 â€” PROOF VALIDATION PIPELINEBuild ProofValidator.
+ts â€” validates all 5 proof types// ProofValidator.
+ts// Called when order.
+proof_required = true// Returns: { valid: boolean, rejection_reason?
+: string, proof_class: string } // PROOF TYPE: TEXT// Valid when: proofText length >= 50 chars AND not just repeated words// AND aligns with expected_output from order (Bhudhi classifies alignment)// Rejection: 'Text proof too short' / 'Proof does not describe expected output' // PROOF TYPE: FILE// Valid when: file exists in storage, is owned by this user,// file type is in allowed_types for this order's proof_type,// file size < 10MB// Rejection: 'File not found' / 'File type not allowed' / 'File too large' // PROOF TYPE: LINK// Valid when: URL is valid format (https://.
+.
+.
+),// domain is not in blocked_domains list,// link is not identical to a previously submitted link for same order// Rejection: 'Invalid URL format' / 'Link already submitted' // PROOF TYPE: CHECKLIST// Valid when: all required checklist items have been answered// AND no required item is blank// Rejection: 'Required checklist item [X] is missing' // PROOF TYPE: OUTPUT// Valid when: proof_json contains all required_output_fields from order// AND field values are not empty strings// Rejection: 'Required output field [X] is missing' // PROOF TYPE: NONE// Always valid â€” order does not require proof// If proof submitted anyway: accept as bonus evidence, no rejectionTASK 2 â€” GAMING DETECTION SEQUENCEBuild GamingDetector.
+ts â€” multi-layer anti-gaming detection// GamingDetector.
+ts// Returns: { gaming_suspected: boolean, flags: string[], confidence_multiplier: number } // LAYER 1: SCORE-REFLECTION MISMATCH// IF score >= 9 AND reflection.
+trim().
+length < 50// flag: 'HIGH_SCORE_WEAK_REFLECTION'// confidence_multiplier -= 0.
+30// trigger_interrogation = true // LAYER 2: SCORE-COMPLETION CONTRADICTION// IF completion = 'FAILED' AND score >= 7// flag: 'FAILED_BUT_HIGH_SCORE'// confidence_multiplier -= 0.
+25 // LAYER 3: REPEATED PERFECT SCORES// Load last 7 feedback records for this user// IF >= 5 have score = 10 AND avg reflection length < 80 chars// flag: 'REPEATED_PERFECT_SCORE_PATTERN'// confidence_multiplier -= 0.
+20// trigger_hold_for_review = true // LAYER 4: VELOCITY GAMING// IF feedback submitted < 5 minutes after order.
+started_at// AND order.
+time_estimate_minutes > 30// flag: 'COMPLETION_TOO_FAST'// confidence_multiplier -= 0.
+15 // LAYER 5: PROOF MISMATCH// IF order.
+proof_required = true// AND proof_json is present// AND Bhudhi classifies proof as unrelated to task (call PROOF_RELEVANCE_CHECK trigger)// flag: 'PROOF_UNRELATED_TO_TASK'// confidence_multiplier -= 0.
+30// trigger_interrogation = true // FINAL: clamp confidence_multiplier to minimum 0.
+20// gaming_suspected = any flag presentTASK 3 â€” INTERROGATION ENGINEBuild InterrogationEngine.
+ts â€” triggered when gaming suspected or confidence low// InterrogationEngine.
+ts// Creates a clarification follow-up when feedback needs more information // TRIGGER CONDITIONS:// - confidence_multiplier < 0.
+70 after gaming detection// - PROOF_UNRELATED_TO_TASK flag present// - HIGH_SCORE_WEAK_REFLECTION flag present// - reflection too vague to extract execution reality // INTERROGATION QUESTION SELECTION:// Based on the primary flag, select the most relevant question: // HIGH_SCORE_WEAK_REFLECTION://   'Your score suggests strong execution but your description was brief.
+',//   'What specifically did you produce or accomplish?
+Describe the actual output.
+' // COMPLETION_TOO_FAST://   'This task was completed faster than expected.
+',//   'What approach did you use to finish quickly?
+What was the output?
+' // FAILED_BUT_HIGH_SCORE://   'You marked this as failed but gave a high score.
+',//   'What partial progress did you make?
+What prevented full completion?
+' // PROOF_UNRELATED_TO_TASK://   'The proof submitted does not clearly match this task.
+',//   'Can you describe how this proof demonstrates completion of [task title]?
+' // DEFAULT (low confidence, no specific flag)://   'Your reflection was brief.
+What was the actual outcome of this task?
+//    What did you produce, decide, or change?
+' // INTERROGATION FLOW:// 1.
+Store interrogation_question in feedback record// 2.
+Set feedback.
+validation_status = 'needs_interrogation'// 3.
+Set order.
+status = 'needs_feedback' (pauses loop)// 4.
+Emit 'feedback_needs_clarification' event// 5.
+User sees interrogation question on dashboard// 6.
+User submits clarification via POST /api/feedback/:id/clarify// 7.
+FeedbackProcessingEngine re-evaluates with original + clarification// 8.
+If still low confidence after one clarification: accept with low weight//    (never block forever â€” loop must continue)TASK 4 â€” BLOCKER CLASSIFIERBuild BlockerClassifier.
+ts â€” classifies blocked tasks into structured categories// BlockerClassifier.
+ts// Called when completion = 'BLOCKED'// Returns: { blocker_category: string, recommended_resolution: string } // BLOCKER CATEGORIES:// DEPENDENCY_MISSING://   Description: user cannot proceed because prerequisite task/action not done//   Detection: blocker_details mentions 'waiting for' / 'needs' / 'depends on'//   Resolution event: 'dependency_resolution_requested' // EXTERNAL_WAIT://   Description: waiting for external party (client, supplier, approval)//   Detection: mentions 'client' / 'waiting' / 'approval' / 'response'//   Resolution event: 'external_wait_task_requested' // CLARITY_NEEDED://   Description: user does not understand what the task requires//   Detection: mentions 'unclear' / 'confused' / 'dont know' / 'unsure'//   Resolution event: 'clarification_task_requested' // CAPABILITY_GAP://   Description: user lacks skill or knowledge to complete//   Detection: mentions 'cant do' / 'dont know how' / 'need to learn'//   Resolution event: 'academy_task_requested' // RESOURCE_MISSING://   Description: lacks tool, budget, access, or material//   Detection: mentions 'no access' / 'need' / 'budget' / 'tool'//   Resolution event: 'resource_blocker_task_requested' // OTHER://   Default when no category matches//   Resolution event: 'blocker_review_requested' // Classification method: keyword matching first,// then Bhudhi INTERPRET mode via BLOCKER_CLASSIFICATION trigger if unclear// Bhudhi returns one of the 6 categories above â€” never invents new onesTASK 5 â€” FULL VERDICT SYSTEMBuild FeedbackVerdictEngine.
+ts â€” produces the 7 verdict types// FeedbackVerdictEngine.
+ts// All 7 verdicts and when they fire: // ACCEPTED://   completion IN (COMPLETED, PARTIAL) AND proof valid (or not required)//   AND gaming_suspected = false OR confidence_multiplier >= 0.
+70//   AND validation_status = 'accepted'//   Downstream: feedback_submitted â†’ signal_recalculation_requested // PARTIAL_ACCEPTED://   completion = PARTIAL AND some proof present but incomplete//   OR completion = COMPLETED but confidence_multiplier between 0.
+50-0.
+69//   Downstream: feedback_submitted_partial â†’ signal_recalculation_requested (lower weight) // CLARIFICATION_REQUIRED://   Interrogation was triggered AND first submission (no prior clarification)//   Downstream: feedback_needs_clarification â†’ order stays open//   Note: after clarification submitted, re-evaluate â€” max 1 clarification round // REJECTED://   proof_required = true AND no valid proof after clarification//   OR completion = COMPLETED but output contradicts task definition_of_done//   OR gaming flag REPEATED_PERFECT_SCORE_PATTERN with hold_for_review = true//   Downstream: feedback_rejected â†’ order back to active // BLOCKED_CONFIRMED://   completion = BLOCKED AND blocker_category classified//   Downstream: feedback_blocked + blocker_resolution event per category // FAILED_CONFIRMED://   completion = FAILED AND reflection >= 20 chars//   Downstream: feedback_failed â†’ signal data captured, failure classification triggered // HELD_FOR_REVIEW://   gaming flag REPEATED_PERFECT_SCORE_PATTERN = true//   OR integrity flag from Erector evidence ledger = POSSIBLE_FABRICATION//   Downstream: feedback_held_for_review â†’ no signal update until reviewedTASK 6 â€” LATE FEEDBACK HANDLING// Add to existing confidence calculation in FeedbackProcessingEngine.
+ts: const hours_since_start = order.
+started_at  ?
+(Date.
+now() - new Date(order.
+started_at).
+getTime()) / 3_600_000  : 0; // Late penalty rules:// < 24 hours: no penalty// 24-72 hours: confidence_multiplier *= 0.
+85 (15% reduction)// > 72 hours: confidence_multiplier *= 0.
+70 (30% reduction)// > 168 hours (7 days): confidence_multiplier *= 0.
+50 AND flag 'VERY_LATE_FEEDBACK' // Store: feedback.
+submitted_hours_after_start = hours_since_start//        feedback.
+late_penalty_applied = (hours_since_start > 24)TASK 7 â€” CLARIFICATION ROUTE// POST /api/feedback/:feedbackId/clarify// Body: { clarification_text: string (min 30 chars) }// Auth: required, must own the feedback // Steps:// 1.
+Load feedback record, verify status = 'needs_interrogation'// 2.
+Append clarification_text to feedback.
+reflection (with separator '---CLARIFICATION---')// 3.
+Re-run GamingDetector on combined text// 4.
+Re-run FeedbackVerdictEngine// 5.
+If now ACCEPTED: proceed with normal flow// 6.
+If still low confidence: accept with low weight (0.
+40), never require 3rd round// 7.
+Update feedback.
+validation_status// 8.
+Emit appropriate downstream eventVERIFICATIONpnpm typecheck  -- zero errorspnpm build      -- cleanpnpm test -- --grep 'feedback-processing' -- TEST 1: High score weak reflection â†’ interrogation triggered-- Input: score=10, reflection='Done', completion=COMPLETED-- Expected: verdict=CLARIFICATION_REQUIRED, interrogation_question set -- TEST 2: Valid text proof accepted-- Input: proof_type=TEXT, proofText=80 chars describing actual output-- Expected: verdict=ACCEPTED, confidence=medium -- TEST 3: Blocked task classified as DEPENDENCY_MISSING-- Input: completion=BLOCKED, blocker_details='waiting for client to send files'-- Expected: blocker_category=EXTERNAL_WAIT, dependency_resolution event emitted -- TEST 4: Repeated perfect scores pattern detected-- Input: 6 consecutive score=10 feedbacks with avg reflection 40 chars-- Expected: REPEATED_PERFECT_SCORE_PATTERN flag, held_for_review=true -- TEST 5: Late feedback penalty-- Input: feedback submitted 36 hours after task start-- Expected: late_penalty_applied=true, confidence_multiplier reduced by 15% -- TEST 6: All existing DOC 04 tests still passpnpm test -- --grep 'execution-loop'ACCEPTANCE CRITERIAProofValidator handles all 5 proof types with specific rejection messagesGamingDetector applies all 5 detection layers in sequenceInterrogationEngine triggers on correct conditions and selects the right questionBlockerClassifier maps to all 6 categories using keywords and Bhudhi fallbackFeedbackVerdictEngine produces all 7 verdicts with correct downstream eventsLate feedback penalties applied at correct time thresholdsClarification route accepts and re-evaluates in one round maximumAll existing DOC 04 feedback tests still passpnpm typecheck â€” zero errorsCOMMIT: feat(engine): build complete FeedbackProcessingEngine with interrogation, proof validation, gaming detection, and blocker classification

@@ -24,7 +24,8 @@ import { getHomePanels, type HomeDashboardPanels } from "@/lib/home-dashboard-ty
 import { LaunchNothingnessDashboard } from "@/components/dashboard/LaunchNothingnessDashboard";
 import { BlueprintPositionPanel } from "@/components/dashboard/BlueprintPositionPanel";
 import { ProjectNameHeader } from "@/components/dashboard/ProjectNameHeader";
-import { getConditionLabel, LANGUAGE } from "@/lib/language";
+import { getConditionLabel, describeCondition, BLUEPRINT_LABELS } from "@/lib/language-map";
+import { LANGUAGE } from "@/lib/language";
 
 const PURPLE = "#5B21FF";
 function Card({
@@ -173,7 +174,10 @@ function HomeDashboardContent({
   signalMode?: string | null;
 }) {
   const useSimplifiedSignal = signalMode === "simplified" || Boolean(simplifiedSignalLabel);
-  const conditionDisplay = getConditionLabel(p.condition.condition);
+  const conditionKey = p.condition.condition;
+  const conditionLabel = getConditionLabel(conditionKey);
+  const conditionDescription =
+    p.condition.conditionExplanation ?? describeCondition(conditionKey);
   const visibleOrders = ordersExpanded ? p.todayOrders : p.todayOrders.slice(0, 4);
   const eh = p.executionHealth;
   const accentOrange = eh.accent === "orange";
@@ -183,9 +187,9 @@ function HomeDashboardContent({
     null;
   const signalLine =
     useSimplifiedSignal && (eh.signalName || simplifiedSignalLabel)
-      ? `Signal: ${eh.signalName ?? simplifiedSignalLabel}`
+      ? `Health score: ${eh.signalName ?? simplifiedSignalLabel}`
       : eh.signalName
-        ? `Signal window: ${eh.signalName}`
+        ? `Health score window: ${eh.signalName}`
         : null;
 
   return (
@@ -340,20 +344,16 @@ function HomeDashboardContent({
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
           <Card className="p-4">
             <div className="flex items-center justify-between">
-              <SectionLabel>{LANGUAGE.condition.title}</SectionLabel>
+              <SectionLabel>{BLUEPRINT_LABELS.conditions}</SectionLabel>
               {p.condition.urgency && (
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                  {getConditionLabel("urgency").label}
+                  {getConditionLabel("urgency")}
                 </span>
               )}
             </div>
-            <p className="mt-2 text-lg font-bold text-[#0F172A]">
-              {conditionDisplay.emoji} {conditionDisplay.label}
-            </p>
-            <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
-              {p.condition.conditionExplanation ?? conditionDisplay.description}
-            </p>
-            <p className="text-xs font-semibold text-[#5B21FF] mt-2">Next: {conditionDisplay.nextStep}</p>
+            <p className="mt-2 text-lg font-bold text-[#0F172A]">{conditionLabel}</p>
+            <p className="text-xs text-[#64748B] mt-1 leading-relaxed">{conditionDescription}</p>
+            <p className="text-xs font-semibold text-[#5B21FF] mt-2">Next: {conditionDescription}</p>
             <div className="flex gap-4 mt-3">
               <Crosshair className="w-10 h-10 text-violet-400 shrink-0" />
               <div className="flex-1 min-w-0 text-xs">
@@ -387,7 +387,7 @@ function HomeDashboardContent({
             <SectionLabel>Top Drivers</SectionLabel>
             <ul className="mt-2 space-y-2">
               {p.topDrivers.length === 0 ? (
-                <li className="text-xs text-[#94A3B8]">No driver signals in current window.</li>
+                <li className="text-xs text-[#94A3B8]">No driver {BLUEPRINT_LABELS.signals.toLowerCase()} in current window.</li>
               ) : (
                 p.topDrivers.map((d, i) => (
                   <li key={i} className="text-xs">
@@ -412,7 +412,7 @@ function HomeDashboardContent({
             </ul>
             <Link href="/signals">
               <span className="text-xs font-semibold mt-2 inline-block" style={{ color: PURPLE }}>
-                View all signals →
+                View all {BLUEPRINT_LABELS.signals.toLowerCase()} →
               </span>
             </Link>
           </Card>
@@ -424,7 +424,7 @@ function HomeDashboardContent({
         <Card className="lg:col-span-7 p-5">
           <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
             <div>
-              <SectionLabel>Today&apos;s Orders</SectionLabel>
+              <SectionLabel>Today&apos;s {BLUEPRINT_LABELS.orders}</SectionLabel>
               <p className="text-xs text-[#64748B] mt-0.5">
                 Top priority tasks based on your progress and impact.
               </p>
@@ -445,7 +445,7 @@ function HomeDashboardContent({
           </div>
           <ul className="divide-y divide-[#F1F5F9]">
             {visibleOrders.length === 0 ? (
-              <li className="py-8 text-center text-sm text-[#64748B]">No active orders for today.</li>
+              <li className="py-8 text-center text-sm text-[#64748B]">No active {BLUEPRINT_LABELS.orders.toLowerCase()} for today.</li>
             ) : (
               visibleOrders.map((o) => (
                 <li key={o.id} className="flex items-center gap-3 py-3 group">
@@ -484,7 +484,7 @@ function HomeDashboardContent({
               className="mt-3 text-sm font-semibold"
               style={{ color: PURPLE }}
             >
-              +{p.todayOrdersTotal - visibleOrders.length} More Orders
+              +{p.todayOrdersTotal - visibleOrders.length} More {BLUEPRINT_LABELS.orders}
             </button>
           )}
         </Card>
@@ -666,7 +666,7 @@ function HomeDashboardContent({
         </Card>
       </div>
 
-      {/* Bhudhi insight strip */}
+      {/* Project Intelligence insight strip */}
       {p.bhudhiInsight && (
         <Card className="p-4 flex flex-wrap items-center justify-between gap-3 border-violet-100 bg-gradient-to-r from-violet-50/80 to-white">
           <div className="flex items-start gap-3">
@@ -683,12 +683,12 @@ function HomeDashboardContent({
               )}
             </div>
           </div>
-          <Link href="/app/bhudhi">
+          <Link href="/dashboard">
             <span
               className="text-xs font-bold px-4 py-2 rounded-xl text-white"
               style={{ backgroundColor: PURPLE }}
             >
-              Open Bhudhi
+              View insights
             </span>
           </Link>
         </Card>

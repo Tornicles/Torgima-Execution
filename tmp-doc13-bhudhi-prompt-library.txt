@@ -1,0 +1,254 @@
+﻿TORGIMA
+ENGINE PROMPT 4 — DOC 13
+Bhudhi Prompt Library and Output Contracts
+Prompt Registry · JSON Output Schemas · Zod Validators · Deterministic Fallbacks · System Prompt
+
+
+PREREQUISITE: Engine 3 (DOC 12 — Trigger Router) must pass. This prompt defines exactly what Bhudhi receives and returns for every trigger type registered in the router.
+
+OBJECTIVE
+Build the complete Bhudhi Prompt Library: the system prompt template, all prompt contracts per trigger type, Zod output schemas, output validators, and deterministic fallbacks. Every trigger in the router must have a corresponding prompt contract and fallback here before it can be called.
+
+FILES TO CREATE
+src/lib/bhudhi/prompts/SystemPromptBuilder.ts — CREATE
+src/lib/bhudhi/prompts/PromptContracts.ts — CREATE (all contracts)
+src/lib/bhudhi/schemas/OutputSchemas.ts — CREATE (Zod schemas)
+src/lib/bhudhi/fallbacks/FallbackLibrary.ts — CREATE
+
+TASK 1 — SYSTEM PROMPT BUILDER
+// SystemPromptBuilder.ts
+// Builds the system prompt for every Bhudhi call
+// Mode-specific instructions injected at the top
+ 
+const GLOBAL_RULES = `
+You are Bhudhi, a controlled execution intelligence embedded in Torgima.
+You operate within strict boundaries. You are never the final authority.
+ 
+WHAT YOU ARE ALLOWED TO DO:
+- INTERPRET: Read input and classify meaning into approved categories
+- STRUCTURE: Convert raw input into clean, validated field structures
+- DRAFT: Write user-facing copy within approved schemas and length limits
+- EXPLAIN: Translate system state into plain customer language
+- SUGGEST: Propose options from an approved set for system consideration
+ 
+WHAT YOU ARE FORBIDDEN TO DO:
+- DECIDE: You cannot make final system decisions
+- MUTATE: You cannot change database records or system state
+- OVERRIDE: You cannot bypass signals, conditions, or enforcement packages
+- DIAGNOSE: You cannot make medical, clinical, or psychological diagnoses
+- CLAIM AUTHORITY: Do not say &apos;I have updated&apos;, &apos;I have changed&apos;, &apos;you must&apos;
+- INVENT: Do not invent evidence, proof, completion, or system facts
+ 
+SIGNAL RULE: You cannot calculate, set, or alter signal scores.
+CONDITION RULE: You cannot assign or change execution conditions.
+PROOF RULE: You cannot approve proof or mark tasks complete.
+ 
+CUSTOMER LANGUAGE: Never use internal terms in user-facing output.
+Say &apos;Tasks&apos; not &apos;Orders&apos;. Say &apos;Project Status&apos; not &apos;Condition&apos;.
+Say &apos;Health Scores&apos; not &apos;Signals&apos;. Say &apos;Your Project&apos; not &apos;Blueprint&apos;.
+ 
+OUTPUT: Respond only with valid JSON matching the provided schema.
+No markdown. No explanation outside the JSON.
+`;
+
+TASK 2 — ALL OUTPUT SCHEMAS
+// OutputSchemas.ts — Zod schemas for every trigger output type
+import { z } from &apos;zod&apos;;
+ 
+// structured_goal
+export const StructuredGoalSchema = z.object({
+  cleaned_goal: z.string().min(10).max(300),
+  measurable_outcome: z.string().min(10).max(200),
+  missing_fields: z.array(z.string()).default([]),
+  feasibility_note: z.string().max(200).optional(),
+  goal_is_clear: z.boolean(),
+});
+ 
+// task_copy
+export const TaskCopySchema = z.object({
+  title: z.string().min(5).max(120),
+  instruction: z.string().min(20).max(500),
+  expected_output: z.string().min(10).max(300),
+  definition_of_done: z.string().min(10).max(300),
+  why_it_matters: z.string().min(10).max(200),
+  time_estimate_label: z.string().max(50).optional(),
+  proof_description: z.string().max(200).optional(),
+});
+ 
+// blocker_classification
+export const BlockerClassificationSchema = z.object({
+  category: z.enum([&apos;DEPENDENCY_MISSING&apos;,&apos;EXTERNAL_WAIT&apos;,&apos;CLARITY_NEEDED&apos;,
+    &apos;CAPABILITY_GAP&apos;,&apos;RESOURCE_MISSING&apos;,&apos;OTHER&apos;]),
+  confidence: z.enum([&apos;LOW&apos;,&apos;MEDIUM&apos;,&apos;HIGH&apos;]),
+  reasoning: z.string().max(200),
+});
+ 
+// clarification_request
+export const ClarificationRequestSchema = z.object({
+  question: z.string().min(10).max(300),
+  missing_field: z.string(),
+  why_needed: z.string().max(200),
+});
+ 
+// state_explanation
+export const StateExplanationSchema = z.object({
+  headline: z.string().min(5).max(100),
+  explanation: z.string().min(20).max(400),
+  what_is_allowed: z.array(z.string()).max(5),
+  what_is_restricted: z.array(z.string()).max(5),
+  recommended_next_action: z.string().max(200),
+});
+ 
+// recovery_copy
+export const RecoveryCopySchema = z.object({
+  title: z.string().min(5).max(100),
+  welcome_back_message: z.string().min(10).max(300),
+  first_step_description: z.string().min(10).max(200),
+  tone: z.enum([&apos;CALM&apos;,&apos;ENCOURAGING&apos;,&apos;NEUTRAL&apos;]),
+});
+ 
+// academy_instruction
+export const AcademyInstructionSchema = z.object({
+  title: z.string().min(5).max(120),
+  explanation: z.string().min(20).max(600),
+  execution_requirement: z.string().min(10).max(300),
+  proof_description: z.string().min(10).max(200),
+  learning_type: z.enum([&apos;CAPABILITY_ACTIVATION&apos;,&apos;CORRECTION_LEARNING&apos;,
+    &apos;REINFORCEMENT_LEARNING&apos;,&apos;SCALING_KNOWLEDGE&apos;,&apos;STRATEGIC_KNOWLEDGE&apos;]),
+});
+ 
+// root_cause_candidates
+export const RootCauseCandidatesSchema = z.object({
+  candidates: z.array(z.object({
+    category: z.enum([&apos;CLARITY_FAILURE&apos;,&apos;CAPABILITY_FAILURE&apos;,&apos;CAPACITY_FAILURE&apos;,
+      &apos;DEPENDENCY_FAILURE&apos;,&apos;MOTIVATION_FRICTION&apos;,&apos;SYSTEM_FRICTION&apos;,
+      &apos;WRONG_PRIORITY&apos;,&apos;OUTCOME_MISMATCH&apos;,&apos;EXTERNAL_BLOCKER&apos;,&apos;PROOF_FAILURE&apos;]),
+    likelihood: z.enum([&apos;LOW&apos;,&apos;MEDIUM&apos;,&apos;HIGH&apos;]),
+    evidence: z.array(z.string()).max(3),
+  })).min(1).max(3),
+  recommended_diagnostic_question: z.string().max(300).optional(),
+});
+ 
+// evidence_summary
+export const EvidenceSummarySchema = z.object({
+  summary: z.string().min(10).max(400),
+  evidence_strength_label: z.enum([&apos;STRONG&apos;,&apos;MODERATE&apos;,&apos;WEAK&apos;,&apos;INSUFFICIENT&apos;]),
+  missing_evidence_description: z.string().max(300).optional(),
+  recommended_next_evidence: z.string().max(200).optional(),
+});
+ 
+// proof_relevance
+export const ProofRelevanceSchema = z.object({
+  is_relevant: z.boolean(),
+  relevance_score: z.number().min(0).max(100),
+  explanation: z.string().max(200),
+});
+
+TASK 3 — DETERMINISTIC FALLBACKS
+// FallbackLibrary.ts
+// Every trigger must have a fallback — Bhudhi failure never stops the loop
+ 
+export const FALLBACKS = {
+  GOAL_STRUCTURING: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      cleaned_goal: &apos;&apos;,  // empty — will trigger missing field detection
+      measurable_outcome: &apos;&apos;,
+      missing_fields: [&apos;goal&apos;],
+      goal_is_clear: false,
+    }
+  },
+  TASK_DRAFTING: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      title: &apos;Continue working on your next step&apos;,
+      instruction: &apos;Complete the next required action for your project.&apos;,
+      expected_output: &apos;Progress on your current task&apos;,
+      definition_of_done: &apos;You have made measurable progress on this task&apos;,
+      why_it_matters: &apos;Every step moves your project forward&apos;,
+    }
+  },
+  BLOCKER_CLASSIFICATION: {
+    ok: false, safeFallbackUsed: true,
+    data: { category: &apos;OTHER&apos;, confidence: &apos;LOW&apos;, reasoning: &apos;Classification unavailable&apos; }
+  },
+  CLARIFICATION_PROMPT: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      question: &apos;What specifically did you do or produce for this task?&apos;,
+      missing_field: &apos;output_description&apos;,
+      why_needed: &apos;More detail needed to validate this submission&apos;,
+    }
+  },
+  STATE_EXPLANATION: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      headline: &apos;Here is your next step&apos;,
+      explanation: &apos;Your project is active. Complete your current task to continue.&apos;,
+      what_is_allowed: [&apos;Complete current task&apos;, &apos;Submit progress update&apos;],
+      what_is_restricted: [],
+      recommended_next_action: &apos;Work on your current task and submit an update&apos;,
+    }
+  },
+  RECOVERY_COPY: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      title: &apos;Welcome back&apos;,
+      welcome_back_message: &apos;Good to have you back. Here is where you left off.&apos;,
+      first_step_description: &apos;Complete one small task to restart your momentum.&apos;,
+      tone: &apos;CALM&apos;,
+    }
+  },
+  ROOT_CAUSE_ASSIST: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      candidates: [{ category: &apos;CLARITY_FAILURE&apos;, likelihood: &apos;MEDIUM&apos;, evidence: [] }],
+    }
+  },
+  OUTCOME_EVIDENCE_SUMMARY: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      summary: &apos;Evidence received. Additional proof may be needed.&apos;,
+      evidence_strength_label: &apos;WEAK&apos;,
+      missing_evidence_description: &apos;Submit specific output or confirmation&apos;,
+    }
+  },
+  PROOF_RELEVANCE_CHECK: {
+    ok: false, safeFallbackUsed: true,
+    data: { is_relevant: true, relevance_score: 50, explanation: &apos;Could not determine relevance&apos; }
+  },
+  ACADEMY_SUPPORT: {
+    ok: false, safeFallbackUsed: true,
+    data: {
+      title: &apos;Build this capability&apos;,
+      explanation: &apos;This skill is required for your next task. Practice it with the steps below.&apos;,
+      execution_requirement: &apos;Complete a task that demonstrates this capability&apos;,
+      proof_description: &apos;Submit evidence that you applied this skill&apos;,
+      learning_type: &apos;CAPABILITY_ACTIVATION&apos;,
+    }
+  },
+};
+
+VERIFICATION
+pnpm typecheck &amp;&amp; pnpm build
+pnpm test -- --grep &apos;bhudhi-prompts&apos;
+ 
+-- TEST 1: Every fallback passes its own output schema
+Object.entries(FALLBACKS).forEach(([trigger, fallback]) =&gt; {
+  const schema = OUTPUT_SCHEMAS[trigger];
+  expect(() =&gt; schema.parse(fallback.data)).not.toThrow();
+});
+ 
+-- TEST 2: Task copy fallback title under 120 chars
+-- TEST 3: State explanation fallback passes StateExplanationSchema
+-- TEST 4: Root cause candidates fallback has at least 1 candidate
+-- TEST 5: All schemas reject empty objects (required fields enforced)
+
+ACCEPTANCE CRITERIA
+All 10 trigger types have Zod output schemas
+All 10 trigger types have deterministic fallbacks
+Every fallback passes its own schema validation
+System prompt builder injects correct mode-specific instructions
+Forbidden pattern list applied at validation layer
+COMMIT: feat(bhudhi): build prompt library with Zod schemas, prompt contracts, and deterministic fallbacks for all 10 trigger types
+

@@ -12,9 +12,29 @@ import {
   LOCK_ACQUIRE_WAIT_MS,
 } from "../engines/orchestration/OrchestrationLock.js";
 import { Workflows } from "../engines/orchestration/WorkflowDefinitions.js";
+import {
+  WORKFLOWS,
+  getWorkflow,
+  listWorkflows,
+} from "../engines/orchestration/WorkflowRegistry.js";
+import {
+  CONFLICT_RULES,
+  resolveConflictRules,
+  resolveTaskGenerationConflict,
+} from "../engines/orchestration/ConflictResolver.js";
 
 export type { LockScope };
-export { LOCK_MAX_TTL_SECONDS, LOCK_ACQUIRE_WAIT_MS, Workflows };
+export {
+  LOCK_MAX_TTL_SECONDS,
+  LOCK_ACQUIRE_WAIT_MS,
+  Workflows,
+  WORKFLOWS,
+  getWorkflow,
+  listWorkflows,
+  CONFLICT_RULES,
+  resolveConflictRules,
+  resolveTaskGenerationConflict,
+};
 
 /** DOC 28 — immutable engine ownership boundaries. */
 export const ENGINE_OWNERSHIP = {

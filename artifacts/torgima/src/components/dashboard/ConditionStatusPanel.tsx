@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ConditionBadge } from "@workspace/design-system";
 import { apiFetchEnvelope } from "@/lib/torgima-api";
+import { BLUEPRINT_LABELS, DEFAULT_CONDITION } from "@/lib/language-map";
 
 type ConditionResponse = {
   display?: {
@@ -42,19 +43,19 @@ export function ConditionStatusPanel({ blueprintId }: { blueprintId?: string | n
 
   if (!blueprintId) return null;
   if (loading && !data?.display) {
-    return <p className="text-sm text-muted-foreground">Loading condition…</p>;
+    return <p className="text-sm text-muted-foreground">Loading {BLUEPRINT_LABELS.conditions.toLowerCase()}…</p>;
   }
 
   const display = data?.display;
   if (!display) return null;
 
   const alloc = display.miniPlanAllocation;
-  const conditionKey = display.colorKey ?? "nothingness";
+  const conditionKey = display.colorKey ?? DEFAULT_CONDITION;
 
   return (
     <section className="rounded-2xl border border-dark-border bg-dark-card p-4 space-y-3 shadow-card">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Execution condition
+        {BLUEPRINT_LABELS.conditions}
       </p>
       <ConditionBadge
         condition={conditionKey}

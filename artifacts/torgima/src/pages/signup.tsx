@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { setAuthToken } from "@/lib/auth-token";
+import { captureHandoffTokenFromUrl, handlePostAuthHandoff } from "@/lib/handoff-client";
 
 const FEATURES = [
   "Personalized execution Blueprint",
@@ -18,6 +19,10 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    captureHandoffTokenFromUrl();
+  }, []);
 
   function validate(): string | null {
     if (!email.trim()) return "Email is required.";
@@ -71,7 +76,8 @@ export default function SignupPage() {
     if (data.session?.access_token) {
       // Email confirmation disabled — signed in immediately
       setAuthToken(data.session.access_token);
-      setLocation("/onboarding");
+      const handoffDest = await handlePostAuthHandoff();
+      setLocation(handoffDest ?? "/onboarding");
     } else if (data.user) {
       // Email confirmation required — tell user to check email
       setLocation("/signup/check-email");

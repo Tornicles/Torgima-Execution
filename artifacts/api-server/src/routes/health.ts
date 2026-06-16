@@ -9,6 +9,7 @@ import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/veri
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { extractInternalToken, getInternalAuthSecret } from "../lib/security/internalAuth.js";
 import { buildSafeDatabaseTargetSnapshot } from "../lib/databaseTargetDebug.js";
+import { DOC29_KEY_API_ROUTES } from "../lib/doc29-route-inventory.js";
 
 const router: IRouter = Router();
 
@@ -457,23 +458,11 @@ router.get("/health/schema", async (_req, res) => {
 });
 
 const KEY_API_ROUTES = [
-  "POST /api/auth/login",
+  ...DOC29_KEY_API_ROUTES,
   "POST /api/auth/send-magic-link",
-  "GET /api/auth/verify",
-  "POST /api/auth/verify",
-  "GET /api/auth/session",
-  "POST /api/auth/logout",
-  "POST /api/internal/auth/validate",
-  "POST /api/onboarding/select-blueprint",
   "POST /api/v1/onboarding/select-blueprint",
-  "POST /api/blueprints/select-tier",
-  "POST /api/blueprints/:id/activate",
   "GET /api/blueprints/:id/tier-preview",
   "GET /api/blueprints/:id/versions",
-  "PATCH /api/blueprints/:id",
-  "GET /api/state/current",
-  "GET /api/state/dashboard",
-  "GET /api/cognitive-load/current",
   "POST /api/validation/run",
   "POST /api/v1/validation/run",
   "GET /api/validation/:id/result",
@@ -485,12 +474,7 @@ const KEY_API_ROUTES = [
   "POST /api/v1/validation/:id/select-path",
   "POST /api/v1/validations/:id/select-path",
   "GET /api/identity/current",
-  "GET /api/patterns/current",
-  "GET /api/friction/current",
-  "GET /api/priority/current",
-  "GET /api/dependencies/current",
-  "POST /api/uploads/proof",
-  "POST /api/feedback/:id/clarify",
+  "POST /api/internal/auth/validate",
 ] as const;
 
 // GET /api/v1/health/routes — development / deploy smoke (not for production clients)

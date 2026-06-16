@@ -103,6 +103,7 @@ export function mapBhudhiTriggerToRequestType(
     SIGNAL_INTERPRETATION: "condition_explanation",
     RECOVERY_SUGGESTION: "recovery_suggestion",
     BLOCKER_CLASSIFICATION: "feedback_interpretation",
+    PROOF_RELEVANCE_CHECK: "feedback_interpretation",
     INACTIVITY_MESSAGE: "recovery_suggestion",
     EVIDENCE_SUMMARY: "behavior_analysis",
     FALSE_PROGRESS_REVIEW: "behavior_analysis",
@@ -118,6 +119,9 @@ export function mapBhudhiTriggerToRequestType(
     VALIDATION_BUILD_PATHS: "blueprint_generation",
     ERECTOR_ACADEMY_CONTENT: "academy_content",
     ERECTOR_SIMULATION_EVENT: "other",
+    ERECTOR_FREE_VALIDATION: "goal_validation",
+    ERECTOR_PAID_VALIDATION: "goal_validation",
+    ERECTOR_STATE_EXPLANATION: "condition_explanation",
     ...erectorValidateRequestMap(),
   } as Record<BhudhiTriggerType, DbBhudhiRequestType>;
 
@@ -182,6 +186,7 @@ export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhud
     SIGNAL_INTERPRETATION: "state_explanation",
     RECOVERY_SUGGESTION: "condition_explanation",
     BLOCKER_CLASSIFICATION: "blocker_classification",
+    PROOF_RELEVANCE_CHECK: "blocker_classification",
     INACTIVITY_MESSAGE: "pattern_summary",
     EVIDENCE_SUMMARY: "evidence_summary",
     FALSE_PROGRESS_REVIEW: "pattern_summary",
@@ -197,6 +202,9 @@ export function mapBhudhiTriggerToDbEnum(triggerType: BhudhiTriggerType): DbBhud
     VALIDATION_BUILD_PATHS: "validation_analysis",
     ERECTOR_ACADEMY_CONTENT: "academy_content",
     ERECTOR_SIMULATION_EVENT: "erector_analysis",
+    ERECTOR_FREE_VALIDATION: "erector_analysis",
+    ERECTOR_PAID_VALIDATION: "erector_analysis",
+    ERECTOR_STATE_EXPLANATION: "state_explanation",
     ...erectorValidateDbMap(),
   } as Record<BhudhiTriggerType, DbBhudhiTrigger>;
   return m[triggerType] ?? "validation_analysis";

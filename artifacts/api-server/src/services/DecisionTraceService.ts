@@ -1,30 +1,45 @@
 /**
- * Phase 5 / DOC 23 — audit trail for significant system decisions.
- * Facade over decision_traces persistence; engines call this instead of ad-hoc inserts.
+ * Phase 5 / DOC 23 — audit trail facade (re-exports engines/decision).
  */
 
 import {
-  traceDecision,
-  traceControlOutput,
-  traceFailureRouting,
-  tracePrioritySelection,
-  getBlueprintStateVersion,
-  IL4_DECISION_TYPES,
-} from "../engines/decision-trace/DecisionTraceSystem.js";
+  DecisionTraceService,
+  writeEngineDecision,
+  DOC23_DECISION_TYPES,
+  type DecisionTraceWriteInput,
+} from "../engines/decision/DecisionTraceService.js";
+import {
+  scoreCognitiveLoad,
+  evaluateAndPersistCognitiveLoad,
+} from "../engines/decision/CognitiveLoadScorer.js";
+import { getBlueprintStateVersion } from "../engines/decision-trace/DecisionTraceSystem.js";
 
-export { IL4_DECISION_TYPES };
+export {
+  DecisionTraceService,
+  writeEngineDecision,
+  DOC23_DECISION_TYPES,
+  type DecisionTraceWriteInput,
+  scoreCognitiveLoad,
+  evaluateAndPersistCognitiveLoad,
+};
+
+export { IL4_DECISION_TYPES } from "../engines/decision-trace/DecisionTraceSystem.js";
 
 export const DECISION_TRACE_TYPES = {
-  TASK_GENERATION: "TASK_GENERATION",
-  CONDITION_CHANGE: "CONDITION_CHANGE",
-  ENFORCEMENT_UPDATE: "ENFORCEMENT_UPDATE",
-  FAILURE_CLASSIFICATION: "FAILURE_CLASSIFICATION",
-  PATTERN_DETECTION: "PATTERN_DETECTION",
-  OUTCOME_VALIDATION: "OUTCOME_VALIDATION",
-  IDENTITY_CHANGE: "IDENTITY_CHANGE",
-  PRIORITY_SELECTION: "PRIORITY_SELECTION",
-  CONTROL_OUTPUT: "CONTROL_OUTPUT",
-  FAILURE_ROUTING: "FAILURE_ROUTING",
+  TASK_GENERATION: "SYSTEM_GENERATION",
+  CONDITION_CHANGE: "SYSTEM_CONTROL",
+  ENFORCEMENT_UPDATE: "SYSTEM_CONTROL",
+  FAILURE_CLASSIFICATION: "SYSTEM_CORRECTION",
+  PATTERN_DETECTION: "SYSTEM_CORRECTION",
+  OUTCOME_VALIDATION: "SYSTEM_CORRECTION",
+  IDENTITY_CHANGE: "SYSTEM_CONTROL",
+  PRIORITY_SELECTION: "SYSTEM_CONTROL",
+  CONTROL_OUTPUT: "SYSTEM_CONTROL",
+  FAILURE_ROUTING: "SYSTEM_CORRECTION",
+  USER_STRATEGIC: "USER_STRATEGIC",
+  USER_EXECUTION: "USER_EXECUTION",
+  AI_ASSISTED: "AI_ASSISTED",
+  ADMIN_REPAIR: "ADMIN_REPAIR",
 } as const;
 
 export type DecisionTraceType = (typeof DECISION_TRACE_TYPES)[keyof typeof DECISION_TRACE_TYPES];
@@ -64,21 +79,27 @@ export function computeEnforcementCognitiveLoadScore(params: {
   return Math.min(100, Math.max(0, Math.round(raw)));
 }
 
+function confidenceLabel(score: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (score >= 0.8) return "HIGH";
+  if (score >= 0.5) return "MEDIUM";
+  return "LOW";
+}
+
 export async function recordDecisionTrace(data: DecisionTraceData): Promise<string> {
   const rationale = data.reasoningChain.map((s) => `${s.step}: ${s.result}`).join(" | ");
-  return traceDecision({
-    blueprintId: data.blueprintId ?? "",
+  return DecisionTraceService.write({
     userId: data.userId,
-    decisionType: data.decisionType,
-    contextType: data.sourceEngine,
-    contextId: data.causationEventId,
-    engineSource: data.sourceEngine,
-    inputSummary: JSON.stringify(data.inputsSummary).slice(0, 2000),
-    outputSummary: data.outputAction,
-    rationale: rationale || data.outputAction,
-    outcome: data.outputAction,
-    alternativesConsidered: data.reasoningChain,
+    blueprintId: data.blueprintId ?? "",
+    decisionType: data.decisionType as DecisionTraceWriteInput["decisionType"],
+    decisionKey: `${data.decisionType}:${data.causationEventId ?? data.userId}`,
+    selectedOption: data.outputAction,
+    optionsConsidered: data.reasoningChain.map((s) => s.result),
+    rationaleSummary: rationale || data.outputAction,
+    sourceEngine: data.sourceEngine,
+    confidence: confidenceLabel(data.confidence),
     stateVersion: data.stateVersion,
+    causationEventId: data.causationEventId,
+    evidenceIds: [],
   });
 }
 
@@ -92,23 +113,16 @@ export async function traceTaskGenerationMode(params: {
   causationEventId?: string;
 }): Promise<string> {
   const stateVersion = await getBlueprintStateVersion(params.blueprintId);
-  return recordDecisionTrace({
+  return DecisionTraceService.write({
     userId: params.userId,
     blueprintId: params.blueprintId,
-    decisionType: DECISION_TRACE_TYPES.TASK_GENERATION,
+    decisionType: "SYSTEM_GENERATION",
+    decisionKey: `task_generation:${params.blueprintId}:${params.generationTrigger}`,
+    selectedOption: params.selectedTaskType,
+    optionsConsidered: params.candidatesConsidered,
+    rationaleSummary: `Mode ${params.generationMode} via ${params.generationTrigger}`,
     sourceEngine: "TaskGenerationEngine",
-    inputsSummary: {
-      generation_mode: params.generationMode,
-      generation_trigger: params.generationTrigger,
-      candidates: params.candidatesConsidered,
-    },
-    reasoningChain: [
-      { step: "mode", result: params.generationMode },
-      { step: "trigger", result: params.generationTrigger },
-      { step: "priority", result: params.selectedTaskType },
-    ],
-    outputAction: `task_type:${params.selectedTaskType}`,
-    confidence: 0.85,
+    confidence: "HIGH",
     stateVersion,
     causationEventId: params.causationEventId,
   });
@@ -124,22 +138,17 @@ export async function traceConditionEvaluation(params: {
   causationEventId?: string;
 }): Promise<string> {
   const stateVersion = await getBlueprintStateVersion(params.blueprintId);
-  return recordDecisionTrace({
+  return DecisionTraceService.write({
     userId: params.userId,
     blueprintId: params.blueprintId,
-    decisionType: DECISION_TRACE_TYPES.CONDITION_CHANGE,
+    decisionType: "SYSTEM_CONTROL",
+    decisionKey: `condition_change:${params.blueprintId}`,
+    selectedOption: params.newCondition,
+    optionsConsidered: [params.previousCondition, params.newCondition],
+    rejectedOptions: params.previousCondition !== params.newCondition ? [params.previousCondition] : [],
+    rationaleSummary: `Condition ${params.previousCondition} → ${params.newCondition}`,
     sourceEngine: "ConditionEvaluationEngine",
-    inputsSummary: {
-      previous: params.previousCondition,
-      escalation_level: params.escalationLevel,
-      recovery_required: params.recoveryRequired,
-    },
-    reasoningChain: [
-      { step: "previous", result: params.previousCondition },
-      { step: "evaluated", result: params.newCondition },
-    ],
-    outputAction: `condition:${params.newCondition}`,
-    confidence: 0.9,
+    confidence: "HIGH",
     stateVersion,
     causationEventId: params.causationEventId,
   });
@@ -150,4 +159,4 @@ export {
   traceFailureRouting,
   tracePrioritySelection,
   getBlueprintStateVersion,
-};
+} from "../engines/decision-trace/DecisionTraceSystem.js";

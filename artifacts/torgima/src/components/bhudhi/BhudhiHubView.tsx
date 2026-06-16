@@ -17,9 +17,15 @@ import {
   Zap,
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
-import { explainBhudhiQuestion, fetchBhudhiHub } from "@/lib/bhudhi-hub-api";
-import type { BhudhiExplainResponse, BhudhiHubPanels, BhudhiQuestionCategory } from "@/lib/bhudhi-hub-types";
-import { BhudhiExplainDrawer } from "@/components/bhudhi/BhudhiExplainDrawer";
+import {
+  explainIntelligenceQuestion,
+  fetchIntelligenceHub,
+  type IntelligenceExplainResponse,
+  type IntelligenceHubPanels,
+  type IntelligenceQuestionCategory,
+} from "@/lib/intelligence-bridge";
+import { INTELLIGENCE_COPY } from "@/lib/language-map";
+import { IntelligenceExplainDrawer } from "@/components/bhudhi/IntelligenceExplainDrawer";
 import { apiGet } from "@/lib/torgima-api";
 
 const PURPLE = "#5B21FF";
@@ -43,7 +49,7 @@ function formatRelative(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-const CATEGORY_ICONS: Record<BhudhiQuestionCategory, typeof ListTodo> = {
+const CATEGORY_ICONS: Record<IntelligenceQuestionCategory, typeof ListTodo> = {
   tasks: ListTodo,
   execution: Zap,
   strategy: Compass,
@@ -81,7 +87,7 @@ const INTELLIGENCE_CARDS = [
   },
 ] as const;
 
-function BhudhiBrainSymbol() {
+function IntelligenceBrainSymbol() {
   return (
     <div className="relative w-32 h-32 mx-auto">
       <div className="absolute inset-0 rounded-full border-2 border-violet-200 animate-pulse" />
@@ -93,25 +99,25 @@ function BhudhiBrainSymbol() {
   );
 }
 
-export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
+export function IntelligenceHubView({ blueprintId }: { blueprintId: string }) {
   const { data: me } = useGetMe();
-  const [hub, setHub] = useState<BhudhiHubPanels | null>(null);
+  const [hub, setHub] = useState<IntelligenceHubPanels | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState(7);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [explainLoading, setExplainLoading] = useState(false);
-  const [explainData, setExplainData] = useState<BhudhiExplainResponse | null>(null);
+  const [explainData, setExplainData] = useState<IntelligenceExplainResponse | null>(null);
 
   const displayName = me?.displayName ?? me?.email?.split("@")[0] ?? "Builder";
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchBhudhiHub(blueprintId);
+      const data = await fetchIntelligenceHub(blueprintId);
       setHub(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load Bhudhi Hub");
+      setError(e instanceof Error ? e.message : INTELLIGENCE_COPY.loadHubError);
     } finally {
       setLoading(false);
     }
@@ -136,7 +142,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
       setExplainLoading(true);
       setExplainData(null);
       try {
-        const res = await explainBhudhiQuestion({ blueprintId, questionKey, glanceKey });
+        const res = await explainIntelligenceQuestion({ blueprintId, questionKey, glanceKey });
         setExplainData(res);
       } catch {
         setExplainData({
@@ -154,7 +160,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
           },
           aiEnrichment: null,
           fallbackUsed: true,
-          principle: "Bhudhi explains. You decide. You execute.",
+          principle: INTELLIGENCE_COPY.tagline,
         });
       } finally {
         setExplainLoading(false);
@@ -194,7 +200,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
 
   return (
     <div className="min-h-full bg-[#FAFAFA] pb-10">
-      <BhudhiExplainDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} loading={explainLoading} data={explainData} />
+      <IntelligenceExplainDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} loading={explainLoading} data={explainData} />
 
       {/* Header */}
       <header className="bg-white border-b border-[#E8ECF0] px-4 sm:px-8 py-5">
@@ -202,14 +208,14 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-6 h-6" style={{ color: PURPLE }} />
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A]">Bhudhi Hub</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A]">{INTELLIGENCE_COPY.hubTitle}</h1>
             </div>
             <p className="text-sm text-[#64748B] mt-1">
               Understand your system. Make clearer decisions.
             </p>
             <Link href="/app/bhudhi?section=systems">
               <span className="text-xs font-semibold mt-1 inline-block hover:underline" style={{ color: PURPLE }}>
-                How Bhudhi works →
+                {INTELLIGENCE_COPY.howItWorks}
               </span>
             </Link>
           </div>
@@ -244,9 +250,9 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
         {/* Hero */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Card className="p-6 sm:p-8 text-center">
-            <BhudhiBrainSymbol />
+            <IntelligenceBrainSymbol />
             <div className="flex items-center justify-center gap-2 mt-4">
-              <p className="text-lg font-bold text-[#0F172A]">Bhudhi is active</p>
+              <p className="text-lg font-bold text-[#0F172A]">{INTELLIGENCE_COPY.hubActive}</p>
               {hub.core.online && (
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
                   Online
@@ -275,7 +281,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
                   key={c.key}
                   type="button"
                   onClick={() => {
-                    const cat = hub.popularQuestions[c.key as BhudhiQuestionCategory];
+                    const cat = hub.popularQuestions[c.key as IntelligenceQuestionCategory];
                     const first = cat?.questions[0];
                     if (first) void ask(first.key);
                   }}
@@ -313,7 +319,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
               ))}
             </div>
             <p className="text-xs text-[#64748B] mt-4 leading-relaxed">
-              Bhudhi reads these systems in real time and explains what they mean for you.
+              {INTELLIGENCE_COPY.readsSystems}
             </p>
             <Link href="/app/bhudhi?section=systems">
               <span className="text-xs font-semibold mt-2 inline-flex items-center gap-1" style={{ color: PURPLE }}>
@@ -405,7 +411,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
               )}
             </ul>
             <p className="text-[10px] text-[#94A3B8] mt-3 border-t border-[#F1F5F9] pt-2">
-              These updates come from the system. Bhudhi explains the why.
+              {INTELLIGENCE_COPY.explainsWhy}
             </p>
           </Card>
         </div>
@@ -416,7 +422,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
             <p className="text-sm font-bold text-[#0F172A]">Popular Questions</p>
             <p className="text-xs text-[#64748B] mb-4">(Pick one to understand better)</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              {(Object.keys(hub.popularQuestions) as BhudhiQuestionCategory[]).map((cat) => {
+              {(Object.keys(hub.popularQuestions) as IntelligenceQuestionCategory[]).map((cat) => {
                 const block = hub.popularQuestions[cat];
                 const Icon = CATEGORY_ICONS[cat];
                 return (
@@ -462,7 +468,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
             </div>
             <ul className="flex-1 space-y-2 overflow-y-auto">
               {hub.recentQuestions.length === 0 ? (
-                <li className="text-xs text-[#94A3B8]">Ask a question above — Bhudhi will remember it here.</li>
+                <li className="text-xs text-[#94A3B8]">{INTELLIGENCE_COPY.remembersQuestion}</li>
               ) : (
                 hub.recentQuestions.map((r) => (
                   <li key={r.id}>
@@ -502,7 +508,7 @@ export function BhudhiHubView({ blueprintId }: { blueprintId: string }) {
           <Card className="p-5 flex items-center gap-4 border-violet-100 bg-gradient-to-r from-violet-50 to-white">
             <Target className="w-8 h-8 shrink-0" style={{ color: PURPLE }} />
             <div>
-              <p className="text-sm font-bold text-[#0F172A]">Bhudhi explains. You decide. You execute.</p>
+              <p className="text-sm font-bold text-[#0F172A]">{INTELLIGENCE_COPY.tagline}</p>
               <p className="text-xs text-[#64748B] mt-1">You are in control of your execution.</p>
             </div>
           </Card>

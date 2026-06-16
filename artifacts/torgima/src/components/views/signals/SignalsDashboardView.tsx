@@ -16,14 +16,16 @@ import { MetricStatCard, MetricStatRow } from "@/components/design-system/Metric
 import { TrendChart } from "@/components/design-system/TrendChart";
 import { cards } from "@/design";
 import type { DashboardProjection } from "@/lib/dashboard-types";
-import { getConditionLabel } from "@/lib/language";
+import { getConditionLabel, describeCondition } from "@/lib/language-map";
+import { LANGUAGE } from "@/lib/language";
 import { toSignalsPanelProjection } from "@/lib/signals-panel";
 import { StateFreshnessBadge } from "@/components/signals/StateFreshnessBadge";
 import { ConditionPanel } from "@/components/signals/ConditionPanel";
+import { SignalPanel } from "@/components/signals/SignalPanel";
 import { SignalMetricsPanel } from "@/components/signals/SignalMetricsPanel";
 import { IdentityPanel } from "@/components/signals/IdentityPanel";
 
-const CONDITIONS = ["Nothingness", "Danger", "Stability", "Power", "Affluence"] as const;
+import { CONDITION_SPECTRUM, CONDITION_TEXT_COLORS } from "@/lib/language-map";
 
 function spectrumIndex(raw: string): number {
   const keys = [
@@ -41,15 +43,7 @@ function spectrumIndex(raw: string): number {
 }
 
 function conditionColor(raw: string): string {
-  const map: Record<string, string> = {
-    nothingness: "text-gray-500",
-    danger: "text-red-600",
-    urgency: "text-orange-600",
-    stability: "text-[var(--torgima-primary)]",
-    power: "text-blue-600",
-    affluence: "text-purple-600",
-  };
-  return map[raw] ?? "text-[var(--torgima-primary)]";
+  return CONDITION_TEXT_COLORS[raw] ?? "text-[var(--torgima-primary)]";
 }
 
 function Sparkline({ color }: { color: string }) {
@@ -78,6 +72,34 @@ export function SignalsDashboardView({
   onRefresh: () => void;
 }) {
   const panel = useMemo(() => toSignalsPanelProjection(projection), [projection]);
+
+  if (panel.panelState === "degraded") {
+    return (
+      <DashboardPageLayout title="Signals Dashboard" subtitle={panel.errorMessage ?? LANGUAGE.signalsPanel.systemUpdating}>
+        <div className={`${cards.padded} text-center text-sm text-gray-600`}>
+          {LANGUAGE.signalsPanel.systemUpdating}
+        </div>
+      </DashboardPageLayout>
+    );
+  }
+
+  if (panel.panelState === "error") {
+    return (
+      <DashboardPageLayout title="Signals Dashboard" subtitle={LANGUAGE.signalsPanel.healthUnavailable}>
+        <div className={`${cards.padded} text-center space-y-3`}>
+          <p className="text-sm text-gray-600">{LANGUAGE.signalsPanel.healthUnavailable}</p>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-bold text-white"
+          >
+            {LANGUAGE.signalsPanel.retry}
+          </button>
+        </div>
+      </DashboardPageLayout>
+    );
+  }
+
   const breakdown = projection.signal_breakdown;
   const sigProj = projection.signalProjection as {
     completionRate?: number;
@@ -98,7 +120,10 @@ export function SignalsDashboardView({
   const conditionRaw = panel.condition.conditionKey;
   const conditionDisplay = panel.condition.label.toUpperCase();
   const activeIdx = spectrumIndex(conditionRaw);
-  const condDisplay = getConditionLabel(conditionRaw);
+  const condDisplay = {
+    label: getConditionLabel(conditionRaw),
+    description: describeCondition(conditionRaw),
+  };
 
   const executionLevel =
     completionRate > 80 ? "High" : completionRate > 60 ? "Medium" : completionRate > 40 ? "Building" : "Low";
@@ -184,11 +209,12 @@ export function SignalsDashboardView({
           </div>
 
           <div className="flex flex-wrap items-end justify-center gap-4 xl:gap-6">
-            {CONDITIONS.map((c, i) => {
+            {CONDITION_SPECTRUM.map((key, i) => {
+              const c = getConditionLabel(key);
               const isActive = i === activeIdx;
               const Icon = icons[i];
               return (
-                <div key={c} className={`flex flex-col items-center gap-1 ${isActive ? "" : "opacity-40"}`}>
+                <div key={key} className={`flex flex-col items-center gap-1 ${isActive ? "" : "opacity-40"}`}>
                   <div
                     className={`w-9 h-9 rounded-full border-2 flex items-center justify-center ${
                       isActive ? "border-[var(--torgima-primary)] text-[var(--torgima-primary)]" : "border-gray-200 text-gray-300"
@@ -211,6 +237,10 @@ export function SignalsDashboardView({
             <p className="text-xs text-gray-500 mt-2">— The Torgima System</p>
           </div>
         </div>
+      </div>
+
+      <div className={`${cards.padded} mb-6`}>
+        <SignalPanel summary={panel.signalSummary} tier={panel.tier} onRetry={onRefresh} />
       </div>
 
       <div className={`${cards.padded} mb-6`}>

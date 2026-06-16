@@ -13,6 +13,8 @@ const basePayload = (overrides: Partial<FeedbackSubmissionPayload> = {}): Feedba
   effortScore: 3,
   frictionScore: 3,
   confidenceScore: 3,
+  durationMinutes: 30,
+  userNotes: "Completed the work with adequate reflection on outcomes and next steps.",
   ...overrides,
 });
 
@@ -20,6 +22,8 @@ const baseOrder = {
   proof_required: false,
   time_estimate_minutes: 60,
   difficulty: "medium",
+  title: "Publish landing page",
+  started_at: new Date(Date.now() - 2 * 3_600_000),
 } as unknown as Parameters<typeof runAntiGamingChecks>[0]["order"];
 
 describe("FeedbackProcessingEngine — anti-gaming", () => {
@@ -53,7 +57,7 @@ describe("FeedbackProcessingEngine — anti-gaming", () => {
 
 describe("FeedbackProcessingEngine — verdict classification", () => {
   it("accepts completed with proof when required", () => {
-    const payload = basePayload({ completion: "COMPLETED", proofText: "Done" });
+    const payload = basePayload({ completion: "COMPLETED", proofText: "Published the landing page with hero copy, pricing section, and signup form wired to the CRM integration." });
     const order = { ...baseOrder, proof_required: true };
     const verdict = classifyVerdict({
       payload,

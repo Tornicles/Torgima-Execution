@@ -4,6 +4,10 @@ import { logger } from "../lib/logger.js";
 import { applyEmailWebhookEvent } from "../services/NotificationService.js";
 import { externalSignalGateway } from "../engines/signals/ExternalSignalGateway.js";
 import { PHASE2_WEBHOOK_SOURCES } from "../engines/signals/ExternalSignalTrust.js";
+import {
+  isApprovedWebhookSource,
+  processWebhook,
+} from "../engines/external/WebhookRouter.js";
 
 /** Express 5 does not export `RawBodyRequest`; body is `Buffer` from `express.raw`. */
 type RawWebhookRequest = Request & { body?: Buffer | string };
@@ -47,16 +51,34 @@ router.post("/:source", async (req: Request, res: Response) => {
 
   try {
     const rawPayload = parseWebhookJsonBody(req);
+    const signature =
+      typeof req.headers["x-webhook-signature"] === "string"
+        ? req.headers["x-webhook-signature"]
+        : undefined;
+
+    if (isApprovedWebhookSource(source)) {
+      const routed = await processWebhook({
+        source,
+        payload: rawPayload,
+        signature,
+        userId: userId || undefined,
+        blueprintId,
+      });
+      if (!routed.ok) {
+        res.status(routed.status).json({ received: true, accepted: false, reason: routed.code });
+        return;
+      }
+      res.status(200).json({ received: true, accepted: true, ...routed });
+      return;
+    }
+
     const result = await externalSignalGateway.receive({
       userId,
       blueprintId,
       sourceName: source,
       sourceType: "webhook",
       rawPayload,
-      signature:
-        typeof req.headers["x-webhook-signature"] === "string"
-          ? req.headers["x-webhook-signature"]
-          : undefined,
+      signature,
     });
 
     res.status(200).json({ received: true, ...result });

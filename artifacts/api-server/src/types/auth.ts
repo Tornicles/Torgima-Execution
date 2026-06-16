@@ -21,6 +21,9 @@ export interface AuthContext {
   userMode: "individual" | "team";
   userTier: string;
   isInternal: boolean;
+  email?: string;
+  dashboardMode?: string;
+  erectorTier?: string | null;
 }
 
 export interface SafeUser {
@@ -36,4 +39,6 @@ export interface SafeUser {
   activeBlueprintId: string | null;
   timezone: string;
   notificationPreferences: Record<string, unknown>;
+  dashboardMode: string;
+  erectorTier: string | null;
 }

@@ -2,6 +2,12 @@ import type { BhudhiOutputEnvelope } from "../types/bhudhi.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { buildDeterministicExplanations } from "../engines/erector/validationExplanations.js";
 import { getContract } from "./PromptRegistry.js";
+import {
+  ERECTOR_FREE_FALLBACK,
+  ERECTOR_FREE_VERDICT_EXPLAIN_FALLBACK,
+  ERECTOR_PAID_FALLBACK,
+  ERECTOR_STATE_EXPLAIN_FALLBACK,
+} from "./fallbacks/erector-fallbacks.js";
 
 type FallbackFn = (ctx: Record<string, unknown>, stateVersion: number) => BhudhiOutputEnvelope;
 
@@ -93,6 +99,25 @@ fallbacks.set("fallback.blocker_classification", (ctx, sv) => ({
   },
   missingFields:           [],
   warnings:                ["AI classification unavailable — fallback category used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("fallback.proof_relevance", (ctx, sv) => ({
+  outputType: "proof_relevance",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    relevant: false,
+    confidence: "LOW",
+    reason: String(
+      ctx["proof_description"] ??
+        ctx["proofDescription"] ??
+        "Proof could not be assessed automatically — manual review recommended.",
+    ).slice(0, 200),
+  },
+  missingFields: [],
+  warnings: ["AI proof relevance check unavailable — conservative fallback used"],
   forbiddenActionRequested: false,
 }));
 
@@ -835,6 +860,71 @@ for (const item of ERECTOR_FALLBACKS) {
     forbiddenActionRequested: false,
   }));
 }
+
+fallbacks.set("ERECTOR_FREE_FALLBACK", (_ctx, sv) => ({
+  outputType: "erector_free_report",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: ERECTOR_FREE_FALLBACK,
+  missingFields: [],
+  warnings: ["AI free validation unavailable — deterministic Erector fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("ERECTOR_PAID_FALLBACK", (_ctx, sv) => ({
+  outputType: "erector_paid_report",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: ERECTOR_PAID_FALLBACK,
+  missingFields: [],
+  warnings: ["AI paid validation unavailable — deterministic Erector fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("ERECTOR_STATE_EXPLAIN_FALLBACK", (_ctx, sv) => ({
+  outputType: "state_explanation",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: ERECTOR_STATE_EXPLAIN_FALLBACK,
+  missingFields: [],
+  warnings: ["AI Erector state explanation unavailable — deterministic fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("ERECTOR_VERDICT_EXPLANATION_FALLBACK", (_ctx, sv) => ({
+  outputType: "erector_verdict_explanation",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    user_facing_summary: "Your project analysis is complete. Review the results below.",
+    plain_language_reason: "Analysis completed based on the information provided.",
+    correction_required: undefined,
+    next_allowed_action: "Select your preferred direction to continue.",
+  },
+  missingFields: [],
+  warnings: ["AI verdict explanation unavailable — deterministic fallback used"],
+  forbiddenActionRequested: false,
+}));
+
+fallbacks.set("ERECTOR_FREE_VERDICT_EXPLAIN_FALLBACK", (_ctx, sv) => ({
+  outputType: "erector_verdict_explanation",
+  contractVersion: "1.0",
+  stateVersion: sv,
+  confidence: "LOW",
+  data: {
+    user_facing_summary: "Your project analysis is complete. Review the results below.",
+    plain_language_reason: "Analysis completed based on the information provided.",
+    correction_required: undefined,
+    next_allowed_action: "Select your preferred direction to continue.",
+  },
+  missingFields: [],
+  warnings: ["AI free verdict preview explanation unavailable — deterministic fallback used"],
+  forbiddenActionRequested: false,
+}));
 
 export function hasFallbackKey(key: string): boolean {
   return fallbacks.has(key);

@@ -17,21 +17,24 @@ export function ActionButtons({
   onStart,
   starting,
   onRefresh,
+  disabled,
 }: {
   allowed: string[];
   orderId: string;
   onStart?: () => void;
   starting?: boolean;
   onRefresh?: () => void;
+  disabled?: boolean;
 }) {
   const set = new Set(allowed.map((a) => a.toLowerCase()));
+  const blocked = disabled || starting;
 
   return (
     <div className="flex flex-wrap gap-3">
       {set.has("start") && onStart ? (
         <button
           type="button"
-          disabled={starting}
+          disabled={blocked}
           onClick={onStart}
           className="inline-flex items-center gap-2 rounded-xl bg-[#0B1220] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1E293B] disabled:opacity-60"
         >
@@ -40,16 +43,24 @@ export function ActionButtons({
         </button>
       ) : null}
       {set.has("continue") ? (
-        <Link href={`/tasks/${orderId}`}>
-          <span className="inline-flex items-center gap-2 rounded-xl bg-[#16A34A] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-[#15803D]">
+        <Link href={blocked ? "#" : `/tasks/${orderId}`}>
+          <span
+            className={`inline-flex items-center gap-2 rounded-xl bg-[#16A34A] px-5 py-2.5 text-sm font-semibold text-white ${
+              blocked ? "opacity-50 pointer-events-none" : "cursor-pointer hover:bg-[#15803D]"
+            }`}
+          >
             {ACTION_LABELS.continue}
             <ArrowRight className="h-4 w-4" />
           </span>
         </Link>
       ) : null}
       {set.has("submit_feedback") ? (
-        <Link href={orderId ? `/feedback/${orderId}` : "/feedback"}>
-          <span className="inline-flex items-center gap-2 rounded-xl bg-[#5B21FF] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-[#4C1D95]">
+        <Link href={blocked ? "#" : orderId ? `/feedback/${orderId}` : "/feedback"}>
+          <span
+            className={`inline-flex items-center gap-2 rounded-xl bg-[#5B21FF] px-5 py-2.5 text-sm font-semibold text-white ${
+              blocked ? "opacity-50 pointer-events-none" : "cursor-pointer hover:bg-[#4C1D95]"
+            }`}
+          >
             <MessageSquare className="h-4 w-4" />
             {ACTION_LABELS.submit_feedback}
           </span>

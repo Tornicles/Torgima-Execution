@@ -421,8 +421,27 @@ export async function processFindings(findings: HealthFinding[]): Promise<void> 
 
 // ── AUTO-REPAIR ──────────────────────────────────────────────────────────────
 
+const DOC17_REPAIR_CODES = new Set([
+  "ORPHAN_TASK",
+  "MISSING_CURRENT_SIGNAL",
+  "MISSING_CURRENT_CONDITION",
+  "MISSING_CURRENT_ENFORCEMENT",
+  "FEEDBACK_WITHOUT_SIGNAL_EVENT",
+  "DOUBLE_ACTIVE_ORDER",
+  "STALE_STATE_VERSION",
+  "ACTIVE_BLUEPRINT_NO_ENFORCEMENT",
+]);
+
 async function attemptAutoRepair(finding: HealthFinding): Promise<void> {
   try {
+    if (DOC17_REPAIR_CODES.has(finding.issueCode)) {
+      const { attemptRepairForFinding } = await import(
+        "../engines/execution-loop/RepairEngine.js"
+      );
+      await attemptRepairForFinding(finding);
+      return;
+    }
+
     switch (finding.repairAction) {
       case "REGENERATE_TASK":
         if (finding.blueprintId && finding.userId) {
@@ -492,7 +511,18 @@ export async function getUserFacingHealthState(userId: string): Promise<{
   executionAvailable: boolean;
   message?: string;
 }> {
-  void userId; // placeholder for per-user scoping when projection store lands
+  void userId;
+  const { isDegradedMode, degradedDashboardMessage } = await import(
+    "../engines/execution-loop/DegradedMode.js"
+  );
+  if (await isDegradedMode()) {
+    return {
+      systemOperational: true,
+      executionAvailable: true,
+      message: degradedDashboardMessage(),
+    };
+  }
+
   const [{ count } = { count: 0 }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(systemHealthLogs)

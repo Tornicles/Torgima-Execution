@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  createBhudhiCivilization,
-  fetchBhudhiCivilizations,
+  createIntelligenceCivilization,
+  fetchIntelligenceCivilizations,
+} from "@/lib/intelligence-bridge";
+import {
   fetchCivilizationForecast,
   fetchCivilizationResilience,
   simulateCivilizationYears,
@@ -33,10 +35,10 @@ export function CivilizationSection({ blueprintId }: { blueprintId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const list = await fetchBhudhiCivilizations(blueprintId);
+      const list = await fetchIntelligenceCivilizations(blueprintId);
       setCivilizations(list.civilizations);
 
-      const created = await createBhudhiCivilization(blueprintId);
+      const created = await createIntelligenceCivilization(blueprintId);
       setCivilization(created.civilization);
 
       const f = await fetchCivilizationForecast(blueprintId);

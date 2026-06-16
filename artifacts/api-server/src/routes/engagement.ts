@@ -3,6 +3,8 @@ import { z } from "zod";
 import { db, blueprints, milestones, outcomeValidations } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth.js";
+import { authMiddleware, requireFullMode } from "../middleware/auth.js";
+import type { AuthContext } from "../types/auth.js";
 import { success, failure } from "../lib/utils.js";
 import { isTorgimaError, torgimaErrorToStatus } from "../lib/errors.js";
 import { getCurrentIdentityState } from "../engines/identity/IdentityEngine.js";
@@ -67,9 +69,9 @@ router.get("/identity/current", async (req, res) => {
   }
 });
 
-router.get("/rewards/current", async (req, res) => {
+router.get("/rewards/current", authMiddleware, requireFullMode, async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = (req as typeof req & { auth: AuthContext }).auth;
     const [blueprint] = await db
       .select({ id: blueprints.id })
       .from(blueprints)
@@ -100,9 +102,9 @@ router.get("/rewards/current", async (req, res) => {
   }
 });
 
-router.get("/outcomes/current", async (req, res) => {
+router.get("/outcomes/current", authMiddleware, requireFullMode, async (req, res) => {
   try {
-    const auth = await requireAuth(req, "USER_SESSION");
+    const auth = (req as typeof req & { auth: AuthContext }).auth;
     const [blueprint] = await db
       .select({ id: blueprints.id })
       .from(blueprints)

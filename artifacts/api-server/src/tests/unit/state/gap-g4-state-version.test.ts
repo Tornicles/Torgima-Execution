@@ -53,12 +53,13 @@ describe("GAP G4 — OutputValidator stale rejection", () => {
 
 describe("GAP G4 — StateMutationService surface", () => {
   it("exports mutate, assertBlueprintVersion, appendBlueprintVersionAudit", async () => {
-    const mod = await import("../../../services/StateMutationService.js");
+    const mod = await import("../../../lib/state/StateMutationService.js");
     expect(typeof mod.mutate).toBe("function");
     expect(typeof mod.assertBlueprintVersion).toBe("function");
     expect(typeof mod.appendBlueprintVersionAudit).toBe("function");
     expect(typeof mod.applyMutation).toBe("function");
     expect(typeof mod.getCurrentStateVersion).toBe("function");
+    expect(typeof mod.applyVersionedMutation).toBe("function");
   });
 
   it("T2: mutate contract maps stale to STALE_STATE error code", () => {

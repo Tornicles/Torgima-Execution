@@ -4,6 +4,7 @@ import { XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { setAuthToken } from "@/lib/auth-token";
+import { captureHandoffTokenFromUrl, handlePostAuthHandoff } from "@/lib/handoff-client";
 
 /**
  * Auth callback page — handles Supabase redirects for:
@@ -20,6 +21,7 @@ export default function AuthCallbackPage() {
   const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
+    captureHandoffTokenFromUrl();
     // Check for error in query string (legacy magic link errors)
     const params = new URLSearchParams(window.location.search);
     const urlError = params.get("error");
@@ -32,14 +34,15 @@ export default function AuthCallbackPage() {
     // Supabase handles its own token exchange via onAuthStateChange
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.access_token) {
         setAuthToken(session.access_token);
         // Redirect to password update page if this is a recovery flow
         if (event === "SIGNED_IN" && params.get("type") === "recovery") {
           setLocation("/auth/update-password");
         } else {
-          setLocation("/onboarding");
+          const handoffDest = await handlePostAuthHandoff();
+          setLocation(handoffDest ?? "/onboarding");
         }
       } else if (event === "PASSWORD_RECOVERY") {
         setAuthToken(session?.access_token ?? null);

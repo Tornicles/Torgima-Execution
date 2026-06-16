@@ -112,3 +112,53 @@ export const TIER_CARD_TAGLINES: Record<"starter" | "growth" | "ultimate", strin
   growth: "Structured execution with signal adaptation",
   ultimate: "Predictive control and strategic optimization",
 };
+
+/** DOC 32 — customer-facing verdict labels (never PROCEED/ADJUST/PIVOT). */
+export const CUSTOMER_VERDICT_LABELS: Record<string, string> = {
+  proceed: "Proceed",
+  adjust: "Needs Adjustment",
+  pivot: "Change Direction",
+  PROCEED: "Proceed",
+  ADJUST: "Needs Adjustment",
+  PIVOT: "Change Direction",
+};
+
+/** DOC 32 — path card titles in customer language. */
+export const PATH_DIRECTION_LABELS = {
+  current: "Current Direction",
+  adjusted: "Refined Direction",
+  alternative: "Alternative Direction",
+} as const;
+
+export type LimitedDashboardVariant =
+  | "post_free_validation"
+  | "intake_in_progress"
+  | "direct_signup"
+  | "free_validation_complete"
+  | "intake_not_started";
+
+/** @deprecated use server `limited_variant` when available */
+export function resolveLimitedDashboardVariant(input: {
+  validationSummary?: string | null;
+  mode?: string;
+  intakeInProgress?: boolean;
+}): LimitedDashboardVariant {
+  if (input.validationSummary?.trim() || input.mode === "review") {
+    return "post_free_validation";
+  }
+  if (input.intakeInProgress) {
+    return "intake_in_progress";
+  }
+  return "direct_signup";
+}
+
+export function estimateIntakeMinutesRemaining(sectionsCompleted: number): number {
+  const remaining = Math.max(0, 8 - sectionsCompleted);
+  return Math.max(2, remaining * 2);
+}
+
+export const LAUNCH_WHAT_HAPPENS_NEXT = [
+  "Tomorrow morning, you will see your first specific task.",
+  "As you complete tasks, your project health score will update.",
+  "The system adapts to your execution rhythm over time.",
+] as const;

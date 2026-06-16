@@ -1,0 +1,224 @@
+﻿TORGIMA
+ENGINE PROMPT 10 — DOC 19
+Compulsion Loop and Reward System
+RewardEngine · 9 Reward Types · Streak Metrics · Eligibility Rules · Anti-Manipulation Controls
+
+
+PREREQUISITE: Engines 1-9 must pass. The Reward Engine depends on verified feedback, outcome validation, identity state, and false progress flags from earlier engines.
+
+OBJECTIVE
+Build the complete Compulsion Loop and Reward System. Create the RewardEngine that evaluates eligibility from verified events, maintains 5 streak metrics, enforces anti-manipulation rules, blocks rewards when false progress is active, and creates RewardEvent records with correct intensity and customer-facing copy. Never reward activity — only reward verified execution.
+
+SURGICAL RULE
+The reward_events and milestones tables exist from DOC 02 schema. DO NOT recreate them. Build the RewardEngine service that reads and writes to them. The compulsion loop is a behavioral layer — it never overrides Control Engine enforcement, condition limits, or outcome truth.
+
+FILES TO CREATE
+src/engines/reward/RewardEngine.ts — CREATE
+src/engines/reward/RewardEligibilityChecker.ts — CREATE
+src/engines/reward/StreakTracker.ts — CREATE
+src/engines/reward/MilestoneEngine.ts — CREATE
+src/engines/reward/RewardProjectionBuilder.ts — CREATE
+
+TASK 1 — REWARD ELIGIBILITY CHECKER
+All 9 reward types with their eligibility rules
+REWARD TYPE
+SOURCE EVENT
+ELIGIBLE WHEN
+BLOCKED WHEN
+COMPLETION
+feedback_submitted (ACCEPTED)
+Feedback verdict = ACCEPTED, proof valid where required
+Feedback later invalidated OR false_progress_flag CRITICAL open
+CONSISTENCY
+signal_calculated
+completion_rate >= 70% in 7-day window AND improvement from prior
+No accepted feedback in window OR gaming_suspected on majority
+RECOVERY
+inactivity_resolved
+InactivityRecord resolved AND resolution_type='returned_to_execution'
+No verified return action — just opening the app is not enough
+CAPABILITY_GROWTH
+capability_upgraded
+Capability profile level increased OR higher difficulty sustained 3+ times
+Capability upgrade based on false progress evidence
+IDENTITY_ALIGNMENT
+identity_stage_advanced
+Identity stage advanced via IdentityEngine (verified evidence)
+Any open false_progress_flag blocks IDENTITY_ALIGNMENT reward
+MILESTONE
+milestone_achieved
+Milestone record created with outcome_validation_id (validated)
+Milestone created without outcome validation = no reward
+OUTCOME_TRUTH
+outcome_validated
+OutcomeValidation status = VALIDATED AND no false_progress_flag
+FALSE_PROGRESS or CONTRADICTED status blocks this reward
+HONEST_FAILURE
+feedback_submitted (FAILED/BLOCKED)
+Feedback verdict = FAILED_CONFIRMED or BLOCKED_CONFIRMED, not gaming
+Repeated identical failure pattern = no reward (avoid loop gaming)
+FOCUS_PROTECTION
+task_generation_completed
+Highest-priority task completed per PriorityEngine when priority active
+Priority engine not active = not applicable
+
+TASK 2 — REWARD ENGINE
+// RewardEngine.ts
+// Central service — called by RewardWorker when reward_evaluation_requested event fires
+ 
+export async function evaluateReward(request: RewardEvaluationRequest): Promise<void> {
+  // 1. Load source record and verify it exists and is owned by user
+  const source = await loadSourceRecord(request.sourceType, request.sourceId, request.userId);
+  if (!source) { await emitRewardBlocked(request, 'SOURCE_NOT_FOUND'); return; }
+ 
+  // 2. Check idempotency — same source cannot create same reward twice
+  const idempotencyKey = `${request.userId}:${request.sourceType}:${request.sourceId}:${rewardType}`;
+  const existing = await findExistingReward(idempotencyKey);
+  if (existing) { return; }  // already rewarded — silently return
+ 
+  // 3. Determine which reward type this source event qualifies for
+  const rewardType = await RewardEligibilityChecker.getEligibleRewardType(request.sourceType, source);
+  if (!rewardType) { return; }  // not eligible for any reward
+ 
+  // 4. Check blocking conditions
+  const blocked = await checkBlockingConditions(request.userId, request.blueprintId, rewardType);
+  if (blocked.isBlocked) {
+    await emitEvent({ event_type: 'reward_blocked', payload: { reason: blocked.reason } });
+    return;
+  }
+ 
+  // 5. Load condition for intensity selection
+  const condition = await getCurrentCondition(request.blueprintId);
+ 
+  // 6. Determine intensity
+  const intensity = selectIntensity(rewardType, condition, source);
+ 
+  // 7. Generate reward copy
+  const copy = await generateRewardCopy(rewardType, intensity, source, condition);
+ 
+  // 8. Create RewardEvent record
+  await prisma.rewardEvent.create({ data: {
+    user_id: request.userId, blueprint_id: request.blueprintId,
+    source_type: request.sourceType, source_id: request.sourceId,
+    reward_type: rewardType, intensity,
+    title: copy.title, message: copy.message,
+    visible_to_user: true, idempotency_key: idempotencyKey,
+  }});
+ 
+  // 9. Update streak metrics
+  await StreakTracker.update(request.userId, request.blueprintId, rewardType);
+ 
+  // 10. Emit downstream events
+  await emitEvent({ event_type: 'reward_created', payload: { reward_type: rewardType, intensity } });
+  if (rewardType === 'IDENTITY_ALIGNMENT') {
+    await emitEvent({ event_type: 'identity_evaluation_requested', payload: { reason: 'reward_identity_alignment' } });
+  }
+  await emitEvent({ event_type: 'dashboard_reward_refresh_requested' });
+}
+
+TASK 3 — INTENSITY SELECTION
+// selectIntensity() rules:
+ 
+// LOW: normal completion, honest failure, simple return, small task
+// MEDIUM: consistency reward, recovery reward, capability growth, focus protection
+// HIGH: milestone, validated outcome, identity stage advancement
+ 
+// CONDITION MODIFIERS:
+// condition = 'danger' OR 'nothingness': never use HIGH intensity
+//   → reduces to MEDIUM or LOW to avoid false pressure
+// condition = 'affluence' OR 'power': HIGH intensity is allowed freely
+ 
+// ANTI-ESCALATION RULE:
+// If user received HIGH reward in last 24 hours: max intensity = MEDIUM for next reward
+// Prevents intensity inflation from batch-completing tasks
+
+TASK 4 — STREAK TRACKER
+// StreakTracker.ts
+// Maintains 5 streak metrics stored in a single user_streaks row or in bhudhi_memory
+ 
+// STREAKS:
+// execution_streak: consecutive calendar days with >= 1 accepted feedback
+//   Reset to 0 if a full expected execution day is missed
+//   NOT reset on protected gaps (streak_freeze from enforcement)
+ 
+// return_streak: consecutive sessions where user returned to open task
+//   Increments on any task start — does not require completion
+//   Resets after 48h of no task start
+ 
+// recovery_streak: consecutive recovery tasks completed with accepted feedback
+//   Only counts tasks with type='recovery'
+//   Resets when inactivity occurs without recovery
+ 
+// truth_streak: consecutive feedback submissions that were honest
+//   Includes FAILED_CONFIRMED, BLOCKED_CONFIRMED, and ACCEPTED
+//   Resets if feedback is rejected for gaming or invalid proof
+ 
+// focus_streak: consecutive completions of the highest-priority available task
+//   Only tracked when PriorityEngine is active
+//   Resets when lower-priority task is completed while higher exists
+ 
+// STREAK FREEZE:
+// enforcement_package.feature_permissions.streak_freeze = true
+// → do not reset execution_streak even if day is missed
+// → used during planned breaks or controlled recovery periods
+ 
+// SHAME-FREE RULE:
+// Never show 'streak lost' language in user-facing copy
+// Instead show: 'Start your streak again — here is your first step'
+// Streaks are motivators, not punishments
+
+TASK 5 — REWARD COPY GENERATION
+// generateRewardCopy() rules:
+ 
+// First: try Bhudhi DRAFT_REWARD_COPY trigger (if budget allows)
+// If Bhudhi unavailable or budget exceeded: use deterministic templates
+ 
+// DETERMINISTIC TEMPLATES:
+// COMPLETION LOW:   { title: 'Task Complete', message: 'Good work. Your next step is ready.' }
+// COMPLETION MEDIUM: { title: 'Task Complete', message: 'Strong execution. Keep the momentum going.' }
+// RECOVERY:          { title: 'Welcome Back', message: 'You returned. That is what matters. Next step is ready.' }
+// HONEST_FAILURE:    { title: 'Noted', message: 'Honest feedback recorded. The system has adjusted your next step.' }
+// MILESTONE HIGH:    { title: 'Milestone Reached', message: 'Real progress confirmed. A new phase begins.' }
+// OUTCOME_TRUTH HIGH:{ title: 'Outcome Verified', message: 'Results confirmed. This is what real progress looks like.' }
+// CONSISTENCY:       { title: 'Consistent Work', message: 'Repeated execution builds real results.' }
+ 
+// FORBIDDEN COPY PATTERNS:
+// Never: 'You crushed it!' 'Amazing!' 'Killing it!' (hollow hype)
+// Never: 'Don't break your streak!' (fear-based pressure)
+// Never: 'You lost your streak' (shame)
+// Always: direct, specific, tied to actual behavior
+
+VERIFICATION
+pnpm typecheck && pnpm build
+pnpm test -- --grep 'reward-engine'
+ 
+-- TEST 1: COMPLETION reward on accepted feedback
+-- Input: feedback_submitted with verdict=ACCEPTED
+-- Expected: RewardEvent created with type=COMPLETION, intensity=LOW or MEDIUM
+ 
+-- TEST 2: Reward blocked by false progress
+-- Input: outcome_validated event BUT open CRITICAL false_progress_flag
+-- Expected: reward_blocked emitted, no RewardEvent created
+ 
+-- TEST 3: Idempotency — same source creates reward only once
+-- Submit same feedback source twice to reward engine
+-- Expected: 1 RewardEvent, no duplicate
+ 
+-- TEST 4: HONEST_FAILURE rewarded
+-- Input: feedback_submitted with verdict=FAILED_CONFIRMED, valid attempt
+-- Expected: HONEST_FAILURE RewardEvent created
+ 
+-- TEST 5: HIGH intensity blocked in DANGER condition
+-- Input: milestone_achieved during DANGER condition
+-- Expected: intensity = MEDIUM (not HIGH)
+
+ACCEPTANCE CRITERIA
+All 9 reward types implemented with correct eligibility rules
+Blocking conditions enforced: false progress, rejected feedback, gaming patterns
+Idempotency: same source + reward type = never duplicated
+All 5 streak metrics maintained with correct increment and reset rules
+Shame-free copy: no streak loss language, no hollow hype
+Condition modifiers reduce intensity correctly in DANGER and NOTHINGNESS
+Deterministic fallbacks used when Bhudhi unavailable
+COMMIT: feat(reward): build compulsion loop and reward system with 9 reward types, streak tracking, eligibility enforcement, and anti-manipulation controls
+

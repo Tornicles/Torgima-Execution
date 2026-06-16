@@ -14,6 +14,12 @@ const DOC37_SUITES = [
   "errors.events.test.ts",
   "errors.bhudhi-contract.test.ts",
   "errors.security.test.ts",
+  "errors.race-conditions.test.ts",
+  "errors.proof-validation.test.ts",
+  "errors.scoring-boundaries.test.ts",
+  "errors.system-failures.test.ts",
+  "errors.recovery-scenarios.test.ts",
+  "errors.production-readiness.test.ts",
 ] as const;
 
 describe("DOC 37 — Error handling & edge case gate", () => {
@@ -64,5 +70,15 @@ describe("DOC 37 — Error handling & edge case gate", () => {
 
   it("runner script registered", () => {
     expect(readFileSync(resolve(repoRoot, "scripts/run-doc37-e2e.mjs"), "utf8")).toContain("doc37");
+    expect(readFileSync(resolve(repoRoot, "package.json"), "utf8")).toContain("test:edge");
+  });
+
+  it("edge-case suites cover race, proof, scoring, recovery per DOC 37", () => {
+    expect(readApi("src/tests/e2e/doc37/errors.race-conditions.test.ts")).toContain(
+      "concurrent feedback submissions",
+    );
+    expect(readApi("src/tests/e2e/doc37/errors.proof-validation.test.ts")).toContain("whitespace");
+    expect(readApi("src/tests/e2e/doc37/errors.scoring-boundaries.test.ts")).toContain("BOUNDARY 4");
+    expect(readApi("src/tests/e2e/doc37/errors.recovery-scenarios.test.ts")).toContain("RECOVERY 3");
   });
 });

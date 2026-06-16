@@ -2,6 +2,7 @@
  * Bhudhi B2 — Zod output schemas for prompt contracts and fallbacks.
  */
 import { z } from "zod";
+import { ErectorFreeOutputSchema, ErectorPaidOutputSchema } from "./erector-schemas.js";
 
 export const confidenceSchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
 
@@ -165,6 +166,12 @@ const predictiveAnalysisDataSchema = z.object({
   primaryOpportunity: z.string().nullable().optional(),
 });
 
+const proofRelevanceDataSchema = z.object({
+  relevant: z.boolean(),
+  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  reason: z.string().min(1),
+});
+
 export const OUTPUT_ENVELOPE_SCHEMAS: Record<string, z.ZodTypeAny> = {
   structured_goal: envelopeSchema("structured_goal", structuredGoalDataSchema),
   external_intelligence: envelopeSchema("external_intelligence", externalIntelligenceDataSchema),
@@ -174,10 +181,13 @@ export const OUTPUT_ENVELOPE_SCHEMAS: Record<string, z.ZodTypeAny> = {
   recovery_copy: envelopeSchema("recovery_copy", recoveryCopyDataSchema),
   restart_copy: envelopeSchema("restart_copy", restartCopyDataSchema),
   blocker_classification: envelopeSchema("blocker_classification", blockerClassificationDataSchema),
+  proof_relevance: envelopeSchema("proof_relevance", proofRelevanceDataSchema),
   state_explanation: envelopeSchema("state_explanation", stateExplanationDataSchema),
   evidence_summary: envelopeSchema("evidence_summary", evidenceSummaryDataSchema),
   academy_instruction: envelopeSchema("academy_instruction", academyInstructionDataSchema),
   root_cause_candidates: envelopeSchema("root_cause_candidates", rootCauseDataSchema),
+  erector_free_report: envelopeSchema("erector_free_report", ErectorFreeOutputSchema),
+  erector_paid_report: envelopeSchema("erector_paid_report", ErectorPaidOutputSchema),
 };
 
 /** Core trigger types required by B2 (9 approved + variants). */

@@ -1,1 +1,1 @@
-export * from "../decision-trace/DecisionTraceSystem.js";
+export * from "../decision/index.js";
