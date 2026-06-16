@@ -133,6 +133,11 @@ jobs:
             INTERNAL_API_SECRET
             INTERNAL_SERVICE_SECRET
             NOTIFICATION_UNSUBSCRIBE_SECRET
+            NEXTAUTH_SECRET
+            SESSION_SECRET
+            ADMIN_SESSION_SECRET
+            ADMIN_EMAIL
+            ADMIN_PASSWORD
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -142,6 +147,11 @@ jobs:
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           INTERNAL_SERVICE_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
           NOTIFICATION_UNSUBSCRIBE_SECRET: ${{ secrets.NOTIFICATION_UNSUBSCRIBE_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          ADMIN_SESSION_SECRET: ${{ secrets.ADMIN_SESSION_SECRET }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
       - name: Verify Worker responds (workers.dev — bypasses zone WAF)
         env:
