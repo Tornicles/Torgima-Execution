@@ -113,6 +113,44 @@ jobs:
           CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_ZONE_NAME: torgima.com
 
+      - name: Validate required Worker secrets are set (non-empty)
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          check () {
+            local name="$1"
+            local val="${!name:-}"
+            if [ -z "${val}" ]; then
+              missing+=("$name")
+            fi
+          }
+
+          # Must match the wrangler-action `secrets:` list below.
+          check DATABASE_URL
+          check ANTHROPIC_API_KEY
+          check RESEND_API_KEY
+          check EMAIL_FROM
+          check INTERNAL_AUTH_SECRET
+          check INTERNAL_API_SECRET
+          check INTERNAL_SERVICE_SECRET
+          check NOTIFICATION_UNSUBSCRIBE_SECRET
+          check NEXTAUTH_SECRET
+          check SESSION_SECRET
+          check ADMIN_SESSION_SECRET
+          check ADMIN_EMAIL
+          check ADMIN_PASSWORD
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing or empty GitHub secrets for Worker deploy:"
+            for s in "${missing[@]}"; do
+              echo "  - $s"
+            done
+            echo ""
+            echo "Set these GitHub repo secrets (Settings → Secrets and variables → Actions), then rerun."
+            exit 1
+          fi
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
