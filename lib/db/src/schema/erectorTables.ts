@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { blueprints, users } from "./tables.js";
+import { blueprints, users } from "./tables";
 
 export const erectorFreeValidations = pgTable(
   "erector_free_validations",
