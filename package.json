@@ -52,6 +52,8 @@
     "events:drain-once": "node scripts/events-drain-once.mjs",
     "events:prod:verify": "node scripts/events-prod-verify.mjs",
     "events:prod:drain-once": "node scripts/events-prod-drain-once.mjs",
+    "production:deploy:verify": "node scripts/production-deploy-verify.mjs --deploy-only",
+    "production:prod:verify": "node scripts/production-prod-verify.mjs",
     "db:verify-onboarding-schema": "node scripts/verify-onboarding-goal-schema-columns.mjs",
     "db:compare-schema": "node scripts/compare-production-schema.mjs",
     "db:ci": "pnpm -F @workspace/db run push-force && pnpm db:apply-manual && pnpm db:apply-partial-indexes && pnpm db:apply-erector-seed && pnpm -F @workspace/db exec tsx ../../scripts/ci-verify-schema.mjs && pnpm db:verify-runtime",

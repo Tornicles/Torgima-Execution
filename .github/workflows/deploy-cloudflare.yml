@@ -136,42 +136,44 @@ jobs:
           workingDirectory: artifacts/api-server
           command: deploy
 
-      - name: Verify Worker responds (workers.dev — bypasses zone WAF)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify Worker responds (canonical API first)
         run: |
           set -euo pipefail
-          WORKER_BASE="${WORKER_URL:-https://torgima.tmagaya.workers.dev}"
-          HEALTH_URL="${WORKER_BASE}/health"
-          echo "Health URL: ${HEALTH_URL} (workers.dev — not subject to zone WAF)"
-          sleep 20
+          API_BASE="${VITE_API_BASE_URL:-https://api.torgima.com}"
+          HEALTH_URL="${API_BASE}/health"
+          echo "Primary health URL: ${HEALTH_URL}"
+          sleep 15
 
           SUCCESS=false
           for i in 1 2 3 4 5 6; do
             echo "--- Attempt $i ---"
-            RAW="$(curl -sS -w "\n%{http_code}" --max-time 15 \
+            RAW="$(curl -sS -w "\n%{http_code}" --max-time 20 \
               -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
               "${HEALTH_URL}" || true)"
             HTTP_CODE="$(echo "${RAW}" | tail -1)"
             BODY="$(echo "${RAW}" | head -n -1)"
-
             echo "HTTP: ${HTTP_CODE}"
             echo "Body: ${BODY}"
 
             if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"'; then
-              echo "✓ Worker is live on workers.dev"
+              echo "✓ Canonical API is live"
               SUCCESS=true
               break
             fi
-
-            if [ $i -lt 6 ]; then
-              echo "Not ready, waiting 15s..."
-              sleep 15
-            fi
+            if [ $i -lt 6 ]; then sleep 15; fi
           done
 
-          if [ "${SUCCESS}" = "true" ]; then
+          if [ "${SUCCESS}" = "true" ]; then exit 0; fi
+
+          WORKER_BASE="${WORKER_URL:-https://torgima.tmagaya.workers.dev}"
+          echo "Canonical health failed — optional workers.dev fallback: ${WORKER_BASE}/health"
+          RAW="$(curl -sS -w "\n%{http_code}" --max-time 15 \
+            -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
+            "${WORKER_BASE}/health" || true)"
+          HTTP_CODE="$(echo "${RAW}" | tail -1)"
+          BODY="$(echo "${RAW}" | head -n -1)"
+          if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"'; then
+            echo "✓ workers.dev health OK (canonical still preferred for debug probes)"
             exit 0
           fi
 
@@ -182,53 +184,34 @@ jobs:
             "${CF_API_URL}")"
           echo "Cloudflare API status: ${HTTP_CODE}"
           if [ "${HTTP_CODE}" = "200" ]; then
-            echo "✓ Worker script torgima present (workers.dev may still be propagating)"
+            echo "✓ Worker script torgima present"
             exit 0
           fi
-          echo "✗ Worker deploy verification failed (workers.dev probe and Cloudflare API check)"
+          echo "✗ Deploy verification failed (canonical + workers.dev + Cloudflare API)"
           exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+          WORKER_URL: ${{ env.WORKER_URL }}
 
-      - name: Verify Worker database target (workers.dev — bypasses zone WAF)
+      - name: Verify production debug probes (canonical API)
         env:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
-        run: |
-          set -euo pipefail
-          WORKER_BASE="${WORKER_URL:-https://torgima.tmagaya.workers.dev}"
-          PROBE_URL="${WORKER_BASE}/api/debug/db-target"
-          echo "Probing ${PROBE_URL} (workers.dev — not subject to zone WAF)"
-          sleep 10
-          RAW="$(curl -sS -w "\n%{http_code}" --max-time 25 \
-            -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
-            -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
-            "${PROBE_URL}" || true)"
-          HTTP_CODE="$(echo "${RAW}" | tail -1)"
-          BODY="$(echo "${RAW}" | head -n -1)"
-          echo "HTTP: ${HTTP_CODE}"
-          echo "${BODY}" | head -c 4000
-          if echo "${BODY}" | grep -q "Just a moment"; then
-            echo "Cloudflare managed challenge HTML detected — use workers.dev URL, not api.torgima.com"
-            exit 1
-          fi
-          if [ "${HTTP_CODE}" != "200" ]; then
-            echo "db-target probe failed (HTTP ${HTTP_CODE})"
-            exit 1
-          fi
-          echo "${BODY}" | grep -q '"probe"' || { echo "missing probe in db-target response"; exit 1; }
-          echo "✓ db-target probe returned"
-          if echo "${BODY}" | grep -q '"ok":false'; then
-            echo "⚠ Worker DB probe ok=false — deploy succeeded but DATABASE_URL connectivity still failing"
-          fi
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+          WORKER_URL: ${{ env.WORKER_URL }}
+        run: node scripts/production-deploy-verify.mjs --deploy-only
 
       - name: Optional debug env probe (non-blocking)
         env:
           INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
-          WORKER_BASE: ${{ vars.CLOUDFLARE_WORKER_URL }}
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
         run: |
-          BASE="${WORKER_BASE:-https://torgima.tmagaya.workers.dev}"
+          API_BASE="${VITE_API_BASE_URL:-https://api.torgima.com}"
           curl -fsS \
             -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
             -H "x-internal-auth: ${INTERNAL_AUTH_SECRET}" \
-            "${BASE}/api/debug/cloudflare-env" || true
+            "${API_BASE}/api/debug/cloudflare-env" || true
           echo "Debug probe complete (failures do not block deploy)"
 
   deploy-pages:
@@ -305,5 +288,45 @@ jobs:
 
       - name: Run connection validation chain
         env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
           WORKER_URL: ${{ vars.CLOUDFLARE_WORKER_URL }}
         run: pnpm run verify:deploy:connections -- --soft
+
+  production-verify:
+    name: Production verification (canonical API + runtime)
+    needs: [verify-connections]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate INTERNAL_AUTH_SECRET present
+        env:
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+        run: |
+          if [ -z "${INTERNAL_AUTH_SECRET}" ]; then
+            echo "Missing INTERNAL_AUTH_SECRET GitHub secret"
+            exit 1
+          fi
+          echo "INTERNAL_AUTH_SECRET configured (value not printed)"
+
+      - name: Run production verification
+        env:
+          TORGIMA_PROD_CONFIRM: "1"
+          CONFIRM_PRODUCTION_SMOKE: "true"
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          INTERNAL_AUTH_SECRET: ${{ secrets.INTERNAL_AUTH_SECRET }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/production-prod-verify.mjs

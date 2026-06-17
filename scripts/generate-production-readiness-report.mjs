@@ -94,6 +94,15 @@ function renderMarkdown(data) {
   lines.push(`| API /health | ${data.deploy?.api_health ?? "—"} | ${data.deploy?.api_health_detail ?? ""} |`);
   lines.push(`| Frontend torgima.com | ${data.deploy?.frontend_http ?? "—"} | ${data.deploy?.frontend_detail ?? ""} |`);
   lines.push("");
+  lines.push("## Production probes");
+  lines.push("");
+  lines.push("| Probe | Result | Class |");
+  lines.push("| --- | --- | --- |");
+  for (const [k, row] of Object.entries(data.probes ?? {})) {
+    const ok = row.ok ? "PASS" : row.warn ? "WARN" : "FAIL";
+    lines.push(`| ${k} | ${ok} | ${row.class ?? ""} |`);
+  }
+  lines.push("");
   lines.push("## Production verification");
   lines.push("");
   lines.push("| Check | Result | Notes |");

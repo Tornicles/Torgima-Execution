@@ -1,65 +1,100 @@
 {
-  "generated_at": "2026-06-17T11:35:00.000Z",
-  "commit": {
-    "sha": "45f33896611aa1543f58618c26c9eefef3a255b6",
-    "message": "fix(system): align TORGIMA lifecycle engines",
-    "branch": "main",
-    "pushed": true,
-    "remote": "origin/main"
+  "generated_at": "2026-06-17T12:55:12.942Z",
+  "canonical_api_base": "https://api.torgima.com",
+  "probes": {
+    "internal_auth": {
+      "ok": true,
+      "warn": false,
+      "status": null,
+      "class": "PASS",
+      "detail": null
+    },
+    "canonical_api_health": {
+      "ok": true,
+      "warn": false,
+      "status": 200,
+      "class": "CANONICAL_API_HEALTH_PASS",
+      "detail": null
+    },
+    "worker_database_target_debug": {
+      "ok": false,
+      "warn": false,
+      "status": 403,
+      "class": "INTERNAL_AUTH_SECRET_MISMATCH",
+      "detail": "Internal auth required"
+    },
+    "worker_bhudhi_debug": {
+      "ok": false,
+      "warn": false,
+      "status": 403,
+      "class": "INTERNAL_AUTH_SECRET_MISMATCH",
+      "detail": "Internal auth required"
+    },
+    "workers_dev_debug_db_target": {
+      "ok": false,
+      "warn": true,
+      "status": 404,
+      "class": "WORKERS_DEV_ROUTE_404_OPTIONAL",
+      "detail": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-"
+    },
+    "supabase_management_api_config": {
+      "ok": false,
+      "warn": false,
+      "status": null,
+      "class": "SUPABASE_MANAGEMENT_API_SKIPPED",
+      "detail": "SUPABASE_ACCESS_TOKEN not configured"
+    }
   },
-  "pre_commit": {
-    "git_status": "PASS",
-    "typecheck": "PASS",
-    "build": "PASS",
-    "db_verify_runtime": "PASS",
-    "events_verify": "PASS",
-    "bhudhi_smoke": "PASS",
-    "lifecycle_e2e": "PASS",
-    "alignment_report_md": "PASS",
-    "alignment_report_json": "PASS",
-    "alignment_report_pdf": "PASS"
-  },
-  "deploy": {
-    "api_health": "PASS",
-    "api_health_detail": "https://api.torgima.com/health → ok:true, runtime:cloudflare-workers",
-    "frontend_http": "PASS",
-    "frontend_detail": "https://torgima.com HTTP 200"
-  },
+  "failure_classes": [
+    "PASS",
+    "CANONICAL_API_HEALTH_PASS",
+    "INTERNAL_AUTH_SECRET_MISMATCH",
+    "INTERNAL_AUTH_SECRET_MISMATCH",
+    "WORKERS_DEV_ROUTE_404_OPTIONAL",
+    "SUPABASE_MANAGEMENT_API_SKIPPED"
+  ],
   "production": {
-    "db_prod_verify_runtime": {
-      "status": "FAIL",
-      "note": "password authentication failed for user postgres (local .env.production.local DB credentials)"
+    "supabase_management_api_config": {
+      "status": "SKIPPED",
+      "class": "SUPABASE_MANAGEMENT_API_SKIPPED"
     },
-    "events_prod_verify": {
-      "status": "FAIL",
-      "note": "events-cli verify failed — production DATABASE_URL unreachable from this host"
+    "runtime_database_connection": {
+      "status": "FAIL"
     },
-    "bhudhi_prod_verify": {
-      "status": "FAIL",
-      "note": "4/6 checks failed: missing local ANTHROPIC_API_KEY, DB auth, Anthropic leak audit (diagnostic file), /api/debug/bhudhi-runtime HTTP 403"
+    "events_production_verification": {
+      "status": "FAIL"
     },
-    "test_prod_smoke": {
-      "status": "FAIL",
-      "note": "DB connect ETIMEDOUT; API /health not reached in smoke run (failed before API probes)"
+    "bhudhi_production_verification": {
+      "status": "FAIL"
     },
-    "api_health_direct": {
-      "status": "PASS",
-      "note": "Independent curl probe after push"
+    "production_smoke": {
+      "status": "FAIL"
     },
-    "debug_db_target": {
-      "status": "BLOCKED",
-      "note": "HTTP 403 — local INTERNAL_AUTH_SECRET does not match Cloudflare Worker secret"
+    "worker_database_target_debug": {
+      "ok": false,
+      "warn": false,
+      "status": 403,
+      "class": "INTERNAL_AUTH_SECRET_MISMATCH",
+      "detail": "Internal auth required"
     },
-    "debug_bhudhi_runtime": {
-      "status": "BLOCKED",
-      "note": "HTTP 403 — internal auth mismatch"
+    "worker_bhudhi_debug": {
+      "ok": false,
+      "warn": false,
+      "status": 403,
+      "class": "INTERNAL_AUTH_SECRET_MISMATCH",
+      "detail": "Internal auth required"
     }
   },
   "blockers": [
-    "Local production database credentials in .env.production.local cannot authenticate to Supabase (28P01 / ETIMEDOUT)",
-    "Local INTERNAL_AUTH_SECRET does not match deployed Worker secret — debug probes return 403",
-    "bhudhi:prod:verify flags completeSystemDiagnostic.ts for direct Anthropic usage (non-Bhudhi adapter path)",
-    "New SQL migrations (20260617023300, 20260617024400) require manual apply to production per CONTRIBUTING.md"
+    "INTERNAL_AUTH_SECRET_MISMATCH",
+    "DATABASE_URL_AUTH_FAILED",
+    "events:prod:verify failed",
+    "bhudhi:prod:verify failed",
+    "production smoke failed"
   ],
-  "verdict": "CONDITIONAL — Worker and frontend are live post-push; full production verification scripts did not pass from this machine"
+  "deploy": {
+    "api_health": "PASS",
+    "api_health_detail": "https://api.torgima.com"
+  },
+  "verdict": "NOT_READY"
 }

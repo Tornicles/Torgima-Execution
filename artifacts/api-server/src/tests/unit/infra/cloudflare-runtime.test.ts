@@ -59,23 +59,28 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
-  it("CI deploy verifies Worker via workers.dev (bypasses zone WAF)", () => {
+  it("CI deploy verifies canonical API and optional workers.dev", () => {
     const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
-    expect(workflow).toContain("workers.dev");
+    const probeCommon = readRepo("scripts/production-probe-common.mjs");
+    const deployVerify = readRepo("scripts/production-deploy-verify.mjs");
+    expect(workflow).toContain("https://api.torgima.com");
+    expect(workflow).toContain("production-deploy-verify.mjs");
     expect(workflow).toContain("GitHub-Actions-Deploy-Verify");
-    expect(workflow).not.toContain("https://api.torgima.com/health");
-    expect(workflow).not.toContain('API_BASE="https://api.torgima.com"');
-    expect(workflow).toContain("/api/debug/db-target");
+    expect(deployVerify).toContain("/api/debug/db-target");
     expect(workflow).toContain("workers/scripts/torgima");
     expect(workflow).toContain("verify-connections");
     expect(workflow).toContain("verify:deploy:connections");
+    expect(probeCommon).toContain("CANONICAL_API_BASE");
+    expect(probeCommon).toContain("WORKERS_DEV_ROUTE_404_OPTIONAL");
+    expect(probeCommon).toContain("x-internal-auth");
+    expect(deployVerify).toContain("resolveInternalAuthSecret");
   });
 
-  it("resolves empty WORKER_URL to workers.dev default in connection script", () => {
+  it("resolves canonical API and optional workers.dev in connection script", () => {
     const script = readRepo("scripts/verify-deploy-connections.mjs");
-    expect(script).toContain("resolveWorkerUrl");
-    expect(script).toContain("trimmed || DEFAULT_WORKER_URL");
-    expect(script).not.toMatch(/WORKER_URL\s*\?\?/);
+    expect(script).toContain("CANONICAL_API_BASE");
+    expect(script).toContain("resolveWorkersDevUrl");
+    expect(script).toContain("OPTIONAL_WORKERS_DEV_DEBUG_ROUTE_NOT_FOUND");
   });
 
   it("provisions WAF skip rule for health endpoints and GitHub Actions", () => {

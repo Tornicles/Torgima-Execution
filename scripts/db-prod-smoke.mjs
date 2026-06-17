@@ -12,6 +12,7 @@ import {
   printProductionTargetSummary,
   tableExists,
 } from "./db-prod-common.mjs";
+import { probeDebugRoute, resolveInternalAuthSecret } from "./production-probe-common.mjs";
 
 const API_BASE = process.env.VITE_API_BASE_URL?.trim() || "https://api.torgima.com";
 
@@ -106,27 +107,23 @@ try {
   fail("Live API /health", err instanceof Error ? err.message : String(err));
 }
 
-// 10. Debug db-target (internal auth if configured)
-const internalAuth = process.env.INTERNAL_AUTH_SECRET?.trim();
-if (internalAuth) {
-  try {
-    const dbgRes = await fetch(`${API_BASE}/api/debug/db-target`, {
-      headers: { "x-internal-auth": internalAuth },
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (dbgRes.ok) {
-      const body = await dbgRes.json();
-      const probeOk = body?.data?.probe?.ok ?? body?.probe?.ok;
-      if (probeOk) pass("Worker DB probe via /api/debug/db-target");
-      else fail("Worker DB probe via /api/debug/db-target", "probe not ok");
-    } else {
-      fail("Worker DB probe via /api/debug/db-target", `HTTP ${dbgRes.status}`);
-    }
-  } catch (err) {
-    fail("Worker DB probe via /api/debug/db-target", err instanceof Error ? err.message : String(err));
-  }
+// 10. Debug db-target (internal auth required for production smoke)
+const auth = resolveInternalAuthSecret();
+if (!auth.ok) {
+  fail("Worker DB probe via /api/debug/db-target", auth.class);
 } else {
-  console.log("SKIP  Worker DB probe — INTERNAL_AUTH_SECRET not in local env");
+  const dbg = await probeDebugRoute(API_BASE, "/api/debug/db-target", auth.secret);
+  if (dbg.ok) {
+    const probeOk = dbg.data?.probe?.ok ?? dbg.data?.data?.probe?.ok;
+    if (probeOk) pass("Worker DB probe via /api/debug/db-target");
+    else fail("Worker DB probe via /api/debug/db-target", "probe not ok");
+  } else if (dbg.class === "INTERNAL_AUTH_SECRET_MISMATCH") {
+    fail("Worker DB probe via /api/debug/db-target", dbg.class);
+  } else if (dbg.status === 404) {
+    fail("Worker DB probe via /api/debug/db-target", "DEBUG_ROUTE_NOT_DEPLOYED");
+  } else {
+    fail("Worker DB probe via /api/debug/db-target", dbg.class ?? `HTTP ${dbg.status}`);
+  }
 }
 
 console.log("");

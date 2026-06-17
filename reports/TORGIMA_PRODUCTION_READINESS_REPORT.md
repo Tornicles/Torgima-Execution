@@ -1,53 +1,52 @@
 # TORGIMA Production Readiness Report
 
-*Generated: 2026-06-17T11:35:00.000Z*
-
-**Commit:** `45f33896611aa1543f58618c26c9eefef3a255b6` — fix(system): align TORGIMA lifecycle engines
-**Branch:** main
+*Generated: 2026-06-17T12:55:12.942Z*
 
 ## Executive summary
 
-**Verdict:** CONDITIONAL — Worker and frontend are live post-push; full production verification scripts did not pass from this machine
+**Verdict:** NOT_READY
 
 ### Blockers
-- Local production database credentials in .env.production.local cannot authenticate to Supabase (28P01 / ETIMEDOUT)
-- Local INTERNAL_AUTH_SECRET does not match deployed Worker secret — debug probes return 403
-- bhudhi:prod:verify flags completeSystemDiagnostic.ts for direct Anthropic usage (non-Bhudhi adapter path)
-- New SQL migrations (20260617023300, 20260617024400) require manual apply to production per CONTRIBUTING.md
+- INTERNAL_AUTH_SECRET_MISMATCH
+- DATABASE_URL_AUTH_FAILED
+- events:prod:verify failed
+- bhudhi:prod:verify failed
+- production smoke failed
 
 ## Pre-commit verification (local)
 
 | Check | Result |
 | --- | --- |
-| git_status | PASS |
-| typecheck | PASS |
-| build | PASS |
-| db_verify_runtime | PASS |
-| events_verify | PASS |
-| bhudhi_smoke | PASS |
-| lifecycle_e2e | PASS |
-| alignment_report_md | PASS |
-| alignment_report_json | PASS |
-| alignment_report_pdf | PASS |
 
 ## Deployment
 
 | Probe | Result | Detail |
 | --- | --- | --- |
-| API /health | PASS | https://api.torgima.com/health → ok:true, runtime:cloudflare-workers |
-| Frontend torgima.com | PASS | https://torgima.com HTTP 200 |
+| API /health | PASS | https://api.torgima.com |
+| Frontend torgima.com | — |  |
+
+## Production probes
+
+| Probe | Result | Class |
+| --- | --- | --- |
+| internal_auth | PASS | PASS |
+| canonical_api_health | PASS | CANONICAL_API_HEALTH_PASS |
+| worker_database_target_debug | FAIL | INTERNAL_AUTH_SECRET_MISMATCH |
+| worker_bhudhi_debug | FAIL | INTERNAL_AUTH_SECRET_MISMATCH |
+| workers_dev_debug_db_target | WARN | WORKERS_DEV_ROUTE_404_OPTIONAL |
+| supabase_management_api_config | FAIL | SUPABASE_MANAGEMENT_API_SKIPPED |
 
 ## Production verification
 
 | Check | Result | Notes |
 | --- | --- | --- |
-| db_prod_verify_runtime | FAIL | password authentication failed for user postgres (local .env.production.local DB credentials) |
-| events_prod_verify | FAIL | events-cli verify failed — production DATABASE_URL unreachable from this host |
-| bhudhi_prod_verify | FAIL | 4/6 checks failed: missing local ANTHROPIC_API_KEY, DB auth, Anthropic leak audit (diagnostic file), /api/debug/bhudhi-runtime HTTP 403 |
-| test_prod_smoke | FAIL | DB connect ETIMEDOUT; API /health not reached in smoke run (failed before API probes) |
-| api_health_direct | PASS | Independent curl probe after push |
-| debug_db_target | BLOCKED | HTTP 403 — local INTERNAL_AUTH_SECRET does not match Cloudflare Worker secret |
-| debug_bhudhi_runtime | BLOCKED | HTTP 403 — internal auth mismatch |
+| supabase_management_api_config | SKIPPED |  |
+| runtime_database_connection | FAIL |  |
+| events_production_verification | FAIL |  |
+| bhudhi_production_verification | FAIL |  |
+| production_smoke | FAIL |  |
+| worker_database_target_debug | 403 |  |
+| worker_bhudhi_debug | 403 |  |
 
 ## Alignment artifacts
 
