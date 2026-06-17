@@ -73,3 +73,33 @@ export function isSignalAutoBootstrapEnabled(): boolean {
 export function isMagicLinkAuthEnabled(): boolean {
   return boolEnv("ENABLE_MAGIC_LINK_AUTH");
 }
+
+/** Core execution-loop event types that must drain even when LAUNCH_MODE=true. */
+export const CORE_EXECUTION_EVENT_TYPES = new Set([
+  "feedback_submitted",
+  "feedback_submitted_partial",
+  "interrogation_answered",
+  "signal_recalculation_requested",
+  "signal_calculated",
+  "condition_evaluation_requested",
+  "condition_evaluated",
+  "enforcement_package_created",
+  "task_generation_requested",
+  "task_generation_completed",
+  "task_generation_failed",
+  "order_available",
+  "erector_blueprint_launched",
+]);
+
+/**
+ * Non-critical crons skipped in launch mode. Event dispatch poll is always allowed.
+ */
+export function isNonCriticalCronInLaunchMode(cronExpression: string): boolean {
+  const nonCritical = new Set([
+    "0 2 * * *", // session cleanup
+    "*/30 * * * *", // inactivity
+    "0 3 * * *", // pattern daily
+    "*/10 * * * *", // state integrity
+  ]);
+  return nonCritical.has(cronExpression);
+}

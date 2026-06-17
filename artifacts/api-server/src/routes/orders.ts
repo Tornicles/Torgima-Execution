@@ -13,7 +13,7 @@ import {
 } from "../lib/route-helpers.js";
 import { isTorgimaError } from "../lib/errors.js";
 import { respondStaleState, resolveStaleCurrentVersion } from "../lib/state/StateVersionValidator.js";
-import { dispatchPendingEvents } from "../services/EventDispatcher.js";
+import { drainEventsOnce } from "../services/EventLoopProcessor.js";
 import { invalidateDashboardCache } from "../services/DashboardService.js";
 import { buildTaskExecutionView } from "../lib/taskExecutionView.js";
 import { db, blueprints } from "@workspace/db";
@@ -302,7 +302,7 @@ router.post("/orders/:id/feedback", async (req, res) => {
     });
 
     if (!result.requiresInterrogation) {
-      await dispatchPendingEvents().catch(() => null);
+      await drainEventsOnce({ batchSize: 5, maxBatches: 6, maxRuntimeMs: 15_000 }).catch(() => null);
     }
 
     // Task feedback changes execution state — drop the cached dashboard so the

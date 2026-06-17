@@ -7,7 +7,7 @@ import {
 } from "@/lib/erector-free-api";
 import { ERECTOR_LABELS } from "@/lib/language-map";
 
-export type FreeIntakeValues = Omit<FreeValidatePayload, "fingerprint">;
+export type FreeIntakeValues = Omit<FreeValidatePayload, "fingerprint" | "anonymous_session_id">;
 
 type Props = {
   disabled?: boolean;
@@ -15,11 +15,12 @@ type Props = {
 };
 
 export function FreeIntakeForm({ disabled, onSubmit }: Props) {
+  const [ideaOrGoal, setIdeaOrGoal] = useState("");
   const [industry, setIndustry] = useState("");
   const [industryPreset, setIndustryPreset] = useState("");
   const [location, setLocation] = useState("");
-  const [budgetRange, setBudgetRange] = useState<FreeIntakeValues["budget_range"]>("1k_5k");
-  const [timeline, setTimeline] = useState<FreeIntakeValues["timeline"]>("3_months");
+  const [budgetRange, setBudgetRange] = useState("1k_5k");
+  const [timeline, setTimeline] = useState("90 days");
   const [additionalContext, setAdditionalContext] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -30,7 +31,12 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
 
   function validate(): boolean {
     const next: Record<string, string> = {};
-    if (!resolvedIndustry) next.industry = "Tell us what kind of business or project this is.";
+    if (!ideaOrGoal.trim() || ideaOrGoal.trim().length < 10) {
+      next.idea_or_goal = "Describe your idea in at least 10 characters.";
+    }
+    if (!resolvedIndustry) {
+      next.industry_or_domain = "Tell us what industry or domain this fits.";
+    }
     if (!location.trim()) next.location = "Tell us where you are based.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -40,7 +46,8 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
     e.preventDefault();
     if (!validate()) return;
     onSubmit({
-      industry: resolvedIndustry,
+      idea_or_goal: ideaOrGoal.trim(),
+      industry_or_domain: resolvedIndustry,
       location: location.trim(),
       budget_range: budgetRange,
       timeline,
@@ -51,9 +58,27 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <p className="text-sm font-bold uppercase tracking-wide text-[#0EA5E9]">{ERECTOR_LABELS.erector_free}</p>
+
+      <div>
+        <label className="block text-sm font-semibold text-[#0A0F1E]" htmlFor="idea">
+          What do you want to build or achieve?
+        </label>
+        <textarea
+          id="idea"
+          rows={3}
+          maxLength={500}
+          placeholder="e.g. I want to create a fitness content brand for beginners"
+          className="mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm"
+          value={ideaOrGoal}
+          onChange={(e) => setIdeaOrGoal(e.target.value)}
+          disabled={disabled}
+        />
+        {errors.idea_or_goal ? <p className="mt-1 text-sm text-red-600">{errors.idea_or_goal}</p> : null}
+      </div>
+
       <div>
         <label className="block text-sm font-semibold text-[#0A0F1E]" htmlFor="industry-preset">
-          What kind of business or project is this?
+          Industry or domain
         </label>
         <select
           id="industry-preset"
@@ -72,13 +97,15 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
         <input
           id="industry"
           type="text"
-          placeholder="Describe your project in your own words"
+          placeholder="Or type your industry / domain"
           className="mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm"
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
           disabled={disabled}
         />
-        {errors.industry ? <p className="mt-1 text-sm text-red-600">{errors.industry}</p> : null}
+        {errors.industry_or_domain ? (
+          <p className="mt-1 text-sm text-red-600">{errors.industry_or_domain}</p>
+        ) : null}
       </div>
 
       <div>
@@ -99,13 +126,13 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
 
       <div>
         <label className="block text-sm font-semibold text-[#0A0F1E]" htmlFor="budget">
-          What is your starting budget?
+          Starting budget
         </label>
         <select
           id="budget"
           className="mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm"
           value={budgetRange}
-          onChange={(e) => setBudgetRange(e.target.value as FreeIntakeValues["budget_range"])}
+          onChange={(e) => setBudgetRange(e.target.value)}
           disabled={disabled}
         >
           {BUDGET_RANGE_OPTIONS.map((opt) => (
@@ -118,13 +145,13 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
 
       <div>
         <label className="block text-sm font-semibold text-[#0A0F1E]" htmlFor="timeline">
-          When do you want to see results by?
+          Target timeline
         </label>
         <select
           id="timeline"
           className="mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm"
           value={timeline}
-          onChange={(e) => setTimeline(e.target.value as FreeIntakeValues["timeline"])}
+          onChange={(e) => setTimeline(e.target.value)}
           disabled={disabled}
         >
           {TIMELINE_OPTIONS.map((opt) => (
@@ -157,7 +184,7 @@ export function FreeIntakeForm({ disabled, onSubmit }: Props) {
         disabled={disabled}
         className="w-full rounded-full bg-[#0EA5E9] px-6 py-4 text-sm font-bold text-white hover:bg-sky-600 disabled:opacity-60"
       >
-        Analyze My Project
+        Run Free Validation
       </button>
     </form>
   );

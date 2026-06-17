@@ -467,6 +467,17 @@ export const blueprints = pgTable(
     erector_validation_id: uuid("erector_validation_id"),
     erector_intake_session_id: uuid("erector_intake_session_id"),
     erector_state: text("erector_state").notNull().default("not_started"),
+    /** Prompt 5: baseline state lives alongside legacy erector_state machine. */
+    erector_baseline_state: text("erector_baseline_state").notNull().default("not_started"),
+    /** Prompt 5: execution gating inside launched blueprint. */
+    execution_state: text("execution_state").notNull().default("locked"),
+    /** Prompt 5: per-blueprint dashboard mode (limited activation → full execution). */
+    dashboard_mode: text("dashboard_mode").notNull().default("limited_activation"),
+    erector_baseline_id: uuid("erector_baseline_id"),
+    baseline_generated_at: timestamp("baseline_generated_at", { withTimezone: true }),
+    execution_unlocked_at: timestamp("execution_unlocked_at", { withTimezone: true }),
+    baseline_error_class: text("baseline_error_class"),
+    baseline_error_message: text("baseline_error_message"),
     erector_simulation_id: uuid("erector_simulation_id"),
     erector_archetype: text("erector_archetype"),
     erector_launch_contract_id: uuid("erector_launch_contract_id"),
@@ -852,6 +863,10 @@ export const orders = pgTable(
     condition_at_generation: text("condition_at_generation"),
     domain_at_generation: text("domain_at_generation"),
     generation_reason: text("generation_reason"),
+    /** Prompt 5: never generate executable orders without baseline/archetype. */
+    erector_archetype: text("erector_archetype"),
+    erector_baseline_id: uuid("erector_baseline_id"),
+    baseline_version: text("baseline_version"),
     assigned_member_id: uuid("assigned_member_id").references(() => users.id, { onDelete: "set null" }),
     trace_metadata: jsonb("trace_metadata").notNull().default(sql`'{}'::jsonb`),
     status: orderStatusEnum("status").notNull().default("pending"),

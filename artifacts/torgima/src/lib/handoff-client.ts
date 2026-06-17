@@ -48,13 +48,14 @@ async function parseEnvelope<T>(res: Response): Promise<T> {
 export function captureHandoffTokenFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  const token = params.get("handoff");
+  const token = params.get("handoff") ?? params.get("handoff_token");
   if (!token) return sessionStorage.getItem(PENDING_HANDOFF_TOKEN_KEY);
 
   try {
     sessionStorage.setItem(PENDING_HANDOFF_TOKEN_KEY, token);
     localStorage.setItem(HANDOFF_TOKEN_KEY, token);
     params.delete("handoff");
+    params.delete("handoff_token");
     const query = params.toString();
     const next = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
     window.history.replaceState({}, "", next);

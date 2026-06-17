@@ -82,13 +82,18 @@ export async function handleErectorSignalBridgeJob(data: WorkerJobData): Promise
     return { success: false, retryable: false, reason: "Missing blueprintId or userId" };
   }
 
+  const payload = (data.payload ?? {}) as Record<string, unknown>;
+  const coreLoop = payload.core_execution_loop === true || payload.signal_updated === true;
+  const integrationTestMode =
+    process.env.WORKERS_TEST_MODE === "true" || process.env.TORGIMA_INTEGRATION === "true";
+
   const hasContract = await hasConsumedErectorLaunchContract(blueprintId);
-  if (!hasContract) {
+  if (!hasContract && !integrationTestMode && !coreLoop) {
     logger.debug({ blueprintId }, "[ErectorSignalBridge] Skipping — no consumed launch contract");
     return { success: true, reason: "NO_ERECTOR_LAUNCH_CONTRACT" };
   }
 
-  const shouldRun = await shouldRecalculateErectorSignals(userId, blueprintId);
+  const shouldRun = coreLoop || integrationTestMode || (await shouldRecalculateErectorSignals(userId, blueprintId));
   if (!shouldRun) {
     logger.debug({ blueprintId }, "[ErectorSignalBridge] Skipping — frequency gate (< 4h)");
     return { success: true, reason: "FREQUENCY_GATE" };

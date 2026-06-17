@@ -38,15 +38,23 @@ async function seedFeatureFlags() {
     { feature_name: "content_engine_enabled",        enabled: false, description: "Daily content generation — Phase 2" },
     { feature_name: "predictive_signals_enabled",    enabled: false, description: "Predictive burnout and failure detection — Ultimate tier only" },
     { feature_name: "external_integrations_enabled", enabled: true, description: "Calendar, health, Slack/Discord, social publish, webhooks, Zapier" },
+    // Bhudhi runtime — live intelligence defaults OFF for emergency fallback flags
+    { feature_name: "bhudhi_force_fallbacks", enabled: false, description: "Emergency degraded mode — skip live Bhudhi provider calls" },
+    { feature_name: "degraded_mode", enabled: false, description: "Platform-wide degraded operations mode" },
+    { feature_name: "bhudhi_monthly_cost_cents", enabled: false, description: '{"month":"","cents":0}' },
   ];
 
   for (const flag of flags) {
+    const isBhudhiRuntimeDefault =
+      flag.feature_name === "bhudhi_force_fallbacks" || flag.feature_name === "degraded_mode";
     await db
       .insert(featureFlags)
       .values({ ...flag, environment: "all" })
       .onConflictDoUpdate({
         target: featureFlags.feature_name,
-        set: { description: flag.description },
+        set: isBhudhiRuntimeDefault
+          ? { description: flag.description, enabled: flag.enabled }
+          : { description: flag.description },
       });
   }
 

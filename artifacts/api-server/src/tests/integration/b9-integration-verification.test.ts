@@ -99,6 +99,8 @@ describe("DOC B9 — API route registration", () => {
     const intake = readRepo("artifacts/api-server/src/routes/erector/intake.ts");
     expect(intake).toContain('router.post("/intake/session"');
     expect(intake).toContain("USER_SESSION");
+    expect(intake).toContain('router.post("/intake/session/:id/submit"');
+    expect(intake).toContain("ERECTOR_BASELINE_REQUESTED");
   });
 });
 

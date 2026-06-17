@@ -355,6 +355,7 @@ async function loadContext(params: {
       primary_archetype_id: blueprint.primary_archetype_id ?? undefined,
       erector_archetype: blueprint.erector_archetype ?? undefined,
       erector_launch_contract_id: blueprint.erector_launch_contract_id ?? undefined,
+      erector_baseline_id: blueprint.erector_baseline_id ?? undefined,
       metadata: blueprint.metadata ?? undefined,
     },
     plan: currentPlan,
@@ -2056,6 +2057,20 @@ export async function generate(params: {
       };
 
   const orderId = await db.transaction(async (tx: Tx) => {
+    // Prompt 8: Every order must be traceable to an Action.
+    // If no action was resolved (e.g. clarification/recovery), attach the next available action.
+    if (!ctx.action) {
+      const [fallbackAction] = await tx
+        .select({ id: actions.id, name: actions.name, type: actions.type })
+        .from(actions)
+        .where(eq(actions.blueprint_id, params.blueprintId))
+        .orderBy(actions.order_index)
+        .limit(1);
+      if (fallbackAction) {
+        ctx.action = fallbackAction as unknown as typeof ctx.action;
+      }
+    }
+
     const [order] = await tx
       .insert(orders)
       .values({
@@ -2086,6 +2101,10 @@ export async function generate(params: {
         condition_at_generation: enforcement.condition_code,
         domain_at_generation: domainGen,
         generation_reason: `${params.generationTrigger} — ${params.generationMode} — ${taskType}`,
+        // Prompt 8: Orders must retain Erector baseline context for enforcement/adaptation.
+        erector_archetype: ctx.blueprint.erector_archetype ?? null,
+        erector_baseline_id: ctx.blueprint.erector_baseline_id ?? null,
+        baseline_version: "v0.1",
         assigned_member_id: params.userId,
         trace_metadata: traceWithTier,
         status: orderStatus,

@@ -18,6 +18,33 @@ import {
 import { blueprints, users } from "./tables";
 import { erectorIntakeSessions } from "./erectorTables";
 
+/**
+ * Prompt 5 — Erector Reality Packages
+ * Structured baseline payload used by Blueprint generation and task enforcement.
+ */
+export const erectorRealityPackages = pgTable(
+  "erector_reality_packages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blueprint_id: uuid("blueprint_id")
+      .notNull()
+      .references(() => blueprints.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    validation_run_id: uuid("validation_run_id"),
+    intake_session_id: uuid("intake_session_id"),
+    tier: text("tier"),
+    model_version: text("model_version").notNull().default("v0.1"),
+    package_json: jsonb("package_json").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_erector_reality_packages_blueprint").on(t.blueprint_id),
+    index("idx_erector_reality_packages_user").on(t.user_id),
+  ],
+);
+
 export const erectorUserRealityProfiles = pgTable(
   "erector_user_reality_profiles",
   {

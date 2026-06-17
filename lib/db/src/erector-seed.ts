@@ -1,8 +1,13 @@
 /**
  * Erector v0.1 rule-table seeds — Prompt 1 TASK 4 order.
- * SQL migrations 0043–0047 + 0048 are authoritative; this module re-runs seeds idempotently for dev/CI.
+ * Authoritative for dev/CI/production repair: applies migrations/0043–0048 SQL idempotently,
+ * then TypeScript upserts for model versions and threshold matrix.
  */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type pg from "pg";
 import { sql } from "drizzle-orm";
 import * as schema from "./schema/index.js";
 import {
@@ -11,6 +16,41 @@ import {
 } from "./schema/index.js";
 
 type Db = NodePgDatabase<typeof schema>;
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+
+/** Root migration seed SQL — idempotent ON CONFLICT; safe to re-run. */
+export const ERECTOR_SEED_SQL_FILES = [
+  "migrations/0043_erector_schema_1_seed_data.sql",
+  "migrations/0045_erector_schema_2_seed_data.sql",
+  "migrations/0047_erector_schema_3_seed_data.sql",
+  "migrations/0048_erector_prompt_1_seed_alignment.sql",
+] as const;
+
+export const ERECTOR_SEED_MINIMUMS = {
+  erector_threshold_matrix: 3,
+  erector_archetype_rule_packs: 10,
+  erector_verdict_rules_active: 14,
+  erector_model_versions: 10,
+  erector_false_progress_patterns: 10,
+  erector_capability_graph: 20,
+  erector_framework_veto_rules: 1,
+} as const;
+
+export type ErectorSeedCheck = {
+  table: string;
+  label: string;
+  count: number;
+  minimum: number;
+  passed: boolean;
+  detail?: string;
+};
+
+export type ErectorSeedVerifyResult = {
+  ok: boolean;
+  checks: ErectorSeedCheck[];
+  missing: string[];
+};
 
 const MODEL_VERSIONS = [
   { component: "validation_model", current_version: "v0.1", changelog: "Validation scoring and verdict rule engine" },
@@ -56,10 +96,18 @@ export async function seedErectorThresholdMatrix(db: Db): Promise<number> {
   return THRESHOLD_MATRIX.length;
 }
 
+/** Apply authoritative Erector catalog SQL from root migrations (idempotent). */
+export async function applyErectorSeedSqlFiles(pool: pg.Pool): Promise<void> {
+  for (const rel of ERECTOR_SEED_SQL_FILES) {
+    const path = join(REPO_ROOT, rel);
+    const sqlText = readFileSync(path, "utf8");
+    await pool.query(sqlText);
+  }
+}
+
 export async function seedErectorArchetypeRulePacks(db: Db): Promise<number> {
   const result = await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_archetype_rule_packs`);
-  const count = Number((result.rows[0] as { c: number }).c);
-  return count;
+  return Number((result.rows[0] as { c: number }).c);
 }
 
 export async function seedErectorVerdictRules(db: Db): Promise<number> {
@@ -84,30 +132,137 @@ export async function seedErectorFalseProgressPatterns(db: Db): Promise<number> 
   return Number((result.rows[0] as { c: number }).c);
 }
 
-/** Run Prompt 1 seed order; assumes migrations 0041–0048 applied. */
+/** Run Prompt 1 seed order — fully authoritative; does not require migration runner. */
 export async function seedErectorCatalog(db: Db): Promise<void> {
-  const modelVersions = await seedErectorModelVersions(db);
-  const threshold = await seedErectorThresholdMatrix(db);
-  const archetypes = await seedErectorArchetypeRulePacks(db);
-  const verdicts = await seedErectorVerdictRules(db);
-  const vetoes = await seedErectorFrameworkVetoRules(db);
-  const capabilities = await seedErectorCapabilityGraph(db);
-  const patterns = await seedErectorFalseProgressPatterns(db);
+  const { pool } = await import("./index.js");
+  await applyErectorSeedSqlFiles(pool);
+  await seedErectorModelVersions(db);
+  await seedErectorThresholdMatrix(db);
 
-  console.log("Erector seed summary:", {
-    modelVersions,
-    threshold,
-    archetypes,
-    verdicts,
-    vetoes,
-    capabilities,
-    patterns,
+  const verify = await verifyErectorSeedCatalog(db);
+  printErectorSeedVerification(verify);
+  if (!verify.ok) {
+    const missing = verify.missing.join(", ");
+    throw new Error(`seedErectorCatalog did not populate required catalog rows: ${missing}`);
+  }
+}
+
+export async function verifyErectorSeedCatalog(db: Db): Promise<ErectorSeedVerifyResult> {
+  const checks: ErectorSeedCheck[] = [];
+
+  const threshold = Number(
+    ((await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_threshold_matrix`)).rows[0] as { c: number }).c,
+  );
+  checks.push({
+    table: "erector_threshold_matrix",
+    label: "erector_threshold_matrix",
+    count: threshold,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_threshold_matrix,
+    passed: threshold >= ERECTOR_SEED_MINIMUMS.erector_threshold_matrix,
   });
 
-  if (archetypes < 10) throw new Error(`erector_archetype_rule_packs: expected >= 10, got ${archetypes}`);
-  if (verdicts < 14) throw new Error(`erector_verdict_rules active: expected >= 14, got ${verdicts}`);
-  if (capabilities < 20) throw new Error(`erector_capability_graph: expected >= 20, got ${capabilities}`);
-  if (patterns < 10) throw new Error(`erector_false_progress_patterns: expected >= 10, got ${patterns}`);
+  const archetypes = Number(
+    ((await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_archetype_rule_packs`)).rows[0] as { c: number }).c,
+  );
+  const archetypeNulls = Number(
+    (
+      (await db.execute(
+        sql`SELECT COUNT(*)::int AS c FROM erector_archetype_rule_packs
+            WHERE archetype_id IS NULL OR archetype_name IS NULL OR core_risk IS NULL`,
+      )).rows[0] as { c: number }
+    ).c,
+  );
+  checks.push({
+    table: "erector_archetype_rule_packs",
+    label: "erector_archetype_rule_packs",
+    count: archetypes,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_archetype_rule_packs,
+    passed:
+      archetypes >= ERECTOR_SEED_MINIMUMS.erector_archetype_rule_packs && archetypeNulls === 0,
+    detail: archetypeNulls > 0 ? `${archetypeNulls} rows missing core fields` : undefined,
+  });
+
+  const verdicts = Number(
+    (
+      (await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_verdict_rules WHERE active = true`)).rows[0] as {
+        c: number;
+      }
+    ).c,
+  );
+  checks.push({
+    table: "erector_verdict_rules",
+    label: "erector_verdict_rules",
+    count: verdicts,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_verdict_rules_active,
+    passed: verdicts >= ERECTOR_SEED_MINIMUMS.erector_verdict_rules_active,
+    detail: "active rows",
+  });
+
+  const modelVersions = Number(
+    ((await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_model_versions`)).rows[0] as { c: number }).c,
+  );
+  checks.push({
+    table: "erector_model_versions",
+    label: "erector_model_versions",
+    count: modelVersions,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_model_versions,
+    passed: modelVersions >= ERECTOR_SEED_MINIMUMS.erector_model_versions,
+  });
+
+  const patterns = Number(
+    (
+      (await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_false_progress_patterns`)).rows[0] as { c: number }
+    ).c,
+  );
+  checks.push({
+    table: "erector_false_progress_patterns",
+    label: "erector_false_progress_patterns",
+    count: patterns,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_false_progress_patterns,
+    passed: patterns >= ERECTOR_SEED_MINIMUMS.erector_false_progress_patterns,
+  });
+
+  const capabilities = Number(
+    ((await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_capability_graph`)).rows[0] as { c: number }).c,
+  );
+  checks.push({
+    table: "erector_capability_graph",
+    label: "erector_capability_graph",
+    count: capabilities,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_capability_graph,
+    passed: capabilities >= ERECTOR_SEED_MINIMUMS.erector_capability_graph,
+  });
+
+  const vetoes = Number(
+    (
+      (await db.execute(sql`SELECT COUNT(*)::int AS c FROM erector_framework_veto_rules`)).rows[0] as { c: number }
+    ).c,
+  );
+  checks.push({
+    table: "erector_framework_veto_rules",
+    label: "erector_framework_veto_rules",
+    count: vetoes,
+    minimum: ERECTOR_SEED_MINIMUMS.erector_framework_veto_rules,
+    passed: vetoes >= ERECTOR_SEED_MINIMUMS.erector_framework_veto_rules,
+  });
+
+  const missing = checks.filter((c) => !c.passed).map((c) => c.table);
+  return { ok: missing.length === 0, checks, missing };
+}
+
+export function printErectorSeedVerification(result: ErectorSeedVerifyResult): void {
+  console.log("Erector seed verification");
+  for (const check of result.checks) {
+    const status = check.passed ? "PASS" : "FAIL";
+    const suffix = check.detail ? ` ${check.detail}` : "";
+    console.log(`${check.label.padEnd(34)} ${status}  ${check.count} rows${suffix}`);
+  }
+  console.log("");
+  console.log(`Result: ${result.ok ? "PASS" : "FAIL"}`);
+  if (!result.ok) {
+    console.log(`Missing: ${result.missing.join(", ")}`);
+    console.log("Action: seedErectorCatalog did not populate required catalog rows");
+  }
 }
 
 export async function verifyErectorSchema(db: Db): Promise<boolean> {
@@ -140,6 +295,11 @@ export async function verifyErectorSchema(db: Db): Promise<boolean> {
     { label: "erector_model_versions", sql: sql`SELECT COUNT(*)::int AS c FROM erector_model_versions`, min: 10, max: 10 },
     { label: "erector_false_progress_patterns", sql: sql`SELECT COUNT(*)::int AS c FROM erector_false_progress_patterns`, min: 10, max: 10 },
     { label: "erector_capability_graph", sql: sql`SELECT COUNT(*)::int AS c FROM erector_capability_graph`, min: 20 },
+    {
+      label: "erector_framework_veto_rules",
+      sql: sql`SELECT COUNT(*)::int AS c FROM erector_framework_veto_rules`,
+      min: ERECTOR_SEED_MINIMUMS.erector_framework_veto_rules,
+    },
   ];
 
   let ok = true;
@@ -172,12 +332,21 @@ export async function verifyErectorSchema(db: Db): Promise<boolean> {
 }
 
 // CLI: tsx src/erector-seed.ts [--verify-only]
-const runAsCli = process.argv[1]?.replace(/\\/g, "/").includes("erector-seed");
+const invokedPath = process.argv[1]?.replace(/\\/g, "/") ?? "";
+const runAsCli =
+  invokedPath.endsWith("/erector-seed.ts") ||
+  invokedPath.endsWith("/src/erector-seed") ||
+  invokedPath.endsWith("\\erector-seed.ts");
 if (runAsCli) {
   const verifyOnly = process.argv.includes("--verify-only");
   const { db, pool } = await import("./index.js");
   try {
     if (!verifyOnly) await seedErectorCatalog(db);
+    else {
+      const seedVerify = await verifyErectorSeedCatalog(db);
+      printErectorSeedVerification(seedVerify);
+      if (!seedVerify.ok) process.exit(1);
+    }
     const ok = await verifyErectorSchema(db);
     if (!ok) process.exit(1);
     console.log(verifyOnly ? "Erector schema verification passed." : "Erector seed + verification passed.");

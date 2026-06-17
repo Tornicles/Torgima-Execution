@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Compass } from "lucide-react";
+import { Compass, Lock } from "lucide-react";
 import { BLUEPRINT_LABELS } from "@/lib/language-map";
 import type { DirectSignupContext } from "./limited-dashboard-types";
 
@@ -28,10 +28,14 @@ export function VariantB_DirectSignup({
         </div>
 
         <div className="p-6 sm:p-8 space-y-6">
-          <div className="space-y-3 text-sm text-[#475569] leading-relaxed">
-            <p>Torgima turns your project idea into daily {BLUEPRINT_LABELS.orders.toLowerCase()} governed by your execution health.</p>
-            <p>Before your project launches, Project Intelligence analyses whether it can succeed.</p>
-            <p>Complete your analysis to get your first Order.</p>
+          <div className="space-y-3 text-sm text-[#475569] leading-relaxed whitespace-pre-line">
+            <p>{context.cta_body}</p>
+            <div className="flex items-start gap-2 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-3">
+              <Lock className="w-4 h-4 text-[#94A3B8] shrink-0 mt-0.5" aria-hidden />
+              <p className="text-sm text-[#64748B]">
+                Execution is locked until Project Intelligence Intake is complete.
+              </p>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-[#E8ECF0] bg-[#F8FAFC] p-4">
@@ -47,7 +51,7 @@ export function VariantB_DirectSignup({
           <Link href="/onboarding/intake">
             <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5B21FF] px-5 py-3 text-sm font-bold text-white hover:bg-[#4C1D95] transition-colors cursor-pointer">
               <Compass className="w-4 h-4" aria-hidden />
-              Start Project Analysis
+              Complete Intake
             </span>
           </Link>
 

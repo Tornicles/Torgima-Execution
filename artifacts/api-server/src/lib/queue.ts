@@ -24,9 +24,23 @@ export function createBoss(): PgBoss {
   });
 }
 
+/** Inline handler dispatch for test/CI when pg-boss consumers are not started. */
+export function shouldUseInlineQueueDispatch(): boolean {
+  return (
+    process.env.WORKERS_TEST_MODE === "true" ||
+    process.env.TORGIMA_INTEGRATION === "true" ||
+    process.env.EVENT_INLINE_DISPATCH === "true" ||
+    process.env.NODE_ENV === "test"
+  );
+}
+
 export async function getBoss(): Promise<QueueBoss> {
   if (!globalForBoss.boss) {
-    if (isCloudflareRuntime() || process.env.TORGIMA_CF_QUEUES === "true") {
+    if (
+      isCloudflareRuntime() ||
+      process.env.TORGIMA_CF_QUEUES === "true" ||
+      shouldUseInlineQueueDispatch()
+    ) {
       globalForBoss.boss = new CloudflareQueueProducer();
       await globalForBoss.boss.start();
       logger.info("[Queue] Cloudflare Queues producer started");

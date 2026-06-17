@@ -17,6 +17,7 @@ import {
   buildHandoffSectionPayload,
   handoffFreeFieldsFromPayload,
 } from "./erector/intake/HandoffSectionPrefill.js";
+import { readOriginalInputFromReport } from "./erector/free-validation-contract.js";
 
 export type HandoffSourceTier = "free" | "pro";
 export type HandoffTargetTier = "pro" | "torgima";
@@ -67,17 +68,56 @@ export async function buildHandoffPayload(
       .limit(1);
     if (!v) throw new TorgimaError("NOT_FOUND", "VALIDATION_NOT_FOUND");
 
-    const freeFields = {
+    const originalInput = readOriginalInputFromReport(v.report_json);
+    const report =
+      v.report_json && typeof v.report_json === "object"
+        ? (v.report_json as Record<string, unknown>)
+        : {};
+
+    const freeFields = handoffFreeFieldsFromPayload({
+      idea_or_goal:
+        typeof originalInput?.idea_or_goal === "string" ? originalInput.idea_or_goal : v.industry,
       industry: v.industry,
+      industry_or_domain: v.industry,
       location: v.location,
       budget_range: v.budget_range,
       timeline: v.timeline,
       optional_context: v.additional_context,
       additional_context: v.additional_context,
-    };
+      recommended_direction:
+        typeof report.primary_direction === "string"
+          ? report.primary_direction
+          : typeof report.section_best_direction === "string"
+            ? report.section_best_direction
+            : null,
+      top_risks: Array.isArray(report.top_risks) ? (report.top_risks as string[]) : null,
+      top_opportunities: Array.isArray(report.top_strengths) ? (report.top_strengths as string[]) : null,
+      market_snapshot:
+        typeof report.section_market_reality === "string" ? report.section_market_reality : null,
+      execution_snapshot:
+        typeof report.section_execution_reality === "string" ? report.section_execution_reality : null,
+      free_report_summary: report,
+    });
     const sections = buildHandoffSectionPayload(freeFields);
 
     return {
+      original_input: originalInput ?? {
+        idea_or_goal: freeFields.idea_or_goal,
+        industry_or_domain: v.industry,
+        location: v.location,
+        budget_range: v.budget_range,
+        timeline: v.timeline,
+        additional_context: v.additional_context,
+      },
+      free_report_summary: {
+        recommended_direction: freeFields.recommended_direction,
+        top_risks: freeFields.top_risks,
+        top_opportunities: freeFields.top_opportunities,
+        market_snapshot: freeFields.market_snapshot,
+        execution_snapshot: freeFields.execution_snapshot,
+        verdict: v.verdict,
+        validation_score: v.validation_score,
+      },
       ...freeFields,
       free_validation_summary: v.report_json,
       free_verdict: v.verdict,
@@ -86,6 +126,7 @@ export async function buildHandoffPayload(
         feasibility: null,
         validation_score: v.validation_score,
       },
+      created_at: v.created_at?.toISOString?.() ?? new Date().toISOString(),
       ...sections,
     };
   }
@@ -225,6 +266,9 @@ export function intakePrefillFromHandoffData(
   section_1_data: Record<string, unknown>;
   section_3_data: Record<string, unknown>;
   section_5_data: Record<string, unknown>;
+  section_6_data: Record<string, unknown>;
+  section_7_data: Record<string, unknown>;
+  section_8_data: Record<string, unknown>;
   sections_completed: number[];
   current_section: number;
 } {
@@ -244,6 +288,18 @@ export function intakePrefillFromHandoffData(
       section_1_data: data.section_1_data as Record<string, unknown>,
       section_3_data: data.section_3_data as Record<string, unknown>,
       section_5_data: data.section_5_data as Record<string, unknown>,
+      section_6_data:
+        data.section_6_data && typeof data.section_6_data === "object"
+          ? (data.section_6_data as Record<string, unknown>)
+          : {},
+      section_7_data:
+        data.section_7_data && typeof data.section_7_data === "object"
+          ? (data.section_7_data as Record<string, unknown>)
+          : {},
+      section_8_data:
+        data.section_8_data && typeof data.section_8_data === "object"
+          ? (data.section_8_data as Record<string, unknown>)
+          : {},
       sections_completed: completed,
       current_section: typeof data.current_section === "number" ? data.current_section : 2,
     };

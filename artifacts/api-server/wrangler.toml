@@ -33,7 +33,7 @@ ENABLE_MAGIC_LINK_AUTH = "false"
 
 # ── Event Dispatch Cron ──────────────────────────────────────────────────────
 EVENT_DISPATCH_CRON_ENABLED = "true"
-EVENT_DISPATCH_CRON_BATCH_SIZE = "50"
+EVENT_DISPATCH_CRON_BATCH_SIZE = "5"
 
 # ── Advanced Feature Gates ───────────────────────────────────────────────────
 ENABLE_ADVANCED_UPGRADE_GATE = "false"

@@ -101,21 +101,11 @@ async function handleLockTimeout(params: {
     causationEventId: params.causationEventId,
   }).catch(() => null);
 
-  if (params.causationEventId) {
-    await deadLetterQueue
-      .createFromFailedEvent({
-        eventId: params.causationEventId,
-        reason: `orchestration_lock_timeout:${key}`,
-        lastError: `Could not acquire ${params.scope} lock within ${LOCK_ACQUIRE_WAIT_MS}ms`,
-        failureClass: "transient",
-        dispatchFailures: 3,
-      })
-      .catch(() => null);
-  }
-
-  logger.error(
+  // Lock contention is expected under concurrency. Do not dead-letter the causation
+  // event here; allow the dispatcher/worker retry policy to requeue naturally.
+  logger.warn(
     { scope: params.scope, entityId: params.entityId, workflow: params.workflowName },
-    "[OrchestrationLock] Lock acquire timeout — dead-letter routed",
+    "[OrchestrationLock] Lock acquire timeout — will retry",
   );
 }
 

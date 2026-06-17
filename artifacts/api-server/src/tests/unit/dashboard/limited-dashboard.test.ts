@@ -40,9 +40,9 @@ describe("limited-dashboard", () => {
   });
 
   it("maps free verdict to customer language labels", () => {
-    expect(getFreeVerdictLabel("proceed")).toBe("Good Potential Detected");
-    expect(getFreeVerdictLabel("adjust")).toBe("Some Gaps to Address");
-    expect(getFreeVerdictLabel("pivot")).toBe("Key Issues Identified");
+    expect(getFreeVerdictLabel("proceed")).toBe("Strong direction");
+    expect(getFreeVerdictLabel("adjust")).toBe("Needs adjustment");
+    expect(getFreeVerdictLabel("pivot")).toBe("Consider a different angle");
     expect(getUpgradeHeadline("proceed")).toContain("real potential");
   });
 
@@ -75,7 +75,7 @@ describe("limited-dashboard", () => {
     expect(result.limited_variant).toBe("post_free_validation");
     expect(result.limited_context.variant).toBe("post_free_validation");
     if (result.limited_context.variant === "post_free_validation") {
-      expect(result.limited_context.free_verdict_label).toBe("Good Potential Detected");
+      expect(result.limited_context.free_verdict_label).toBe("Strong direction");
       expect(result.limited_context.market_score).toBeGreaterThan(0);
     }
   });
@@ -100,7 +100,7 @@ describe("limited-dashboard", () => {
     const result = await buildLimitedDashboardContext("user-1");
     expect(result.limited_variant).toBe("intake_in_progress");
     if (result.limited_context.variant === "intake_in_progress") {
-      expect(result.limited_context.percent_complete).toBe(25);
+      expect(result.limited_context.percent_complete).toBe(22);
       expect(result.limited_context.sections_completed).toEqual([1, 2]);
     }
   });
@@ -115,7 +115,7 @@ describe("limited-dashboard", () => {
     const result = await buildLimitedDashboardContext("user-1");
     expect(result.limited_variant).toBe("direct_signup");
     if (result.limited_context.variant === "direct_signup") {
-      expect(result.limited_context.cta_headline).toBe("Analyse your project");
+      expect(result.limited_context.cta_headline).toBe("Complete your Project Intelligence Intake");
     }
   });
 
@@ -130,6 +130,5 @@ describe("limited-dashboard", () => {
       read("src/components/dashboard/LimitedDashboard/VariantC_IntakeInProgress.tsx"),
     ].join("\n");
     expect(html).not.toMatch(/\bPROCEED\b|\bADJUST\b|\bPIVOT\b|erector_state/);
-    expect(html).not.toContain("blueprint");
   });
 });

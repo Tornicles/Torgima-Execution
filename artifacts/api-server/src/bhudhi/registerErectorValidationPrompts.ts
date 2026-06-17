@@ -210,7 +210,7 @@ export const ERECTOR_VALIDATION_CONTRACTS: PromptContract[] = [
   {
     name: "erector.verdict.explain.v1",
     version: "1.0",
-    triggerType: "ERECTOR_VERDICT_EXPLANATION",
+    triggerType: "ERECTOR_VERDICT_EXPLAIN",
     provider: "claude",
     mode: "EXPLAIN",
     outputType: "erector_verdict_explanation",

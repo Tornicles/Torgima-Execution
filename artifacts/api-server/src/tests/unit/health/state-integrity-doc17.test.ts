@@ -45,6 +45,7 @@ vi.mock("../../../lib/bhudhi/BudgetController.js", () => ({
   BudgetController: {
     checkAndReserve: vi.fn().mockResolvedValue(true),
   },
+  isGlobalFallbackMode: vi.fn().mockResolvedValue(false),
 }));
 
 import { StateIntegrityEngine } from "../../../engines/execution-loop/StateIntegrityEngine.js";
@@ -167,10 +168,15 @@ describe("state-integrity", () => {
     });
 
     it("returns fallback without API when bhudhi_force_fallbacks is enabled", async () => {
+      const budget = await import("../../../lib/bhudhi/BudgetController.js");
+      vi.mocked(budget.isGlobalFallbackMode).mockResolvedValue(true);
       const utils = await import("../../../lib/utils.js");
       vi.spyOn(utils, "checkFeatureFlag").mockImplementation(async (name: string) =>
-        name === "bhudhi_force_fallbacks" || name === "degraded_mode",
+        name === "degraded_mode",
       );
+
+      const usage = await import("../../../bhudhi/UsageController.js");
+      vi.spyOn(usage, "logUsage").mockResolvedValue("log-degraded-fallback");
 
       const core = await import("../../../bhudhi/BhudhiCore.js");
       const invokeSpy = vi.spyOn(core, "invokeBhudhiModel");
@@ -188,7 +194,8 @@ describe("state-integrity", () => {
       });
 
       expect(result.fallbackUsed).toBe(true);
-      expect(result.failureReason).toBe("DEGRADED_MODE");
+      expect(result.failureReason).toBe("bhudhi_force_fallbacks");
+      expect(result.logId).toBe("log-degraded-fallback");
       expect(invokeSpy).not.toHaveBeenCalled();
       expect(pipelineSpy).not.toHaveBeenCalled();
     });

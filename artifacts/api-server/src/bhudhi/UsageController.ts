@@ -323,7 +323,7 @@ export async function updateBhudhiLog(params: {
   const patch: Record<string, unknown> = {
     validation_status: params.status,
     validation_notes: params.fallbackReason ?? params.errorCode,
-    fallback_used: params.status === "fallback" || params.status === "error",
+    fallback_used: params.status === "fallback" || params.status === "rejected",
   };
   if (params.inputTokens !== undefined) patch["token_count_in"] = params.inputTokens;
   if (params.outputTokens !== undefined) patch["token_count_out"] = params.outputTokens;

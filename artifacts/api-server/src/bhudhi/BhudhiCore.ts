@@ -60,6 +60,10 @@ import { buildCorrectionPrompt } from "./bhudhiSelfCorrection.js";
 import { TorgimaError } from "../lib/errors.js";
 import type { BhudhiTriggerType } from "../types/bhudhi.js";
 import { loadBlueprintTierContext } from "../engines/blueprint/tierEngineAwareness.js";
+import {
+  mapFailureToValidationStatus,
+  resolveBhudhiRuntimePolicy,
+} from "../lib/bhudhi/BhudhiRuntimePolicy.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -356,6 +360,40 @@ export async function runBhudhiPipeline<T = unknown>(
     }).catch(() => null);
     exitAgentChain(chainId);
     return { ok: true, output: fallback as BhudhiOutputEnvelope<T>, fallbackUsed: true, logId: logId ?? "" };
+  }
+
+  const runtimePolicy = await resolveBhudhiRuntimePolicy();
+  if (runtimePolicy.forceFallback) {
+    logId = await logUsage({
+      userId: request.userId,
+      blueprintId: blueprintId,
+      triggerType: request.triggerType,
+      sourceEngine: request.sourceEngine,
+      promptName: contract.name,
+      promptVersion: contract.version,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: Date.now() - startTime,
+      status: "fallback",
+      fallbackReason: runtimePolicy.reason ?? runtimePolicy.mode,
+    }).catch(() => "");
+
+    const fallback = getFallback(contract.fallbackKey, request.facts ?? {}, request.stateVersion);
+    await logFallbackUsage({
+      triggerType: request.triggerType,
+      promptName: contract.name,
+      reason: runtimePolicy.reason ?? runtimePolicy.mode,
+      userId: request.userId,
+      bhudhiLogId: logId || undefined,
+    }).catch(() => null);
+    exitAgentChain(chainId);
+    return {
+      ok: true,
+      output: fallback as BhudhiOutputEnvelope<T>,
+      fallbackUsed: true,
+      logId: logId ?? "",
+      failureReason: runtimePolicy.reason,
+    };
   }
 
   let memoryContext = "";
@@ -951,15 +989,16 @@ export async function runBhudhiPipeline<T = unknown>(
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const latency = Date.now() - startTime;
+    const validationStatus = mapFailureToValidationStatus(errMsg, true);
 
     await updateBhudhiLog({
       logId,
       inputTokens,
       outputTokens,
       latencyMs: latency,
-      status: errMsg === "BHUDHI_TIMEOUT" ? "fallback" : "error",
+      status: "fallback",
       fallbackReason: errMsg,
-      errorCode: errMsg,
+      errorCode: validationStatus,
     }).catch(() => null);
 
     const fallback = getFallback(contract.fallbackKey, facts, request.stateVersion);

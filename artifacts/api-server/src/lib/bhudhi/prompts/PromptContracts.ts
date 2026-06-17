@@ -1,5 +1,5 @@
 import type { BhudhiMode } from "../../../types/bhudhi.js";
-import { REGISTERED_TRIGGERS, type Doc12TriggerType } from "../TriggerRegistry.js";
+import { CORE_DOC12_ROUTER_TRIGGERS, type Doc12TriggerType } from "../TriggerRegistry.js";
 import { OUTPUT_SCHEMAS } from "../schemas/OutputSchemas.js";
 import { buildSystemPrompt } from "./SystemPromptBuilder.js";
 
@@ -107,7 +107,7 @@ export function listPromptContracts(): Doc12TriggerType[] {
 }
 
 export function assertPromptRegistryMatchesRouter(): void {
-  for (const trigger of Object.keys(REGISTERED_TRIGGERS) as Doc12TriggerType[]) {
+  for (const trigger of Object.keys(CORE_DOC12_ROUTER_TRIGGERS) as Doc12TriggerType[]) {
     if (!PROMPT_CONTRACTS[trigger]) {
       throw new Error(`Missing DOC13 prompt contract for ${trigger}`);
     }

@@ -11,6 +11,7 @@ export interface RawIntakeInput {
   section_6_data: Record<string, unknown>;
   section_7_data: Record<string, unknown>;
   section_8_data: Record<string, unknown>;
+  section_9_data: Record<string, unknown>;
 }
 
 export type MarketScope = "local" | "national" | "global";

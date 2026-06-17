@@ -1,166 +1,190 @@
 import { Link } from "wouter";
-import { Download, Sparkles } from "lucide-react";
-import {
-  VERDICT_LABELS,
-  type ErectorFreeReport,
-  type ErectorFreeVerdict,
-} from "@/lib/erector-free-api";
-import { BLUEPRINT_LABELS, ERECTOR_LABELS } from "@/lib/language-map";
+import { Download, RefreshCw, Sparkles } from "lucide-react";
+import type { FreeErectorPath, FreeValidateResult } from "@/lib/erector-free-api";
+import { ERECTOR_LABELS } from "@/lib/language-map";
 
 type Props = {
-  report: ErectorFreeReport;
-  remainingFree?: number;
+  result: FreeValidateResult;
+  onValidateAnother?: () => void;
+  onDownloadJson?: () => void;
+  downloading?: boolean;
 };
 
-const VERDICT_STYLES: Record<ErectorFreeVerdict, string> = {
-  proceed: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  adjust: "bg-amber-100 text-amber-900 border-amber-200",
-  pivot: "bg-violet-100 text-violet-900 border-violet-200",
+const VERDICT_STYLES: Record<string, string> = {
+  "Strong direction": "bg-emerald-100 text-emerald-800 border-emerald-200",
+  "Needs adjustment": "bg-amber-100 text-amber-900 border-amber-200",
+  "Consider a different angle": "bg-violet-100 text-violet-900 border-violet-200",
+  "Test before building": "bg-sky-100 text-sky-900 border-sky-200",
+  "High risk": "bg-red-100 text-red-800 border-red-200",
+  "Not enough information": "bg-gray-100 text-gray-800 border-gray-200",
 };
 
-type Section = {
-  title: string;
-  body: string;
-  bullets?: string[];
-};
-
-function buildSections(report: ErectorFreeReport): Section[] {
-  return [
-    { title: "Your Recommendation", body: report.section_recommendation },
-    {
-      title: BLUEPRINT_LABELS.signals,
-      body: report.section_health_score_breakdown,
-    },
-    { title: "Market Reality", body: report.section_market_reality },
-    { title: "Financial Assessment", body: report.section_financial_assessment },
-    { title: "Execution Reality", body: report.section_execution_reality },
-    {
-      title: "Your Strengths",
-      body: report.section_strengths,
-      bullets: report.top_strengths,
-    },
-    {
-      title: "Your Risk Flags",
-      body: report.section_risk_flags,
-      bullets: report.top_risks,
-    },
-    { title: "Your Best Direction", body: report.section_best_direction || report.primary_direction },
-    {
-      title: "Alternative Direction",
-      body: report.section_alternative_direction || report.alternative_direction || "No alternative path identified yet.",
-    },
-    {
-      title: "Your Success Conditions",
-      body: report.section_success_conditions,
-      bullets: report.success_conditions,
-    },
-    {
-      title: "Your Failure Warnings",
-      body: report.section_failure_warnings,
-      bullets: report.failure_warnings,
-    },
-  ];
+function PathCard({ path }: { path: FreeErectorPath }) {
+  return (
+    <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5">
+      <h4 className="text-sm font-bold uppercase tracking-wide text-[#0EA5E9]">{path.path_name}</h4>
+      <p className="mt-2 text-sm leading-6 text-gray-700">{path.what_it_means}</p>
+      <p className="mt-3 text-xs font-semibold text-[#0A0F1E]">Likely outcome</p>
+      <p className="mt-1 text-sm text-gray-600">{path.likely_outcome}</p>
+      <p className="mt-3 text-xs font-semibold text-[#0A0F1E]">Main risk</p>
+      <p className="mt-1 text-sm text-gray-600">{path.main_risk}</p>
+    </article>
+  );
 }
 
-function UpgradeCta() {
+function UpgradeCta({ upgradeUrl }: { upgradeUrl: string }) {
   return (
     <div className="rounded-2xl border border-[#0EA5E9]/30 bg-sky-50 p-5">
-      <p className="text-sm font-bold uppercase tracking-wide text-[#0EA5E9]">
-        Get the full deep analysis with {ERECTOR_LABELS.erector_pro}
-      </p>
-      <p className="mt-1 text-sm text-gray-600">
-        Unlock deeper market research, competitive positioning, and a 90-day action map.
+      <p className="text-sm font-bold uppercase tracking-wide text-[#0EA5E9]">Upgrade to full TORGIMA</p>
+      <p className="mt-2 text-sm leading-6 text-gray-700">
+        Unlock the full Project Intelligence Intake to generate your complete Erector baseline, Blueprint,
+        execution plan, order flow, signals, conditions, and progress loop.
       </p>
       <Link
-        href="/pricing"
-        className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A0F1E] px-5 py-2.5 text-sm font-bold text-white"
+        href={upgradeUrl}
+        className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#0A0F1E] px-5 py-2.5 text-sm font-bold text-white"
       >
         <Sparkles className="h-4 w-4" />
-        View Pro options
+        Unlock Full Blueprint
       </Link>
     </div>
   );
 }
 
-export function FreeValidationReport({ report, remainingFree }: Props) {
-  const sections = buildSections(report);
-
-  function handlePrint() {
-    window.print();
-  }
+export function FreeValidationReport({ result, onValidateAnother, onDownloadJson, downloading }: Props) {
+  const verdictStyle =
+    VERDICT_STYLES[result.verdict_label] ?? "bg-gray-100 text-gray-800 border-gray-200";
+  const remaining = result.remaining_free_validations ?? result.remaining_free ?? 0;
 
   return (
     <div className="space-y-6 print:space-y-4" id="free-validation-report">
       <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-[#0EA5E9]">
-            {ERECTOR_LABELS.validation_report}
+            {ERECTOR_LABELS.erector_free}
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-[#0A0F1E]">Your project analysis</h2>
+          <h2 className="mt-2 text-2xl font-bold text-[#0A0F1E]">{result.title}</h2>
           <p className="mt-1 text-sm text-gray-600">
-            {remainingFree === undefined
-              ? "Full deep assessment report"
-              : remainingFree > 0
-                ? `${remainingFree} free check${remainingFree === 1 ? "" : "s"} remaining`
-                : "This was your last free check"}
+            This is a fast reality check, not a full execution plan.
           </p>
+          {remaining > 0 ? (
+            <p className="mt-1 text-xs text-gray-500">
+              {remaining} free validation{remaining === 1 ? "" : "s"} remaining in the next 24 hours
+            </p>
+          ) : null}
         </div>
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#0A0F1E] hover:bg-gray-50"
-        >
-          <Download className="h-4 w-4" />
-          Download PDF
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {onDownloadJson ? (
+            <button
+              type="button"
+              onClick={onDownloadJson}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#0A0F1E] hover:bg-gray-50 disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              {downloading ? "Downloading…" : "Download Report"}
+            </button>
+          ) : null}
+          {onValidateAnother ? (
+            <button
+              type="button"
+              onClick={onValidateAnother}
+              className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#0A0F1E] hover:bg-gray-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Validate Another Idea
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${VERDICT_STYLES[report.verdict]}`}
-          >
-            {VERDICT_LABELS[report.verdict]}
+          <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${verdictStyle}`}>
+            {result.verdict_label}
           </span>
-          <span className="text-sm text-gray-600">Overall recommendation</span>
+          <span className="text-sm text-gray-600">{result.score_label}</span>
         </div>
         <div className="mt-5">
           <div className="flex items-center justify-between text-sm font-semibold text-[#0A0F1E]">
-            <span>{BLUEPRINT_LABELS.signals}</span>
-            <span>{report.validation_score}/100</span>
+            <span>Reality score</span>
+            <span>{result.score}/100</span>
           </div>
           <div className="mt-2 h-3 overflow-hidden rounded-full bg-gray-100">
             <div
               className="h-full rounded-full bg-[#0EA5E9] transition-all"
-              style={{ width: `${Math.max(0, Math.min(100, report.validation_score))}%` }}
+              style={{ width: `${Math.max(0, Math.min(100, result.score))}%` }}
             />
           </div>
         </div>
+        <p className="mt-4 text-sm leading-7 text-gray-700 whitespace-pre-wrap">{result.summary}</p>
       </div>
 
-      {sections.map((section, index) => (
-        <div key={section.title}>
-          <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-            <h3 className="text-lg font-bold text-[#0A0F1E]">{section.title}</h3>
-            <p className="mt-3 text-sm leading-7 text-gray-700 whitespace-pre-wrap">{section.body}</p>
-            {section.bullets && section.bullets.length > 0 ? (
-              <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                {section.bullets.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="text-[#0EA5E9]">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </article>
-          {(index + 1) % 3 === 0 && index < sections.length - 1 ? (
-            <div className="mt-6 print:hidden">
-              <UpgradeCta />
-            </div>
-          ) : null}
+      <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <h3 className="text-lg font-bold text-[#0A0F1E]">Best direction</h3>
+        <p className="mt-3 text-sm leading-7 text-gray-700">{result.recommended_direction}</p>
+      </article>
+
+      <div>
+        <h3 className="mb-3 text-lg font-bold text-[#0A0F1E]">Three paths</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          <PathCard path={result.current_path} />
+          <PathCard path={result.adjusted_path} />
+          <PathCard path={result.alternative_path} />
         </div>
-      ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+          <h3 className="text-lg font-bold text-[#0A0F1E]">Top risks</h3>
+          <ul className="mt-4 space-y-2 text-sm text-gray-700">
+            {result.top_risks.map((item) => (
+              <li key={item} className="flex gap-2">
+                <span className="text-red-500">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+        <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+          <h3 className="text-lg font-bold text-[#0A0F1E]">Opportunity areas</h3>
+          <ul className="mt-4 space-y-2 text-sm text-gray-700">
+            {result.top_opportunities.map((item) => (
+              <li key={item} className="flex gap-2">
+                <span className="text-[#0EA5E9]">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+          <h3 className="text-lg font-bold text-[#0A0F1E]">Market snapshot</h3>
+          <p className="mt-3 text-sm leading-7 text-gray-700 whitespace-pre-wrap">{result.market_snapshot}</p>
+        </article>
+        <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+          <h3 className="text-lg font-bold text-[#0A0F1E]">Execution snapshot</h3>
+          <p className="mt-3 text-sm leading-7 text-gray-700 whitespace-pre-wrap">{result.execution_snapshot}</p>
+        </article>
+      </div>
+
+      <article className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+        <h3 className="text-lg font-bold text-[#0A0F1E]">What to do next</h3>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
+          {result.next_steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </article>
+
+      <p className="text-sm text-gray-600">
+        To unlock the full Erector baseline and Blueprint execution system, continue with Project
+        Intelligence Intake.
+      </p>
+
+      <UpgradeCta upgradeUrl={result.upgrade_url} />
     </div>
   );
 }

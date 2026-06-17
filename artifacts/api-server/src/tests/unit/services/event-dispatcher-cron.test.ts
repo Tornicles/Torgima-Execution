@@ -102,7 +102,7 @@ describe("EventDispatcher cron subrequest-safe processing", () => {
 
   it("exports cron limits and kill-switch helpers", () => {
     const dispatcher = readRepo("artifacts/api-server/src/services/EventDispatcher.ts");
-    expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 1");
+    expect(dispatcher).toContain("MAX_EVENTS_PER_CRON = 5");
     expect(dispatcher).toContain("MAX_SUBREQUESTS_PER_CRON_SAFE_LIMIT = 10");
     expect(dispatcher).toContain("MAX_PROCESSING_MS = 5_000");
     expect(dispatcher).toContain("isEventDispatchCronEnabled");
@@ -133,7 +133,7 @@ describe("EventDispatcher cron subrequest-safe processing", () => {
     expect(mockTaskQueueSend).not.toHaveBeenCalled();
   });
 
-  it("claims and enqueues only one event per cron tick", async () => {
+  it("claims and enqueues up to batch size per cron tick", async () => {
     vi.stubEnv("EVENT_DISPATCH_CRON_ENABLED", "true");
     globalThis.__TORGIMA_TASK_QUEUE__ = { send: mockTaskQueueSend } as never;
     claimedEvents = [
@@ -166,8 +166,8 @@ describe("EventDispatcher cron subrequest-safe processing", () => {
     const { dispatchPendingEventsForCron } = await import("../../../services/EventDispatcher.js");
     const dispatched = await dispatchPendingEventsForCron();
 
-    expect(dispatched).toBe(1);
-    expect(mockTaskQueueSend).toHaveBeenCalledTimes(1);
+    expect(dispatched).toBe(2);
+    expect(mockTaskQueueSend).toHaveBeenCalledTimes(2);
   });
 
   it("skips inline workers when TASK_QUEUE is missing and releases claim", async () => {
@@ -227,7 +227,7 @@ describe("EventDispatcher cron subrequest-safe processing", () => {
 
   it("sets wrangler cron env for production", () => {
     const wrangler = readRepo("artifacts/api-server/wrangler.toml");
-    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "50"');
+    expect(wrangler).toContain('EVENT_DISPATCH_CRON_BATCH_SIZE = "5"');
     expect(wrangler).toContain('EVENT_DISPATCH_CRON_ENABLED = "true"');
   });
 });

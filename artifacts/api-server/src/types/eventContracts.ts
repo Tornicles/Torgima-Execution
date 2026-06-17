@@ -38,8 +38,19 @@ export const EventTypes = {
   ABANDONMENT_RISK:                 "abandonment_risk",
   // Blueprint lifecycle
   BLUEPRINT_LAUNCHED:               "blueprint_launched",
+  /** Prompt 5: shell exists, baseline runs inside blueprint lifecycle. */
+  BLUEPRINT_SHELL_CREATED:         "blueprint_shell_created",
   BLUEPRINT_CHAIN_GENERATED:        "blueprint_chain_generated",
   BLUEPRINT_STRUCTURE_CREATED:      "blueprint_structure_created",
+  /** Prompt 5: baseline + execution generation chain. */
+  ERECTOR_BASELINE_REQUESTED:      "erector_baseline_requested",
+  ERECTOR_BASELINE_GENERATING:     "erector_baseline_generating",
+  ERECTOR_BASELINE_COMPLETED:      "erector_baseline_completed",
+  ERECTOR_BASELINE_FAILED:         "erector_baseline_failed",
+  ERECTOR_BASELINE_NEEDS_INTAKE:   "erector_baseline_needs_intake",
+  BLUEPRINT_EXECUTION_GENERATION_REQUESTED: "blueprint_execution_generation_requested",
+  BLUEPRINT_EXECUTION_GENERATION_COMPLETED: "blueprint_execution_generation_completed",
+  EXECUTION_UNLOCKED:              "execution_unlocked",
   PHASE_CHECKPOINT_REQUIRED:        "phase_checkpoint_required",
   TARGET_COMPLETED:                 "target_completed",
   BLUEPRINT_PAUSED:                 "blueprint_paused",
@@ -202,6 +213,9 @@ export const WorkerQueues = {
   ERECTOR_VALIDATION_REQUESTED: "erector_validation_requested",
   ERECTOR_SIMULATION_REQUESTED: "erector_simulation_requested",
   ERECTOR_SIGNAL_BRIDGE:          "erector_signal_bridge",
+  /** Prompt 5 baseline + execution generation. */
+  ERECTOR_BASELINE:               "erector_baseline_requested",
+  BLUEPRINT_EXECUTION_GENERATION: "blueprint_execution_generation_requested",
   PREDICTION:                   "prediction_requested",
   EIS_SCAN:                     "eis_scan",
 } as const;
@@ -244,6 +258,7 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.BHUDHI_TRIGGER_REQUESTED]:       WorkerQueues.BHUDHI_TRIGGER,
   [EventTypes.SYSTEM_HEALTH_DEGRADED]:         WorkerQueues.SYSTEM_HEALTH,
   [EventTypes.BLUEPRINT_LAUNCHED]:             WorkerQueues.TASK_GENERATION,
+  [EventTypes.BLUEPRINT_SHELL_CREATED]:       WorkerQueues.PROJECTION_REFRESH,
   [EventTypes.BLUEPRINT_CHAIN_GENERATED]:      WorkerQueues.TASK_GENERATION,
   [EventTypes.BLUEPRINT_STRUCTURE_CREATED]:    WorkerQueues.TASK_GENERATION,
   [EventTypes.PHASE_CHECKPOINT_REQUIRED]:      WorkerQueues.TASK_GENERATION,
@@ -291,9 +306,12 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.ERECTOR_PATH_SELECTED]:          WorkerQueues.ERECTOR_PATH_SELECTED,
   [EventTypes.ERECTOR_FIRST_WEEK_GENERATED]:   WorkerQueues.ERECTOR_FIRST_WEEK_GENERATED,
   [EventTypes.ERECTOR_BLUEPRINT_LAUNCHED]:     WorkerQueues.ERECTOR_BLUEPRINT_LAUNCHED,
-  [EventTypes.ERECTOR_INTAKE_NORMALIZED]:      WorkerQueues.ERECTOR_VALIDATION_STARTED,
-  [EventTypes.ERECTOR_INTAKE_STARTED]:         WorkerQueues.ERECTOR_VALIDATION_STARTED,
-  [EventTypes.ERECTOR_VALIDATION_REQUESTED]:   WorkerQueues.ERECTOR_VALIDATION_STARTED,
+  // Intake normalization is a dashboard/state concern; validation orchestration starts
+  // from ERECTOR_VALIDATION_REQUESTED (not from the "started" worker).
+  [EventTypes.ERECTOR_INTAKE_NORMALIZED]:      WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.ERECTOR_INTAKE_STARTED]:         WorkerQueues.PROJECTION_REFRESH,
+  // Route to the queue consumed by `ErectorValidationRequestedWorker`.
+  [EventTypes.ERECTOR_VALIDATION_REQUESTED]:   EventTypes.ERECTOR_VALIDATION_REQUESTED,
   [EventTypes.ERECTOR_SIMULATION_REQUESTED]:   WorkerQueues.ERECTOR_SIMULATION_REQUESTED,
   [EventTypes.ERECTOR_SIMULATION_COMPLETED]:   WorkerQueues.ERECTOR_SIMULATION_REQUESTED,
   [EventTypes.ERECTOR_CAPABILITY_GAP_DETECTED]: WorkerQueues.TASK_GENERATION,
@@ -302,6 +320,14 @@ export const EVENT_QUEUE_MAP: Record<string, WorkerQueue> = {
   [EventTypes.ERECTOR_CORRECTION_PATH_OPENED]: WorkerQueues.TASK_GENERATION,
   [EventTypes.ERECTOR_EVIDENCE_SUBMITTED]: WorkerQueues.SIGNAL_RECALCULATION,
   [EventTypes.ERECTOR_SIGNAL_CALCULATED]: WorkerQueues.ERECTOR_SIMULATION_REQUESTED,
+  [EventTypes.ERECTOR_BASELINE_REQUESTED]: WorkerQueues.ERECTOR_BASELINE,
+  [EventTypes.ERECTOR_BASELINE_GENERATING]: WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.ERECTOR_BASELINE_COMPLETED]: WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.ERECTOR_BASELINE_FAILED]: WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.ERECTOR_BASELINE_NEEDS_INTAKE]: WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.BLUEPRINT_EXECUTION_GENERATION_REQUESTED]: WorkerQueues.BLUEPRINT_EXECUTION_GENERATION,
+  [EventTypes.BLUEPRINT_EXECUTION_GENERATION_COMPLETED]: WorkerQueues.PROJECTION_REFRESH,
+  [EventTypes.EXECUTION_UNLOCKED]: WorkerQueues.PROJECTION_REFRESH,
   [EventTypes.ERECTOR_STATE_CHANGED]: WorkerQueues.PROJECTION_REFRESH,
   [EventTypes.ERECTOR_INTELLIGENCE_INJECTED]: WorkerQueues.PROJECTION_REFRESH,
   [EventTypes.ERECTOR_AUDIT_RECORD_CREATED]: WorkerQueues.PROJECTION_REFRESH,

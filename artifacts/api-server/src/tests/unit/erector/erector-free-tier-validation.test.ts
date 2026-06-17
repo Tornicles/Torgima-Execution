@@ -39,6 +39,7 @@ describe("free-tier-validation", () => {
       section_6_data: {},
       section_7_data: {},
       section_8_data: {},
+      section_9_data: {},
     });
 
     const scores = scoreDimensionsForFreeTier({

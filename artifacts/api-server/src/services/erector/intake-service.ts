@@ -34,11 +34,13 @@ const SECTION_COLUMNS = [
   "section_6_data",
   "section_7_data",
   "section_8_data",
+  "section_9_data",
 ] as const;
 
 export function serializeIntakeSession(row: IntakeSessionRow) {
   return {
     id: row.id,
+    blueprint_id: row.blueprint_id,
     tier: row.tier,
     status: row.status,
     current_section: row.current_section,
@@ -51,11 +53,21 @@ export function serializeIntakeSession(row: IntakeSessionRow) {
     section_6_data: row.section_6_data,
     section_7_data: row.section_7_data,
     section_8_data: row.section_8_data,
+    section_9_data: row.section_9_data ?? null,
     validation_id: row.validation_id,
     prefilled_from_handoff: row.prefilled_from_handoff,
     started_at: row.started_at,
     completed_at: row.completed_at,
     last_saved_at: row.last_saved_at,
+    completion_percentage: row.completion_percentage ?? 0,
+    missing_fields: row.missing_fields ?? [],
+    ambiguity_flags: row.ambiguity_flags ?? [],
+    contradiction_flags: row.contradiction_flags ?? [],
+    required_missing_fields: row.required_missing_fields ?? [],
+    submitted_at: row.submitted_at ?? null,
+    baseline_requested_at: row.baseline_requested_at ?? null,
+    baseline_completed_at: row.baseline_completed_at ?? null,
+    baseline_failed_at: row.baseline_failed_at ?? null,
   };
 }
 
@@ -63,9 +75,26 @@ export async function createIntakeSession(
   userId: string,
   tier: IntakeTier,
   handoffToken?: string,
+  blueprintId?: string,
 ): Promise<IntakeSessionRow> {
+  if (blueprintId) {
+    const [existing] = await db
+      .select()
+      .from(erectorIntakeSessions)
+      .where(
+        and(
+          eq(erectorIntakeSessions.user_id, userId),
+          eq(erectorIntakeSessions.blueprint_id, blueprintId),
+          eq(erectorIntakeSessions.status, "in_progress"),
+        ),
+      )
+      .limit(1);
+    if (existing) return existing;
+  }
+
   const baseValues = {
     user_id: userId,
+    blueprint_id: blueprintId ?? null,
     tier,
     current_section: 1,
     sections_completed: [] as number[],
@@ -89,6 +118,9 @@ export async function createIntakeSession(
         section_1_data: prefill.section_1_data,
         section_3_data: prefill.section_3_data,
         section_5_data: prefill.section_5_data,
+        section_6_data: prefill.section_6_data,
+        section_7_data: prefill.section_7_data,
+        section_8_data: prefill.section_8_data,
       };
       await markHandoffTokenConsumed(token.id, userId);
     }
@@ -120,8 +152,8 @@ export async function saveIntakeSection(
   section: number,
   data: Record<string, unknown>,
 ): Promise<IntakeSessionRow> {
-  if (section < 1 || section > 8) {
-    throw new TorgimaError("VALIDATION_ERROR", "Section must be between 1 and 8");
+  if (section < 1 || section > 9) {
+    throw new TorgimaError("VALIDATION_ERROR", "Section must be between 1 and 9");
   }
 
   const existing = await getIntakeSessionForUser(sessionId, userId);
@@ -133,7 +165,8 @@ export async function saveIntakeSection(
   const column = SECTION_COLUMNS[section - 1]!;
   const completed = new Set(existing.sections_completed ?? []);
   completed.add(section);
-  const nextSection = Math.min(8, Math.max(existing.current_section, section + 1));
+  const nextSection = Math.min(9, Math.max(existing.current_section, section + 1));
+  const completionPct = Math.round((completed.size / 9) * 100);
 
   const [row] = await db
     .update(erectorIntakeSessions)
@@ -141,6 +174,7 @@ export async function saveIntakeSection(
       [column]: data,
       sections_completed: [...completed],
       current_section: nextSection,
+      completion_percentage: completionPct,
       last_saved_at: new Date(),
     })
     .where(eq(erectorIntakeSessions.id, sessionId))
@@ -274,6 +308,20 @@ export type CompleteIntakeNeedsClarification = IntakePipelineResult & {
 
 export type CompleteIntakeResult = CompleteIntakeSuccess | CompleteIntakeNeedsClarification;
 
+/**
+ * Prompt 6: validate-only result (do not unlock execution; used by /validate + /submit).
+ */
+export type ValidateIntakeResult = {
+  status: "in_progress" | "needs_review" | "complete";
+  completion_percentage: number;
+  completed_sections: number;
+  total_sections: number;
+  missing_required_fields: string[];
+  contradictions: IntakePipelineResult["contradiction_score"];
+  ambiguity_flags: IntakePipelineResult["ambiguity_flags"];
+  can_submit: boolean;
+};
+
 export async function completeIntakeSession(
   sessionId: string,
   userId: string,
@@ -282,10 +330,10 @@ export async function completeIntakeSession(
   if (!row) throw new TorgimaError("NOT_FOUND", "Intake session not found");
 
   const completed = row.sections_completed ?? [];
-  if (completed.length < 8) {
+  if (completed.length < 9) {
     throw new TorgimaError(
       "VALIDATION_ERROR",
-      `Complete all 8 intake sections before analysis (${completed.length}/8 saved)`,
+      `Complete all 9 intake sections before analysis (${completed.length}/9 saved)`,
     );
   }
 
@@ -310,6 +358,22 @@ export async function completeIntakeSession(
 
   const pipelineResult = await runIntakePipeline(sessionId, userId);
   if (!pipelineResult.validation_ready) {
+    // Persist pipeline diagnostics onto the session (Prompt 6).
+    const missing = pipelineResult.missing_fields.map((m) => String(m.field));
+    const ambiguity = pipelineResult.ambiguity_flags.map((a) => `${a.field}:${a.detected_issue}`);
+    await db
+      .update(erectorIntakeSessions)
+      .set({
+        required_missing_fields: missing,
+        missing_fields: missing,
+        ambiguity_flags: ambiguity,
+        contradiction_flags: [],
+        validation_ready: false,
+        status: pipelineResult.contradiction_score >= 70 || missing.length > 0 ? "needs_review" : "in_progress",
+        last_saved_at: new Date(),
+      })
+      .where(eq(erectorIntakeSessions.id, sessionId))
+      .catch(() => null);
     return {
       ...pipelineResult,
       validation_ready: false,
@@ -334,6 +398,8 @@ export async function completeIntakeSession(
       validation_id: paidRow.id,
       completed_at: new Date(),
       last_saved_at: new Date(),
+      submitted_at: new Date(),
+      baseline_requested_at: new Date(),
     })
     .where(eq(erectorIntakeSessions.id, sessionId));
 
@@ -346,10 +412,9 @@ export async function completeIntakeSession(
     contradiction_score: pipelineResult.contradiction_score,
   };
 
+  // Prompt 6: do NOT unlock full execution here. Baseline generation is triggered by event loop.
+  // Keep redirect to dashboard for authenticated tier.
   if (row.tier === "authenticated") {
-    const blueprint = await feedErectorToBlueprint(paidRow.id, userId, "starter");
-    result.blueprint_id = blueprint.id;
-    result.dashboard_mode = "full";
     result.redirect_to = "/dashboard";
   } else {
     result.redirect_to = `/onboarding/intake/report/${paidRow.id}`;

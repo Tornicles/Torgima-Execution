@@ -16,12 +16,12 @@ import {
 import { PROMPT_CONTRACTS, assertPromptRegistryMatchesRouter } from "../../../lib/bhudhi/prompts/PromptContracts.js";
 import { SystemPromptBuilder, GLOBAL_RULES } from "../../../lib/bhudhi/prompts/SystemPromptBuilder.js";
 import { FORBIDDEN_PATTERNS } from "../../../lib/bhudhi/OutputValidator.js";
-import { REGISTERED_TRIGGERS } from "../../../lib/bhudhi/TriggerRegistry.js";
+import { CORE_DOC12_ROUTER_TRIGGERS } from "../../../lib/bhudhi/TriggerRegistry.js";
 
 describe("bhudhi-prompts DOC13 — registry coverage", () => {
   it("has prompt contracts for every router trigger", () => {
     expect(() => assertPromptRegistryMatchesRouter()).not.toThrow();
-    expect(Object.keys(PROMPT_CONTRACTS).sort()).toEqual(Object.keys(REGISTERED_TRIGGERS).sort());
+    expect(Object.keys(PROMPT_CONTRACTS).sort()).toEqual(Object.keys(CORE_DOC12_ROUTER_TRIGGERS).sort());
   });
 
   it("system prompt builder injects mode-specific instructions", () => {

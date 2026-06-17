@@ -85,6 +85,7 @@ async function emitSignalCalculationChainEvents(params: {
       trend: metrics.trend,
       confidence: metrics.confidence,
       signal_updated: true,
+      core_execution_loop: true,
     },
     idempotencyKey: `signal_updated:${blueprintId}:${snapshotId}`,
     causationEventId,

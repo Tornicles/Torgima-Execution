@@ -86,9 +86,25 @@ export const ERECTOR_LABELS = {
   erector_free: "Free Idea Check",
   erector_pro: "Project Intelligence Pro",
   erector_authenticated: "Project Intelligence",
-  validation_report: "Project Intelligence Report",
+  validation_report: "Free Validation Report",
   verdict: "Recommendation",
 } as const;
+
+/** Customer-facing free validation verdict labels — never show raw PROCEED/ADJUST/PIVOT in UI. */
+export const FREE_VERDICT_LABELS: Record<string, string> = {
+  proceed: "Strong direction",
+  adjust: "Needs adjustment",
+  pivot: "Consider a different angle",
+  test_first: "Test before building",
+  delay: "Wait or gather proof",
+  blocked: "High risk",
+};
+
+export function getFreeVerdictLabel(verdict: string | null | undefined): string {
+  if (!verdict?.trim()) return "Not enough information";
+  const key = verdict.trim().toLowerCase();
+  return FREE_VERDICT_LABELS[key] ?? "Not enough information";
+}
 
 /** Default condition when API omits a value — use instead of raw condition keys in UI. */
 export const DEFAULT_CONDITION = ConditionState.NOTHINGNESS;

@@ -54,11 +54,16 @@ vi.mock("@workspace/db", () => ({
 import { db } from "@workspace/db";
 
 const freeTokenFields = {
+  idea_or_goal: "Build a B2B SaaS wedge for retailers",
   industry: "tech",
+  industry_or_domain: "tech",
   location: "Lagos Nigeria",
   budget_range: "1k_5k",
   timeline: "6_months",
   optional_context: "B2B SaaS wedge",
+  recommended_direction: "Start with one retailer vertical",
+  top_risks: ["Unvalidated demand", "Long sales cycles", "Budget constraints"],
+  top_opportunities: ["Underserved SMB retailers", "Faster onboarding angle"],
 };
 
 describe("handoff", () => {
@@ -68,12 +73,12 @@ describe("handoff", () => {
     handoffRows.length = 0;
   });
 
-  it("maps free handoff fields into sections 1, 3, and 5", () => {
+  it("maps free handoff fields into paid intake sections", () => {
     const payload = buildHandoffSectionPayload(freeTokenFields);
 
-    expect(payload.sections_completed).toEqual([1, 3, 5]);
+    expect(payload.sections_completed).toEqual([1, 3, 5, 6, 7, 8]);
     expect(payload.current_section).toBe(2);
-    expect(buildSection1FromHandoff(freeTokenFields).whatBuilding).toContain("tech");
+    expect(buildSection1FromHandoff(freeTokenFields).primary_goal).toContain("B2B SaaS");
     expect(buildSection3FromHandoff(freeTokenFields).location).toBe("Lagos Nigeria");
     expect(buildSection5FromHandoff(freeTokenFields).budget).toBe("1k_5k");
   });
@@ -105,7 +110,7 @@ describe("handoff", () => {
         id: "session-prefill",
         tier: "authenticated",
         prefilled_from_handoff: true,
-        sections_completed: [1, 3, 5],
+        sections_completed: [1, 3, 5, 6, 7, 8],
         current_section: 2,
         section_1_data: data.section_1_data,
         section_3_data: data.section_3_data,
@@ -121,9 +126,9 @@ describe("handoff", () => {
     expect(session.prefilled_from_handoff).toBe(true);
     expect(insertChain.values).toHaveBeenCalled();
     const inserted = intakeRows.at(-1);
-    expect(inserted?.sections_completed).toEqual([1, 3, 5]);
+    expect(inserted?.sections_completed).toEqual([1, 3, 5, 6, 7, 8]);
     expect(inserted?.current_section).toBe(2);
-    expect((inserted?.section_1_data as Record<string, unknown>)?.whatBuilding).toContain("tech");
+    expect((inserted?.section_1_data as Record<string, unknown>)?.primary_goal).toContain("B2B SaaS");
     expect((inserted?.section_3_data as Record<string, unknown>)?.location).toBe("Lagos Nigeria");
     expect((inserted?.section_5_data as Record<string, unknown>)?.budget).toBe("1k_5k");
     expect(db.update).toHaveBeenCalled();

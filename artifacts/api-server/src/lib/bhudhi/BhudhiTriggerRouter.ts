@@ -7,13 +7,19 @@ import { ContextBuilder } from "./ContextBuilder.js";
 import { FallbackLibrary } from "./FallbackLibrary.js";
 import { OutputValidator } from "./OutputValidator.js";
 import { getPromptContract } from "./prompts/PromptContracts.js";
-import { checkFeatureFlag } from "../utils.js";
 import {
+  CORE_DOC12_ROUTER_TRIGGERS,
   REGISTERED_TRIGGERS,
   type Doc12TriggerType,
   isDoc12Trigger,
   isSourceAllowedForTrigger,
 } from "./TriggerRegistry.js";
+import {
+  mapFailureToValidationStatus,
+  resolveBhudhiRuntimePolicy,
+} from "./BhudhiRuntimePolicy.js";
+import { logUsage } from "../../bhudhi/UsageController.js";
+import { getContract } from "../../bhudhi/PromptRegistry.js";
 
 export interface Doc12BhudhiTriggerRequest {
   triggerType: Doc12TriggerType | string;
@@ -52,8 +58,8 @@ export class BhudhiTriggerRouter {
       throw new BhudhiRejected("UNREGISTERED_TRIGGER");
     }
 
-    const triggerType = request.triggerType;
-    const triggerDef = REGISTERED_TRIGGERS[triggerType];
+    const triggerType = request.triggerType as Doc12TriggerType;
+    const triggerDef = CORE_DOC12_ROUTER_TRIGGERS[triggerType];
 
     if (!isSourceAllowedForTrigger(triggerType, request.sourceEngine)) {
       throw new BhudhiRejected("SOURCE_NOT_ALLOWED");
@@ -67,25 +73,53 @@ export class BhudhiTriggerRouter {
       blueprintId: request.blueprintId,
     });
 
-    const forceFallback =
-      (await checkFeatureFlag("bhudhi_force_fallbacks")) ||
-      (await checkFeatureFlag("degraded_mode"));
-    if (forceFallback) {
+    const forcePolicy = await resolveBhudhiRuntimePolicy();
+    if (forcePolicy.forceFallback) {
+      const fallbackData = FallbackLibrary.get(triggerType, contextPacket, request.stateVersion);
+      const contract = getContract(triggerType);
+      const logId = await logUsage({
+        userId: request.userId,
+        blueprintId: request.blueprintId,
+        triggerType,
+        sourceEngine: request.sourceEngine,
+        promptName: contract?.name ?? String(triggerType),
+        promptVersion: contract?.version ?? "1.0",
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: 0,
+        status: "fallback",
+        fallbackReason: forcePolicy.reason ?? forcePolicy.mode,
+      }).catch(() => "");
       return {
         ok: true,
-        data: FallbackLibrary.get(triggerType, contextPacket, request.stateVersion),
-        logId: "",
+        data: fallbackData,
+        logId,
         fallbackUsed: true,
-        failureReason: "DEGRADED_MODE",
+        failureReason: forcePolicy.reason ?? "DEGRADED_MODE",
       };
     }
 
     const budgetOk = await BudgetController.checkAndReserve(request.userId);
     if (!budgetOk) {
+      const fallbackData = FallbackLibrary.get(triggerType, contextPacket, request.stateVersion);
+      const contract = getContract(triggerType);
+      const logId = await logUsage({
+        userId: request.userId,
+        blueprintId: request.blueprintId,
+        triggerType,
+        sourceEngine: request.sourceEngine,
+        promptName: contract?.name ?? String(triggerType),
+        promptVersion: contract?.version ?? "1.0",
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: 0,
+        status: "fallback",
+        fallbackReason: "BUDGET_EXHAUSTED",
+      }).catch(() => "");
       return {
         ok: true,
-        data: FallbackLibrary.get(triggerType, contextPacket, request.stateVersion),
-        logId: "",
+        data: fallbackData,
+        logId,
         fallbackUsed: true,
         failureReason: "BUDGET_EXHAUSTED",
       };
@@ -139,7 +173,7 @@ export class BhudhiTriggerRouter {
       );
 
       if (!validated.ok || !validated.output) {
-        await BhudhiLogWriter.failLog(logId, validated.errors);
+        await BhudhiLogWriter.failLog(logId, validated.errors, { useFallbackStatus: true });
         return {
           ok: true,
           data: FallbackLibrary.get(triggerType, contextPacket, request.stateVersion),
@@ -159,7 +193,11 @@ export class BhudhiTriggerRouter {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await BhudhiLogWriter.failLog(logId, [message]);
+      const validationStatus = mapFailureToValidationStatus(message, true);
+      await BhudhiLogWriter.completeFallbackLog(logId, {
+        reason: message,
+        validationStatus,
+      });
       return {
         ok: true,
         data: FallbackLibrary.get(triggerType, contextPacket, request.stateVersion),

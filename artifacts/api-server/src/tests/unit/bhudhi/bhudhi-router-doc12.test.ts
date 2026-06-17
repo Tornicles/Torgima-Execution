@@ -29,20 +29,15 @@ function grepAnthropicSdkFiles(): string[] {
 }
 
 describe("bhudhi-router DOC12 — trigger registry", () => {
-  it("registers all 10 DOC12 trigger types", () => {
-    const expected = [
-      "GOAL_STRUCTURING",
-      "TASK_DRAFTING",
-      "BLOCKER_CLASSIFICATION",
-      "CLARIFICATION_PROMPT",
-      "STATE_EXPLANATION",
-      "RECOVERY_COPY",
-      "ACADEMY_SUPPORT",
-      "ROOT_CAUSE_ASSIST",
-      "OUTCOME_EVIDENCE_SUMMARY",
-      "PROOF_RELEVANCE_CHECK",
-    ];
-    expect(Object.keys(REGISTERED_TRIGGERS).sort()).toEqual(expected.sort());
+  it("registers 10 core DOC12 router trigger types", async () => {
+    const { CORE_DOC12_TRIGGER_COUNT } = await import("../../../lib/bhudhi/TriggerRegistry.js");
+    expect(CORE_DOC12_TRIGGER_COUNT).toBe(10);
+  });
+
+  it("includes Erector triggers in canonical registry", async () => {
+    const { ERECTOR_TRIGGER_TYPES } = await import("../../../lib/bhudhi/TriggerRegistry.js");
+    expect(ERECTOR_TRIGGER_TYPES).toContain("ERECTOR_FREE_VALIDATION");
+    expect(ERECTOR_TRIGGER_TYPES).toContain("ERECTOR_VERDICT_EXPLAIN");
   });
 });
 

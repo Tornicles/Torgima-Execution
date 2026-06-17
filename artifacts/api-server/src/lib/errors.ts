@@ -28,6 +28,7 @@ export type ErrorCode =
   | "PHASE_NOT_READY"
   | "BHUDHI_LOG_FAILURE"
   | "ENFORCEMENT_PACKAGE_MISSING"
+  | "EXECUTION_LOCKED"
   | "TIER_INSUFFICIENT"
   | "DASHBOARD_LIMITED"
   | "USER_NOT_FOUND"
@@ -66,6 +67,8 @@ export function torgimaErrorToStatus(code: ErrorCode): number {
     case "ACTIVATION_FAILED":
     case "BLUEPRINT_SELECTION_REQUIRED":
       return 422;
+    case "EXECUTION_LOCKED":
+      return 423;
     case "PAYLOAD_TOO_LARGE":
       return 413;
     case "STALE_STATE":

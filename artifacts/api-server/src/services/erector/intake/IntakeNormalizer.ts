@@ -231,6 +231,7 @@ function normalizeFullIntake(input: RawIntakeInput): NormalizedIntake {
   const s6 = readSection(input.section_6_data);
   const s7 = readSection(input.section_7_data);
   const s8 = readSection(input.section_8_data);
+  const _s9 = readSection(input.section_9_data);
 
   const location = pickString(s3, "location");
   const industry =
@@ -317,6 +318,7 @@ export function rawIntakeFromSession(
     section_6_data: unknown;
     section_7_data: unknown;
     section_8_data: unknown;
+    section_9_data?: unknown;
   },
 ): RawIntakeInput {
   const intakeTier: IntakeTier =
@@ -333,5 +335,6 @@ export function rawIntakeFromSession(
     section_6_data: readSection(sections.section_6_data),
     section_7_data: readSection(sections.section_7_data),
     section_8_data: readSection(sections.section_8_data),
+    section_9_data: readSection(sections.section_9_data),
   };
 }

@@ -35,6 +35,8 @@ export type IntakeInProgressContext = {
   percent_complete: number;
   last_saved: string | null;
   continue_cta: string;
+  headline: string;
+  message: string;
 };
 
 export type DirectSignupContext = {
@@ -51,9 +53,13 @@ export type LimitedDashboardContext =
 
 export function getFreeVerdictLabel(verdict: string): string {
   const v = verdict.toLowerCase();
-  if (v === "proceed") return "Good Potential Detected";
-  if (v === "adjust") return "Some Gaps to Address";
-  return "Key Issues Identified";
+  if (v === "proceed") return "Strong direction";
+  if (v === "adjust") return "Needs adjustment";
+  if (v === "pivot") return "Consider a different angle";
+  if (v === "test_first") return "Test before building";
+  if (v === "delay") return "Wait or gather proof";
+  if (v === "blocked") return "High risk";
+  return "Not enough information";
 }
 
 export function getUpgradeHeadline(verdict: string): string {
@@ -192,18 +198,21 @@ export async function buildLimitedDashboardContext(userId: string): Promise<{
 
   const activeSession = await getActiveIntakeSession(userId);
   const completed = activeSession?.sections_completed ?? [];
-  if (activeSession && completed.length > 0) {
+  if (activeSession) {
     return {
       limited_variant: "intake_in_progress",
       limited_context: {
         variant: "intake_in_progress",
         sections_completed: completed,
-        sections_total: 8,
+        sections_total: 9,
         current_section: activeSession.current_section,
         session_id: activeSession.id,
-        percent_complete: Math.round((completed.length / 8) * 100),
+        percent_complete: Math.round((completed.length / 9) * 100),
         last_saved: activeSession.last_saved_at?.toISOString() ?? null,
-        continue_cta: "Continue your analysis",
+        continue_cta: completed.length > 0 ? "Complete Intake" : "Complete Intake",
+        headline: "Complete your Project Intelligence Intake",
+        message:
+          "To build your execution system, validate your project reality, and unlock all Blueprint features, TORGIMA needs a few more details.\n\nYour dashboard is ready. Full execution unlocks after this intake is completed and your Erector baseline is generated.",
       },
     };
   }
@@ -213,9 +222,9 @@ export async function buildLimitedDashboardContext(userId: string): Promise<{
     limited_context: {
       variant: "direct_signup",
       user_tier: userTier,
-      cta_headline: "Analyse your project",
+      cta_headline: "Complete your Project Intelligence Intake",
       cta_body:
-        "Answer 8 questions to receive a full intelligence report before your project launches.",
+        "Your dashboard is ready. Full execution unlocks after this intake is completed and your Erector baseline is generated.",
     },
   };
 }

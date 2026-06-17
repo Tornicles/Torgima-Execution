@@ -11,7 +11,7 @@ import {
   shouldSkipIntake,
 } from "@/lib/handoff-client";
 import {
-  completeIntakeSession,
+  submitIntakeSession,
   createIntakeSession,
   fetchIntakeSession,
   getStoredIntakeSessionId,
@@ -179,7 +179,7 @@ export default function OnboardingIntakePage() {
     setError(null);
     const minDelay = new Promise((resolve) => window.setTimeout(resolve, 4000));
     try {
-      const [result] = await Promise.all([completeIntakeSession(session.id), minDelay]);
+      const [result] = await Promise.all([submitIntakeSession(session.id), minDelay]);
       const dest = result.redirect_to ?? (result.tier === "authenticated" ? "/dashboard" : `/onboarding/intake/report/${result.validation_id}`);
       setLocation(dest);
     } catch (err) {

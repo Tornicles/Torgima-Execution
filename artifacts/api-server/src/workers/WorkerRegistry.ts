@@ -131,6 +131,24 @@ export const WORKER_REGISTRY: Record<string, Doc16WorkerDefinition> = {
     timeoutMs: 15_000,
     queue: WorkerQueues.ERECTOR_SIMULATION_REQUESTED,
   },
+  ErectorBaselineWorker: {
+    name: "ErectorBaselineWorker",
+    consumes: [EventTypes.ERECTOR_BASELINE_REQUESTED],
+    produces: [EventTypes.ERECTOR_BASELINE_COMPLETED, EventTypes.BLUEPRINT_EXECUTION_GENERATION_REQUESTED],
+    lockScope: "BLUEPRINT",
+    retryPolicy: "CRITICAL",
+    timeoutMs: 30_000,
+    queue: WorkerQueues.ERECTOR_BASELINE,
+  },
+  BlueprintExecutionGenerationWorker: {
+    name: "BlueprintExecutionGenerationWorker",
+    consumes: [EventTypes.BLUEPRINT_EXECUTION_GENERATION_REQUESTED],
+    produces: [EventTypes.BLUEPRINT_EXECUTION_GENERATION_COMPLETED, EventTypes.EXECUTION_UNLOCKED],
+    lockScope: "BLUEPRINT",
+    retryPolicy: "CRITICAL",
+    timeoutMs: 60_000,
+    queue: WorkerQueues.BLUEPRINT_EXECUTION_GENERATION,
+  },
 };
 
 const EVENT_TO_WORKER = new Map<string, Doc16WorkerDefinition>();

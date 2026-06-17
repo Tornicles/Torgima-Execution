@@ -155,7 +155,7 @@ async function explainVerdict(
     ? previewReport!.user_facing_explanation
     : verdict.reasoning.join(" ");
 
-  const triggerType = isPreview ? "ERECTOR_FREE_VERDICT_EXPLAIN" : "ERECTOR_VERDICT_EXPLANATION";
+  const triggerType = isPreview ? "ERECTOR_FREE_VERDICT_EXPLAIN" : "ERECTOR_VERDICT_EXPLAIN";
   const fallbackKey = isPreview
     ? "ERECTOR_FREE_VERDICT_EXPLAIN_FALLBACK"
     : "ERECTOR_VERDICT_EXPLANATION_FALLBACK";

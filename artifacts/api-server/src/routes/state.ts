@@ -37,6 +37,41 @@ router.get("/state/dashboard", async (req, res) => {
   }
 });
 
+// GET /api/dashboard/activation-state — Prompt 6
+router.get("/dashboard/activation-state", async (req, res) => {
+  try {
+    const auth = await requireAuth(req, "USER_SESSION");
+    const limited = await DashboardService.getLimitedDashboardStateIfNeeded(auth.userId);
+    if (limited) {
+      const ctx = limited.limited_context as Record<string, unknown>;
+      success(res, {
+        dashboard_mode: "limited_activation",
+        execution_locked: true,
+        next_required_action: "project_intelligence_intake",
+        intake: {
+          session_id: typeof ctx.session_id === "string" ? ctx.session_id : null,
+          completion_percentage:
+            typeof ctx.percent_complete === "number" ? ctx.percent_complete : 0,
+          completed_sections:
+            Array.isArray(ctx.sections_completed) ? (ctx.sections_completed as unknown[]).length : 0,
+          total_sections: typeof ctx.sections_total === "number" ? ctx.sections_total : 9,
+        },
+        locked_message: "Execution is locked until Project Intelligence Intake is complete.",
+      });
+      return;
+    }
+    const payload = await DashboardService.getDashboardState(auth.userId);
+    success(res, {
+      dashboard_mode: "full_execution",
+      execution_locked: false,
+      next_required_action: null,
+      blueprint_id: payload.activeBlueprint?.id ?? null,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
 router.get("/state/dashboard-intelligence", async (req, res) => {
   try {
     const auth = await requireAuth(req, "USER_SESSION");

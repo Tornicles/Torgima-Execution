@@ -53,9 +53,13 @@ const baseRow = {
   section_6_data: null,
   section_7_data: null,
   section_8_data: null,
+  section_9_data: null,
   validation_id: null,
   prefilled_from_handoff: false,
   handoff_token_id: null,
+  completion_percentage: 0,
+  required_missing_fields: [] as string[],
+  prefill_source_json: {},
   normalized_payload: {},
   missing_fields: [] as string[],
   ambiguity_flags: [] as string[],
@@ -64,6 +68,10 @@ const baseRow = {
   started_at: new Date(),
   completed_at: null,
   last_saved_at: null,
+  submitted_at: null,
+  baseline_requested_at: null,
+  baseline_completed_at: null,
+  baseline_failed_at: null,
   created_at: new Date(),
 };
 
@@ -86,7 +94,7 @@ describe("Erector intake service", () => {
 
   it("rejects invalid section numbers", async () => {
     await expect(saveIntakeSection("sess-1", "user-1", 0, {})).rejects.toBeInstanceOf(TorgimaError);
-    await expect(saveIntakeSection("sess-1", "user-1", 9, {})).rejects.toBeInstanceOf(TorgimaError);
+    await expect(saveIntakeSection("sess-1", "user-1", 10, {})).rejects.toBeInstanceOf(TorgimaError);
   });
 
   it("saves section data and advances current_section", async () => {

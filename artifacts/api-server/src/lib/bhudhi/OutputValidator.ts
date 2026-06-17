@@ -1,6 +1,6 @@
 import { validateOutput as validateSchemaOutput } from "../../bhudhi/OutputValidator.js";
 import type { BhudhiOutputEnvelope } from "../../types/bhudhi.js";
-import { REGISTERED_TRIGGERS, type Doc12TriggerType } from "./TriggerRegistry.js";
+import { CORE_DOC12_ROUTER_TRIGGERS, type Doc12TriggerType } from "./TriggerRegistry.js";
 import { buildSystemPrompt } from "./prompts/SystemPromptBuilder.js";
 
 export const FORBIDDEN_PATTERNS = [
@@ -73,7 +73,7 @@ export function validateDoc12Output(
   expectedStateVersion: number,
 ): Doc12ValidationResult {
   const errors: string[] = [];
-  const def = REGISTERED_TRIGGERS[triggerType];
+  const def = CORE_DOC12_ROUTER_TRIGGERS[triggerType];
 
   let parsed: unknown = raw;
   if (typeof raw === "string") {

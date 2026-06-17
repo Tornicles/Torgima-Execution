@@ -10,8 +10,8 @@ export interface Doc12TriggerDefinition {
   outputType: BhudhiOutputType;
 }
 
-/** DOC12 Phase-1 governed triggers — unregistered types are blocked at the router. */
-export const REGISTERED_TRIGGERS = {
+/** Core DOC12 router triggers — use BhudhiTriggerRouter path. */
+export const CORE_DOC12_ROUTER_TRIGGERS = {
   GOAL_STRUCTURING: {
     mode: "STRUCTURE",
     allowedSources: ["ONBOARDING", "BHUDHI_WORKER", "OnboardingService", "TriggerRouter"],
@@ -120,17 +120,103 @@ export const REGISTERED_TRIGGERS = {
   },
 } as const satisfies Record<string, Doc12TriggerDefinition>;
 
-export type Doc12TriggerType = keyof typeof REGISTERED_TRIGGERS;
+/** Erector intelligence triggers — canonical registry entries routed via runBhudhiPipeline. */
+export const ERECTOR_CANONICAL_TRIGGERS = {
+  ERECTOR_FREE_VALIDATION: {
+    mode: "INTERPRET",
+    allowedSources: ["erector_free", "INTERNAL", "TriggerRouter"],
+    requiredContext: ["industry", "goal"],
+    forbiddenContext: [],
+    maxTokens: 2000,
+    timeoutMs: 15_000,
+    outputType: "erector_free_report",
+  },
+  ERECTOR_PAID_VALIDATION: {
+    mode: "STRUCTURE",
+    allowedSources: ["erector_paid", "INTERNAL", "TriggerRouter"],
+    requiredContext: ["goal"],
+    forbiddenContext: [],
+    maxTokens: 4000,
+    timeoutMs: 30_000,
+    outputType: "erector_paid_report",
+  },
+  ERECTOR_FREE_VERDICT_EXPLAIN: {
+    mode: "EXPLAIN",
+    allowedSources: ["erector_rule_engine", "INTERNAL", "TriggerRouter"],
+    requiredContext: ["verdict"],
+    forbiddenContext: [],
+    maxTokens: 500,
+    timeoutMs: 10_000,
+    outputType: "erector_verdict_explanation",
+  },
+  ERECTOR_VERDICT_EXPLAIN: {
+    mode: "EXPLAIN",
+    allowedSources: ["erector_rule_engine", "INTERNAL", "TriggerRouter"],
+    requiredContext: ["verdict"],
+    forbiddenContext: [],
+    maxTokens: 800,
+    timeoutMs: 10_000,
+    outputType: "erector_verdict_explanation",
+  },
+  ERECTOR_STATE_EXPLANATION: {
+    mode: "EXPLAIN",
+    allowedSources: ["erector_validation", "INTERNAL", "TriggerRouter"],
+    requiredContext: ["verdict"],
+    forbiddenContext: [],
+    maxTokens: 600,
+    timeoutMs: 10_000,
+    outputType: "state_explanation",
+  },
+} as const satisfies Record<string, Doc12TriggerDefinition>;
+
+/** Unified canonical Bhudhi trigger registry (Doc12 core + Erector). */
+export const REGISTERED_TRIGGERS = {
+  ...CORE_DOC12_ROUTER_TRIGGERS,
+  ...ERECTOR_CANONICAL_TRIGGERS,
+} as const;
+
+export type Doc12TriggerType = keyof typeof CORE_DOC12_ROUTER_TRIGGERS;
+export type ErectorCanonicalTriggerType = keyof typeof ERECTOR_CANONICAL_TRIGGERS;
+export type CanonicalBhudhiTriggerType = keyof typeof REGISTERED_TRIGGERS;
+
+/** Legacy alias — canonical name is ERECTOR_VERDICT_EXPLAIN. */
+export const BHUDHI_TRIGGER_ALIASES: Partial<Record<string, CanonicalBhudhiTriggerType>> = {
+  ERECTOR_VERDICT_EXPLANATION: "ERECTOR_VERDICT_EXPLAIN",
+};
+
+export function resolveCanonicalTriggerType(triggerType: string): string {
+  return BHUDHI_TRIGGER_ALIASES[triggerType] ?? triggerType;
+}
+
+export function isRegisteredBhudhiTrigger(
+  triggerType: string,
+): triggerType is CanonicalBhudhiTriggerType {
+  const resolved = resolveCanonicalTriggerType(triggerType);
+  return resolved in REGISTERED_TRIGGERS;
+}
+
+export function usesDoc12Router(triggerType: string): triggerType is Doc12TriggerType {
+  const resolved = resolveCanonicalTriggerType(triggerType);
+  return resolved in CORE_DOC12_ROUTER_TRIGGERS;
+}
 
 export function isDoc12Trigger(triggerType: string): triggerType is Doc12TriggerType {
-  return triggerType in REGISTERED_TRIGGERS;
+  return usesDoc12Router(triggerType);
 }
+
+export const CORE_DOC12_TRIGGER_COUNT = Object.keys(CORE_DOC12_ROUTER_TRIGGERS).length;
+
+export const ERECTOR_TRIGGER_TYPES = Object.keys(
+  ERECTOR_CANONICAL_TRIGGERS,
+) as ErectorCanonicalTriggerType[];
 
 export function getDoc12Trigger(triggerType: string): Doc12TriggerDefinition | null {
   if (!isDoc12Trigger(triggerType)) return null;
-  return REGISTERED_TRIGGERS[triggerType];
+  return CORE_DOC12_ROUTER_TRIGGERS[triggerType];
 }
 
 export function isSourceAllowedForTrigger(triggerType: Doc12TriggerType, sourceEngine: string): boolean {
-  return (REGISTERED_TRIGGERS[triggerType].allowedSources as readonly string[]).includes(sourceEngine);
+  return (CORE_DOC12_ROUTER_TRIGGERS[triggerType].allowedSources as readonly string[]).includes(
+    sourceEngine,
+  );
 }

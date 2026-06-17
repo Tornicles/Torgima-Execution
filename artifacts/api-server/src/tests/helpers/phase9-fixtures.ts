@@ -17,6 +17,10 @@ import {
   deadLetterEvents,
   systemHealthLogs,
   erectorSystemErrorRecords,
+  erectorObservabilityLogs,
+  erectorVerdictDecisions,
+  erectorDecisionAudits,
+  erectorUserFacingExplanations,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { createTestUser, createTestBlueprint, createInitialState, createTestOrder } from "./db.js";
@@ -293,5 +297,9 @@ export async function cleanupPhase9User(userId: string): Promise<void> {
 
   // Catch any remaining user-linked records (e.g. errors without blueprint_id).
   await db.delete(erectorSystemErrorRecords).where(eq(erectorSystemErrorRecords.user_id, userId));
+  await db.delete(erectorObservabilityLogs).where(eq(erectorObservabilityLogs.user_id, userId));
+  await db.delete(erectorVerdictDecisions).where(eq(erectorVerdictDecisions.user_id, userId));
+  await db.delete(erectorUserFacingExplanations).where(eq(erectorUserFacingExplanations.user_id, userId));
+  await db.delete(erectorDecisionAudits).where(eq(erectorDecisionAudits.user_id, userId));
   await db.delete(users).where(eq(users.id, userId));
 }

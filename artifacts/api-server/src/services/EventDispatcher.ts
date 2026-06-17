@@ -10,23 +10,39 @@ import { claimDeadlineFromNow } from "../engines/events/StuckEventDetector.js";
 import { getNextRunAfter } from "../engines/events/RetryPolicy.js";
 import { deadLetterQueue } from "./DeadLetterQueue.js";
 
-export const DISPATCH_BATCH_SIZE = 50;
+/** Default bounded batch for cron / inline drain. */
+export const EVENT_DISPATCH_BATCH_SIZE_DEFAULT = 5;
+
+/** Node server poll may process larger batches when not on Cloudflare. */
+export const DISPATCH_BATCH_SIZE = 25;
 
 /** Hard cap for Cloudflare cron invocations (Worker subrequest budget). */
-export const MAX_EVENTS_PER_CRON = 1;
+export const MAX_EVENTS_PER_CRON = 5;
 
 /** Stop dispatch work before Worker subrequest/time limits are hit. */
 export const MAX_PROCESSING_MS = 5_000;
 
-/** Documented safe subrequest budget for cron ticks (no inline worker chains). */
+/** Documented safe subrequest budget for cron ticks (enqueue-only, no inline chains). */
 export const MAX_SUBREQUESTS_PER_CRON_SAFE_LIMIT = 10;
 
 export const MAX_DISPATCH_ATTEMPTS = 3;
 
 const PRIORITY_EVENT_TYPES = new Set<string>([
   EventTypes.FEEDBACK_SUBMITTED,
-  EventTypes.TASK_GENERATION_REQUESTED,
+  EventTypes.FEEDBACK_SUBMITTED_PARTIAL,
+  EventTypes.INTERROGATION_ANSWERED,
+  EventTypes.SIGNAL_RECALCULATION_REQUESTED,
+  EventTypes.SIGNAL_CALCULATED,
+  EventTypes.CONDITION_EVALUATION_REQUESTED,
   EventTypes.CONDITION_EVALUATED,
+  EventTypes.ENFORCEMENT_PACKAGE_CREATED,
+  EventTypes.TASK_GENERATION_REQUESTED,
+  EventTypes.TASK_GENERATION_COMPLETED,
+  EventTypes.TASK_GENERATION_FAILED,
+  EventTypes.ORDER_AVAILABLE,
+  EventTypes.ERECTOR_SIGNAL_CALCULATED,
+  EventTypes.OUTCOME_VALIDATED,
+  EventTypes.ERECTOR_BLUEPRINT_LAUNCHED,
 ]);
 
 type EventRow = typeof events.$inferSelect;
@@ -42,24 +58,30 @@ export function isEventDispatchCronEnabled(): boolean {
   return raw === "true" || raw === "1" || raw === "yes";
 }
 
-/** Reads EVENT_DISPATCH_CRON_BATCH_SIZE; defaults to 1 (Cloudflare production). */
+function parseBatchEnv(...names: string[]): number | undefined {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw === undefined || raw.trim() === "") continue;
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return undefined;
+}
+
+/** Reads EVENT_DISPATCH_BATCH_SIZE / EVENT_DISPATCH_CRON_BATCH_SIZE; defaults to 5. */
 export function getCronDispatchBatchSize(): number {
-  const raw = process.env.EVENT_DISPATCH_CRON_BATCH_SIZE;
-  const parsed = raw !== undefined && raw.trim() !== "" ? Number.parseInt(raw, 10) : NaN;
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return Math.min(parsed, MAX_EVENTS_PER_CRON);
-  }
-  if (isCloudflareRuntime()) {
-    return MAX_EVENTS_PER_CRON;
-  }
-  return MAX_EVENTS_PER_CRON;
+  const parsed =
+    parseBatchEnv("EVENT_DISPATCH_BATCH_SIZE", "EVENT_DISPATCH_CRON_BATCH_SIZE") ??
+    EVENT_DISPATCH_BATCH_SIZE_DEFAULT;
+  const cap = isCloudflareRuntime() ? MAX_EVENTS_PER_CRON : DISPATCH_BATCH_SIZE;
+  return Math.min(parsed, cap);
 }
 
 function resolveBatchSize(batchSize?: number): number {
   if (batchSize !== undefined) {
     return Math.max(1, Math.min(batchSize, DISPATCH_BATCH_SIZE));
   }
-  return DISPATCH_BATCH_SIZE;
+  return getCronDispatchBatchSize();
 }
 
 async function claimPendingEvents(limit: number): Promise<EventRow[]> {
@@ -112,12 +134,119 @@ async function releaseClaimedEventToRetry(event: EventRow, reason: string): Prom
     .catch(() => null);
   logger.info(
     { eventId: event.id, eventType: event.event_type, reason },
-    "[EventDispatcher] Released claimed event to retry (cron subrequest-safe)",
+    "[EventDispatcher] Released claimed event to retry",
   );
 }
 
+async function isEventAlreadyProcessed(eventId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ status: events.status })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .limit(1);
+  return row?.status === EventStatus.PROCESSED;
+}
+
+async function enqueueClaimedEvent(
+  event: EventRow,
+  logContext: "cron" | "default",
+): Promise<"enqueued" | "noop" | "failed"> {
+  const queueName = EVENT_QUEUE_MAP[event.event_type];
+
+  if (!queueName) {
+    if (TERMINAL_EVENT_TYPES.has(event.event_type)) {
+      await markEventProcessed(event.id, "success");
+      return "noop";
+    }
+    logger.warn(
+      { eventType: event.event_type, eventId: event.id },
+      "[EventDispatcher] No queue mapping for event type",
+    );
+    await markEventProcessed(event.id, "noop_duplicate");
+    return "noop";
+  }
+
+  if (event.idempotency_key && (await isEventAlreadyProcessed(event.id))) {
+    await markEventProcessed(event.id, "noop_duplicate");
+    return "noop";
+  }
+
+  try {
+    const payload = {
+      eventId: event.id,
+      eventType: event.event_type,
+      entityType: event.entity_type,
+      entityId: event.entity_id,
+      userId: event.user_id,
+      blueprintId: event.blueprint_id,
+      payload: event.payload,
+    };
+
+    if (logContext === "cron") {
+      const taskQueue = globalThis.__TORGIMA_TASK_QUEUE__;
+      if (!taskQueue) {
+        await releaseClaimedEventToRetry(event, "NO_TASK_QUEUE");
+        return "failed";
+      }
+      await taskQueue.send({ queue: queueName, payload });
+    } else {
+      const boss = await getBoss();
+      await boss.send(queueName, payload);
+    }
+
+    if (logContext === "cron") {
+      logger.info(
+        { eventId: event.id, eventType: event.event_type, queue: queueName },
+        "[EventDispatcher] Cron event enqueued",
+      );
+    }
+    return "enqueued";
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.error(
+      { eventId: event.id, eventType: event.event_type, error: errMsg },
+      "[EventDispatcher] Failed to dispatch event",
+    );
+
+    await db
+      .insert(eventLogs)
+      .values({
+        event_id: event.id,
+        worker: "EventDispatcher",
+        result: "failed",
+        error_message: errMsg,
+        processed_at: new Date(),
+      })
+      .catch(() => null);
+
+    const nextRetry = event.retry_count + 1;
+    if (nextRetry >= MAX_DISPATCH_ATTEMPTS) {
+      await deadLetterQueue
+        .createFromFailedEvent({
+          eventId: event.id,
+          reason: "MAX_RETRIES_EXCEEDED",
+          lastError: errMsg,
+          failureClass: "transient",
+          dispatchFailures: nextRetry,
+        })
+        .catch(() => null);
+    } else {
+      await db
+        .update(events)
+        .set({
+          status: EventStatus.RETRY_PENDING,
+          retry_count: nextRetry,
+          process_after: getNextRunAfter(event.event_type, event.retry_count),
+        })
+        .where(eq(events.id, event.id))
+        .catch(() => null);
+    }
+    return "failed";
+  }
+}
+
 /**
- * Cloudflare cron-only path: claim at most one event, enqueue via TASK_QUEUE only.
+ * Cloudflare cron path: claim bounded batch, enqueue via TASK_QUEUE only.
  * Never runs inline worker handlers (avoids Worker subrequest exhaustion).
  */
 export async function dispatchPendingEventsForCron(): Promise<number> {
@@ -138,171 +267,24 @@ export async function dispatchPendingEventsForCron(): Promise<number> {
     "[EventDispatcher] Cron subrequest-safe mode started",
   );
 
+  let enqueued = 0;
   const pendingEvents = await claimPendingEvents(limit);
-  const claimedCount = pendingEvents.length;
 
-  if (claimedCount === 0) {
-    logger.info({ claimed: 0 }, "[EventDispatcher] Cron exit — no pending event");
-    return 0;
-  }
-
-  const event = pendingEvents[0]!;
-  logger.info(
-    { claimed: claimedCount, eventId: event.id, eventType: event.event_type },
-    "[EventDispatcher] Cron claimed events",
-  );
-
-  if (claimedCount > 1) {
-    logger.warn(
-      { claimed: claimedCount, kept: 1 },
-      "[EventDispatcher] Cron exit early — extra claimed events released (batch>1 unexpected)",
-    );
-    for (const extra of pendingEvents.slice(1)) {
-      await releaseClaimedEventToRetry(extra, "CRON_BATCH_OVERFLOW");
-    }
-  }
-
-  if (Date.now() - startedAt >= MAX_PROCESSING_MS) {
-    logger.warn(
-      { elapsedMs: Date.now() - startedAt, limitMs: MAX_PROCESSING_MS },
-      "[EventDispatcher] Cron exit early — processing time limit",
-    );
-    await releaseClaimedEventToRetry(event, "TIME_LIMIT");
-    return 0;
-  }
-
-  const taskQueue = globalThis.__TORGIMA_TASK_QUEUE__;
-  if (!taskQueue) {
-    logger.warn(
-      { eventId: event.id, eventType: event.event_type, claimed: claimedCount },
-      "[EventDispatcher] Cron exit early — no TASK_QUEUE binding; subrequest-safe skip",
-    );
-    await releaseClaimedEventToRetry(event, "NO_TASK_QUEUE");
-    return 0;
-  }
-
-  const queueName = EVENT_QUEUE_MAP[event.event_type];
-
-  if (!queueName) {
-    if (TERMINAL_EVENT_TYPES.has(event.event_type)) {
-      await markEventProcessed(event.id, "success");
-      logger.info(
-        { eventId: event.id, eventType: event.event_type, result: "processed" },
-        "[EventDispatcher] Cron terminal event marked processed",
-      );
-    } else {
-      logger.warn(
-        { eventType: event.event_type, eventId: event.id },
-        "[EventDispatcher] No queue mapping for event type",
-      );
-      await markEventProcessed(event.id, "noop_duplicate");
-      logger.info(
-        { eventId: event.id, eventType: event.event_type, result: "noop" },
-        "[EventDispatcher] Cron unmapped event marked noop",
-      );
-    }
-    return 0;
-  }
-
-  try {
-    if (event.idempotency_key) {
-      const [existing] = await db
-        .select({ id: eventLogs.id })
-        .from(eventLogs)
-        .where(and(eq(eventLogs.event_id, event.id), eq(eventLogs.result, "success")))
-        .limit(1);
-      if (existing) {
-        await markEventProcessed(event.id, "noop_duplicate");
-        logger.info(
-          { eventId: event.id, eventType: event.event_type, result: "noop_duplicate" },
-          "[EventDispatcher] Cron duplicate skipped",
-        );
-        return 0;
-      }
+  for (const event of pendingEvents) {
+    if (Date.now() - startedAt >= MAX_PROCESSING_MS) {
+      await releaseClaimedEventToRetry(event, "TIME_LIMIT");
+      continue;
     }
 
-    await taskQueue.send({
-      queue: queueName,
-      payload: {
-        eventId: event.id,
-        eventType: event.event_type,
-        entityType: event.entity_type,
-        entityId: event.entity_id,
-        userId: event.user_id,
-        blueprintId: event.blueprint_id,
-        payload: event.payload,
-      },
-    });
-
-    await db
-      .insert(eventLogs)
-      .values({
-        event_id: event.id,
-        worker: "EventDispatcher",
-        result: "success",
-        processed_at: new Date(),
-      })
-      .catch(() => null);
-
-    logger.info(
-      { eventId: event.id, eventType: event.event_type, queue: queueName, result: "enqueued" },
-      "[EventDispatcher] Cron event enqueued to TASK_QUEUE",
-    );
-    return 1;
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    logger.error(
-      { eventId: event.id, eventType: event.event_type, error: errMsg },
-      "[EventDispatcher] Cron failed to enqueue event",
-    );
-
-    await db
-      .insert(eventLogs)
-      .values({
-        event_id: event.id,
-        worker: "EventDispatcher",
-        result: "failed",
-        error_message: errMsg,
-        processed_at: new Date(),
-      })
-      .catch(() => null);
-
-    const nextRetry = event.retry_count + 1;
-
-    if (nextRetry >= MAX_DISPATCH_ATTEMPTS) {
-      await deadLetterQueue
-        .createFromFailedEvent({
-          eventId: event.id,
-          reason: "MAX_RETRIES_EXCEEDED",
-          lastError: errMsg,
-          failureClass: "transient",
-          dispatchFailures: nextRetry,
-        })
-        .catch(() => null);
-      logger.info(
-        { eventId: event.id, eventType: event.event_type, result: "failed", attempts: nextRetry },
-        "[EventDispatcher] Cron event moved to dead letter",
-      );
-    } else {
-      await db
-        .update(events)
-        .set({
-          status: EventStatus.RETRY_PENDING,
-          retry_count: nextRetry,
-          process_after: getNextRunAfter(event.event_type, event.retry_count),
-        })
-        .where(eq(events.id, event.id))
-        .catch(() => null);
-      logger.info(
-        { eventId: event.id, eventType: event.event_type, result: "retry_pending", attempts: nextRetry },
-        "[EventDispatcher] Cron event scheduled for retry",
-      );
-    }
-    return 0;
+    const result = await enqueueClaimedEvent(event, "cron");
+    if (result === "enqueued") enqueued++;
   }
+
+  logger.info({ enqueued, claimed: pendingEvents.length }, "[EventDispatcher] Cron batch completed");
+  return enqueued;
 }
 
-/** API / Node poll path — may use inline queue fallback when TASK_QUEUE is absent. */
+/** API / Node poll path — inline queue fallback when WORKERS_TEST_MODE or no TASK_QUEUE. */
 export async function dispatchPendingEvents(
   batchSize?: number,
   options: DispatchPendingOptions = {},
@@ -320,15 +302,11 @@ export async function dispatchPendingEvents(
     return 0;
   }
 
-  const boss = await getBoss();
   let dispatched = 0;
 
   for (const event of pendingEvents) {
     if (Date.now() - startedAt >= MAX_PROCESSING_MS) {
-      logger.warn(
-        { elapsedMs: Date.now() - startedAt, limitMs: MAX_PROCESSING_MS },
-        "[EventDispatcher] Stopped — processing time limit",
-      );
+      await releaseClaimedEventToRetry(event, "TIME_LIMIT");
       break;
     }
 
@@ -337,138 +315,8 @@ export async function dispatchPendingEvents(
       "[EventDispatcher] Claimed event",
     );
 
-    const queueName = EVENT_QUEUE_MAP[event.event_type];
-
-    if (!queueName) {
-      if (TERMINAL_EVENT_TYPES.has(event.event_type)) {
-        await markEventProcessed(event.id, "success");
-        if (logContext === "cron") {
-          logger.info(
-            { eventId: event.id, eventType: event.event_type, result: "processed" },
-            "[EventDispatcher] Terminal event marked processed",
-          );
-        }
-      } else {
-        logger.warn(
-          { eventType: event.event_type, eventId: event.id },
-          "[EventDispatcher] No queue mapping for event type",
-        );
-        await markEventProcessed(event.id, "noop_duplicate");
-        if (logContext === "cron") {
-          logger.info(
-            { eventId: event.id, eventType: event.event_type, result: "noop" },
-            "[EventDispatcher] Unmapped event marked noop",
-          );
-        }
-      }
-      continue;
-    }
-
-    try {
-      if (event.idempotency_key) {
-        const [existing] = await db
-          .select({ id: eventLogs.id })
-          .from(eventLogs)
-          .where(and(eq(eventLogs.event_id, event.id), eq(eventLogs.result, "success")))
-          .limit(1);
-        if (existing) {
-          await markEventProcessed(event.id, "noop_duplicate");
-          if (logContext === "cron") {
-            logger.info(
-              { eventId: event.id, eventType: event.event_type, result: "noop_duplicate" },
-              "[EventDispatcher] Duplicate skipped",
-            );
-          }
-          continue;
-        }
-      }
-
-      await boss.send(queueName, {
-        eventId: event.id,
-        eventType: event.event_type,
-        entityType: event.entity_type,
-        entityId: event.entity_id,
-        userId: event.user_id,
-        blueprintId: event.blueprint_id,
-        payload: event.payload,
-      });
-
-      await db
-        .insert(eventLogs)
-        .values({
-          event_id: event.id,
-          worker: "EventDispatcher",
-          result: "success",
-          processed_at: new Date(),
-        })
-        .catch(() => null);
-
-      dispatched++;
-      if (logContext === "cron") {
-        logger.info(
-          { eventId: event.id, eventType: event.event_type, queue: queueName, result: "success" },
-          "[EventDispatcher] Event dispatched",
-        );
-      } else {
-        logger.debug(
-          { eventId: event.id, queue: queueName },
-          "[EventDispatcher] Event dispatched to queue",
-        );
-      }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.error(
-        { eventId: event.id, eventType: event.event_type, error: errMsg },
-        "[EventDispatcher] Failed to dispatch event",
-      );
-
-      await db
-        .insert(eventLogs)
-        .values({
-          event_id: event.id,
-          worker: "EventDispatcher",
-          result: "failed",
-          error_message: errMsg,
-          processed_at: new Date(),
-        })
-        .catch(() => null);
-
-      const nextRetry = event.retry_count + 1;
-
-      if (nextRetry >= MAX_DISPATCH_ATTEMPTS) {
-        await deadLetterQueue
-          .createFromFailedEvent({
-            eventId: event.id,
-            reason: "MAX_RETRIES_EXCEEDED",
-            lastError: errMsg,
-            failureClass: "transient",
-            dispatchFailures: nextRetry,
-          })
-          .catch(() => null);
-        if (logContext === "cron") {
-          logger.info(
-            { eventId: event.id, eventType: event.event_type, result: "failed", attempts: nextRetry },
-            "[EventDispatcher] Event moved to dead letter",
-          );
-        }
-      } else {
-        await db
-          .update(events)
-          .set({
-            status: EventStatus.RETRY_PENDING,
-            retry_count: nextRetry,
-            process_after: getNextRunAfter(event.event_type, event.retry_count),
-          })
-          .where(eq(events.id, event.id))
-          .catch(() => null);
-        if (logContext === "cron") {
-          logger.info(
-            { eventId: event.id, eventType: event.event_type, result: "retry_pending", attempts: nextRetry },
-            "[EventDispatcher] Event scheduled for retry",
-          );
-        }
-      }
-    }
+    const result = await enqueueClaimedEvent(event, logContext);
+    if (result === "enqueued") dispatched++;
   }
 
   return dispatched;

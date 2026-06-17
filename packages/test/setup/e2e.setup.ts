@@ -1,9 +1,9 @@
 /**
  * DOC 36 — E2E test environment setup (runs before full loop suites).
- * Does not clear shared erector capability graph or verdict rules.
+ * Erector catalog is seeded by `pnpm db:ci` — this setup only verifies readiness.
  */
 import { db } from "@workspace/db";
-import { verifyErectorSchema, seedErectorCatalog } from "@workspace/db/erector-seed";
+import { verifyErectorSchema, verifyErectorSeedCatalog } from "@workspace/db/erector-seed";
 
 let setupComplete = false;
 
@@ -21,15 +21,16 @@ export async function setupE2eEnvironment(): Promise<E2eSetupResult> {
   process.env.TORGIMA_INTEGRATION = "true";
   process.env.WORKERS_TEST_MODE = process.env.WORKERS_TEST_MODE ?? "true";
 
+  const seedVerify = await verifyErectorSeedCatalog(db);
+  if (!seedVerify.ok) {
+    throw new Error(
+      "DOC36 setup: Erector catalog incomplete — run `pnpm db:ci` before E2E tests",
+    );
+  }
+
   const erectorSchemaOk = await verifyErectorSchema(db);
   if (!erectorSchemaOk) {
     throw new Error("DOC36 setup: erector schema verification failed (expect 27+ erector_ tables)");
-  }
-
-  try {
-    await seedErectorCatalog(db);
-  } catch {
-    // Shared seed data — idempotent; do not fail if already present.
   }
 
   setupComplete = true;

@@ -107,8 +107,14 @@ export const erectorIntakeSessions = pgTable(
     section_6_data: jsonb("section_6_data").default(sql`'{}'::jsonb`),
     section_7_data: jsonb("section_7_data").default(sql`'{}'::jsonb`),
     section_8_data: jsonb("section_8_data").default(sql`'{}'::jsonb`),
+    /** Prompt 6: optional evidence / proof links. */
+    section_9_data: jsonb("section_9_data").default(sql`'{}'::jsonb`),
     prefilled_from_handoff: boolean("prefilled_from_handoff").default(false),
     handoff_token_id: uuid("handoff_token_id"),
+    /** Prompt 6: autosave + progress + state machine support. */
+    completion_percentage: integer("completion_percentage").notNull().default(0),
+    required_missing_fields: text("required_missing_fields").array().notNull().default(sql`ARRAY[]::text[]`),
+    prefill_source_json: jsonb("prefill_source_json").notNull().default(sql`'{}'::jsonb`),
     normalized_payload: jsonb("normalized_payload").notNull().default(sql`'{}'::jsonb`),
     missing_fields: text("missing_fields").array().notNull().default(sql`ARRAY[]::text[]`),
     ambiguity_flags: text("ambiguity_flags").array().notNull().default(sql`ARRAY[]::text[]`),
@@ -119,11 +125,16 @@ export const erectorIntakeSessions = pgTable(
     started_at: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     completed_at: timestamp("completed_at", { withTimezone: true }),
     last_saved_at: timestamp("last_saved_at", { withTimezone: true }).defaultNow(),
+    submitted_at: timestamp("submitted_at", { withTimezone: true }),
+    baseline_requested_at: timestamp("baseline_requested_at", { withTimezone: true }),
+    baseline_completed_at: timestamp("baseline_completed_at", { withTimezone: true }),
+    baseline_failed_at: timestamp("baseline_failed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("idx_erector_intake_sessions_user_id").on(t.user_id),
     index("idx_intake_sessions_status").on(t.status),
+    index("idx_intake_sessions_blueprint_id").on(t.blueprint_id),
   ],
 );
 

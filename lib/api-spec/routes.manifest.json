@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-16T00:12:20.663Z",
-  "routeCount": 716,
+  "generatedAt": "2026-06-17T08:52:53.286Z",
+  "routeCount": 726,
   "routes": [
     {
       "method": "GET",
@@ -1734,12 +1734,22 @@
     },
     {
       "method": "GET",
+      "path": "/dashboard/activation-state",
+      "file": "state.ts"
+    },
+    {
+      "method": "GET",
       "path": "/dashboard/intelligence/:blueprintId",
       "file": "state.ts"
     },
     {
       "method": "GET",
       "path": "/debug/auth-flow",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/bhudhi-runtime",
       "file": "debug.ts"
     },
     {
@@ -1754,12 +1764,52 @@
     },
     {
       "method": "GET",
+      "path": "/debug/db-runtime",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
       "path": "/debug/db-target",
       "file": "debug.ts"
     },
     {
       "method": "GET",
+      "path": "/debug/erector-seeds",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/event-loop",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/event-loop/dead-letters",
+      "file": "debug.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/debug/event-loop/drain-once",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/event-loop/pending",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/partial-indexes",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
       "path": "/debug/routes",
+      "file": "debug.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/debug/runtime-readiness",
       "file": "debug.ts"
     },
     {
@@ -3583,5 +3633,5 @@
       "file": "worldModel.ts"
     }
   ],
-  "openApiPathCount": 694
+  "openApiPathCount": 704
 }

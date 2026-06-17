@@ -39,7 +39,13 @@ export async function handleWorkerJob(
     const [prevSuccess] = await db
       .select({ id: eventLogs.id })
       .from(eventLogs)
-      .where(and(eq(eventLogs.event_id, data.eventId), eq(eventLogs.result, "success")))
+      .where(
+        and(
+          eq(eventLogs.event_id, data.eventId),
+          eq(eventLogs.result, "success"),
+          eq(eventLogs.worker, workerName),
+        ),
+      )
       .limit(1);
 
     if (prevSuccess) {

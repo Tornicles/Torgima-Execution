@@ -51,10 +51,11 @@ const fullSections = {
     success90Days: "25 subscribers and $1,500 MRR",
     success12Months: "200 subscribers and $12,000 MRR",
   },
+  section_9_data: {},
 };
 
 describe("IntakeNormalizer", () => {
-  it("maps all 8 sections into NormalizedIntake", () => {
+  it("maps all sections into NormalizedIntake", () => {
     const normalized = normalizeIntake(
       rawIntakeFromSession("sess-1", "authenticated", fullSections),
     );
@@ -92,6 +93,7 @@ describe("IntakeNormalizer", () => {
       section_6_data: {},
       section_7_data: {},
       section_8_data: {},
+      section_9_data: {},
     });
 
     expect(normalized.industry).toBe("E-commerce");

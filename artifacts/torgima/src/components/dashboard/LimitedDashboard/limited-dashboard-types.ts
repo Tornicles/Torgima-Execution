@@ -23,6 +23,8 @@ export type IntakeInProgressContext = {
   percent_complete: number;
   last_saved: string | null;
   continue_cta: string;
+  headline?: string;
+  message?: string;
 };
 
 export type DirectSignupContext = {
@@ -102,19 +104,22 @@ export function fallbackLimitedContext(
     return {
       variant: "intake_in_progress",
       sections_completed: [1, 2],
-      sections_total: 8,
+      sections_total: 9,
       current_section: 3,
       session_id: "local",
       percent_complete: 25,
       last_saved: null,
-      continue_cta: "Continue your analysis",
+      continue_cta: "Complete Intake",
+      headline: "Complete your Project Intelligence Intake",
+      message:
+        "To build your execution system, validate your project reality, and unlock all Blueprint features, TORGIMA needs a few more details.\n\nYour dashboard is ready. Full execution unlocks after this intake is completed and your Erector baseline is generated.",
     };
   }
   return {
     variant: "direct_signup",
     user_tier: "starter",
-    cta_headline: "Analyse your project",
+    cta_headline: "Complete your Project Intelligence Intake",
     cta_body:
-      "Answer 8 questions to receive a full intelligence report before your project launches.",
+      "Your dashboard is ready. Full execution unlocks after this intake is completed and your Erector baseline is generated.",
   };
 }

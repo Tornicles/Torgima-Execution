@@ -8,6 +8,7 @@ export type IntakeTier = "pro" | "authenticated";
 
 export type IntakeSession = {
   id: string;
+  blueprint_id?: string | null;
   tier: IntakeTier;
   status: string;
   current_section: number;
@@ -20,11 +21,21 @@ export type IntakeSession = {
   section_6_data: Record<string, unknown> | null;
   section_7_data: Record<string, unknown> | null;
   section_8_data: Record<string, unknown> | null;
+  section_9_data?: Record<string, unknown> | null;
   validation_id: string | null;
   prefilled_from_handoff: boolean | null;
   started_at: string | null;
   completed_at: string | null;
   last_saved_at: string | null;
+  completion_percentage?: number | null;
+  missing_fields?: string[] | null;
+  ambiguity_flags?: string[] | null;
+  contradiction_flags?: string[] | null;
+  required_missing_fields?: string[] | null;
+  submitted_at?: string | null;
+  baseline_requested_at?: string | null;
+  baseline_completed_at?: string | null;
+  baseline_failed_at?: string | null;
 };
 
 export type ErectorPaidReport = ErectorFreeReport & {
@@ -112,11 +123,13 @@ export function clearStoredIntakeSessionId(): void {
 export async function createIntakeSession(
   tier: IntakeTier = "authenticated",
   handoffToken?: string,
+  blueprintId?: string,
 ): Promise<IntakeSession> {
   const res = await apiFetch("/api/erector/intake/session", {
     method: "POST",
     body: JSON.stringify({
       tier,
+      ...(blueprintId ? { blueprint_id: blueprintId } : {}),
       ...(handoffToken ? { handoff_token: handoffToken } : {}),
     }),
   });
@@ -142,8 +155,17 @@ export async function saveIntakeSection(
   return parseEnvelope<IntakeSession>(res);
 }
 
-export async function completeIntakeSession(sessionId: string): Promise<CompleteIntakeResult> {
-  const res = await apiFetch(`/api/erector/intake/session/${sessionId}/complete`, {
+export async function validateIntakeSession(sessionId: string): Promise<CompleteIntakeResult> {
+  const res = await apiFetch(`/api/erector/intake/session/${sessionId}/validate`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  const result = await parseEnvelope<CompleteIntakeResult>(res);
+  return result;
+}
+
+export async function submitIntakeSession(sessionId: string): Promise<CompleteIntakeResult> {
+  const res = await apiFetch(`/api/erector/intake/session/${sessionId}/submit`, {
     method: "POST",
     body: JSON.stringify({}),
   });
@@ -158,12 +180,13 @@ export async function fetchPaidReport(validationId: string): Promise<PaidReportR
 }
 
 export const INTAKE_STEP_LABELS = [
-  "Your Project",
-  "Your Customer",
-  "Your Market",
-  "Your Revenue",
-  "Your Resources",
-  "Your Timeline",
-  "Your Constraints",
-  "Your Success Definition",
+  "Project Identity",
+  "Target User / Customer",
+  "Market / Competition",
+  "Offer / Product / Revenue",
+  "Resources / Capability",
+  "Timeline / Commitment",
+  "Risks / Constraints / Dependencies",
+  "Strategy / Direction Preference",
+  "Proof / Evidence (Optional)",
 ] as const;

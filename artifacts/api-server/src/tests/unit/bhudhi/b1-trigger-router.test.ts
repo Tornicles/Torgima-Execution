@@ -150,6 +150,7 @@ vi.mock("../../../lib/bhudhi/BudgetController.js", () => ({
     tierCaps: { starter: 20, growth: 50, ultimate: 100 },
   },
   checkAndReserve: vi.fn().mockResolvedValue(true),
+  isGlobalFallbackMode: vi.fn().mockResolvedValue(false),
 }));
 
 describe("B1 TriggerRouter — provider failure fallback (T4)", () => {

@@ -37,6 +37,9 @@ BEGIN
   DELETE FROM knowledge_objects WHERE blueprint_id IS NOT NULL;
   DELETE FROM notification_logs WHERE blueprint_id IS NOT NULL;
 
+  -- Erector governance/ops tables may reference users without cascade.
+  DELETE FROM erector_system_error_records;
+
   -- Hard-delete all accounts; FK ON DELETE CASCADE removes blueprints, projects, plans, orders, validations, sessions, etc.
   DELETE FROM users;
   GET DIAGNOSTICS deleted_users = ROW_COUNT;

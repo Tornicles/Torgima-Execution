@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, erectorIntakeSessions } from "@workspace/db";
 import { TorgimaError } from "../../../lib/errors.js";
-import { writeEvent, EVENT_TYPES } from "../../EventService.js";
+import { emitEvent, EVENT_TYPES } from "../../EventService.js";
 import { updateBlueprintErectorState } from "../../../engines/erector/erectorStateMachine.js";
 import { detectAmbiguity } from "./AmbiguityDetector.js";
 import { detectContradictions } from "./ContradictionDetector.js";
@@ -57,11 +57,12 @@ export async function runIntakePipeline(
     contradictions,
   );
 
-  await writeEvent({
+  await emitEvent({
     eventType: EVENT_TYPES.ERECTOR_INTAKE_NORMALIZED,
     entityType: "erector_intake_session",
     entityId: sessionId,
     userId,
+    blueprintId: session.blueprint_id ?? undefined,
     payload: {
       session_id: sessionId,
       profile_id,
@@ -73,6 +74,24 @@ export async function runIntakePipeline(
     idempotencyKey: `erector_intake_normalized:${sessionId}`,
   });
 
+  // Prompt 6: persist normalized + diagnostics for dashboard review.
+  const missingKeys = missingFields.missing_fields.map((m) => String(m.field));
+  const ambiguityKeys = ambiguity.ambiguity_flags.map((a) => `${a.field}:${a.detected_issue}`);
+  const contradictionKeys = contradictions.contradictions.map((c) => c.type);
+  await db
+    .update(erectorIntakeSessions)
+    .set({
+      normalized_payload: normalized,
+      missing_fields: missingKeys,
+      required_missing_fields: missingKeys,
+      ambiguity_flags: ambiguityKeys,
+      contradiction_flags: contradictionKeys,
+      validation_ready,
+      last_saved_at: new Date(),
+    })
+    .where(eq(erectorIntakeSessions.id, sessionId))
+    .catch(() => null);
+
   if (validation_ready) {
     const [sessionRow] = await db
       .select({ blueprint_id: erectorIntakeSessions.blueprint_id })
@@ -81,11 +100,12 @@ export async function runIntakePipeline(
       .limit(1);
     await updateBlueprintErectorState(sessionRow?.blueprint_id, "VALIDATION_REQUESTED");
 
-    await writeEvent({
+    await emitEvent({
       eventType: EVENT_TYPES.ERECTOR_VALIDATION_REQUESTED,
       entityType: "erector_intake_session",
       entityId: sessionId,
       userId,
+      blueprintId: sessionRow?.blueprint_id ?? session.blueprint_id ?? undefined,
       payload: {
         session_id: sessionId,
         profile_id,

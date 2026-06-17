@@ -10,6 +10,7 @@ import { WorkerQueues } from "../types/eventContracts.js";
 import { EVENT_DISPATCH_POLL_QUEUE } from "../workers/EventDispatcherWorker.js";
 import { SESSION_CLEANUP_QUEUE } from "../workers/SessionCleanupWorker.js";
 import { STATE_INTEGRITY_QUEUE } from "../workers/StateIntegrityWorker.js";
+import { isLaunchMode, isNonCriticalCronInLaunchMode } from "../lib/launch-mode.js";
 
 const CRON_TO_QUEUE: Record<string, string> = {
   "0 2 * * *": SESSION_CLEANUP_QUEUE,
@@ -48,21 +49,18 @@ export async function handleCloudflareCron(
 ): Promise<void> {
   bindCloudflareEnv(env);
 
-  // LAUNCH_MODE: disable all background cron jobs to prevent subrequest exhaustion
-  // and avoid initialising advanced subsystems before the MVP flow is stable.
-  // Event dispatch poll has its own kill-switch (EVENT_DISPATCH_CRON_ENABLED).
-  const { isLaunchMode } = await import("../lib/launch-mode.js");
-  if (isLaunchMode()) {
-    logger.info(
-      { cron: controller.cron },
-      "[Cron] Skipped — LAUNCH_MODE=true; all background crons are disabled in launch mode",
-    );
-    return;
-  }
-
   const queue = CRON_TO_QUEUE[controller.cron];
   if (!queue) {
     logger.warn({ cron: controller.cron }, "[Cron] No queue mapping for cron expression");
+    return;
+  }
+
+  // LAUNCH_MODE: skip non-critical background crons but always allow core event dispatch.
+  if (isLaunchMode() && isNonCriticalCronInLaunchMode(controller.cron)) {
+    logger.info(
+      { cron: controller.cron, queue },
+      "[Cron] Skipped — LAUNCH_MODE=true; non-critical cron disabled",
+    );
     return;
   }
 

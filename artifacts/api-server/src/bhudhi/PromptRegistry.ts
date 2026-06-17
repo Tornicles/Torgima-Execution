@@ -8,6 +8,7 @@ import { providerForTrigger } from "./bhudhiProviders.js";
 import { registerErectorEnrichedPrompts } from "./erectorEnrichedPrompts.js";
 import { ensureDoc3PromptsRegistered } from "./registerDoc3Prompts.js";
 import { registerErectorValidationPrompts } from "./registerErectorValidationPrompts.js";
+import { resolveCanonicalTriggerType } from "../lib/bhudhi/TriggerRegistry.js";
 
 export interface PromptContract {
   name:            string;
@@ -1242,8 +1243,9 @@ for (const triggerType of CLAUDE_EXECUTION_TRIGGERS) {
   if (contract) contract.provider = "claude";
 }
 
-export function getContract(triggerType: BhudhiTriggerType): PromptContract | null {
-  return registry.get(triggerType) ?? null;
+export function getContract(triggerType: BhudhiTriggerType | string): PromptContract | null {
+  const resolved = resolveCanonicalTriggerType(String(triggerType));
+  return registry.get(resolved as BhudhiTriggerType) ?? registry.get(triggerType as BhudhiTriggerType) ?? null;
 }
 
 export function getContractByName(name: string): PromptContract | null {
@@ -1284,3 +1286,12 @@ export const PromptRegistry = {
 
 ensureDoc3PromptsRegistered(PromptRegistry);
 registerErectorValidationPrompts((contract) => PromptRegistry.register(contract));
+
+// Legacy trigger alias — same contract as ERECTOR_VERDICT_EXPLAIN
+const verdictExplainContract = registry.get("ERECTOR_VERDICT_EXPLAIN");
+if (verdictExplainContract) {
+  registry.set("ERECTOR_VERDICT_EXPLANATION", {
+    ...verdictExplainContract,
+    triggerType: "ERECTOR_VERDICT_EXPLANATION",
+  });
+}

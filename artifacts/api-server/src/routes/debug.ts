@@ -25,6 +25,14 @@ import {
   parseDatabaseTargetSafe,
   resolveDatabaseUrlBindingSource,
 } from "../lib/databaseTargetDebug.js";
+import {
+  buildRuntimeReadinessReport,
+  getBhudhiRuntimeSnapshot,
+  getDbRuntimeSnapshot,
+  getErectorSeedStatus,
+  getPartialIndexStatus,
+} from "../lib/productionRuntimeDebug.js";
+import { drainEventsOnce, getEventLoopSnapshot } from "../services/EventLoopProcessor.js";
 
 const router = Router();
 
@@ -506,6 +514,15 @@ router.get("/debug/routes", (_req, res) => {
       "GET /api/debug/routes",
       "GET /api/debug/cloudflare-env",
       "GET /api/debug/db-target",
+      "GET /api/debug/db-runtime",
+      "GET /api/debug/erector-seeds",
+      "GET /api/debug/partial-indexes",
+      "GET /api/debug/runtime-readiness",
+      "GET /api/debug/bhudhi-runtime",
+      "GET /api/debug/event-loop",
+      "GET /api/debug/event-loop/pending",
+      "GET /api/debug/event-loop/dead-letters",
+      "POST /api/debug/event-loop/drain-once",
       "GET /api/debug/blueprint-launch-health",
       "POST /api/v1/validations",
       "GET /api/v1/validations/:id",
@@ -515,6 +532,127 @@ router.get("/debug/routes", (_req, res) => {
       "GET /api/v1/signals/current",
     ],
   });
+});
+
+/**
+ * GET /api/debug/db-runtime — masked DB binding + schema probe (internal auth).
+ */
+router.get("/debug/db-runtime", async (req, res) => {
+  try {
+    const snapshot = await getDbRuntimeSnapshot();
+    success(res, snapshot);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/erector-seeds — Erector catalog row counts (internal auth).
+ */
+router.get("/debug/erector-seeds", async (req, res) => {
+  try {
+    const seeds = await getErectorSeedStatus();
+    success(res, seeds);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/partial-indexes — partial unique index presence (internal auth).
+ */
+router.get("/debug/partial-indexes", async (req, res) => {
+  try {
+    const indexes = await getPartialIndexStatus();
+    success(res, indexes);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/runtime-readiness — full production runtime readiness (internal auth).
+ */
+router.get("/debug/runtime-readiness", async (req, res) => {
+  try {
+    const report = await buildRuntimeReadinessReport();
+    success(res, report);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/bhudhi-runtime — Bhudhi provider + trigger registry health (internal auth).
+ */
+router.get("/debug/bhudhi-runtime", async (req, res) => {
+  try {
+    const snapshot = await getBhudhiRuntimeSnapshot();
+    success(res, snapshot);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/event-loop — event loop health snapshot (internal auth).
+ */
+router.get("/debug/event-loop", async (req, res) => {
+  try {
+    const snapshot = await getEventLoopSnapshot();
+    success(res, snapshot);
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/event-loop/pending — pending event counts by type (internal auth).
+ */
+router.get("/debug/event-loop/pending", async (req, res) => {
+  try {
+    const snapshot = await getEventLoopSnapshot();
+    success(res, {
+      pending: snapshot.pending,
+      retry_pending: snapshot.retry_pending,
+      claimed: snapshot.claimed,
+      top_pending_types: snapshot.top_pending_types,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * GET /api/debug/event-loop/dead-letters — recent dead letter summary (internal auth).
+ */
+router.get("/debug/event-loop/dead-letters", async (req, res) => {
+  try {
+    const snapshot = await getEventLoopSnapshot();
+    success(res, {
+      dead_letter_count: snapshot.dead_letter_count,
+      unresolved_dead_letters: snapshot.unresolved_dead_letters,
+      latest_failure_reasons: snapshot.latest_failure_reasons,
+    });
+  } catch (err) {
+    handleError(req, res, err);
+  }
+});
+
+/**
+ * POST /api/debug/event-loop/drain-once — bounded single drain (internal auth).
+ */
+router.post("/debug/event-loop/drain-once", async (req, res) => {
+  try {
+    const result = await drainEventsOnce({
+      batchSize: 5,
+      maxBatches: 1,
+      maxRuntimeMs: 5_000,
+    });
+    success(res, result);
+  } catch (err) {
+    handleError(req, res, err);
+  }
 });
 
 /**

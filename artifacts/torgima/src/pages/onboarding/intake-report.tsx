@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
-import { FreeValidationReport } from "@/components/erector/FreeValidationReport";
 import { fetchPaidReport, type ErectorPaidReport } from "@/lib/erector-intake-api";
-import { VERDICT_LABELS } from "@/lib/erector-free-api";
+import { getFreeVerdictLabel } from "@/lib/language-map";
 
 export default function OnboardingIntakeReportPage() {
   const [, params] = useRoute("/onboarding/intake/report/:validationId");
@@ -52,9 +51,9 @@ export default function OnboardingIntakeReportPage() {
     <div className="mx-auto max-w-3xl px-6 pb-16">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Erector Pro report</p>
       <h1 className="mt-2 text-3xl font-bold text-[#0A0F1E]">
-        {VERDICT_LABELS[report.verdict]} · {report.validation_score}/100
+        {getFreeVerdictLabel(report.verdict)} · {report.validation_score}/100
       </h1>
-      <FreeValidationReport report={report} />
+      <p className="mt-4 text-sm leading-7 text-gray-700">{report.section_recommendation}</p>
       <section className="mt-8 space-y-4 rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] p-6">
         <h2 className="text-lg font-bold text-[#0A0F1E]">Strategy &amp; next steps</h2>
         <p className="text-sm text-[#334155]">{report.section_strategy_recommendation}</p>
