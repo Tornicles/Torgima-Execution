@@ -47,9 +47,9 @@ describe("erector event types", () => {
     expect(EventTypes.ERECTOR_RESIMULATION_TRIGGERED).toBe(ERECTOR_EVENTS.RESIMULATION_TRIGGERED);
   });
 
-  it("maps validation requested events to erector validation worker queue", () => {
+  it("maps validation requested events to erector validation requested worker queue", () => {
     expect(resolveQueueForEventType(EventTypes.ERECTOR_VALIDATION_REQUESTED)).toBe(
-      "erector_validation_started",
+      "erector_validation_requested",
     );
     expect(resolveQueueForEventType(EventTypes.ERECTOR_CAPABILITY_GAP_DETECTED)).toBe(
       "task_generation_requested",

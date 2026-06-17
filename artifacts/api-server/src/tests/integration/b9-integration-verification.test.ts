@@ -70,17 +70,25 @@ describe("DOC B9 — database schema contracts", () => {
 
 describe("DOC B9 — API route registration", () => {
   const routesIndex = readRepo("artifacts/api-server/src/routes/index.ts");
+  const appTs = readRepo("artifacts/api-server/src/app.ts");
 
-  const requiredMounts = [
-    'router.use("/api/erector", erectorFreeRouter)',
-    'router.use("/api/erector", erectorIntakeRouter)',
-    'router.use("/api/erector", erectorPaidRouter)',
-    'router.use("/api/handoff", handoffRouter)',
-    'router.post("/api/billing/upgrade"',
+  it("app.ts mounts the main router at /api", () => {
+    expect(appTs).toContain('app.use("/api", router)');
+  });
+
+  const internalMounts = [
+    'router.use("/erector", erectorFreeRouter)',
+    'router.use("/erector", erectorIntakeRouter)',
+    'router.use("/erector", erectorPaidRouter)',
+    'router.use("/handoff", handoffRouter)',
   ];
 
-  it.each(requiredMounts)("registers %s", (snippet) => {
+  it.each(internalMounts)("routes/index.ts mounts %s (external /api/erector|/api/handoff)", (snippet) => {
     expect(routesIndex).toContain(snippet);
+  });
+
+  it("exposes billing upgrade on /api/billing/upgrade via nested mount", () => {
+    expect(routesIndex).toContain('router.post("/api/billing/upgrade"');
   });
 
   it("erector free route exposes POST /free/validate", () => {

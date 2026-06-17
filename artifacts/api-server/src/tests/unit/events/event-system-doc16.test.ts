@@ -23,9 +23,49 @@ import { CRITICAL_EVENTS, DOC16_CRITICAL_EVENTS } from "../../../workers/DeadLet
 import { resolveIdempotencyKey, buildEventIdempotencyKey } from "../../../lib/events/EventEmitter.js";
 import { EventTypes } from "../../../types/eventContracts.js";
 
+/** DOC16 baseline worker set (Prompt 8 adds lifecycle extensions on top). */
+const DOC16_CORE_WORKER_NAMES = [
+  "FeedbackWorker",
+  "SignalWorker",
+  "ConditionWorker",
+  "ControlWorker",
+  "TaskGenerationWorker",
+  "TaskGuaranteeWorker",
+  "InactivityWorker",
+  "ProjectionWorker",
+  "BhudhiWorker",
+  "HealthWorker",
+  "ErectorSignalBridgeWorker",
+  "ErectorSimulationSignalWorker",
+] as const;
+
+const LIFECYCLE_EXTENSION_WORKERS = [
+  {
+    name: "ErectorBaselineWorker",
+    consumes: EventTypes.ERECTOR_BASELINE_REQUESTED,
+  },
+  {
+    name: "BlueprintExecutionGenerationWorker",
+    consumes: EventTypes.BLUEPRINT_EXECUTION_GENERATION_REQUESTED,
+  },
+] as const;
+
 describe("event-system — worker registry", () => {
-  it("T1: registers all 12 DOC16 workers", () => {
-    expect(listDoc16Workers()).toHaveLength(12);
+  it("T1: registers all 12 DOC16 core workers plus lifecycle extensions", () => {
+    const registered = listDoc16Workers();
+    expect(registered.length).toBe(Object.keys(WORKER_REGISTRY).length);
+    expect(registered.length).toBeGreaterThanOrEqual(DOC16_CORE_WORKER_NAMES.length);
+
+    for (const name of DOC16_CORE_WORKER_NAMES) {
+      expect(WORKER_REGISTRY[name], `missing DOC16 worker ${name}`).toBeDefined();
+    }
+
+    for (const ext of LIFECYCLE_EXTENSION_WORKERS) {
+      const worker = WORKER_REGISTRY[ext.name];
+      expect(worker, `missing lifecycle worker ${ext.name}`).toBeDefined();
+      expect(worker?.consumes).toContain(ext.consumes);
+    }
+
     expect(WORKER_REGISTRY.FeedbackWorker.consumes).toContain(EventTypes.FEEDBACK_SUBMITTED);
     expect(WORKER_REGISTRY.TaskGuaranteeWorker.retryPolicy).toBe("CRITICAL");
     expect(WORKER_REGISTRY.BhudhiWorker.retryPolicy).toBe("BHUDHI");
@@ -37,10 +77,20 @@ describe("event-system — worker registry", () => {
     expect(resolveWorkerForEvent(EventTypes.FEEDBACK_SUBMITTED)?.retryPolicy).toBe("STANDARD");
   });
 
-  it("health snapshot includes retry metadata", () => {
+  it("health snapshot includes retry metadata for every registered worker", () => {
     const snapshot = getWorkerHealthSnapshot();
-    expect(snapshot).toHaveLength(12);
+    expect(snapshot).toHaveLength(Object.keys(WORKER_REGISTRY).length);
+    expect(snapshot.length).toBeGreaterThanOrEqual(DOC16_CORE_WORKER_NAMES.length);
+    for (const name of DOC16_CORE_WORKER_NAMES) {
+      expect(snapshot.find((w) => w.name === name), `missing snapshot for ${name}`).toBeDefined();
+    }
     expect(snapshot.find((w) => w.name === "TaskGuaranteeWorker")?.maxRetries).toBe(5);
+    expect(snapshot.find((w) => w.name === "ErectorBaselineWorker")?.consumes).toContain(
+      EventTypes.ERECTOR_BASELINE_REQUESTED,
+    );
+    expect(snapshot.find((w) => w.name === "BlueprintExecutionGenerationWorker")?.consumes).toContain(
+      EventTypes.BLUEPRINT_EXECUTION_GENERATION_REQUESTED,
+    );
   });
 });
 

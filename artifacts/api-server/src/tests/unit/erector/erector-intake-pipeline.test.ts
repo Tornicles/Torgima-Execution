@@ -336,11 +336,15 @@ vi.mock("../../../services/EventService.js", () => ({
     ERECTOR_INTAKE_NORMALIZED: "erector_intake_normalized",
     ERECTOR_VALIDATION_REQUESTED: "erector_validation_requested",
   },
-  writeEvent: vi.fn(async () => "evt-1"),
+  emitEvent: vi.fn(async () => "evt-1"),
+}));
+
+vi.mock("../../../engines/erector/erectorStateMachine.js", () => ({
+  updateBlueprintErectorState: vi.fn(async () => undefined),
 }));
 
 import { db } from "@workspace/db";
-import { writeEvent, EVENT_TYPES } from "../../../services/EventService.js";
+import { emitEvent, EVENT_TYPES } from "../../../services/EventService.js";
 import { runIntakePipeline } from "../../../services/erector/intake/IntakePipeline.js";
 
 describe("runIntakePipeline", () => {
@@ -352,7 +356,11 @@ describe("runIntakePipeline", () => {
     const session = {
       id: "sess-pipe",
       user_id: "user-1",
+      blueprint_id: "bp-pipe-1",
       tier: "authenticated",
+      sections_completed: [],
+      current_section: 1,
+      prefilled_from_handoff: false,
       ...fullSections,
     };
 
@@ -368,7 +376,15 @@ describe("runIntakePipeline", () => {
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([]),
     };
-    vi.mocked(db.select).mockReturnValueOnce(selectChain as never).mockReturnValueOnce(profileChain as never);
+    const blueprintChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ blueprint_id: "bp-pipe-1" }]),
+    };
+    vi.mocked(db.select)
+      .mockReturnValueOnce(selectChain as never)
+      .mockReturnValueOnce(profileChain as never)
+      .mockReturnValueOnce(blueprintChain as never);
 
     const insertChain = {
       values: vi.fn().mockReturnThis(),
@@ -394,11 +410,21 @@ describe("runIntakePipeline", () => {
         contradiction_flags: expect.any(Array),
       }),
     );
-    expect(writeEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: EVENT_TYPES.ERECTOR_INTAKE_NORMALIZED }),
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: EVENT_TYPES.ERECTOR_INTAKE_NORMALIZED,
+        entityType: "erector_intake_session",
+        entityId: "sess-pipe",
+        blueprintId: "bp-pipe-1",
+      }),
     );
-    expect(writeEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: EVENT_TYPES.ERECTOR_VALIDATION_REQUESTED }),
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: EVENT_TYPES.ERECTOR_VALIDATION_REQUESTED,
+        entityType: "erector_intake_session",
+        entityId: "sess-pipe",
+        blueprintId: "bp-pipe-1",
+      }),
     );
   });
 });

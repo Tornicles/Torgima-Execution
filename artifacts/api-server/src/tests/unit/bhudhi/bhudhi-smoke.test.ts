@@ -2,6 +2,17 @@
  * Bhudhi live intelligence smoke tests — registry, policy, fallbacks, logging semantics.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+vi.mock("../../../lib/bhudhi/ContextBuilder.js", () => ({
+  ContextBuilder: {
+    buildRouterContext: vi.fn().mockResolvedValue({
+      trigger_type: "TASK_DRAFTING",
+      state_version: 1,
+      input: { domain: "delivery", condition: "urgency" },
+    }),
+  },
+}));
+
 import {
   CORE_DOC12_TRIGGER_COUNT,
   ERECTOR_TRIGGER_TYPES,
