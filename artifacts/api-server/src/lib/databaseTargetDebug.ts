@@ -121,6 +121,9 @@ export function classifyDatabaseProbeError(
   const message = sanitizeDatabaseErrorMessage(rawMessage);
   const lower = message.toLowerCase();
 
+  if (/too many subrequests|subrequest limit|exceeded.*subrequests/i.test(lower)) {
+    return { errorClass: "SUBREQUEST_LIMIT", errorMessage: message };
+  }
   if (elapsedMs >= 7500 || /timed?\s*out|timeout|etimedout/.test(lower)) {
     return { errorClass: "TIMEOUT", errorMessage: message };
   }
@@ -135,9 +138,6 @@ export function classifyDatabaseProbeError(
   }
   if (/prepared statement|cached plan|pgbouncer|transaction mode/.test(lower)) {
     return { errorClass: "POOLER_PREPARED_STATEMENT", errorMessage: message };
-  }
-  if (/too many subrequests|subrequest limit|exceeded.*subrequests/i.test(lower)) {
-    return { errorClass: "SUBREQUEST_LIMIT", errorMessage: message };
   }
   if (/syntax|invalid uri|parse/.test(lower)) {
     return { errorClass: "PARSE", errorMessage: message };

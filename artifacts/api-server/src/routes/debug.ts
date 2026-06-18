@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   db,
-  executeHealthSql,
   blueprints,
   users,
   orders,
@@ -21,11 +20,11 @@ import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
 import {
-  buildDatabaseHealthFailure,
   evaluatePoolerExpectations,
   parseDatabaseTargetSafe,
   resolveDatabaseUrlBindingSource,
 } from "../lib/databaseTargetDebug.js";
+import { probeWorkerDatabaseConnection } from "../lib/workerDatabaseHealth.js";
 import {
   buildRuntimeReadinessReport,
   getBhudhiRuntimeSnapshot,
@@ -453,19 +452,14 @@ router.get("/debug/db-target", async (_req, res) => {
   let probeErrorClass: string | null = null;
   let probeErrorMessage: string | null = null;
 
+  let probeDriver: string | undefined;
   if (raw) {
-    const started = Date.now();
-    try {
-      await executeHealthSql("SELECT 1 AS ok");
-      probeOk = true;
-    } catch (err) {
-      const elapsedMs = Date.now() - started;
-      const failure = buildDatabaseHealthFailure(err, elapsedMs, raw);
-      probeErrorClass = failure.error_class;
-      probeErrorMessage = failure.error_message_safe;
-    } finally {
-      probeElapsedMs = Date.now() - started;
-    }
+    const probe = await probeWorkerDatabaseConnection();
+    probeOk = probe.ok;
+    probeElapsedMs = probe.elapsedMs;
+    probeDriver = probe.driver;
+    probeErrorClass = probe.ok ? null : probe.error_class ?? "UNKNOWN";
+    probeErrorMessage = probe.ok ? null : probe.error_message_safe ?? probe.detail;
   } else {
     probeErrorClass = "UNCONFIGURED";
     probeErrorMessage = "DATABASE_URL is not set on the Worker";
@@ -494,7 +488,7 @@ router.get("/debug/db-target", async (_req, res) => {
       elapsedMs: probeElapsedMs,
       errorClass: probeErrorClass,
       errorMessage: probeErrorMessage,
-      driver: process.env.TORGIMA_RUNTIME === "cloudflare" ? "postgres-js" : "node-postgres",
+      driver: probeDriver ?? (process.env.TORGIMA_RUNTIME === "cloudflare" ? "supabase-http" : "node-postgres"),
       runtime: process.env.TORGIMA_RUNTIME === "cloudflare" ? "cloudflare-workers" : "node",
     },
     hint: probeOk

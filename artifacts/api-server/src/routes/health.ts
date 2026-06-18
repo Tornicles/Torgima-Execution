@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
-import { executeHealthSql, resetWorkerDbCache } from "@workspace/db";
+import { executeHealthSql } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
@@ -8,9 +8,12 @@ import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/veri
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { extractInternalToken, getInternalAuthSecret } from "../lib/security/internalAuth.js";
 import {
-  buildDatabaseHealthFailure,
   buildSafeDatabaseTargetSnapshot,
 } from "../lib/databaseTargetDebug.js";
+import {
+  probeWorkerDatabaseConnection,
+  probeWorkerSignalRecency,
+} from "../lib/workerDatabaseHealth.js";
 import { DOC29_KEY_API_ROUTES } from "../lib/doc29-route-inventory.js";
 
 const router: IRouter = Router();
@@ -63,51 +66,10 @@ async function healthQuery<T extends Record<string, unknown>>(
 }
 
 async function runDatabaseHealthCheck(): Promise<HealthCheckDetail> {
-  const started = Date.now();
-  const dbUrl = envValue("DATABASE_URL");
-  if (!dbUrl) {
+  if (!envValue("DATABASE_URL")) {
     return { ok: false, detail: "DATABASE_URL not set" };
   }
-
-  try {
-    await Promise.race([
-      healthQuery("SELECT 1 AS ping"),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(`database timed out after ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`),
-            ),
-          HEALTH_CHECK_TIMEOUT_MS,
-        ),
-      ),
-    ]);
-    const target = buildSafeDatabaseTargetSnapshot(dbUrl);
-    return {
-      ok: true,
-      detail: "Connected — SELECT 1 OK",
-      driver: isCloudflareRuntime() ? "postgres-js" : "node-postgres",
-      runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
-      host: target.host,
-      port: target.port,
-      ssl: target.sslEnabled,
-      elapsedMs: Date.now() - started,
-    };
-  } catch (err) {
-    const elapsedMs = Date.now() - started;
-    const message = err instanceof Error ? err.message : String(err);
-    if (isCloudflareRuntime() && !/subrequest/i.test(message)) {
-      resetWorkerDbCache();
-    }
-    if (isCloudflareRuntime()) {
-      return buildDatabaseHealthFailure(err, elapsedMs, dbUrl);
-    }
-    return {
-      ok: false,
-      detail: err instanceof Error ? err.message : String(err),
-      elapsedMs,
-    };
-  }
+  return probeWorkerDatabaseConnection();
 }
 
 function envValue(key: string): string | undefined {
@@ -366,10 +328,18 @@ async function buildTransparentHealthPayload(): Promise<{
       });
 
   if (checks.database.ok) {
-    checks.signals = await runHealthCheck("signals", async () => {
-      const age = await checkSignalEngineRecency();
-      return age == null ? "No active blueprints — skipped" : `Latest signal ${age.toFixed(1)}h ago`;
-    });
+    if (workerRuntime) {
+      const signalProbe = await probeWorkerSignalRecency();
+      checks.signals = {
+        ok: signalProbe.ok,
+        detail: signalProbe.detail,
+      };
+    } else {
+      checks.signals = await runHealthCheck("signals", async () => {
+        const age = await checkSignalEngineRecency();
+        return age == null ? "No active blueprints — skipped" : `Latest signal ${age.toFixed(1)}h ago`;
+      });
+    }
   } else {
     checks.signals = { ok: false, detail: "skipped — database check failed" };
   }
