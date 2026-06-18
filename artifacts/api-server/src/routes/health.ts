@@ -94,10 +94,11 @@ async function runDatabaseHealthCheck(): Promise<HealthCheckDetail> {
       elapsedMs: Date.now() - started,
     };
   } catch (err) {
-    if (isCloudflareRuntime()) {
+    const elapsedMs = Date.now() - started;
+    const message = err instanceof Error ? err.message : String(err);
+    if (isCloudflareRuntime() && !/subrequest/i.test(message)) {
       resetWorkerDbCache();
     }
-    const elapsedMs = Date.now() - started;
     if (isCloudflareRuntime()) {
       return buildDatabaseHealthFailure(err, elapsedMs, dbUrl);
     }
@@ -228,18 +229,17 @@ export async function checkPgBossWorkers(): Promise<void> {
 }
 
 export async function checkSignalEngineRecency(maxAgeHours = 48): Promise<number | null> {
-  const activeRows = await healthQuery<{ count: number | string }>(
-    `SELECT COUNT(*)::int AS count FROM blueprints WHERE active = true AND status = 'active'`,
+  const rows = await healthQuery<{ active: number | string; latest: Date | string | null }>(
+    `SELECT
+      (SELECT COUNT(*)::int FROM blueprints WHERE active = true AND status = 'active') AS active,
+      (SELECT MAX(created_at) FROM signal_snapshots) AS latest`,
   );
-  const activeBlueprints = Number(activeRows[0]?.count ?? 0);
+  const activeBlueprints = Number(rows[0]?.active ?? 0);
   if (activeBlueprints === 0) {
     return null;
   }
 
-  const signalRows = await healthQuery<{ latest: Date | string | null }>(
-    "SELECT MAX(created_at) AS latest FROM signal_snapshots",
-  );
-  const latest = signalRows[0]?.latest;
+  const latest = rows[0]?.latest;
   if (!latest) {
     throw new Error("no signal snapshots while active blueprints exist");
   }
@@ -325,10 +325,12 @@ async function buildTransparentHealthPayload(): Promise<{
   status: "healthy" | "degraded" | "critical";
 }> {
   const checks: Record<string, HealthCheckDetail> = {};
+  const workerRuntime = isCloudflareRuntime();
 
-  checks.runtime = await runHealthCheck("runtime", async () => {
-    return `${isCloudflareRuntime() ? "cloudflare-workers" : "node"} | ${new Date().toISOString()}`;
-  });
+  checks.runtime = {
+    ok: true,
+    detail: `${workerRuntime ? "cloudflare-workers" : "node"} | ${new Date().toISOString()}`,
+  };
 
   checks.env_vars = await runHealthCheck("env_vars", async () => {
     const required = [
@@ -356,37 +358,61 @@ async function buildTransparentHealthPayload(): Promise<{
     return "ANTHROPIC_API_KEY available";
   });
 
-  checks.workers = isCloudflareRuntime()
+  checks.workers = workerRuntime
     ? { ok: true, detail: "Cloudflare Workers runtime (pg-boss not used)" }
     : await runHealthCheck("workers", async () => {
         await checkPgBossWorkers();
         return "pg-boss workers OK";
       });
 
-  checks.signals = await runHealthCheck("signals", async () => {
-    const age = await checkSignalEngineRecency();
-    return age == null ? "No active blueprints — skipped" : `Latest signal ${age.toFixed(1)}h ago`;
-  });
-
-  checks.kv = await verifyKvReadWrite();
-
-  let results: ProductionHealthResponse;
-  try {
-    results = await buildProductionHealthResponse();
-  } catch {
-    results = {
-      status: "degraded",
-      timestamp: new Date().toISOString(),
-      checks: { database: "error", bhudhi: "error", workers: "error", signals: "error" },
-      version: process.env.APP_VERSION ?? "phase1",
-      metrics: {
-        pendingEvents: null,
-        deadLetters: null,
-        healthIssues: null,
-        latestSignalAgeHours: null,
-      },
-    };
+  if (checks.database.ok) {
+    checks.signals = await runHealthCheck("signals", async () => {
+      const age = await checkSignalEngineRecency();
+      return age == null ? "No active blueprints — skipped" : `Latest signal ${age.toFixed(1)}h ago`;
+    });
+  } else {
+    checks.signals = { ok: false, detail: "skipped — database check failed" };
   }
+
+  // KV read/write costs subrequests on Workers — verify binding only in deep health.
+  checks.kv = workerRuntime
+    ? globalThis.__TORGIMA_SESSIONS_KV__
+      ? { ok: true, detail: "SESSIONS KV binding present" }
+      : { ok: false, detail: "SESSIONS KV binding not found in env" }
+    : await verifyKvReadWrite();
+
+  const productionChecks: ProductionHealthResponse["checks"] = {
+    database: checks.database.ok ? "ok" : "error",
+    bhudhi: checks.bhudhi.ok ? "ok" : "error",
+    workers: checks.workers.ok ? "ok" : "error",
+    signals: checks.signals.ok ? "ok" : "error",
+  };
+
+  const results: ProductionHealthResponse = {
+    status:
+      productionChecks.database === "ok" &&
+      productionChecks.bhudhi === "ok" &&
+      productionChecks.workers === "ok" &&
+      productionChecks.signals === "ok"
+        ? "healthy"
+        : "degraded",
+    timestamp: new Date().toISOString(),
+    checks: productionChecks,
+    version: process.env.APP_VERSION ?? process.env.NEXT_PUBLIC_APP_VERSION ?? "phase1",
+    metrics: workerRuntime
+      ? {
+          pendingEvents: null,
+          deadLetters: null,
+          healthIssues: null,
+          latestSignalAgeHours: null,
+        }
+      : await collectProductionMetrics().catch(() => ({
+          pendingEvents: null,
+          deadLetters: null,
+          healthIssues: null,
+          latestSignalAgeHours: null,
+        })),
+  };
 
   const criticalChecks = ["database", "database_url", "env_vars"];
   const criticalFailed = criticalChecks.filter((key) => !checks[key]?.ok);
