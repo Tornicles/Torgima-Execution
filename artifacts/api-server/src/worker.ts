@@ -26,8 +26,10 @@ function mountHealthRoute(root: express.Express): void {
     res.status(200).json({
       ok: true,
       status: "healthy",
+      readiness: "liveness_only",
       service: "torgima-api",
       runtime: "cloudflare-workers",
+      hint: "Use GET /api/health with x-internal-auth for deep readiness",
     });
   });
 }
@@ -77,8 +79,10 @@ function healthProbeResponse(): Response {
   return Response.json({
     ok: true,
     status: "healthy",
+    readiness: "liveness_only",
     service: "torgima-api",
     runtime: "cloudflare-workers",
+    hint: "Use GET /api/health with x-internal-auth for deep readiness",
   });
 }
 

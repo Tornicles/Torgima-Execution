@@ -1,21 +1,36 @@
 import { Router, type IRouter } from "express";
-import { sql } from "drizzle-orm";
 import { HealthCheckResponse } from "@workspace/api-zod";
-import { getDb, pool } from "@workspace/db";
+import { executeHealthSql, resetWorkerDbCache } from "@workspace/db";
 import { success, handleError } from "../lib/utils.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUserFacingHealthState } from "../services/SystemHealthService.js";
 import { verifyBlueprintLaunchSchema, verifyOnboardingSchema } from "../lib/verifySchema.js";
 import { isCloudflareRuntime } from "../lib/cloudflare-runtime.js";
 import { extractInternalToken, getInternalAuthSecret } from "../lib/security/internalAuth.js";
-import { buildSafeDatabaseTargetSnapshot } from "../lib/databaseTargetDebug.js";
+import {
+  buildDatabaseHealthFailure,
+  buildSafeDatabaseTargetSnapshot,
+} from "../lib/databaseTargetDebug.js";
 import { DOC29_KEY_API_ROUTES } from "../lib/doc29-route-inventory.js";
 
 const router: IRouter = Router();
 
-type HealthCheckDetail = { ok: boolean; detail: string };
+type HealthCheckDetail = {
+  ok: boolean;
+  detail: string;
+  error_name?: string;
+  error_code?: string | null;
+  error_message_safe?: string;
+  error_class?: string;
+  driver?: string;
+  runtime?: string;
+  host?: string | null;
+  port?: string | null;
+  ssl?: boolean;
+  elapsedMs?: number;
+};
 
-const HEALTH_CHECK_TIMEOUT_MS = 8000;
+const HEALTH_CHECK_TIMEOUT_MS = isCloudflareRuntime() ? 18_000 : 8_000;
 
 async function runHealthCheck(
   name: string,
@@ -42,14 +57,56 @@ async function runHealthCheck(
 
 async function healthQuery<T extends Record<string, unknown>>(
   queryText: string,
+  values?: unknown[],
 ): Promise<T[]> {
-  if (isCloudflareRuntime()) {
-    const result = await getDb().execute(sql.raw(queryText));
-    const rows = (result as { rows?: T[] }).rows ?? (result as unknown as T[]);
-    return Array.isArray(rows) ? rows : [];
+  return executeHealthSql<T>(queryText, values);
+}
+
+async function runDatabaseHealthCheck(): Promise<HealthCheckDetail> {
+  const started = Date.now();
+  const dbUrl = envValue("DATABASE_URL");
+  if (!dbUrl) {
+    return { ok: false, detail: "DATABASE_URL not set" };
   }
-  const result = await pool.query(queryText);
-  return result.rows as T[];
+
+  try {
+    await Promise.race([
+      healthQuery("SELECT 1 AS ping"),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(`database timed out after ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`),
+            ),
+          HEALTH_CHECK_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+    const target = buildSafeDatabaseTargetSnapshot(dbUrl);
+    return {
+      ok: true,
+      detail: "Connected — SELECT 1 OK",
+      driver: isCloudflareRuntime() ? "postgres-js" : "node-postgres",
+      runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",
+      host: target.host,
+      port: target.port,
+      ssl: target.sslEnabled,
+      elapsedMs: Date.now() - started,
+    };
+  } catch (err) {
+    if (isCloudflareRuntime()) {
+      resetWorkerDbCache();
+    }
+    const elapsedMs = Date.now() - started;
+    if (isCloudflareRuntime()) {
+      return buildDatabaseHealthFailure(err, elapsedMs, dbUrl);
+    }
+    return {
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+      elapsedMs,
+    };
+  }
 }
 
 function envValue(key: string): string | undefined {
@@ -292,11 +349,7 @@ async function buildTransparentHealthPayload(): Promise<{
   checks.anthropic = envChecks.anthropic;
   checks.resend = envChecks.resend;
 
-  checks.database = await runHealthCheck("database", async () => {
-    if (!envValue("DATABASE_URL")) throw new Error("DATABASE_URL not set");
-    await checkDatabaseConnection();
-    return "Connected — SELECT 1 OK";
-  });
+  checks.database = await runDatabaseHealthCheck();
 
   checks.bhudhi = await runHealthCheck("bhudhi", async () => {
     await checkBhudhiAPIAvailability();
@@ -362,25 +415,23 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
-// GET /api/health — transparent per-check diagnostics; no single check can crash the route.
-// Egress guard: in the production Worker, unauthenticated callers (bots, uptime
-// monitors, browsers) get a database-free liveness response. Full per-check
-// diagnostics (which query the database) require the internal auth token.
+// GET /api/health — deep readiness (DB + signals + bindings). Requires internal auth on
+// Cloudflare Workers; unauthenticated callers receive a liveness-only stub.
 router.get("/health", async (req, res) => {
   const secret = getInternalAuthSecret();
   const token = extractInternalToken(req);
   const isInternal = secret.length > 0 && token === secret;
-  const isProductionWorker =
-    isCloudflareRuntime() && process.env.NODE_ENV === "production";
 
-  if (isProductionWorker && !isInternal) {
+  if (isCloudflareRuntime() && !isInternal) {
     res.status(200).json({
       ok: true,
       status: "operational",
+      readiness: "liveness_only",
       timestamp: new Date().toISOString(),
       service: "torgima-api",
       runtime: "cloudflare-workers",
       version: process.env.APP_VERSION ?? "phase1",
+      hint: "Deep readiness requires x-internal-auth — use GET /api/health with INTERNAL_AUTH_SECRET",
       databaseTarget: buildSafeDatabaseTargetSnapshot(process.env.DATABASE_URL),
     });
     return;
@@ -391,6 +442,7 @@ router.get("/health", async (req, res) => {
     res.status(httpStatus).json({
       ok: status === "healthy",
       status,
+      readiness: "deep",
       timestamp: results.timestamp,
       service: "torgima-api",
       runtime: isCloudflareRuntime() ? "cloudflare-workers" : "node",

@@ -47,6 +47,73 @@ export function sanitizeDatabaseErrorMessage(raw: string): string {
   return msg.slice(0, 500);
 }
 
+export function extractDatabaseErrorFields(err: unknown): {
+  error_name: string;
+  error_code: string | null;
+  error_message_safe: string;
+} {
+  const cause =
+    err && typeof err === "object" && "cause" in err && err.cause instanceof Error
+      ? err.cause
+      : err instanceof Error
+        ? err
+        : null;
+  const rawMessage =
+    cause?.message ??
+    (err instanceof Error ? err.message : typeof err === "string" ? err : String(err));
+  const code =
+    cause && typeof cause === "object" && "code" in cause && typeof cause.code === "string"
+      ? cause.code
+      : err && typeof err === "object" && "code" in err && typeof err.code === "string"
+        ? err.code
+        : null;
+  return {
+    error_name: cause?.name ?? (err instanceof Error ? err.name : "Error"),
+    error_code: code,
+    error_message_safe: sanitizeDatabaseErrorMessage(rawMessage),
+  };
+}
+
+export function buildDatabaseHealthFailure(
+  err: unknown,
+  elapsedMs: number,
+  databaseUrl: string | undefined,
+): {
+  ok: false;
+  detail: string;
+  error_name: string;
+  error_code: string | null;
+  error_message_safe: string;
+  error_class: string;
+  driver: string;
+  runtime: string;
+  host: string | null;
+  port: string | null;
+  ssl: boolean;
+  elapsedMs: number;
+} {
+  const fields = extractDatabaseErrorFields(err);
+  const { errorClass, errorMessage } = classifyDatabaseProbeError(
+    fields.error_message_safe,
+    elapsedMs,
+  );
+  const target = buildSafeDatabaseTargetSnapshot(databaseUrl);
+  return {
+    ok: false,
+    detail: errorMessage,
+    error_name: fields.error_name,
+    error_code: fields.error_code,
+    error_message_safe: fields.error_message_safe,
+    error_class: errorClass,
+    driver: "postgres-js",
+    runtime: "cloudflare-workers",
+    host: target.host,
+    port: target.port,
+    ssl: target.sslEnabled,
+    elapsedMs,
+  };
+}
+
 export function classifyDatabaseProbeError(
   rawMessage: string,
   elapsedMs: number,
@@ -65,6 +132,9 @@ export function classifyDatabaseProbeError(
   }
   if (/ssl|tls|certificate|handshake/.test(lower)) {
     return { errorClass: "SSL", errorMessage: message };
+  }
+  if (/prepared statement|cached plan|pgbouncer|transaction mode/.test(lower)) {
+    return { errorClass: "POOLER_PREPARED_STATEMENT", errorMessage: message };
   }
   if (/syntax|invalid uri|parse/.test(lower)) {
     return { errorClass: "PARSE", errorMessage: message };

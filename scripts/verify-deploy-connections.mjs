@@ -10,6 +10,8 @@
 import {
   CANONICAL_API_BASE,
   PROBE_USER_AGENT,
+  probeApiHealthReadiness,
+  resolveInternalAuthSecret,
   resolveWorkersDevUrl,
 } from "./production-probe-common.mjs";
 
@@ -91,18 +93,33 @@ async function main() {
     log("NOTE  workers.dev health unavailable — OPTIONAL_WORKERS_DEV_DEBUG_ROUTE_NOT_FOUND");
   }
 
-  await check("Canonical /api/health", async () => {
+  await check("Canonical /api/health (liveness, unauthenticated)", async () => {
     const { res, body } = await fetchJson(API_BASE, "/api/health");
-    if (res.status !== 200 && res.status !== 503) throw new Error(`HTTP ${res.status}`);
+    if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
     if (typeof body !== "object" || body === null) throw new Error("non-JSON body");
-    if (body.checks) {
-      log(`  status=${body.status} checks=${Object.keys(body.checks).length}`);
-    } else if (body.ok === true) {
-      log(`  status=${body.status ?? "operational"} (db-free liveness)`);
-    } else {
-      throw new Error("unexpected /api/health body");
+    if (body.readiness === "liveness_only" || body.status === "operational") {
+      log(`  liveness stub ok=${body.ok}`);
+      return;
     }
+    if (body.ok === true && body.status === "healthy") {
+      log(`  deep readiness ok (internal auth may have been forwarded)`);
+      return;
+    }
+    throw new Error(`unexpected /api/health body: status=${body.status}`);
   });
+
+  const auth = resolveInternalAuthSecret();
+  if (auth.ok) {
+    await check("Canonical /api/health (readiness, internal auth)", async () => {
+      const readiness = await probeApiHealthReadiness(API_BASE, auth.secret);
+      if (!readiness.ok) {
+        throw new Error(readiness.detail ?? readiness.class ?? "readiness failed");
+      }
+      log(`  deep readiness healthy`);
+    });
+  } else {
+    log(`SKIP  /api/health readiness — ${auth.class}`);
+  }
 
   await check("Auth /api/auth/session", async () => {
     const { res } = await fetchJson(API_BASE, "/api/auth/session");

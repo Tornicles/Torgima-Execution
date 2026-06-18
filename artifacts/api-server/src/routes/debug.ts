@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   db,
+  executeHealthSql,
   blueprints,
   users,
   orders,
@@ -20,7 +21,7 @@ import { writeEvent, EVENT_TYPES } from "../services/EventService.js";
 import { guaranteeTask } from "../engines/task-guarantee/ContinuousTaskGuaranteeEngine.js";
 import { parseTaskLimits } from "../engines/task-generation/taskLimits.js";
 import {
-  classifyDatabaseProbeError,
+  buildDatabaseHealthFailure,
   evaluatePoolerExpectations,
   parseDatabaseTargetSafe,
   resolveDatabaseUrlBindingSource,
@@ -455,13 +456,13 @@ router.get("/debug/db-target", async (_req, res) => {
   if (raw) {
     const started = Date.now();
     try {
-      await db.execute(sql.raw("select 1 as ok"));
+      await executeHealthSql("SELECT 1 AS ok");
       probeOk = true;
     } catch (err) {
-      const rawMessage = err instanceof Error ? err.message : String(err);
-      const classified = classifyDatabaseProbeError(rawMessage, Date.now() - started);
-      probeErrorClass = classified.errorClass;
-      probeErrorMessage = classified.errorMessage;
+      const elapsedMs = Date.now() - started;
+      const failure = buildDatabaseHealthFailure(err, elapsedMs, raw);
+      probeErrorClass = failure.error_class;
+      probeErrorMessage = failure.error_message_safe;
     } finally {
       probeElapsedMs = Date.now() - started;
     }
@@ -493,6 +494,8 @@ router.get("/debug/db-target", async (_req, res) => {
       elapsedMs: probeElapsedMs,
       errorClass: probeErrorClass,
       errorMessage: probeErrorMessage,
+      driver: process.env.TORGIMA_RUNTIME === "cloudflare" ? "postgres-js" : "node-postgres",
+      runtime: process.env.TORGIMA_RUNTIME === "cloudflare" ? "cloudflare-workers" : "node",
     },
     hint: probeOk
       ? "Database reachable from the Worker."

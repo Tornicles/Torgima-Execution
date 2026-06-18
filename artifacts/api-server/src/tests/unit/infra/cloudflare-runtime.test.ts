@@ -102,6 +102,17 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(health).toContain("checks,");
     expect(health).toContain("failing");
     expect(health).toContain("HEALTH_CHECK_TIMEOUT_MS");
+    expect(health).toContain("executeHealthSql");
+    expect(health).toContain("readiness: \"deep\"");
+    expect(health).toContain("liveness_only");
+  });
+
+  it("deploy verifier probes /api/health readiness with internal auth", () => {
+    const deployVerify = readRepo("scripts/production-deploy-verify.mjs");
+    const probeCommon = readRepo("scripts/production-probe-common.mjs");
+    expect(deployVerify).toContain("probeApiHealthReadiness");
+    expect(probeCommon).toContain("CANONICAL_API_HEALTH_READINESS_PASS");
+    expect(probeCommon).toContain("/api/health");
   });
 
   it("treats TASK_QUEUE as optional until wrangler producer binding is enabled", () => {

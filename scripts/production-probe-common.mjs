@@ -18,6 +18,8 @@ export const FAILURE_CLASSES = {
   CANONICAL_API_HEALTH_FAIL: "CANONICAL_API_HEALTH_FAIL",
   CANONICAL_DEBUG_DB_TARGET_PASS: "CANONICAL_DEBUG_DB_TARGET_PASS",
   CANONICAL_DEBUG_BHUDHI_PASS: "CANONICAL_DEBUG_BHUDHI_PASS",
+  CANONICAL_API_HEALTH_READINESS_PASS: "CANONICAL_API_HEALTH_READINESS_PASS",
+  CANONICAL_API_HEALTH_READINESS_FAIL: "CANONICAL_API_HEALTH_READINESS_FAIL",
   WORKERS_DEV_ROUTE_404_OPTIONAL: "WORKERS_DEV_ROUTE_404_OPTIONAL",
   WORKERS_DEV_DEBUG_PASS: "WORKERS_DEV_DEBUG_PASS",
   WORKERS_DEV_DEBUG_FAIL: "WORKERS_DEV_DEBUG_FAIL",
@@ -89,6 +91,7 @@ export async function probeHealth(baseUrl) {
       status: res.status,
       class: ok ? FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS : FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL,
       url,
+      liveness: true,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -98,6 +101,60 @@ export async function probeHealth(baseUrl) {
       status: 0,
       class: isTimeout ? FAILURE_CLASSES.DATABASE_URL_TIMEOUT : FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL,
       url,
+      detail: msg,
+      liveness: true,
+    };
+  }
+}
+
+/**
+ * Deep readiness — GET /api/health with x-internal-auth (DB + signals checks).
+ */
+export async function probeApiHealthReadiness(baseUrl, internalSecret, timeoutMs = 45_000) {
+  const url = `${baseUrl.replace(/\/$/, "")}/api/health`;
+  if (!internalSecret) {
+    return {
+      ok: false,
+      status: 0,
+      class: FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISSING,
+      url,
+      readiness: true,
+    };
+  }
+
+  try {
+    const { res, body } = await fetchWithTimeout(
+      url,
+      { headers: { "x-internal-auth": internalSecret } },
+      timeoutMs,
+    );
+    const data = typeof body === "object" ? body : {};
+    const ok = res.status === 200 && data.ok === true && data.status === "healthy";
+    return {
+      ok,
+      status: res.status,
+      class: ok
+        ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
+        : FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL,
+      url,
+      readiness: true,
+      detail: ok
+        ? "deep readiness healthy"
+        : data.failing
+          ? JSON.stringify(data.failing).slice(0, 300)
+          : data.status ?? `HTTP ${res.status}`,
+      checks: data.checks ?? null,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      status: 0,
+      class: /abort|timeout|deadline/i.test(msg)
+        ? FAILURE_CLASSES.DATABASE_URL_TIMEOUT
+        : FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL,
+      url,
+      readiness: true,
       detail: msg,
     };
   }

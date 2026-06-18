@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyDatabaseProbeError,
   evaluatePoolerExpectations,
+  extractDatabaseErrorFields,
   parseDatabaseTargetSafe,
   sanitizeDatabaseErrorMessage,
 } from "../../../lib/databaseTargetDebug.js";
@@ -43,5 +44,14 @@ describe("databaseTargetDebug", () => {
     );
     expect(clean).not.toContain("MyP@ss");
     expect(clean).toContain("postgresql://***@");
+  });
+
+  it("extracts postgres error code from drizzle-wrapped errors", () => {
+    const err = Object.assign(new Error("Failed query: SELECT 1"), {
+      cause: Object.assign(new Error("password authentication failed for user"), { code: "28P01" }),
+    });
+    const fields = extractDatabaseErrorFields(err);
+    expect(fields.error_code).toBe("28P01");
+    expect(fields.error_message_safe).toContain("authentication failed");
   });
 });

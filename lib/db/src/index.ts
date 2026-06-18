@@ -83,10 +83,22 @@ function createWorkerPostgresClient(connectionString: string): ReturnType<typeof
   return postgres(workerUrl, {
     max: 1,
     idle_timeout: 20,
-    connect_timeout: 10,
+    connect_timeout: 12,
     prepare: false,
     ssl: resolveWorkerPostgresSsl(connectionString),
   });
+}
+
+/** Raw SQL for health/diagnostic probes — postgres-js on Workers, node-postgres elsewhere. */
+export async function executeHealthSql<T extends Record<string, unknown> = Record<string, unknown>>(
+  queryText: string,
+  values?: unknown[],
+): Promise<T[]> {
+  const client = getPool();
+  const result = values?.length
+    ? await client.query<T>(queryText, values)
+    : await client.query<T>(queryText);
+  return result.rows as T[];
 }
 
 function createWorkerPoolAdapter(client: ReturnType<typeof postgres>): pg.Pool {

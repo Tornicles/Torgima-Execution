@@ -6,6 +6,7 @@
 import {
   CANONICAL_API_BASE,
   FAILURE_CLASSES,
+  probeApiHealthReadiness,
   probeDebugRoute,
   probeHealth,
   printProbeResult,
@@ -32,7 +33,15 @@ if (!auth.ok) {
 }
 
 const health = await probeHealth(CANONICAL_API_BASE);
-record("Canonical API /health", health);
+record("Canonical API /health (liveness)", health);
+
+const readiness = await probeApiHealthReadiness(CANONICAL_API_BASE, auth.secret);
+record("Canonical API /api/health (readiness)", {
+  ...readiness,
+  class: readiness.ok
+    ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
+    : readiness.class,
+});
 
 const dbTarget = await probeDebugRoute(
   CANONICAL_API_BASE,
@@ -84,7 +93,7 @@ record("workers.dev /api/debug/db-target (optional)", {
 });
 
 console.log("");
-const canonicalOk = health.ok && dbTarget.ok;
+const canonicalOk = health.ok && readiness.ok && dbTarget.ok;
 const workersOptionalOk =
   !workersDb.ok &&
   (workersDbClass === FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL ||
@@ -92,6 +101,12 @@ const workersOptionalOk =
 
 if (!health.ok) {
   console.error(`Deploy verify failed: ${FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL}`);
+  process.exit(1);
+}
+
+if (!readiness.ok) {
+  console.error(`Deploy verify failed: ${FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL}`);
+  if (readiness.detail) console.error(`       ${readiness.detail}`);
   process.exit(1);
 }
 

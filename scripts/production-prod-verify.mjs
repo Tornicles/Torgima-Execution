@@ -12,6 +12,7 @@ import {
   FAILURE_CLASSES,
   fetchSupabaseManagementConfig,
   probeDebugRoute,
+  probeApiHealthReadiness,
   probeHealth,
   printProbeResult,
   resolveInternalAuthSecret,
@@ -63,7 +64,17 @@ if (!auth.ok) {
 }
 
 const health = await probeHealth(CANONICAL_API_BASE);
-setProbe("canonical_api_health", health);
+setProbe("canonical_api_liveness", health);
+
+if (auth.ok) {
+  const readiness = await probeApiHealthReadiness(CANONICAL_API_BASE, auth.secret);
+  setProbe("canonical_api_readiness", {
+    ...readiness,
+    class: readiness.ok
+      ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
+      : readiness.class,
+  });
+}
 
 let canonicalDebugOk = false;
 if (auth.ok) {
@@ -152,6 +163,9 @@ report.production.worker_bhudhi_debug = report.probes.worker_bhudhi_debug ?? { s
 
 const hardFails = [];
 if (!health.ok) hardFails.push(FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL);
+if (auth.ok && report.probes.canonical_api_readiness && !report.probes.canonical_api_readiness.ok) {
+  hardFails.push(FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL);
+}
 if (auth.ok && !canonicalDebugOk) hardFails.push(report.probes.worker_database_target_debug?.class);
 if (!runtimeDbOk && report.production.runtime_database_connection?.status === "FAIL") {
   hardFails.push(FAILURE_CLASSES.DATABASE_URL_AUTH_FAILED);

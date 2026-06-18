@@ -16,8 +16,9 @@ describe("Cloudflare Worker database client", () => {
     expect(dbIndex).toContain('import postgres from "postgres"');
     expect(dbIndex).toContain("drizzle-orm/postgres-js");
     expect(dbIndex).toContain("idle_timeout: 20");
-    expect(dbIndex).toContain("connect_timeout: 10");
+    expect(dbIndex).toContain("connect_timeout: 12");
     expect(dbIndex).toContain("prepare: false");
+    expect(dbIndex).toContain("executeHealthSql");
     expect(dbIndex).not.toContain("pg.Pool is not available");
   });
 
