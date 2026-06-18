@@ -111,6 +111,9 @@ describe("Cloudflare Workers runtime bridge", () => {
     const deployVerify = readRepo("scripts/production-deploy-verify.mjs");
     const probeCommon = readRepo("scripts/production-probe-common.mjs");
     expect(deployVerify).toContain("probeApiHealthReadiness");
+    expect(deployVerify).toContain("--deploy-only");
+    expect(deployVerify).toContain("if (!deployOnly)");
+    expect(probeCommon).toContain("parseHealthLivenessResponse");
     expect(probeCommon).toContain("CANONICAL_API_HEALTH_READINESS_PASS");
     expect(probeCommon).toContain("/api/health");
   });

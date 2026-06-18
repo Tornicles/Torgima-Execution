@@ -2,6 +2,9 @@
 /**
  * Post-deploy production probe — canonical api.torgima.com first; workers.dev optional.
  * Usage (GitHub Actions): INTERNAL_AUTH_SECRET from secrets required.
+ *
+ * --deploy-only  liveness (/health) + protected debug routes only
+ * (no /api/health deep readiness gate)
  */
 import {
   CANONICAL_API_BASE,
@@ -22,8 +25,22 @@ function record(name, result) {
   printProbeResult(name, result);
 }
 
+function failDebugRoute(label, result) {
+  if (result.class === FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH) {
+    console.error(`Deploy verify failed: ${FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH}`);
+    process.exit(1);
+  }
+  if (result.class === FAILURE_CLASSES.DEBUG_ROUTE_NOT_DEPLOYED) {
+    console.error(`Deploy verify failed: ${FAILURE_CLASSES.DEBUG_ROUTE_NOT_DEPLOYED}`);
+    process.exit(1);
+  }
+  console.error(`Deploy verify failed: ${label} (${result.class})`);
+  process.exit(1);
+}
+
 console.log("Production Deploy Verification");
 console.log(`Canonical API: ${CANONICAL_API_BASE}`);
+console.log(`Mode: ${deployOnly ? "deploy-only (liveness + debug)" : "full readiness"}`);
 console.log("");
 
 const auth = resolveInternalAuthSecret();
@@ -35,13 +52,16 @@ if (!auth.ok) {
 const health = await probeHealth(CANONICAL_API_BASE);
 record("Canonical API /health (liveness)", health);
 
-const readiness = await probeApiHealthReadiness(CANONICAL_API_BASE, auth.secret);
-record("Canonical API /api/health (readiness)", {
-  ...readiness,
-  class: readiness.ok
-    ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
-    : readiness.class,
-});
+let readiness = null;
+if (!deployOnly) {
+  readiness = await probeApiHealthReadiness(CANONICAL_API_BASE, auth.secret);
+  record("Canonical API /api/health (readiness)", {
+    ...readiness,
+    class: readiness.ok
+      ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
+      : readiness.class,
+  });
+}
 
 const dbTarget = await probeDebugRoute(
   CANONICAL_API_BASE,
@@ -69,14 +89,8 @@ const workersDev = resolveWorkersDevUrl();
 console.log("");
 console.log(`Optional workers.dev base: ${workersDev}`);
 
-const workersHealth = await probeHealth(workersDev);
-record("workers.dev /health (optional)", {
-  ...workersHealth,
-  warn: !workersHealth.ok,
-  class: workersHealth.ok
-    ? FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS
-    : FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL,
-});
+const workersHealth = await probeHealth(workersDev, { optional: true });
+record("workers.dev /health (optional)", workersHealth);
 
 const workersDb = await probeDebugRoute(workersDev, "/api/debug/db-target", auth.secret);
 const workersDbClass =
@@ -88,12 +102,12 @@ const workersDbClass =
 
 record("workers.dev /api/debug/db-target (optional)", {
   ...workersDb,
-  warn: !workersDb.ok,
+  warn:
+    workersDbClass === FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL || !workersDb.ok,
   class: workersDbClass,
 });
 
 console.log("");
-const canonicalOk = health.ok && readiness.ok && dbTarget.ok;
 const workersOptionalOk =
   !workersDb.ok &&
   (workersDbClass === FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL ||
@@ -104,31 +118,22 @@ if (!health.ok) {
   process.exit(1);
 }
 
-if (!readiness.ok) {
+if (!deployOnly && readiness && !readiness.ok) {
   console.error(`Deploy verify failed: ${FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL}`);
   if (readiness.detail) console.error(`       ${readiness.detail}`);
   process.exit(1);
 }
 
 if (!dbTarget.ok) {
-  if (dbTarget.class === FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH) {
-    console.error(`Deploy verify failed: ${FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH}`);
-    process.exit(1);
-  }
-  if (dbTarget.class === FAILURE_CLASSES.DEBUG_ROUTE_NOT_DEPLOYED) {
-    console.error(`Deploy verify failed: ${FAILURE_CLASSES.DEBUG_ROUTE_NOT_DEPLOYED}`);
-    process.exit(1);
-  }
-  console.error(`Deploy verify failed: canonical db-target probe (${dbTarget.class})`);
-  process.exit(1);
+  failDebugRoute("canonical db-target probe", dbTarget);
+}
+
+if (!bhudhi.ok) {
+  failDebugRoute("canonical bhudhi-runtime probe", bhudhi);
 }
 
 if (workersOptionalOk) {
   console.log(`NOTE  ${FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL} — canonical probes passed`);
-}
-
-if (!deployOnly && !bhudhi.ok && bhudhi.class === FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH) {
-  console.error(`WARN  bhudhi-runtime: ${FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH}`);
 }
 
 console.log("");

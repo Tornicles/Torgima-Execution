@@ -79,17 +79,72 @@ export async function fetchWithTimeout(url, init = {}, timeoutMs = 30_000) {
   }
 }
 
-export async function probeHealth(baseUrl) {
+/**
+ * Parse /health liveness — accepts boolean true, { ok: true }, or known healthy JSON bodies.
+ */
+export function parseHealthLivenessResponse(status, body) {
+  if (status !== 200) {
+    return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+  }
+
+  if (body === true) {
+    return { ok: true, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS };
+  }
+  if (body === false) {
+    return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+  }
+
+  if (typeof body === "string") {
+    const trimmed = body.trim();
+    if (trimmed === "true") {
+      return { ok: true, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS };
+    }
+    if (trimmed === "false") {
+      return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+    }
+    if (/"ok"\s*:\s*true/.test(trimmed) || /"status"\s*:\s*"(healthy|operational)"/.test(trimmed)) {
+      return { ok: true, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS };
+    }
+    return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+  }
+
+  if (typeof body === "object" && body !== null) {
+    if (body.ok === true) {
+      return { ok: true, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS };
+    }
+    if (body.ok === false) {
+      return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+    }
+    if (body.status === "healthy" || body.status === "operational") {
+      return { ok: true, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS };
+    }
+  }
+
+  return { ok: false, class: FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL };
+}
+
+export async function probeHealth(baseUrl, options = {}) {
+  const optional = Boolean(options.optional);
   const url = `${baseUrl.replace(/\/$/, "")}/health`;
   try {
     const { res, body } = await fetchWithTimeout(url, {}, 20_000);
-    const ok =
-      res.status === 200 &&
-      (typeof body === "object" ? body?.ok === true : String(body).includes('"ok"'));
+
+    if (optional && (res.status === 404 || res.status === 1042)) {
+      return {
+        ok: false,
+        warn: true,
+        status: res.status,
+        class: FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL,
+        url,
+        liveness: true,
+      };
+    }
+
+    const parsed = parseHealthLivenessResponse(res.status, body);
     return {
-      ok,
+      ok: parsed.ok,
       status: res.status,
-      class: ok ? FAILURE_CLASSES.CANONICAL_API_HEALTH_PASS : FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL,
+      class: parsed.class,
       url,
       liveness: true,
     };
@@ -98,8 +153,13 @@ export async function probeHealth(baseUrl) {
     const isTimeout = /abort|timeout|deadline/i.test(msg);
     return {
       ok: false,
+      warn: optional,
       status: 0,
-      class: isTimeout ? FAILURE_CLASSES.DATABASE_URL_TIMEOUT : FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL,
+      class: optional
+        ? FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL
+        : isTimeout
+          ? FAILURE_CLASSES.DATABASE_URL_TIMEOUT
+          : FAILURE_CLASSES.CANONICAL_API_HEALTH_FAIL,
       url,
       detail: msg,
       liveness: true,
@@ -160,8 +220,16 @@ export async function probeApiHealthReadiness(baseUrl, internalSecret, timeoutMs
   }
 }
 
-export function classifyDebugProbeFailure(status, bodyText = "") {
-  if (status === 403) return FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH;
+export function classifyDebugProbeFailure(status, bodyText = "", body = null) {
+  if (status === 403) {
+    const forbidden =
+      typeof body === "object" &&
+      body !== null &&
+      (body?.error?.code === "FORBIDDEN" || body?.error?.message === "Internal auth required");
+    return forbidden
+      ? FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH
+      : FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISMATCH;
+  }
   if (status === 404 || status === 1042 || /error code: 1042/i.test(bodyText)) {
     return FAILURE_CLASSES.DEBUG_ROUTE_NOT_DEPLOYED;
   }
@@ -208,7 +276,7 @@ export async function probeDebugRoute(baseUrl, path, internalSecret, timeoutMs =
     return {
       ok: false,
       status: res.status,
-      class: classifyDebugProbeFailure(res.status, text),
+      class: classifyDebugProbeFailure(res.status, text, body),
       url,
       detail: typeof body === "object" ? body?.error?.message ?? body?.message : String(text).slice(0, 200),
     };
