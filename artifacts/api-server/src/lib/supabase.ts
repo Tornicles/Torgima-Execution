@@ -3,12 +3,17 @@
  * Has full database access. Never exposed to the browser.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { resolveSupabaseRestBaseUrl } from "./databaseTargetDebug.js";
 
 let _adminClient: SupabaseClient | null = null;
 
 function getSupabaseEnv(): { url: string; serviceRoleKey: string } {
-  const url = process.env.SUPABASE_URL?.trim();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const resolved = resolveSupabaseRestBaseUrl(
+    process.env.SUPABASE_URL,
+    process.env.DATABASE_URL,
+  );
+  const url = resolved?.url ?? process.env.SUPABASE_URL?.trim();
   if (!url || !serviceRoleKey) {
     throw new Error(
       "[Supabase] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in Cloudflare secrets",

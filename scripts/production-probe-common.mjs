@@ -168,6 +168,26 @@ export async function probeHealth(baseUrl, options = {}) {
 }
 
 /**
+ * Parse /api/health readiness — requires ok:true and status:healthy on HTTP 200.
+ */
+export function parseApiHealthReadinessResponse(status, body) {
+  const data = typeof body === "object" && body !== null ? body : {};
+  const ok = status === 200 && data.ok === true && data.status === "healthy";
+  return {
+    ok,
+    class: ok
+      ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
+      : FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL,
+    detail: ok
+      ? "deep readiness healthy"
+      : data.failing
+        ? JSON.stringify(data.failing).slice(0, 300)
+        : data.status ?? `HTTP ${status}`,
+    checks: data.checks ?? null,
+  };
+}
+
+/**
  * Deep readiness — GET /api/health with x-internal-auth (DB + signals checks).
  */
 export async function probeApiHealthReadiness(baseUrl, internalSecret, timeoutMs = 45_000) {
@@ -188,22 +208,15 @@ export async function probeApiHealthReadiness(baseUrl, internalSecret, timeoutMs
       { headers: { "x-internal-auth": internalSecret } },
       timeoutMs,
     );
-    const data = typeof body === "object" ? body : {};
-    const ok = res.status === 200 && data.ok === true && data.status === "healthy";
+    const parsed = parseApiHealthReadinessResponse(res.status, body);
     return {
-      ok,
+      ok: parsed.ok,
       status: res.status,
-      class: ok
-        ? FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS
-        : FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL,
+      class: parsed.class,
       url,
       readiness: true,
-      detail: ok
-        ? "deep readiness healthy"
-        : data.failing
-          ? JSON.stringify(data.failing).slice(0, 300)
-          : data.status ?? `HTTP ${res.status}`,
-      checks: data.checks ?? null,
+      detail: parsed.detail,
+      checks: parsed.checks,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   classifyDatabaseProbeError,
   evaluatePoolerExpectations,
+  evaluateSupabaseRestUrlIssues,
   extractDatabaseErrorFields,
   parseDatabaseTargetSafe,
+  resolveSupabaseRestBaseUrl,
   sanitizeDatabaseErrorMessage,
 } from "../../../lib/databaseTargetDebug.js";
 
@@ -53,5 +55,31 @@ describe("databaseTargetDebug", () => {
     const fields = extractDatabaseErrorFields(err);
     expect(fields.error_code).toBe("28P01");
     expect(fields.error_message_safe).toContain("authentication failed");
+  });
+
+  it("resolves PostgREST URL from DATABASE_URL project ref when SUPABASE_URL is pooler host", () => {
+    const dbUrl =
+      "postgresql://postgres.fmynbziciuadnvjlojub:pass@aws-1-us-west-2.pooler.supabase.com:6543/postgres";
+    const resolved = resolveSupabaseRestBaseUrl(
+      "https://aws-1-us-west-2.pooler.supabase.com",
+      dbUrl,
+    );
+    expect(resolved?.url).toBe("https://fmynbziciuadnvjlojub.supabase.co");
+    expect(resolved?.resolvedFrom).toBe("DATABASE_URL_PROJECT_REF");
+    expect(resolved?.corrected).toBe(true);
+  });
+
+  it("derives REST URL from db.<ref>.supabase.co SUPABASE_URL", () => {
+    const resolved = resolveSupabaseRestBaseUrl("https://db.fmynbziciuadnvjlojub.supabase.co");
+    expect(resolved?.url).toBe("https://fmynbziciuadnvjlojub.supabase.co");
+    expect(resolved?.corrected).toBe(true);
+  });
+
+  it("flags pooler hostname in SUPABASE_URL secret", () => {
+    const issues = evaluateSupabaseRestUrlIssues(
+      "https://aws-1-us-west-2.pooler.supabase.com",
+      "postgresql://postgres.fmynbziciuadnvjlojub:pass@aws-1-us-west-2.pooler.supabase.com:6543/postgres",
+    );
+    expect(issues.some((i) => i.includes("pooler"))).toBe(true);
   });
 });

@@ -72,6 +72,15 @@ describe("DOC B9 — API route registration", () => {
   const routesIndex = readRepo("artifacts/api-server/src/routes/index.ts");
   const appTs = readRepo("artifacts/api-server/src/app.ts");
 
+  it("documents runtime contract for route and health alignment", () => {
+    const contract = readRepo("docs/TORGIMA_RUNTIME_CONTRACT.md");
+    expect(contract).toContain("app.use(\"/api\", router)");
+    expect(contract).toContain('router.use("/erector", erectorFreeRouter)');
+    expect(contract).toContain("/health");
+    expect(contract).toContain("/api/health");
+    expect(contract).toContain("erector_validation_requested");
+  });
+
   it("app.ts mounts the main router at /api", () => {
     expect(appTs).toContain('app.use("/api", router)');
   });

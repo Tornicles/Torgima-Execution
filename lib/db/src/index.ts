@@ -7,7 +7,41 @@ import { resolvePgSsl, stripSslModeFromConnectionString } from "./pg-ssl";
 
 const { Pool } = pg;
 
+/** Vitest unit runs — no live Postgres; fail fast instead of TCP timeout. */
+const VITEST_STUB_DB_MARKER = "torgima_vitest_stub";
+
 export { resolvePgSsl, stripSslModeFromConnectionString };
+
+export function isVitestUnitStubDatabase(): boolean {
+  const integration = process.env.TORGIMA_INTEGRATION;
+  if (
+    typeof integration === "string" &&
+    ["1", "true", "yes"].includes(integration.toLowerCase())
+  ) {
+    return false;
+  }
+  const url =
+    globalThis.__TORGIMA_WORKER_DATABASE_URL__?.trim() ||
+    process.env.DATABASE_URL?.trim() ||
+    "";
+  return url.includes(VITEST_STUB_DB_MARKER);
+}
+
+function createVitestStubPool(): pg.Pool {
+  const stubError = () =>
+    new Error(
+      "[DB] Unit test stub active — set TORGIMA_INTEGRATION=true with a real DATABASE_URL for Postgres integration tests",
+    );
+  const reject = async () => {
+    throw stubError();
+  };
+  return {
+    query: reject,
+    connect: reject,
+    end: async () => undefined,
+    on: () => createVitestStubPool(),
+  } as unknown as pg.Pool;
+}
 
 type DbInstance = ReturnType<typeof drizzleNodePg<typeof schema>>;
 
@@ -138,6 +172,12 @@ export function resetWorkerDbCache(): void {
 }
 
 export function getPool(): pg.Pool {
+  if (isVitestUnitStubDatabase()) {
+    if (!poolInstance) {
+      poolInstance = createVitestStubPool();
+    }
+    return poolInstance;
+  }
   if (isCloudflareWorkerRuntime()) {
     if (!postgresJsClient || !workerPoolAdapter) {
       bindWorkerDatabaseUrl(process.env.DATABASE_URL);

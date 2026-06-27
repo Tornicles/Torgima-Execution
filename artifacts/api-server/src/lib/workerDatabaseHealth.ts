@@ -1,12 +1,13 @@
 /**
  * Worker-safe database probes — Supabase PostgREST HTTP (1 subrequest) on Cloudflare;
- * postgres-js fallback for Node.
+ * postgres-js fallback when REST URL is misconfigured; node-postgres on Node.
  */
 import { executeHealthSql } from "@workspace/db";
 import { isCloudflareRuntime } from "./cloudflare-runtime.js";
 import {
   buildDatabaseHealthFailure,
   buildSafeDatabaseTargetSnapshot,
+  resolveSupabaseRestBaseUrl,
 } from "./databaseTargetDebug.js";
 
 export type WorkerDatabaseProbeResult = {
@@ -25,10 +26,20 @@ export type WorkerDatabaseProbeResult = {
 };
 
 function supabaseRestConfig(): { url: string; key: string } | null {
-  const url = process.env.SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !key) return null;
-  return { url: url.replace(/\/$/, ""), key };
+  if (!key) return null;
+
+  const resolved = resolveSupabaseRestBaseUrl(
+    process.env.SUPABASE_URL,
+    process.env.DATABASE_URL,
+  );
+  if (!resolved) return null;
+
+  return { url: resolved.url.replace(/\/$/, ""), key };
+}
+
+function isRestProbeDnsFailure(detail: string): boolean {
+  return /1016|530|enotfound|dns|origin dns/i.test(detail);
 }
 
 async function probeViaSupabaseHttp(): Promise<{ ok: boolean; detail: string }> {
@@ -53,6 +64,11 @@ async function probeViaSupabaseHttp(): Promise<{ ok: boolean; detail: string }> 
   return { ok: false, detail: `Supabase PostgREST HTTP ${res.status}: ${text}` };
 }
 
+async function probeViaPostgresSql(): Promise<{ ok: boolean; detail: string }> {
+  await executeHealthSql("SELECT 1 AS ping");
+  return { ok: true, detail: "Connected — SELECT 1 OK (postgres pooler)" };
+}
+
 export async function probeWorkerDatabaseConnection(): Promise<WorkerDatabaseProbeResult> {
   const started = Date.now();
   const dbUrl = process.env.DATABASE_URL;
@@ -74,6 +90,35 @@ export async function probeWorkerDatabaseConnection(): Promise<WorkerDatabasePro
           elapsedMs: Date.now() - started,
         };
       }
+
+      if (isRestProbeDnsFailure(http.detail) && dbUrl) {
+        try {
+          const sql = await probeViaPostgresSql();
+          return {
+            ok: true,
+            detail: `${sql.detail} (PostgREST misconfigured: ${http.detail})`,
+            driver: "postgres-js",
+            runtime,
+            host: target.host,
+            port: target.port,
+            ssl: target.sslEnabled,
+            elapsedMs: Date.now() - started,
+          };
+        } catch (sqlErr) {
+          const failure = buildDatabaseHealthFailure(sqlErr, Date.now() - started, dbUrl);
+          return {
+            ...failure,
+            driver: "postgres-js",
+            runtime,
+            host: target.host,
+            port: target.port,
+            ssl: target.sslEnabled,
+            elapsedMs: Date.now() - started,
+            detail: `${failure.detail} (PostgREST: ${http.detail})`,
+          };
+        }
+      }
+
       return {
         ok: false,
         detail: http.detail,
@@ -108,7 +153,7 @@ export async function probeWorkerDatabaseConnection(): Promise<WorkerDatabasePro
     return {
       ok: true,
       detail: "Connected — SELECT 1 OK",
-      driver: isCloudflareRuntime() ? "postgres-js" : "node-postgres",
+      driver: "node-postgres",
       runtime,
       host: target.host,
       port: target.port,
@@ -119,7 +164,7 @@ export async function probeWorkerDatabaseConnection(): Promise<WorkerDatabasePro
     const failure = buildDatabaseHealthFailure(err, Date.now() - started, dbUrl);
     return {
       ...failure,
-      driver: isCloudflareRuntime() ? "postgres-js" : "node-postgres",
+      driver: "node-postgres",
       runtime,
       host: target.host,
       port: target.port,
@@ -152,6 +197,43 @@ export async function probeWorkerSignalRecency(maxAgeHours = 48): Promise<{
         },
       },
     );
+
+    if (isRestProbeDnsFailure(String(activeRes.status)) || activeRes.status === 530) {
+      try {
+        const rows = await executeHealthSql<{ active: number | string; latest: Date | string | null }>(
+          `SELECT
+            (SELECT COUNT(*)::int FROM blueprints WHERE active = true AND status = 'active') AS active,
+            (SELECT MAX(created_at) FROM signal_snapshots) AS latest`,
+        );
+        const activeBlueprints = Number(rows[0]?.active ?? 0);
+        if (!activeBlueprints) {
+          return { ok: true, detail: "No active blueprints — skipped", ageHours: null };
+        }
+        const latest = rows[0]?.latest;
+        if (!latest) {
+          return { ok: false, detail: "no signal snapshots while active blueprints exist", ageHours: null };
+        }
+        const ageHours = (Date.now() - new Date(latest).getTime()) / (60 * 60 * 1000);
+        if (ageHours > maxAgeHours) {
+          return {
+            ok: false,
+            detail: `latest signal snapshot is stale: ${ageHours.toFixed(1)}h`,
+            ageHours,
+          };
+        }
+        return {
+          ok: true,
+          detail: `Latest signal ${ageHours.toFixed(1)}h ago (postgres fallback)`,
+          ageHours,
+        };
+      } catch {
+        return {
+          ok: false,
+          detail: "signal probe failed — PostgREST and postgres fallback unavailable",
+          ageHours: null,
+        };
+      }
+    }
 
     const activeCount = Number(activeRes.headers.get("content-range")?.split("/")[1] ?? 0);
     if (!activeCount) {

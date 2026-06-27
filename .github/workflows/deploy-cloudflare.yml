@@ -155,10 +155,12 @@ jobs:
             echo "HTTP: ${HTTP_CODE}"
             echo "Body: ${BODY}"
 
-            if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"'; then
-              echo "✓ Canonical API is live"
-              SUCCESS=true
-              break
+            if [ "${HTTP_CODE}" = "200" ]; then
+              if echo "${BODY}" | grep -qE '"ok"\s*:\s*true|^\s*true\s*$|"status"\s*:\s*"(healthy|operational)"'; then
+                echo "✓ Canonical API liveness OK"
+                SUCCESS=true
+                break
+              fi
             fi
             if [ $i -lt 6 ]; then sleep 15; fi
           done
@@ -166,18 +168,18 @@ jobs:
           if [ "${SUCCESS}" = "true" ]; then exit 0; fi
 
           WORKER_BASE="${WORKER_URL:-https://torgima.tmagaya.workers.dev}"
-          echo "Canonical health failed — optional workers.dev fallback: ${WORKER_BASE}/health"
+          echo "Canonical liveness failed — optional workers.dev fallback: ${WORKER_BASE}/health"
           RAW="$(curl -sS -w "\n%{http_code}" --max-time 15 \
             -H "User-Agent: GitHub-Actions-Deploy-Verify/1.0" \
             "${WORKER_BASE}/health" || true)"
           HTTP_CODE="$(echo "${RAW}" | tail -1)"
           BODY="$(echo "${RAW}" | head -n -1)"
-          if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -q '"ok"'; then
-            echo "✓ workers.dev health OK (canonical still preferred for debug probes)"
+          if [ "${HTTP_CODE}" = "200" ] && echo "${BODY}" | grep -qE '"ok"\s*:\s*true|^\s*true\s*$|"status"\s*:\s*"(healthy|operational)"'; then
+            echo "✓ workers.dev liveness OK (canonical still preferred for debug probes)"
             exit 0
           fi
 
-          echo "workers.dev probe failed — fallback: Cloudflare API script check"
+          echo "workers.dev liveness failed — fallback: Cloudflare API script check"
           CF_API_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/torgima"
           HTTP_CODE="$(curl -sS -o /tmp/cf-worker.json -w "%{http_code}" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \

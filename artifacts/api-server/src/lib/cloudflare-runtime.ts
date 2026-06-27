@@ -5,7 +5,7 @@
 
 import type { Hyperdrive, KVNamespace, Queue } from "@cloudflare/workers-types";
 import { bindWorkerDatabaseUrl, resetWorkerDbCache } from "@workspace/db";
-import { evaluatePoolerExpectations, parseDatabaseTargetSafe } from "./databaseTargetDebug.js";
+import { evaluatePoolerExpectations, parseDatabaseTargetSafe, resolveSupabaseRestBaseUrl } from "./databaseTargetDebug.js";
 
 export type TorgimaWorkerEnv = {
   NODE_ENV?: string;
@@ -142,6 +142,29 @@ export function bindCloudflareEnv(env: TorgimaWorkerEnv): void {
       boundKeys.push("SUPABASE_ANON_KEY(via VITE_)");
       const idx = missingKeys.indexOf("SUPABASE_ANON_KEY");
       if (idx !== -1) missingKeys.splice(idx, 1);
+    }
+  }
+
+  const supabaseRest = resolveSupabaseRestBaseUrl(
+    process.env.SUPABASE_URL,
+    process.env.DATABASE_URL,
+  );
+  if (supabaseRest) {
+    if (supabaseRest.corrected || process.env.SUPABASE_URL !== supabaseRest.url) {
+      process.env.SUPABASE_URL = supabaseRest.url;
+      if (!boundKeys.includes("SUPABASE_URL")) boundKeys.push("SUPABASE_URL");
+      const idx = missingKeys.indexOf("SUPABASE_URL");
+      if (idx !== -1) missingKeys.splice(idx, 1);
+      if (supabaseRest.corrected) {
+        console.error(
+          JSON.stringify({
+            type: "supabase_url_auto_corrected",
+            resolvedFrom: supabaseRest.resolvedFrom,
+            message:
+              "SUPABASE_URL secret was not a valid PostgREST base URL — corrected from DATABASE_URL project ref",
+          }),
+        );
+      }
     }
   }
 

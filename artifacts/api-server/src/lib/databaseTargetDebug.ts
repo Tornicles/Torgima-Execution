@@ -284,3 +284,89 @@ export function buildSafeDatabaseTargetSnapshot(raw: string | undefined): {
     configurationIssues: evaluatePoolerExpectations(parsed),
   };
 }
+
+export type SupabaseRestUrlResolution = {
+  url: string;
+  resolvedFrom: "SUPABASE_URL" | "DATABASE_URL_PROJECT_REF" | "DERIVED_DB_HOST";
+  corrected: boolean;
+};
+
+/**
+ * Resolve the Supabase PostgREST base URL (https://<ref>.supabase.co).
+ * Workers cannot use pooler hostnames or postgres:// strings for REST probes.
+ */
+export function resolveSupabaseRestBaseUrl(
+  supabaseUrl?: string,
+  databaseUrl?: string,
+): SupabaseRestUrlResolution | null {
+  const raw = typeof supabaseUrl === "string" ? supabaseUrl.trim() : "";
+  const original = raw;
+
+  const tryParseRestOrigin = (candidate: string): string | null => {
+    if (!candidate || /^postgres(?:ql)?:/i.test(candidate)) return null;
+    try {
+      const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
+      const parsed = new URL(withProtocol);
+      const host = parsed.hostname.toLowerCase();
+      if (host.includes("pooler.supabase.com")) return null;
+      const dbMatch = host.match(/^db\.([a-z0-9]+)\.supabase\.co$/);
+      if (dbMatch?.[1]) return `https://${dbMatch[1]}.supabase.co`;
+      if (/^[a-z0-9]+\.supabase\.co$/.test(host)) return parsed.origin;
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const fromEnv = tryParseRestOrigin(raw);
+  if (fromEnv) {
+    return {
+      url: fromEnv,
+      resolvedFrom: "SUPABASE_URL",
+      corrected: fromEnv !== original && !original.startsWith(fromEnv),
+    };
+  }
+
+  const dbParsed = parseDatabaseTargetSafe(databaseUrl);
+  if (dbParsed.projectRef) {
+    const derived = `https://${dbParsed.projectRef}.supabase.co`;
+    return {
+      url: derived,
+      resolvedFrom: "DATABASE_URL_PROJECT_REF",
+      corrected: derived !== original,
+    };
+  }
+
+  return null;
+}
+
+/** Flags when SUPABASE_URL secret is unsuitable for PostgREST (common Cloudflare misconfiguration). */
+export function evaluateSupabaseRestUrlIssues(
+  supabaseUrl?: string,
+  databaseUrl?: string,
+): string[] {
+  const issues: string[] = [];
+  const raw = typeof supabaseUrl === "string" ? supabaseUrl.trim() : "";
+  if (!raw) {
+    issues.push("SUPABASE_URL is not set");
+    return issues;
+  }
+  if (/^postgres(?:ql)?:/i.test(raw)) {
+    issues.push("SUPABASE_URL must be https://<project-ref>.supabase.co — not a postgres:// DATABASE_URL");
+  }
+  if (raw.includes("pooler.supabase.com")) {
+    issues.push("SUPABASE_URL must be the project REST URL (*.supabase.co) — not the pooler hostname");
+  }
+  if (/^db\.[a-z0-9]+\.supabase\.co/i.test(raw.replace(/^https?:\/\//i, ""))) {
+    issues.push("SUPABASE_URL uses db.<ref>.supabase.co — use https://<ref>.supabase.co for PostgREST");
+  }
+  const resolved = resolveSupabaseRestBaseUrl(supabaseUrl, databaseUrl);
+  if (!resolved) {
+    issues.push("SUPABASE_URL could not be resolved to a PostgREST base URL");
+  } else if (resolved.corrected) {
+    issues.push(
+      `SUPABASE_URL will be auto-corrected to ${resolved.url} (${resolved.resolvedFrom}) at runtime`,
+    );
+  }
+  return issues;
+}

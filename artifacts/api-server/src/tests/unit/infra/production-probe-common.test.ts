@@ -52,14 +52,46 @@ describe("production-probe-common health contract", () => {
     const { FAILURE_CLASSES } = await loadProbeCommon();
     expect(FAILURE_CLASSES.WORKERS_DEV_ROUTE_404_OPTIONAL).toBe("WORKERS_DEV_ROUTE_404_OPTIONAL");
   });
+
+  it("/api/health ok:false → readiness FAIL (deployed but not ready)", async () => {
+    const { parseApiHealthReadinessResponse, FAILURE_CLASSES } = await loadProbeCommon();
+    const result = parseApiHealthReadinessResponse(200, {
+      ok: false,
+      status: "critical",
+      failing: ["database"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.class).toBe(FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_FAIL);
+  });
+
+  it("/api/health ok:true + status healthy → readiness PASS", async () => {
+    const { parseApiHealthReadinessResponse, FAILURE_CLASSES } = await loadProbeCommon();
+    const result = parseApiHealthReadinessResponse(200, { ok: true, status: "healthy" });
+    expect(result.ok).toBe(true);
+    expect(result.class).toBe(FAILURE_CLASSES.CANONICAL_API_HEALTH_READINESS_PASS);
+  });
+
+  it("missing INTERNAL_AUTH_SECRET → readiness probe fails clearly", async () => {
+    const { probeApiHealthReadiness, FAILURE_CLASSES } = await loadProbeCommon();
+    const result = await probeApiHealthReadiness("https://api.torgima.com", "");
+    expect(result.ok).toBe(false);
+    expect(result.class).toBe(FAILURE_CLASSES.INTERNAL_AUTH_SECRET_MISSING);
+  });
 });
 
 describe("production-deploy-verify deploy-only contract", () => {
   it("skips /api/health readiness gate when --deploy-only", () => {
     const script = readRepo("scripts/production-deploy-verify.mjs");
     expect(script).toContain("--deploy-only");
-    expect(script).toContain("if (!deployOnly)");
+    expect(script).toContain("if (!deployOnly) {");
     expect(script).toContain("probeApiHealthReadiness");
+    expect(script).toContain("let readiness = null");
+  });
+
+  it("fails full readiness when /api/health is not healthy", () => {
+    const script = readRepo("scripts/production-deploy-verify.mjs");
+    expect(script).toContain("CANONICAL_API_HEALTH_READINESS_FAIL");
+    expect(script).toContain("if (!deployOnly && readiness && !readiness.ok)");
   });
 
   it("exports parseHealthLivenessResponse in probe module", () => {

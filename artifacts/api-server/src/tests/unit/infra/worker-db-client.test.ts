@@ -28,14 +28,21 @@ describe("Cloudflare Worker database client", () => {
     expect(runtime).toContain("bindWorkerDatabaseUrl(nextDbUrl)");
   });
 
-  it("normalizes Supabase pooler URLs for transaction mode", async () => {
-    const { normalizeWorkerDatabaseUrl } = await import("@workspace/db");
-    const url = normalizeWorkerDatabaseUrl(
-      "postgresql://user:pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
-    );
-    expect(url).toContain("6543");
-    expect(url).toContain("pgbouncer=true");
-    expect(url).toContain("connection_limit=1");
+  it("normalizes Supabase pooler URLs for transaction mode", () => {
+    const dbIndex = readRepo("lib/db/src/index.ts");
+    expect(dbIndex).toContain("export function normalizeWorkerDatabaseUrl");
+    expect(dbIndex).toContain('parsed.port = "6543"');
+    expect(dbIndex).toContain('"pgbouncer", "true"');
+    expect(dbIndex).toContain('"connection_limit", "1"');
+  });
+
+  it("unit test stub DATABASE_URL fails fast without live Postgres", () => {
+    const dbIndex = readRepo("lib/db/src/index.ts");
+    const setup = readRepo("artifacts/api-server/src/tests/vitest.setup.ts");
+    expect(dbIndex).toContain("isVitestUnitStubDatabase");
+    expect(dbIndex).toContain("torgima_vitest_stub");
+    expect(setup).toContain("torgima_vitest_stub");
+    expect(setup).toContain("TORGIMA_INTEGRATION");
   });
 
   it("registers auth schema alignment migration for magic link tables", () => {

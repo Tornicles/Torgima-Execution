@@ -59,6 +59,12 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(runtime).toContain("RESEND_API_KEY");
   });
 
+  it("references TORGIMA runtime contract document", () => {
+    const contract = readRepo("docs/TORGIMA_RUNTIME_CONTRACT.md");
+    expect(contract).toContain("WORKERS_DEV_ROUTE_404_OPTIONAL");
+    expect(contract).toContain("--deploy-only");
+  });
+
   it("CI deploy verifies canonical API and optional workers.dev", () => {
     const workflow = readRepo(".github/workflows/deploy-cloudflare.yml");
     const probeCommon = readRepo("scripts/production-probe-common.mjs");
@@ -114,6 +120,7 @@ describe("Cloudflare Workers runtime bridge", () => {
     expect(deployVerify).toContain("--deploy-only");
     expect(deployVerify).toContain("if (!deployOnly)");
     expect(probeCommon).toContain("parseHealthLivenessResponse");
+    expect(probeCommon).toContain("parseApiHealthReadinessResponse");
     expect(probeCommon).toContain("CANONICAL_API_HEALTH_READINESS_PASS");
     expect(probeCommon).toContain("/api/health");
   });
