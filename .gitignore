@@ -37,6 +37,7 @@ coverage/
 *.lcov
 test-results/
 playwright-report/
+lib/api-spec/routes.manifest.json
 
 # Local agent / typecheck dumps (do not commit)
 typecheck*.txt
