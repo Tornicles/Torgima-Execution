@@ -10,6 +10,7 @@ import {
   doublePrecision,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import {
@@ -148,7 +149,7 @@ export const validations = pgTable(
     contract_id: uuid("contract_id").notNull().defaultRandom(),
     blueprint_id: uuid("blueprint_id")
       .notNull()
-      .references(() => blueprints.id, { onDelete: "cascade" }),
+      .references((): AnyPgColumn => blueprints.id, { onDelete: "cascade" }),
     user_id: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
