@@ -311,9 +311,9 @@ async function computeDashboardState(userId: string) {
 
       if (!primaryTask) {
         const [bpVer] = await db
-          .select({ state_version: blueprintsTable.state_version })
-          .from(blueprintsTable)
-          .where(and(eq(blueprintsTable.id, blueprintId), eq(blueprintsTable.user_id, userId)))
+          .select({ state_version: blueprints.state_version })
+          .from(blueprints)
+          .where(and(eq(blueprints.id, blueprintId), eq(blueprints.user_id, userId)))
           .limit(1);
         stateVersion = bpVer?.state_version ?? 0;
       }
